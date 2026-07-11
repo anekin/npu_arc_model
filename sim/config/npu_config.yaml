@@ -1,0 +1,108 @@
+# NPU 架构配置 — Qwen2.5-3B 目标
+# 这是 spec，所有模块照此建模 — Block 64×64
+
+cores: 1
+
+# ── 硬件优化开关（v0.3 新增）──
+optimizations:
+  weight_cache: true              # PE 双 weight 寄存器，gate/up 共享 pipeline fill
+  dma_bw_multiplier: 1.0       # DMA 带宽倍率: 1.0=64-bit, 2.0=128-bit/4ch
+
+mxu:
+  type: block
+  array_height: 64
+  array_width: 64
+  frequency_mhz: 1000
+  weight_precision_bits: 4     # INT4
+  activation_precision_bits: 8  # INT8（激活用 INT8 中间表示，BF16 转 INT8 由硬件处理）
+  accumulate_precision_bits: 32 # INT32
+  dataflow: weight_stationary
+  double_buffer: true
+  ops_per_mac: 2               # multiply + accumulate
+
+sram:
+  l1_per_core_kb: 512          # 2 × 256KB 双口
+  l2_shared_kb: 2048
+  banks: 16
+  read_width_bits: 256          # per cycle
+  write_width_bits: 256
+
+sfu:
+  width: 128                    # 每 cycle 处理 128 个元素
+  pipeline_cycles:
+    softmax: 227                # P0 measured (dim=64, 1 batch)
+    exp: 66                     # P0-calibrated: RUN state split
+    div: 161                    # P0-calibrated: FLUSH state split
+    sqrt: 20                    # square root (kept theoretical, no P0 data)
+    log: 18                     # natural log (kept theoretical, no P0 data)
+    tanh: 14                    # hyperbolic tangent (kept theoretical, no P0 data)
+    layernorm: 210              # P0 measured (dim=64, 1 batch)
+    rmsnorm: 150                # P0 measured (dim=64, 1 batch)
+    gelu: 71                    # P0 measured (dim=64, 1 batch)
+    relu: 1
+    silu: 72                    # P0 measured (dim=64, 1 batch)
+    rope: 82                    # P0 measured (dim=64, 1 batch)
+    maxpool: 71                 # P0-calibrated: same as gelu for now
+    avgpool: 71                 # P0-calibrated: same as gelu for now
+
+vector:
+  width: 128                    # SIMD width (elements/cycle), INT8=256, FP16=128
+  ops:
+    add: 5                      # P0 measured (dim=128, 1 batch)
+    mul: 5                      # P0 measured (dim=128, 1 batch)
+    scale: 5                    # P0-calibrated: same SIMD path as add/mul
+    bias: 5                     # P0-calibrated: same SIMD path as add/mul
+    relu: 5                     # P0-calibrated: same SIMD path as add/mul
+    mask: 5                     # P0-calibrated: same SIMD path as add/mul
+    max: 12                     # P0 measured (dim=128, 1 batch, reduce_tree path)
+    sum: 12                     # P0 measured (dim=128, 1 batch, reduce_tree path)
+    reduce: 12                  # P0-calibrated: same reduce_tree path as max/sum
+    conv_f16_i32: 260           # P0 measured (dim=128, 1 batch, type_convert path)
+    resid: 5                    # P0 measured (dim=128, 1 batch, same as add)
+
+kv_cache:
+  sram_kb: 256
+  dram_region_mb: 96
+  precision_bits: 8
+
+dma:
+  channels: 2
+  burst_size_bytes: 256
+  descriptor_overhead_cycles: 5
+  max_pending_descriptors: 16
+  num_channels: 2
+  per_channel_fifo_depth: 64
+  max_burst_length: 8            # AXI burst beats
+  multi_block_mode: linked_list  # contiguous | shadow | linked_list
+  ll_prefetch_en: true
+  arbitration: round_robin       # round_robin | fixed_priority
+
+memory:
+  type: LPDDR5-6400
+  bandwidth_gbps: 51.2
+  bandwidth_bytes_per_cycle: 51.2  # 51.2 GB/s @ 1GHz = 51.2 bytes/cycle
+  dram_efficiency: 0.85             # 85% effective BW (refresh + row conflicts)
+  tRC_cycles: 48
+  tRAS_cycles: 42
+  refresh_overhead_percent: 3.0    # 约 3% 时间花在刷新
+
+interconnect:
+  type: crossbar
+  # ── NoC parameters (flit-level model) ──
+  ports: 4
+  bandwidth_gbps: 500
+  hop_latency_cycles: 3
+  flit_width_bits: 256
+  vcs: 2
+  buffer_depth: 4
+  arbitration: round_robin
+  routing: destination_tag
+  pipeline_stages: 3
+  port_bandwidth_gbps: 500    # legacy
+
+riscv:
+  isa: RV64IMAFD
+  pipeline_stages: 4
+  fetch_cycles: 4
+  decode_cycles: 1
+  dispatch_cycles: 2

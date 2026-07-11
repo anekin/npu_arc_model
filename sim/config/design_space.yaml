@@ -1,0 +1,121 @@
+# ═══════════════════════════════════════════════════
+# NPU 设计空间基准配置 — 所有可调参数
+# ═══════════════════════════════════════════════════
+
+# ── MAC 引擎 ──
+mac_engine:
+  type: block            # systolic | block
+  array_height: 64        # 64, 96, 128, 192, 256
+  array_width: 64         # 64, 96, 128, 192, 256, 384
+  frequency_mhz: 1000     # 500, 800, 1000, 1200
+  weight_precision_bits: 4    # 2(INT2), 4(INT4), 8(INT8)
+  activation_precision_bits: 8  # 8(INT8), 16(BF16)
+  accumulate_precision_bits: 32
+  dataflow: weight_stationary  # weight_stationary | output_stationary (systolic only)
+  double_buffer: true
+  ops_per_mac: 2
+
+# ── 存储层次 ──
+memory:
+  type: LPDDR5-6400       # LPDDR5-6400 | LPDDR5X-8533 | HBM3
+  bandwidth_gbps: 51.2    # swept: 51.2, 102.4, 204.8, 460, 819
+  bandwidth_bytes_per_cycle: 51.2
+  dram_efficiency: 0.85   # 0.80-0.90
+  dram_width_bits: 64     # 64 | 128 | 256 | 1024
+  tRC_cycles: 48
+  tRAS_cycles: 42
+  refresh_overhead_percent: 3.0
+
+sram:
+  l1_per_core_kb: 512
+  l2_shared_kb: 2048
+  banks: 16
+  read_width_bits: 256
+  write_width_bits: 256
+
+# ── 硬件优化开关 ──
+optimizations:
+  weight_cache: true     # PE 双 weight 寄存器
+  dma_bw_multiplier: 1.0  # 1.0=64-bit, 2.0=128-bit/4ch
+
+# ── 外设 ──
+dma:
+  channels: 2
+  burst_size_bytes: 256
+  descriptor_overhead_cycles: 5
+  max_pending_descriptors: 16
+  num_channels: 2
+  per_channel_fifo_depth: 64
+  max_burst_length: 8            # AXI burst beats, sweep: 1-256
+  multi_block_mode: linked_list  # contiguous | shadow | linked_list
+  ll_prefetch_en: true
+  arbitration: round_robin       # round_robin | fixed_priority
+
+sfu:
+  width: 128
+  pipeline_cycles:
+    softmax: 8
+    layernorm: 6
+    gelu: 4
+    relu: 1
+    silu: 4
+    rope: 12
+    maxpool: 3
+    avgpool: 3
+
+kv_cache:
+  sram_kb: 256
+  dram_region_mb: 96
+  precision_bits: 8
+
+interconnect:
+  type: crossbar
+  # ── NoC parameters (flit-level model) ──
+  ports: 4
+  bandwidth_gbps: 500
+  hop_latency_cycles: 3
+  flit_width_bits: 256
+  vcs: 2
+  buffer_depth: 4
+  arbitration: round_robin
+  routing: destination_tag
+  pipeline_stages: 3
+  port_bandwidth_gbps: 500    # legacy
+
+# ── 面积模型参数 ──
+area_model:
+  process_node: 7         # nm (default, override per scenario)
+  # PE 面积基线 @7nm (128×128 array)，数据来源见 ~/npu/references/area_sources.md
+  # TPUv1 反推 systolic ~1.24mm²→取2.0 (含绕线/tree); block=2×; FSA=1.1×; WMMA~1.5×; GMMA~1.75×
+  systolic_pe_area_mm2: 2.0
+  block_pe_area_mm2: 4.0        # 2× systolic (local acc + broadcast OC)
+  os_pe_area_mm2: 4.0           # output stationary ≈ block
+  is_pe_area_mm2: 4.0           # input stationary ≈ block
+  tc_pe_area_mm2: 4.0           # tensor core ≈ block
+  wmma_pe_area_mm2: 6.0         # warp-level WMMA
+  gmma_pe_area_mm2: 7.0         # async TMA GMMA
+  fsa_pe_area_mm2: 2.2          # CMP + Split overhead over systolic
+  sfu_area_mm2: 1.5
+  l1_sram_per_kb_mm2: 0.002
+  l2_sram_per_kb_mm2: 0.0015
+  dma_area_mm2: 1.0
+  riscv_area_mm2: 1.0
+  pcie_area_mm2: 2.0
+  dram_phy_area_mm2: 5.0
+  crossbar_area_mm2: 1.0
+  dma_channels_area_per_channel_mm2: 0.5
+  # TSV area overhead for 3D-stacked DRAM (~10% for HBM-class stacking)
+  tsv_overhead_pct: 0.10
+
+# ── 约束 ──
+# ── CV 硬件单元面积 ──
+cv_units:
+  im2col_feeder_mm2: 0.002
+  pool2d_mm2: 0.05
+  conv_sfu_mm2: 0.10
+
+# ── 约束 ──
+constraints:
+  max_area_mm2: 150
+  max_power_w: 50
+  target_tok_s: 25
