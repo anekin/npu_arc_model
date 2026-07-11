@@ -1,0 +1,1342 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CaduceusCore — 通用 NPU 协处理器阶段性总结</title>
+<style>
+/* ===== Design Tokens ===== */
+:root {
+  --bg-primary: #0d1117;
+  --bg-secondary: #161b22;
+  --bg-tertiary: #21262d;
+  --bg-code: #0d1117;
+  --border: #30363d;
+  --border-light: #21262d;
+  --text-primary: #e6edf3;
+  --text-secondary: #8b949e;
+  --text-muted: #6e7681;
+  --text-link: #58a6ff;
+  --cyan: #58a6ff;
+  --cyan-dim: rgba(88,166,255,0.12);
+  --cyan-border: rgba(88,166,255,0.25);
+  --green: #3fb950;
+  --green-dim: rgba(63,185,80,0.12);
+  --green-border: rgba(63,185,80,0.25);
+  --amber: #d29922;
+  --amber-dim: rgba(210,153,34,0.12);
+  --amber-border: rgba(210,153,34,0.25);
+  --red: #f85149;
+  --red-dim: rgba(248,81,73,0.12);
+  --purple: #a371f7;
+  --purple-dim: rgba(163,113,247,0.12);
+  --teal: #39d2c0;
+  --teal-dim: rgba(57,210,192,0.12);
+  --teal-border: rgba(57,210,192,0.25);
+  --pink: #f778ba;
+  --pink-dim: rgba(247,119,186,0.12);
+  --pink-border: rgba(247,119,186,0.25);
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+  --space-3xl: 64px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+}
+
+/* ===== Reset & Base ===== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
+}
+
+a { color: var(--text-link); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ===== Layout ===== */
+.page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--space-lg);
+}
+
+/* ===== Header ===== */
+.header {
+  text-align: center;
+  padding: var(--space-3xl) 0 var(--space-2xl);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: var(--space-2xl);
+  position: relative;
+}
+
+.header::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 50%; transform: translateX(-50%);
+  width: 120px; height: 3px;
+  background: linear-gradient(90deg, var(--cyan), var(--green), var(--amber));
+  border-radius: 2px;
+}
+
+.header h1 {
+  font-size: 2.0rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-bottom: var(--space-sm);
+  background: linear-gradient(135deg, var(--text-primary) 0%, #bdc6cf 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.header .subtitle {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-md);
+  font-weight: 400;
+}
+
+.badge {
+  display: inline-block;
+  padding: 3px 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 9999px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: var(--purple-dim);
+  border: 1px solid rgba(163,113,247,0.25);
+  color: var(--purple);
+}
+
+/* ===== Section ===== */
+.section {
+  margin-bottom: var(--space-3xl);
+}
+
+.section-title {
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin-bottom: var(--space-sm);
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  letter-spacing: -0.01em;
+}
+
+.section-title .accent-bar {
+  display: inline-block;
+  width: 4px;
+  height: 24px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.accent-cyan .accent-bar { background: var(--cyan); }
+.accent-green .accent-bar { background: var(--green); }
+.accent-amber .accent-bar { background: var(--amber); }
+
+.section-desc {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin-bottom: var(--space-lg);
+  line-height: 1.7;
+}
+
+/* ===== Metric Cards ===== */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-md);
+  margin: var(--space-lg) 0;
+}
+
+.metric-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-lg);
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.2s, transform 0.15s;
+}
+
+.metric-card:hover {
+  border-color: var(--border-light);
+  transform: translateY(-1px);
+}
+
+.metric-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+}
+.metric-card.mc-cyan::before { background: var(--cyan); }
+.metric-card.mc-green::before { background: var(--green); }
+.metric-card.mc-amber::before { background: var(--amber); }
+.metric-card.mc-purple::before { background: var(--purple); }
+
+.metric-value {
+  font-size: 1.8rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin-bottom: 2px;
+  font-variant-numeric: tabular-nums;
+}
+.metric-card.mc-cyan .metric-value { color: var(--cyan); }
+.metric-card.mc-green .metric-value { color: var(--green); }
+.metric-card.mc-amber .metric-value { color: var(--amber); }
+.metric-card.mc-purple .metric-value { color: var(--purple); }
+
+.metric-label {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+/* ===== Flow Cards ===== */
+.flow-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-lg);
+}
+
+@media (max-width: 900px) {
+  .flow-grid { grid-template-columns: 1fr; }
+}
+
+.flow-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 0;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+
+.flow-card-header {
+  padding: var(--space-lg) var(--space-lg) var(--space-md);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.flow-card.fc-cyan { border-top: 3px solid var(--cyan); }
+.flow-card.fc-green { border-top: 3px solid var(--green); }
+.flow-card.fc-amber { border-top: 3px solid var(--amber); }
+
+.fc-cyan .flow-card-header h3 { color: var(--cyan); }
+.fc-green .flow-card-header h3 { color: var(--green); }
+.fc-amber .flow-card-header h3 { color: var(--amber); }
+
+.flow-card-header h3 {
+  font-size: 1.0rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.flow-card-header .flow-subtitle {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.flow-card-body {
+  padding: var(--space-md) var(--space-lg) var(--space-lg);
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  line-height: 1.75;
+}
+
+.flow-card-body p { margin-bottom: var(--space-sm); }
+
+/* ===== Content Cards ===== */
+.content-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-lg);
+  margin-bottom: var(--space-lg);
+}
+
+.content-card h3 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin-bottom: var(--space-md);
+  color: var(--text-primary);
+}
+
+/* ===== Tables ===== */
+.table-wrap {
+  overflow-x: auto;
+  margin: var(--space-md) 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+thead { background: var(--bg-tertiary); }
+
+th {
+  padding: 10px 14px;
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border-light);
+  color: var(--text-primary);
+  vertical-align: top;
+}
+
+tr:last-child td { border-bottom: none; }
+
+tbody tr:nth-child(even) { background: var(--bg-primary); }
+tbody tr:hover { background: var(--bg-tertiary); }
+
+/* ===== Code Blocks ===== */
+code {
+  font-family: "SF Mono", "Fira Code", "Fira Mono", "Roboto Mono", "Cascadia Code", Consolas, "Noto Sans Mono SC", monospace;
+  font-size: 0.82rem;
+  background: var(--bg-tertiary);
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+}
+
+pre {
+  background: var(--bg-code);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  overflow-x: auto;
+  margin: var(--space-md) 0;
+  font-size: 0.8rem;
+  line-height: 1.55;
+}
+
+pre code {
+  background: none;
+  padding: 0;
+  font-size: inherit;
+  color: #c9d1d9;
+}
+
+/* ===== Architecture Diagram ===== */
+.arch-diagram {
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-lg);
+  font-family: "SF Mono", "Fira Code", "Fira Mono", "Roboto Mono", "Cascadia Code", Consolas, "Noto Sans Mono SC", monospace;
+  font-size: 0.78rem;
+  line-height: 1.6;
+  white-space: pre;
+  overflow-x: auto;
+  color: var(--text-primary);
+  margin: var(--space-md) 0;
+}
+
+.arch-diagram .hl-cyan { color: var(--cyan); }
+.arch-diagram .hl-green { color: var(--green); }
+.arch-diagram .hl-amber { color: var(--amber); }
+
+/* ===== Timeline ===== */
+.timeline {
+  position: relative;
+  padding-left: 28px;
+  margin: var(--space-lg) 0;
+}
+
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: 11px;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
+  background: var(--border);
+}
+
+.timeline-entry {
+  position: relative;
+  margin-bottom: var(--space-lg);
+  padding-left: var(--space-md);
+}
+
+.timeline-entry::before {
+  content: '';
+  position: absolute;
+  left: -21px;
+  top: 8px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--bg-tertiary);
+  border: 2px solid var(--border);
+  z-index: 1;
+}
+
+.timeline-entry.tl-cyan::before { border-color: var(--cyan); background: var(--cyan-dim); }
+.timeline-entry.tl-green::before { border-color: var(--green); background: var(--green-dim); }
+.timeline-entry.tl-amber::before { border-color: var(--amber); background: var(--amber-dim); }
+
+.timeline-date {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  margin-bottom: 2px;
+  letter-spacing: 0.03em;
+}
+
+.timeline-title {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+
+.timeline-desc {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+}
+
+/* ===== Verification Layers ===== */
+.verif-layers {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-md);
+  margin: var(--space-lg) 0;
+}
+
+@media (max-width: 900px) {
+  .verif-layers { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 600px) {
+  .verif-layers { grid-template-columns: 1fr; }
+}
+
+.verif-layer {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  text-align: center;
+  position: relative;
+}
+
+.verif-layer .layer-num {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.verif-layer h4 {
+  font-size: 0.88rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.verif-layer p {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.verif-layer.vl-cyan h4 { color: var(--cyan); }
+.verif-layer.vl-green h4 { color: var(--green); }
+.verif-layer.vl-amber h4 { color: var(--amber); }
+.verif-layer.vl-purple h4 { color: var(--purple); }
+
+/* ===== Lesson Card ===== */
+.lesson-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--amber-border);
+  border-left: 3px solid var(--amber);
+  border-radius: var(--radius-md);
+  padding: var(--space-lg);
+  margin: var(--space-lg) 0;
+}
+
+.lesson-card .lesson-tag {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--amber);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: var(--space-sm);
+}
+
+.lesson-card h3 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin-bottom: var(--space-sm);
+  color: var(--text-primary);
+}
+
+.lesson-card p {
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  line-height: 1.75;
+}
+
+.lesson-card blockquote {
+  border-left: 2px solid var(--amber);
+  margin: var(--space-md) 0;
+  padding: var(--space-sm) var(--space-md);
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  font-weight: 600;
+  font-style: italic;
+  background: var(--bg-primary);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+/* ===== DSE Pipeline ===== */
+.pipeline {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin: var(--space-lg) 0;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.pipeline-step {
+  background: var(--bg-tertiary);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-md);
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-align: center;
+  min-width: 100px;
+  border: 1px solid var(--border);
+}
+
+.pipeline-arrow {
+  margin: 0 var(--space-sm);
+  color: var(--text-muted);
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+
+.pipeline-step.ps-cyan { border-color: var(--cyan-border); background: var(--cyan-dim); color: var(--cyan); }
+.pipeline-step.ps-green { border-color: var(--green-border); background: var(--green-dim); color: var(--green); }
+
+/* ===== Chip Label ===== */
+.chip {
+  display: inline-block;
+  padding: 2px 10px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  border-radius: 9999px;
+  letter-spacing: 0.04em;
+  margin-right: 4px;
+  margin-bottom: 4px;
+}
+.chip-cyan { background: var(--cyan-dim); color: var(--cyan); border: 1px solid var(--cyan-border); }
+.chip-green { background: var(--green-dim); color: var(--green); border: 1px solid var(--green-border); }
+.chip-amber { background: var(--amber-dim); color: var(--amber); border: 1px solid var(--amber-border); }
+.chip-purple { background: var(--purple-dim); color: var(--purple); border: 1px solid rgba(163,113,247,0.25); }
+
+/* ===== Footer ===== */
+.footer {
+  text-align: center;
+  padding: var(--space-xl) 0;
+  border-top: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  margin-top: var(--space-2xl);
+}
+
+.footer a { color: var(--text-link); }
+
+/* ===== Compact List ===== */
+.compact-list {
+  list-style: none;
+  padding: 0;
+  margin: var(--space-sm) 0;
+}
+
+.compact-list li {
+  padding: 6px 0;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.compact-list li:last-child { border-bottom: none; }
+
+.compact-list li strong { color: var(--text-primary); }
+
+/* ===== Status Passed ===== */
+.status-pass {
+  display: inline-block;
+  padding: 1px 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  border-radius: 9999px;
+  background: var(--green-dim);
+  color: var(--green);
+  letter-spacing: 0.04em;
+}
+
+/* ===== Divider ===== */
+.divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: var(--space-xl) 0;
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<!-- ===== HEADER ===== -->
+<header class="header">
+  <h1>CaduceusCore — 通用 NPU 协处理器阶段性总结</h1>
+  <p class="subtitle">2026-06-20 ~ 2026-06-27  |  12 Plans × ~107h  |  Arc → Func → RTL 三阶段闭环</p>
+  <span class="badge">Phase 1–3 Complete</span>
+</header>
+
+<!-- ===== SECTION 1: 项目概述 ===== -->
+<section class="section" id="overview">
+  <h2 class="section-title"><span class="accent-bar"></span> 项目概述</h2>
+  <p class="section-desc">
+    CaduceusCore 是一颗<strong>通用 NPU 协处理器</strong>，同时面向 <strong>CV（YOLOv8/ViT/ResNet）</strong>和 <strong>LLM（Qwen 3B/7B）</strong>推理。
+    核心设计约束：<strong>性能瓶颈在 DRAM 带宽，不在算力</strong>。
+    项目遵循严格的三阶段开发流程——<strong>Arc Model</strong>（架构沙盘与设计空间搜索）→ <strong>Func Model</strong>（Golden Reference 与 RTL 规格）→ <strong>RTL</strong>（硬件实现与验证闭环）。
+    截至 2026-06-27，已完成 <strong>12 个 Plans</strong>，总计约 <strong>107 AI-assisted hours</strong>，全部 Plans 状态均为 <strong>APPROVED</strong>。
+  </p>
+
+  <div class="metrics-grid">
+    <div class="metric-card mc-cyan">
+      <div class="metric-value">66</div>
+      <div class="metric-label">RTL 文件（excl vendor IP）</div>
+    </div>
+    <div class="metric-card mc-green">
+      <div class="metric-value">22,201</div>
+      <div class="metric-label">行 Verilog</div>
+    </div>
+    <div class="metric-card mc-amber">
+      <div class="metric-value">210+</div>
+      <div class="metric-label">pytest 测试通过</div>
+    </div>
+    <div class="metric-card mc-purple">
+      <div class="metric-value">8</div>
+      <div class="metric-label">引擎类型（DSE）</div>
+    </div>
+    <div class="metric-card mc-cyan">
+      <div class="metric-value">7+5</div>
+      <div class="metric-label">SFU 算子 + Vector 模块</div>
+    </div>
+    <div class="metric-card mc-green">
+      <div class="metric-value">3</div>
+      <div class="metric-label">场景（S1 LPDDR5 / S2/S3 3D DRAM）</div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== SECTION 2: Flow 1 — Arc Model ===== -->
+<section class="section accent-cyan" id="flow1">
+  <h2 class="section-title accent-cyan"><span class="accent-bar"></span> Flow 1: Arc Model — 架构沙盘与设计空间搜索</h2>
+  <p class="section-desc">
+    Arc Model 是 CaduceusCore 的架构沙盘：输入场景需求，输出最优硬件配置。覆盖完整的 <strong>Phase -1 → Phase 2 四阶段 DSE Pipeline</strong>，
+    支持 8 引擎 × 多 H×W × SRAM × BW 设计空间扫描，经 TPUv1 ISCA 2017 die-shot 校准面积模型。产出三场景两芯片方案。
+  </p>
+
+  <!-- DSE Pipeline -->
+  <div class="pipeline">
+    <div class="pipeline-step ps-cyan">Phase -1<br><small>需求澄清</small></div>
+    <span class="pipeline-arrow">→</span>
+    <div class="pipeline-step ps-cyan">Phase 0<br><small>预分析</small></div>
+    <span class="pipeline-arrow">→</span>
+    <div class="pipeline-step ps-green">Phase 1<br><small>扫描 + 敏感性</small></div>
+    <span class="pipeline-arrow">→</span>
+    <div class="pipeline-step ps-green">Phase 2<br><small>交叉校验</small></div>
+  </div>
+
+  <div class="content-card">
+    <h3>八引擎设计空间</h3>
+    <div style="margin-bottom: var(--space-md);">
+      <span class="chip chip-cyan">FSA</span>
+      <span class="chip chip-cyan">Systolic</span>
+      <span class="chip chip-cyan">OS-Systolic</span>
+      <span class="chip chip-cyan">Block</span>
+      <span class="chip chip-cyan">TensorCore</span>
+      <span class="chip chip-cyan">WMMA</span>
+      <span class="chip chip-cyan">GMMA</span>
+      <span class="chip chip-cyan">Input-Stationary</span>
+    </div>
+    <p style="color: var(--text-secondary); font-size: 0.88rem;">
+      受控变量法扫参：引擎类型 × H×W × SRAM × BW × 精度 × 频率。
+      支持 LLM trace + CV trace (ViT/YOLO/ResNet/Diffusion) 及 VLM pipeline 联合评估。
+      关键文件：<code>dse_scenario.py</code>（617 行）、<code>design_space_explorer.py</code>、<code>scenarios.yaml</code>、<code>area_sources.md</code>
+    </p>
+  </div>
+
+  <h3 style="font-size: 1.0rem; margin-bottom: var(--space-md);">三场景架构选型结果</h3>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th></th>
+          <th>S1 低成本端侧</th>
+          <th>S2 高性能端侧</th>
+          <th>S3 具身智能</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>引擎</strong></td>
+          <td><span class="chip chip-cyan">FSA 128×256</span></td>
+          <td><span class="chip chip-green">block 80×1536</span></td>
+          <td><span class="chip chip-green">block 80×1536</span></td>
+        </tr>
+        <tr><td><strong>TOPS INT8</strong></td><td>33</td><td>123</td><td>123</td></tr>
+        <tr><td><strong>面积 @ 12nm</strong></td><td><strong>68 mm²</strong></td><td><strong>124 mm²</strong></td><td><strong>124 mm²</strong></td></tr>
+        <tr><td><strong>内存</strong></td><td>LPDDR5 64-bit</td><td>3D DRAM 5GB</td><td>3D DRAM 5GB</td></tr>
+        <tr><td><strong>BW</strong></td><td>43.5 GB/s</td><td>~930 GB/s</td><td>~930 GB/s</td></tr>
+        <tr><td><strong>TPS (decode)</strong></td><td>23</td><td>197</td><td>197</td></tr>
+        <tr><td><strong>TTFT</strong></td><td>88ms (seq=128)</td><td>65ms (seq=1024)</td><td>65ms (seq=1024)</td></tr>
+        <tr><td><strong>VLA 10 FPS</strong></td><td>—</td><td>—</td><td><span class="status-pass">✓ (11.0)</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="content-card">
+    <h3>关键发现</h3>
+    <ul class="compact-list">
+      <li><strong>S2 和 S3 共用同一颗 die</strong>（block 80×1536, 124mm²）—— 两颗芯片覆盖三个产品线</li>
+      <li>LPDDR5 场景 BW 瓶颈：所有引擎 TPS 集中在 21–23，选 <strong>FSA 面积最优</strong></li>
+      <li>On-chip 3D DRAM BW 随面积线性增长（<strong>7.5 GB/s/mm²</strong>），大芯片 = 多 TOPS + 多 BW</li>
+      <li>seq_len 对 TTFT 影响巨大：1024 需要 ≥72 TOPS，128 只需 4 TOPS</li>
+      <li>SRAM 在 on-chip 场景<strong>零敏感</strong>（512KB 足够），在 LPDDR5 场景有意义（4MB 最优）</li>
+      <li>面积模型经 <strong>TPUv1 ISCA 2017 die-shot</strong> 数据校准，不再偏高</li>
+    </ul>
+  </div>
+
+  <h3 style="font-size: 0.95rem; margin: var(--space-lg) 0 var(--space-sm); color: var(--text-secondary);">命令行流程</h3>
+  <pre><code># 单场景完整 DSE（Phase -1 → Phase 2）
+cd sim && PYTHONPATH=. python design_space_explorer.py --quick
+
+# 场景预检（Phase -1 + 0）
+PYTHONPATH=. python -c "
+from dse_scenario import check_requirements, preflight
+print_requirements_check(check_requirements('onchip_7b'))
+print_preflight(preflight('onchip_7b', config))
+"</code></pre>
+</section>
+
+<hr class="divider">
+
+<!-- ===== SECTION 3: Flow 2 — Func Model ===== -->
+<section class="section accent-green" id="flow2">
+  <h2 class="section-title accent-green"><span class="accent-bar"></span> Flow 2: Func Model — Golden Reference 与 RTL 规格</h2>
+  <p class="section-desc">
+    Func Model 承担<strong>三重角色</strong>：RTL 开发的 Spec（接口定义、寄存器布局、ISA）→ RTL 验证的 Golden Reference（$readmemh 逐比特对比）→ 性能测量（8 模块 cycle 估算 + Dashboard 报告）。
+    当前实现 64×64 Broadcast MAC 阵列作为 bootstrap 配置，建立完整的开发流程和 bit-exact 对比方法论。
+  </p>
+
+  <!-- Func Model 三重角色 -->
+  <div class="verif-layers" style="grid-template-columns: repeat(3, 1fr);">
+    <div class="verif-layer vl-green">
+      <div class="layer-num">1</div>
+      <h4>RTL Spec</h4>
+      <p>模块接口、寄存器布局、ISA 指令集均以 Func Model 为准</p>
+    </div>
+    <div class="verif-layer vl-green">
+      <div class="layer-num">2</div>
+      <h4>Golden Reference</h4>
+      <p>gen_rtl_tests.py → $readmemh → compare_rtl.py → bit-exact 验证</p>
+    </div>
+    <div class="verif-layer vl-green">
+      <div class="layer-num">3</div>
+      <h4>Performance</h4>
+      <p>8 模块 cycle 估算 + TPS/TTFT/TPOT/ITL + Dashboard 双格式报告</p>
+    </div>
+  </div>
+
+  <h3 style="font-size: 1.0rem; margin: var(--space-lg) 0 var(--space-sm);">数据流</h3>
+  <pre><code>YAML Config → [ModelSpec] → NPUSimulator → TimingEngine → Dashboard (JSON + MD)</code></pre>
+
+  <h3 style="font-size: 1.0rem; margin: var(--space-lg) 0 var(--space-sm);">8 个性能模型</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>模块</th><th>类</th><th>建模内容</th></tr></thead>
+      <tbody>
+        <tr><td><strong>MXU</strong></td><td>BlockEngine / SystolicEngine / … (7)</td><td>tile fill + MAC + drain，含 DMA overlap</td></tr>
+        <tr><td><strong>SFU</strong></td><td>SFUModel</td><td>softmax / layernorm / gelu / silu / RoPE 流水线延迟</td></tr>
+        <tr><td><strong>Vector</strong></td><td>VectorModel</td><td>element-wise add / mul / scale / bias</td></tr>
+        <tr><td><strong>DMA</strong></td><td>DMAModel</td><td>burst / descriptor / FIFO 反压 / 多通道仲裁</td></tr>
+        <tr><td><strong>NoC</strong></td><td>NoCModel</td><td>crossbar / mesh 拓扑，hop latency + contention</td></tr>
+        <tr><td><strong>KV Cache</strong></td><td>KVCacheModel</td><td>层间切换 + 逐 GEMM KV 访问</td></tr>
+        <tr><td><strong>DRAM</strong></td><td>DRAMModel</td><td>LPDDR5 / HBM refresh overhead</td></tr>
+        <tr><td><strong>RISC-V</strong></td><td>pipeline constants</td><td>fetch / decode / dispatch per instruction</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 style="font-size: 1.0rem; margin: var(--space-lg) 0 var(--space-sm);">Arc vs Func vs RTL 对比</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th></th><th>Arc Model</th><th>Func Model</th><th>RTL (Phase 1+2)</th></tr></thead>
+      <tbody>
+        <tr><td><strong>用途</strong></td><td>架构选型（>100 配置/秒）</td><td>精确实现 + 性能验证</td><td>硬件实现</td></tr>
+        <tr><td><strong>速度</strong></td><td>毫秒-秒级</td><td>分钟级</td><td>cycle 级</td></tr>
+        <tr><td><strong>精度</strong></td><td>解析公式 + TPUv1 面积</td><td>逐 cycle bit-exact</td><td>门级 / bit-exact</td></tr>
+        <tr><td><strong>LLM TPS</strong></td><td><span class="status-pass">✓</span></td><td><span class="status-pass">✓</span></td><td>—</td></tr>
+        <tr><td><strong>LLM TTFT</strong></td><td><span class="status-pass">✓</span></td><td><span class="status-pass">✓</span></td><td>—</td></tr>
+        <tr><td><strong>CV FPS</strong></td><td><span class="status-pass">✓</span> (ViT/YOLO/ResNet/Diffusion)</td><td>—</td><td>—</td></tr>
+        <tr><td><strong>VLM FPS</strong></td><td><span class="status-pass">✓</span> (pipeline 模型)</td><td>—</td><td>—</td></tr>
+        <tr><td><strong>阵列配置</strong></td><td>8引擎 × 多H×W × SRAM × BW</td><td>固定为选定配置</td><td>64×64 Broadcast MAC</td></tr>
+        <tr><td><strong>输出</strong></td><td>DSE 报告 + PPA + 敏感性</td><td>Golden Ref + 性能报告</td><td>MXU + SFU + Vector Verilog</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="content-card" style="border-left: 3px solid var(--green);">
+    <h3>Bootstrap 配置说明</h3>
+    <p style="font-size: 0.88rem; color: var(--text-secondary);">
+      Func Model 目前只细化了其中一个起点——<strong>64×64 Broadcast MAC</strong> 阵列 + SFU + Vector Engine。
+      这是项目的 <strong>bootstrap 配置</strong>，用于建立 RTL 开发流程、验证工具链和 bit-exact 对比方法论。
+      它<strong>不是</strong> Arc DSE 推荐架构（FSA 或 block）的直接实现，而是先跑通全流程的最小可行硬件。
+      后续 Func Model 会按 DSE 结论切换到推荐引擎（FSA / block），届时重新生成 golden reference。
+    </p>
+  </div>
+
+  <h3 style="font-size: 0.95rem; margin: var(--space-lg) 0 var(--space-sm); color: var(--text-secondary);">pytest 回归</h3>
+  <pre><code>PYTHONPATH=sim python -m pytest sim/tests/ sim/timing/tests/ -q
+# 210/210 passed (150 sim + 60 timing)</code></pre>
+</section>
+
+<hr class="divider">
+
+<!-- ===== SECTION 4: Flow 3 — RTL ===== -->
+<section class="section accent-amber" id="flow3">
+  <h2 class="section-title accent-amber"><span class="accent-bar"></span> Flow 3: RTL — 硬件实现与验证闭环</h2>
+  <p class="section-desc">
+    RTL 实现覆盖三个 Phase：<strong>Phase 1</strong> MXU 64×64 Broadcast MAC 阵列（8 files, 1,304 lines）→ <strong>Phase 2</strong> SFU + Vector Engine（13 files, 3,772 lines）→ <strong>Phase 3</strong> SoC 全芯片集成（18+ files, ~5,000+ lines）。
+    验证体系覆盖四层：Arc Model 架构评估 → Func Model 行为验证 → E2E Spike 全链路 → RTL $readmemh bit-exact 对比。
+  </p>
+
+  <!-- Phase 1 -->
+  <div class="content-card" style="border-left: 3px solid var(--amber);">
+    <h3>Phase 1: MXU 64×64 Broadcast MAC Array</h3>
+    <div style="display: flex; gap: var(--space-md); flex-wrap: wrap; margin-bottom: var(--space-md);">
+      <div><span class="chip chip-amber">8 files</span></div>
+      <div><span class="chip chip-amber">1,304 lines</span></div>
+      <div><span class="chip chip-amber">INT4×INT8→INT32</span></div>
+      <div><span class="chip chip-amber">MMIO 控制</span></div>
+    </div>
+    <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: var(--space-md);">
+      模块：<code>mxu_top.v</code> · <code>mmio_if.v</code> · <code>controller.v</code> · <code>mac_array.v</code> · <code>pe.v</code> · <code>accumulator.v</code> · <code>weight_buffer.v</code> · <code>activation_buffer.v</code>
+    </p>
+    <h4 style="font-size: 0.85rem; margin-bottom: var(--space-sm); color: var(--text-secondary);">验证结果</h4>
+    <ul class="compact-list">
+      <li><strong>single_tile</strong>: 4096/4096 INT32 值 Golden 逐比特匹配 <span class="status-pass">PASSED</span></li>
+      <li><strong>9 命名场景</strong> (multi_tile / overflow / zero_dim / partial_tile): <span class="status-pass">9/9 PASSED</span></li>
+      <li><strong>随机回归</strong>: 100 个随机 (M,N,K) <span class="status-pass">100/100 PASSED</span></li>
+      <li><strong>Qwen2.5-3B E2E</strong>: 真实 Q4_K_M 权重，1024 个 tile <span class="status-pass">PASSED</span></li>
+    </ul>
+  </div>
+
+  <!-- Phase 2 -->
+  <div class="content-card" style="border-left: 3px solid var(--amber);">
+    <h3>Phase 2: SFU + Vector Engine</h3>
+    <div style="display: flex; gap: var(--space-md); flex-wrap: wrap; margin-bottom: var(--space-md);">
+      <div><span class="chip chip-amber">SFU: 8 files, 2,678 lines</span></div>
+      <div><span class="chip chip-amber">Vector: 5 files, 1,094 lines</span></div>
+    </div>
+
+    <h4 style="font-size: 0.88rem; margin-bottom: var(--space-sm); color: var(--text-secondary);">SFU 算子覆盖</h4>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>算子</th><th>实现</th><th>描述</th></tr></thead>
+        <tbody>
+          <tr><td><strong>softmax</strong></td><td>8-stage</td><td>LUT-based exp + iterative division</td></tr>
+          <tr><td><strong>layernorm</strong></td><td>6-stage</td><td>定点 mean/var/normalize</td></tr>
+          <tr><td><strong>gelu</strong></td><td>4-stage</td><td>tanh 近似 + 64-entry LUT</td></tr>
+          <tr><td><strong>silu</strong></td><td>4-stage</td><td>复用 exp_lut + Newton-Raphson</td></tr>
+          <tr><td><strong>rope</strong></td><td>16-stage</td><td>CORDIC 旋转，Q18.14 定点</td></tr>
+          <tr><td><strong>rmsnorm</strong></td><td>two-pass</td><td>Newton-Raphson sqrt/reciprocal</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h4 style="font-size: 0.88rem; margin-bottom: var(--space-sm); color: var(--text-secondary);">Vector 算子覆盖</h4>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>算子</th><th>描述</th></tr></thead>
+        <tbody>
+          <tr><td><strong>add / mul / max</strong></td><td>128-wide INT32 SIMD，饱和钳位</td></tr>
+          <tr><td><strong>max_reduce / sum_reduce</strong></td><td>128→1 流水线规约树（max 7-cycle / sum INT64）</td></tr>
+          <tr><td><strong>type_convert</strong></td><td>INT32→FP16（IEEE 754 half-precision），MXU→SFU 桥梁</td></tr>
+          <tr><td><strong>resid_add</strong></td><td>128-wide INT32 饱和残差加法</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h4 style="font-size: 0.85rem; margin-bottom: var(--space-sm); color: var(--text-secondary);">验证结果</h4>
+    <ul class="compact-list">
+      <li><strong>SFU batch regression</strong>: 319/319 通过 inline comparison <span class="status-pass">PASSED</span></li>
+      <li><strong>Vector batch regression</strong>: 63/63 通过 inline comparison <span class="status-pass">PASSED</span></li>
+      <li><strong>INT32→FP16 逐值扫描</strong>: 131,073/131,073 与 numpy float16 逐比特匹配 <span class="status-pass">PASSED</span></li>
+      <li><strong>E2E real-model</strong>: Qwen2.5-3B blk.0 真实权重 <span class="status-pass">PASSED</span></li>
+    </ul>
+  </div>
+
+  <!-- Phase 3 -->
+  <div class="content-card" style="border-left: 3px solid var(--amber);">
+    <h3>Phase 3: SoC Integration</h3>
+    <div style="display: flex; gap: var(--space-md); flex-wrap: wrap; margin-bottom: var(--space-md);">
+      <div><span class="chip chip-amber">18+ files</span></div>
+      <div><span class="chip chip-amber">~5,000+ lines</span></div>
+      <div><span class="chip chip-amber">12 模块实例化</span></div>
+      <div><span class="chip chip-amber">Ibex RV32IMC</span></div>
+    </div>
+    <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: var(--space-md);">
+      全芯片集成：Ibex RISC-V 控制核 + 6 AXI4 master + 自研 crossbar + 4MB SRAM + 2GB DRAM + APB decoder (7 slaves)。
+    </p>
+
+    <h4 style="font-size: 0.88rem; margin-bottom: var(--space-sm); color: var(--text-secondary);">SoC 架构框图</h4>
+
+    <svg viewBox="0 0 1200 820" width="100%" xmlns="http://www.w3.org/2000/svg" style="display:block;margin:var(--space-lg) 0;">
+
+      <!-- ====== Definitions ====== -->
+      <defs>
+        <marker id="arr-axi" viewBox="0 0 10 7" refX="10" refY="3.5" markerWidth="8" markerHeight="6" orient="auto">
+          <polygon points="0 0, 10 3.5, 0 7" fill="#d29922"/>
+        </marker>
+        <marker id="arr-apb" viewBox="0 0 10 7" refX="10" refY="3.5" markerWidth="8" markerHeight="6" orient="auto">
+          <polygon points="0 0, 10 3.5, 0 7" fill="#8b949e"/>
+        </marker>
+        <marker id="arr-irq" viewBox="0 0 10 7" refX="10" refY="3.5" markerWidth="8" markerHeight="6" orient="auto">
+          <polygon points="0 0, 10 3.5, 0 7" fill="#f778ba"/>
+        </marker>
+      </defs>
+
+      <!-- ====== APB Bus Backbone (behind everything) ====== -->
+      <!-- vertical backbone -->
+      <line x1="85" y1="70" x2="85" y2="640" stroke="#8b949e" stroke-width="1.5" stroke-dasharray="6,4"/>
+      <!-- Ibex APB stub -->
+      <line x1="350" y1="70" x2="85" y2="70" stroke="#8b949e" stroke-width="1.5" stroke-dasharray="6,4"/>
+      <!-- Layer 1: Compute Engine APB bus (horizontal branch at y=130) -->
+      <line x1="85" y1="130" x2="1040" y2="130" stroke="#8b949e" stroke-width="1.5" stroke-dasharray="6,4"/>
+      <line x1="220" y1="130" x2="220" y2="150" stroke="#8b949e" stroke-width="1.5" stroke-dasharray="6,4"/>
+      <line x1="600" y1="130" x2="600" y2="150" stroke="#8b949e" stroke-width="1.5" stroke-dasharray="6,4"/>
+      <line x1="980" y1="130" x2="980" y2="150" stroke="#8b949e" stroke-width="1.5" stroke-dasharray="6,4"/>
+      <!-- Layer 2: IO Master APB stubs -->
+      <line x1="85" y1="350" x2="300" y2="350" stroke="#8b949e" stroke-width="1.5" stroke-dasharray="6,4"/>
+      <line x1="85" y1="340" x2="700" y2="340" stroke="#8b949e" stroke-width="1.5" stroke-dasharray="6,4"/>
+      <!-- Compute engine APB stubs (horizontal from backbone to left side of each engine) -->
+      <line x1="85" y1="200" x2="120" y2="200" stroke="#8b949e" stroke-width="1.5" stroke-dasharray="6,4"/>
+      <line x1="85" y1="210" x2="500" y2="210" stroke="#8b949e" stroke-width="1.5" stroke-dasharray="6,4"/>
+      <line x1="85" y1="220" x2="880" y2="220" stroke="#8b949e" stroke-width="1.5" stroke-dasharray="6,4"/>
+      <!-- APB label -->
+      <text x="78" y="360" font-family="system-ui, sans-serif" font-size="9" fill="#8b949e" text-anchor="middle" transform="rotate(-90,78,360)">APB</text>
+
+      <!-- ====== AXI4 Semi-transparent Bus Shadows ====== -->
+      <line x1="220" y1="250" x2="220" y2="450" stroke="#d29922" stroke-width="10" opacity="0.08"/>
+      <line x1="600" y1="250" x2="600" y2="450" stroke="#d29922" stroke-width="10" opacity="0.08"/>
+      <line x1="980" y1="250" x2="980" y2="450" stroke="#d29922" stroke-width="10" opacity="0.08"/>
+      <line x1="400" y1="390" x2="400" y2="450" stroke="#d29922" stroke-width="10" opacity="0.08"/>
+      <line x1="800" y1="390" x2="800" y2="450" stroke="#d29922" stroke-width="10" opacity="0.08"/>
+
+      <!-- ====== AXI4 Data Paths (solid, thick) ====== -->
+      <!-- Compute Engines → Crossbar -->
+      <line x1="220" y1="250" x2="220" y2="448" stroke="#d29922" stroke-width="2.5" marker-end="url(#arr-axi)"/>
+      <line x1="600" y1="250" x2="600" y2="448" stroke="#d29922" stroke-width="2.5" marker-end="url(#arr-axi)"/>
+      <line x1="980" y1="250" x2="980" y2="448" stroke="#d29922" stroke-width="2.5" marker-end="url(#arr-axi)"/>
+      <!-- IO Masters → Crossbar -->
+      <line x1="400" y1="390" x2="400" y2="448" stroke="#d29922" stroke-width="2.5" marker-end="url(#arr-axi)"/>
+      <line x1="800" y1="390" x2="800" y2="448" stroke="#d29922" stroke-width="2.5" marker-end="url(#arr-axi)"/>
+      <!-- Crossbar → Memory -->
+      <line x1="400" y1="490" x2="400" y2="508" stroke="#d29922" stroke-width="2.5" marker-end="url(#arr-axi)"/>
+      <line x1="800" y1="490" x2="800" y2="508" stroke="#d29922" stroke-width="2.5" marker-end="url(#arr-axi)"/>
+      <!-- AXI4 label -->
+      <text x="440" y="420" font-family="system-ui, sans-serif" font-size="9" fill="#d29922" font-weight="600">AXI4</text>
+
+      <!-- ====== CPU → Compute APB path (from Ibex bottom center) ====== -->
+      <polyline points="600,110 600,130 220,130 220,148" stroke="#8b949e" stroke-width="1.5" stroke-dasharray="6,4" fill="none" marker-end="url(#arr-apb)"/>
+      <polyline points="600,130 600,148" stroke="#8b949e" stroke-width="1.5" stroke-dasharray="6,4" fill="none" marker-end="url(#arr-apb)"/>
+      <polyline points="600,130 980,130 980,148" stroke="#8b949e" stroke-width="1.5" stroke-dasharray="6,4" fill="none" marker-end="url(#arr-apb)"/>
+
+      <!-- ====== INTC → cpu_irq feedback loop ====== -->
+      <polyline points="990,690 1070,690 1070,70 855,70" stroke="#f778ba" stroke-width="1.8" fill="none" marker-end="url(#arr-irq)" stroke-dasharray="4,2"/>
+      <text x="1070" y="380" font-family="system-ui, sans-serif" font-size="9" fill="#f778ba" text-anchor="start" transform="rotate(90,1070,380)">cpu_irq</text>
+
+      <!-- ====== LAYER 0: CPU Core ====== -->
+      <!-- Sub-layer label -->
+      <text x="28" y="75" font-family="system-ui, sans-serif" font-size="10" fill="#6e7681" text-anchor="middle" transform="rotate(-90,28,75)">CPU Core</text>
+      <!-- Ibex box -->
+      <rect x="350" y="30" width="500" height="80" rx="8" ry="8" fill="#1a3a5c" stroke="#58a6ff" stroke-width="1.5"/>
+      <rect x="353" y="33" width="494" height="74" rx="6" ry="6" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="0.5"/>
+      <text x="600" y="58" font-family="system-ui, sans-serif" font-size="14" font-weight="700" fill="#58a6ff" text-anchor="middle" dominant-baseline="middle">Ibex RISC-V (RV32IMC)</text>
+      <text x="600" y="82" font-family="system-ui, sans-serif" font-size="11" fill="#58a6ff" opacity="0.65" text-anchor="middle" dominant-baseline="middle">AXI4 Master + APB Master</text>
+
+      <!-- ====== LAYER 1: Compute Engines ====== -->
+      <text x="28" y="205" font-family="system-ui, sans-serif" font-size="10" fill="#6e7681" text-anchor="middle" transform="rotate(-90,28,205)">Compute</text>
+
+      <!-- MXU -->
+      <rect x="120" y="150" width="200" height="100" rx="8" ry="8" fill="#1a3c1a" stroke="#3fb950" stroke-width="1.5"/>
+      <rect x="123" y="153" width="194" height="94" rx="6" ry="6" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="0.5"/>
+      <text x="220" y="182" font-family="system-ui, sans-serif" font-size="14" font-weight="700" fill="#3fb950" text-anchor="middle" dominant-baseline="middle">MXU</text>
+      <text x="220" y="202" font-family="system-ui, sans-serif" font-size="11" fill="#3fb950" opacity="0.65" text-anchor="middle" dominant-baseline="middle">64×64 MAC</text>
+      <text x="220" y="222" font-family="system-ui, sans-serif" font-size="10" fill="#8b949e" text-anchor="middle" dominant-baseline="middle">AXI4 + APB</text>
+
+      <!-- SFU -->
+      <rect x="500" y="150" width="200" height="100" rx="8" ry="8" fill="#1a3c1a" stroke="#3fb950" stroke-width="1.5"/>
+      <rect x="503" y="153" width="194" height="94" rx="6" ry="6" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="0.5"/>
+      <text x="600" y="182" font-family="system-ui, sans-serif" font-size="14" font-weight="700" fill="#3fb950" text-anchor="middle" dominant-baseline="middle">SFU</text>
+      <text x="600" y="202" font-family="system-ui, sans-serif" font-size="11" fill="#3fb950" opacity="0.65" text-anchor="middle" dominant-baseline="middle">7 FP16 Ops</text>
+      <text x="600" y="222" font-family="system-ui, sans-serif" font-size="10" fill="#8b949e" text-anchor="middle" dominant-baseline="middle">AXI4 + APB</text>
+
+      <!-- Vector -->
+      <rect x="880" y="150" width="200" height="100" rx="8" ry="8" fill="#1a3c1a" stroke="#3fb950" stroke-width="1.5"/>
+      <rect x="883" y="153" width="194" height="94" rx="6" ry="6" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="0.5"/>
+      <text x="980" y="182" font-family="system-ui, sans-serif" font-size="14" font-weight="700" fill="#3fb950" text-anchor="middle" dominant-baseline="middle">Vector</text>
+      <text x="980" y="202" font-family="system-ui, sans-serif" font-size="11" fill="#3fb950" opacity="0.65" text-anchor="middle" dominant-baseline="middle">5 INT32 Ops</text>
+      <text x="980" y="222" font-family="system-ui, sans-serif" font-size="10" fill="#8b949e" text-anchor="middle" dominant-baseline="middle">AXI4 + APB</text>
+
+      <!-- ====== LAYER 2: IO Masters ====== -->
+      <text x="28" y="355" font-family="system-ui, sans-serif" font-size="10" fill="#6e7681" text-anchor="middle" transform="rotate(-90,28,355)">IO Masters</text>
+
+      <!-- DMA -->
+      <rect x="300" y="310" width="200" height="80" rx="8" ry="8" fill="#1a3030" stroke="#39d2c0" stroke-width="1.5"/>
+      <rect x="303" y="313" width="194" height="74" rx="6" ry="6" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="0.5"/>
+      <text x="400" y="346" font-family="system-ui, sans-serif" font-size="14" font-weight="700" fill="#39d2c0" text-anchor="middle" dominant-baseline="middle">DMA</text>
+      <text x="400" y="368" font-family="system-ui, sans-serif" font-size="11" fill="#39d2c0" opacity="0.65" text-anchor="middle" dominant-baseline="middle">axi_cdma</text>
+
+      <!-- PCIe -->
+      <rect x="700" y="310" width="200" height="80" rx="8" ry="8" fill="#1a3030" stroke="#39d2c0" stroke-width="1.5"/>
+      <rect x="703" y="313" width="194" height="74" rx="6" ry="6" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="0.5"/>
+      <text x="800" y="346" font-family="system-ui, sans-serif" font-size="14" font-weight="700" fill="#39d2c0" text-anchor="middle" dominant-baseline="middle">PCIe EP ×4</text>
+      <text x="800" y="368" font-family="system-ui, sans-serif" font-size="11" fill="#39d2c0" opacity="0.65" text-anchor="middle" dominant-baseline="middle">verilog-pcie</text>
+
+      <!-- ====== LAYER 3: AXI4 Crossbar + Memory ====== -->
+      <text x="28" y="505" font-family="system-ui, sans-serif" font-size="10" fill="#6e7681" text-anchor="middle" transform="rotate(-90,28,505)">Interconnect</text>
+
+      <!-- Crossbar bar -->
+      <rect x="100" y="450" width="1000" height="40" rx="8" ry="8" fill="#2a2010" stroke="#d29922" stroke-width="1.5"/>
+      <rect x="103" y="453" width="994" height="34" rx="6" ry="6" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="0.5"/>
+      <text x="600" y="470" font-family="system-ui, sans-serif" font-size="13" font-weight="700" fill="#d29922" text-anchor="middle" dominant-baseline="middle">AXI4 Crossbar (M=6, S=2, round-robin)</text>
+
+      <!-- SRAM -->
+      <rect x="300" y="510" width="200" height="60" rx="8" ry="8" fill="#1a1030" stroke="#a371f7" stroke-width="1.5"/>
+      <rect x="303" y="513" width="194" height="54" rx="6" ry="6" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="0.5"/>
+      <text x="400" y="536" font-family="system-ui, sans-serif" font-size="14" font-weight="700" fill="#a371f7" text-anchor="middle" dominant-baseline="middle">SRAM 4 MB</text>
+      <text x="400" y="556" font-family="system-ui, sans-serif" font-size="10" fill="#a371f7" opacity="0.6" text-anchor="middle" dominant-baseline="middle">S0 · 0x2000_0000</text>
+
+      <!-- DRAM -->
+      <rect x="700" y="510" width="200" height="60" rx="8" ry="8" fill="#1a1030" stroke="#a371f7" stroke-width="1.5"/>
+      <rect x="703" y="513" width="194" height="54" rx="6" ry="6" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="0.5"/>
+      <text x="800" y="536" font-family="system-ui, sans-serif" font-size="14" font-weight="700" fill="#a371f7" text-anchor="middle" dominant-baseline="middle">DRAM 2 GB</text>
+      <text x="800" y="556" font-family="system-ui, sans-serif" font-size="10" fill="#a371f7" opacity="0.6" text-anchor="middle" dominant-baseline="middle">S1 · 0x8000_0000</text>
+
+      <!-- ====== LAYER 4: APB Peripherals ====== -->
+      <text x="28" y="680" font-family="system-ui, sans-serif" font-size="10" fill="#6e7681" text-anchor="middle" transform="rotate(-90,28,680)">Peripherals</text>
+
+      <!-- APB Decoder bar -->
+      <rect x="100" y="610" width="890" height="30" rx="8" ry="8" fill="#2a2010" stroke="#d29922" stroke-width="1.5"/>
+      <rect x="103" y="613" width="884" height="24" rx="6" ry="6" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="0.5"/>
+      <text x="545" y="625" font-family="system-ui, sans-serif" font-size="12" font-weight="700" fill="#d29922" text-anchor="middle" dominant-baseline="middle">APB Decoder (1→7 slaves)</text>
+
+      <!-- APB Decoder → Register block fan-out lines -->
+      <line x1="170" y1="640" x2="170" y2="658" stroke="#8b949e" stroke-width="1.5" stroke-dasharray="6,4" marker-end="url(#arr-apb)"/>
+      <line x1="280" y1="640" x2="280" y2="658" stroke="#8b949e" stroke-width="1.5" stroke-dasharray="6,4" marker-end="url(#arr-apb)"/>
+      <line x1="390" y1="640" x2="390" y2="658" stroke="#8b949e" stroke-width="1.5" stroke-dasharray="6,4" marker-end="url(#arr-apb)"/>
+      <line x1="500" y1="640" x2="500" y2="658" stroke="#8b949e" stroke-width="1.5" stroke-dasharray="6,4" marker-end="url(#arr-apb)"/>
+      <line x1="610" y1="640" x2="610" y2="658" stroke="#8b949e" stroke-width="1.5" stroke-dasharray="6,4" marker-end="url(#arr-apb)"/>
+      <line x1="720" y1="640" x2="720" y2="658" stroke="#8b949e" stroke-width="1.5" stroke-dasharray="6,4" marker-end="url(#arr-apb)"/>
+      <line x1="830" y1="640" x2="830" y2="658" stroke="#8b949e" stroke-width="1.5" stroke-dasharray="6,4" marker-end="url(#arr-apb)"/>
+      <line x1="940" y1="640" x2="940" y2="658" stroke="#8b949e" stroke-width="1.5" stroke-dasharray="6,4" marker-end="url(#arr-apb)"/>
+
+      <!-- Register Block: MXU Regs (green) -->
+      <rect x="120" y="660" width="100" height="60" rx="8" ry="8" fill="#1a3c1a" stroke="#3fb950" stroke-width="1.5"/>
+      <rect x="123" y="663" width="94" height="54" rx="6" ry="6" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="0.5"/>
+      <text x="170" y="682" font-family="system-ui, sans-serif" font-size="12" font-weight="700" fill="#3fb950" text-anchor="middle" dominant-baseline="middle">MXU</text>
+      <text x="170" y="700" font-family="system-ui, sans-serif" font-size="11" fill="#3fb950" opacity="0.65" text-anchor="middle" dominant-baseline="middle">Regs</text>
+
+      <!-- Register Block: SFU Regs (green) -->
+      <rect x="230" y="660" width="100" height="60" rx="8" ry="8" fill="#1a3c1a" stroke="#3fb950" stroke-width="1.5"/>
+      <rect x="233" y="663" width="94" height="54" rx="6" ry="6" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="0.5"/>
+      <text x="280" y="682" font-family="system-ui, sans-serif" font-size="12" font-weight="700" fill="#3fb950" text-anchor="middle" dominant-baseline="middle">SFU</text>
+      <text x="280" y="700" font-family="system-ui, sans-serif" font-size="11" fill="#3fb950" opacity="0.65" text-anchor="middle" dominant-baseline="middle">Regs</text>
+
+      <!-- Register Block: Vector Regs (green) -->
+      <rect x="340" y="660" width="100" height="60" rx="8" ry="8" fill="#1a3c1a" stroke="#3fb950" stroke-width="1.5"/>
+      <rect x="343" y="663" width="94" height="54" rx="6" ry="6" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="0.5"/>
+      <text x="390" y="682" font-family="system-ui, sans-serif" font-size="12" font-weight="700" fill="#3fb950" text-anchor="middle" dominant-baseline="middle">Vector</text>
+      <text x="390" y="700" font-family="system-ui, sans-serif" font-size="11" fill="#3fb950" opacity="0.65" text-anchor="middle" dominant-baseline="middle">Regs</text>
+
+      <!-- Register Block: DMA Regs (teal) -->
+      <rect x="450" y="660" width="100" height="60" rx="8" ry="8" fill="#1a3030" stroke="#39d2c0" stroke-width="1.5"/>
+      <rect x="453" y="663" width="94" height="54" rx="6" ry="6" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="0.5"/>
+      <text x="500" y="682" font-family="system-ui, sans-serif" font-size="12" font-weight="700" fill="#39d2c0" text-anchor="middle" dominant-baseline="middle">DMA</text>
+      <text x="500" y="700" font-family="system-ui, sans-serif" font-size="11" fill="#39d2c0" opacity="0.65" text-anchor="middle" dominant-baseline="middle">Regs</text>
+
+      <!-- Register Block: PCIe Regs (teal) -->
+      <rect x="560" y="660" width="100" height="60" rx="8" ry="8" fill="#1a3030" stroke="#39d2c0" stroke-width="1.5"/>
+      <rect x="563" y="663" width="94" height="54" rx="6" ry="6" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="0.5"/>
+      <text x="610" y="682" font-family="system-ui, sans-serif" font-size="12" font-weight="700" fill="#39d2c0" text-anchor="middle" dominant-baseline="middle">PCIe</text>
+      <text x="610" y="700" font-family="system-ui, sans-serif" font-size="11" fill="#39d2c0" opacity="0.65" text-anchor="middle" dominant-baseline="middle">Regs</text>
+
+      <!-- Register Block: DB RB (pink) -->
+      <rect x="670" y="660" width="100" height="60" rx="8" ry="8" fill="#2a1020" stroke="#f778ba" stroke-width="1.5"/>
+      <rect x="673" y="663" width="94" height="54" rx="6" ry="6" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="0.5"/>
+      <text x="720" y="682" font-family="system-ui, sans-serif" font-size="12" font-weight="700" fill="#f778ba" text-anchor="middle" dominant-baseline="middle">DB</text>
+      <text x="720" y="700" font-family="system-ui, sans-serif" font-size="11" fill="#f778ba" opacity="0.65" text-anchor="middle" dominant-baseline="middle">RB</text>
+
+      <!-- Register Block: Boot ROM (purple) -->
+      <rect x="780" y="660" width="100" height="60" rx="8" ry="8" fill="#1a1030" stroke="#a371f7" stroke-width="1.5"/>
+      <rect x="783" y="663" width="94" height="54" rx="6" ry="6" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="0.5"/>
+      <text x="830" y="682" font-family="system-ui, sans-serif" font-size="12" font-weight="700" fill="#a371f7" text-anchor="middle" dominant-baseline="middle">Boot ROM</text>
+      <text x="830" y="700" font-family="system-ui, sans-serif" font-size="11" fill="#a371f7" opacity="0.65" text-anchor="middle" dominant-baseline="middle">64 KB</text>
+
+      <!-- Register Block: INTC (pink) -->
+      <rect x="890" y="660" width="100" height="60" rx="8" ry="8" fill="#2a1020" stroke="#f778ba" stroke-width="1.5"/>
+      <rect x="893" y="663" width="94" height="54" rx="6" ry="6" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="0.5"/>
+      <text x="940" y="682" font-family="system-ui, sans-serif" font-size="12" font-weight="700" fill="#f778ba" text-anchor="middle" dominant-baseline="middle">INTC</text>
+      <text x="940" y="700" font-family="system-ui, sans-serif" font-size="11" fill="#f778ba" opacity="0.65" text-anchor="middle" dominant-baseline="middle">7-source</text>
+
+      <!-- ====== Doorbell (standalone control block) ====== -->
+      <rect x="330" y="745" width="380" height="50" rx="8" ry="8" fill="#2a1020" stroke="#f778ba" stroke-width="1.5"/>
+      <rect x="333" y="748" width="374" height="44" rx="6" ry="6" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="0.5"/>
+      <text x="520" y="768" font-family="system-ui, sans-serif" font-size="13" font-weight="700" fill="#f778ba" text-anchor="middle" dominant-baseline="middle">DOORBELL ring buffer</text>
+      <text x="520" y="788" font-family="system-ui, sans-serif" font-size="9" fill="#f778ba" opacity="0.6" text-anchor="middle" dominant-baseline="middle">Host write cmd → NPU WFI/poll/IRQ → dispatch_cmd() → write completion</text>
+
+      <!-- ====== LEGEND (bottom-right) ====== -->
+      <rect x="900" y="748" width="275" height="65" rx="6" ry="6" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+      <text x="910" y="763" font-family="system-ui, sans-serif" font-size="9" font-weight="700" fill="#8b949e">Legend</text>
+
+      <!-- Row 1: CPU, Compute, IO -->
+      <rect x="910" y="772" width="12" height="10" rx="2" ry="2" fill="#1a3a5c" stroke="#58a6ff" stroke-width="0.8"/>
+      <text x="927" y="781" font-family="system-ui, sans-serif" font-size="8" fill="#8b949e" dominant-baseline="middle">CPU</text>
+
+      <rect x="970" y="772" width="12" height="10" rx="2" ry="2" fill="#1a3c1a" stroke="#3fb950" stroke-width="0.8"/>
+      <text x="987" y="781" font-family="system-ui, sans-serif" font-size="8" fill="#8b949e" dominant-baseline="middle">Compute</text>
+
+      <rect x="1050" y="772" width="12" height="10" rx="2" ry="2" fill="#1a3030" stroke="#39d2c0" stroke-width="0.8"/>
+      <text x="1067" y="781" font-family="system-ui, sans-serif" font-size="8" fill="#8b949e" dominant-baseline="middle">IO/DMA</text>
+
+      <!-- Row 2: Interconnect, Memory, Control -->
+      <rect x="910" y="790" width="12" height="10" rx="2" ry="2" fill="#2a2010" stroke="#d29922" stroke-width="0.8"/>
+      <text x="927" y="799" font-family="system-ui, sans-serif" font-size="8" fill="#8b949e" dominant-baseline="middle">Interconnect</text>
+
+      <rect x="1010" y="790" width="12" height="10" rx="2" ry="2" fill="#1a1030" stroke="#a371f7" stroke-width="0.8"/>
+      <text x="1027" y="799" font-family="system-ui, sans-serif" font-size="8" fill="#8b949e" dominant-baseline="middle">Memory</text>
+
+      <rect x="1085" y="790" width="12" height="10" rx="2" ry="2" fill="#2a1020" stroke="#f778ba" stroke-width="0.8"/>
+      <text x="1102" y="799" font-family="system-ui, sans-serif" font-size="8" fill="#8b949e" dominant-baseline="middle">IRQ</text>
+
+    </svg>
+
+    <h4 style="font-size: 0.88rem; margin-bottom: var(--space-sm); color: var(--text-secondary);">AXI4 Crossbar 拓扑</h4>
+    <div class="arch-diagram">
+  Master 0: Ibex ──┐
+  Master 1: MXU  ──┤
+  Master 2: SFU  ──┤   AXI4       ┌── SRAM (0x2000_0000) S0: 4MB
+  Master 3: Vec  ──┤  Crossbar    │
+  Master 4: DMA  ──┤  M=6, S=2   ├── DRAM (0x8000_0000) S1: 2GB
+  Master 5: PCIe ──┘  round-robin┘</div>
+
+    <h4 style="font-size: 0.88rem; margin-bottom: var(--space-sm); color: var(--text-secondary);">统一地址空间</h4>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>区域</th><th>基地址</th><th>大小</th><th>用途</th></tr></thead>
+        <tbody>
+          <tr><td>Boot ROM</td><td><code>0x0000_0000</code></td><td>64 KB</td><td>Ibex 复位向量 + 固件</td></tr>
+          <tr><td>SRAM</td><td><code>0x2000_0000</code></td><td>4 MB</td><td>NPU 统一计算缓冲区</td></tr>
+          <tr><td>MXU MMIO</td><td><code>0x4000_0000</code></td><td>4 KB</td><td>MXU 寄存器</td></tr>
+          <tr><td>SFU MMIO</td><td><code>0x4000_1000</code></td><td>4 KB</td><td>SFU 寄存器</td></tr>
+          <tr><td>VECTOR MMIO</td><td><code>0x4000_2000</code></td><td>4 KB</td><td>Vector 寄存器</td></tr>
+          <tr><td>DMA / PCIe / DOORBELL / INTC</td><td><code>0x4000_3000</code>~<code>0x4000_6FFF</code></td><td>16 KB</td><td>Peripheral MMIO</td></tr>
+          <tr><td>DRAM</td><td><code>0x8000_0000</code></td><td>2 GB</td><td>DRAM 数据空间</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h4 style="font-size: 0.88rem; margin-bottom: var(--space-sm); color: var(--text-secondary);">开源 IP 选型与 License</h4>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>组件</th><th>开源选择</th><th>License</th><th>商业替换方案</th></tr></thead>
+        <tbody>
+          <tr><td><strong>DMA</strong></td><td>axi_cdma (verilog-axi)</td><td>MIT</td><td>Synopsys DW_axi_dmac</td></tr>
+          <tr><td><strong>PCIe</strong></td><td>pcie_axi_master (verilog-pcie)</td><td>MIT</td><td>Synopsys DWC PCIe EP</td></tr>
+          <tr><td><strong>RISC-V</strong></td><td>Ibex (lowRISC)</td><td>Apache 2.0</td><td>— 已满足需求</td></tr>
+          <tr><td><strong>NoC</strong></td><td>自研 AXI crossbar</td><td>CaduceusCore</td><td>Arteris FlexNoC</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h4 style="font-size: 0.85rem; margin-bottom: var(--space-sm); color: var(--text-secondary);">验证结果</h4>
+    <ul class="compact-list">
+      <li><strong>MMIO consistency</strong>: 49 registers match <span class="status-pass">PASSED</span></li>
+      <li><strong>Crossbar stress</strong>: M=6/S=2, 1,260 txns, 0 errors <span class="status-pass">PASSED</span></li>
+      <li><strong>DMA wrapper</strong>: 5 test cases <span class="status-pass">PASSED</span></li>
+      <li><strong>INTC 7-source</strong>: 13/13 interrupt checks <span class="status-pass">PASSED</span></li>
+      <li><strong>SoC elaboration</strong>: 47 modules, 0 errors, 0 undriven <span class="status-pass">PASSED</span></li>
+      <li><strong>Cocotb E2E smoke</strong>: Qwen2.5-3B blk.0 4-instruction <span class="status-pass">PASSED</span></li>
+    </ul>
+  </div>
+
+  <!-- Verification Layers -->
+  <h3 style="font-size: 1.0rem; margin: var(--space-xl) 0 var(--space-md);">四层验证体系</h3>
+  <div class="verif-layers">
+    <div class="verif-layer vl-cyan">
+      <div class="layer-num">L1</div>
+      <h4>Arc Model</h4>
+      <p>架构评估<br>引擎选型 + PPA</p>
+    </div>
+    <div class="verif-layer vl-green">
+      <div class="layer-num">L2</div>
+      <h4>Func Model</h4>
+      <p>行为验证<br>Golden Reference</p>
+    </div>
+    <div class="verif-layer vl-amber">
+      <div class="layer-num">L3</div>
+      <h4>E2E Spike</h4>
+      <p>全链路数据流<br>GGUF→RISC-V→NPU</p>
+    </div>
+    <div class="verif-layer vl-purple">
+      <div class="layer-num">L4</div>
+      <h4>RTL Sim</h4>
+      <p>硬件对比<br>$readmemh bit-exact</p>
+    </div>
+  </div>
+
+  <h3 style="font-size: 1.0rem; margin: var(--space-lg) 0 var(--space-sm);">RTL 文件统计 (66 files, 22,201 lines)</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>模块</th><th>文件数</th><th>行数</th><th>Phase</th></tr></thead>
+      <tbody>
+        <tr><td>mxu</td><td>8</td><td>1,304</td><td>Phase 1</td></tr>
+        <tr><td>sfu</td><td>8</td><td>2,678</td><td>Phase 2</td></tr>
+        <tr><td>vector</td><td>5</td><td>1,094</td><td>Phase 2</td></tr>
+        <tr><td>soc</td><td>8</td><td>3,880</td><td>Phase 3</td></tr>
+        <tr><td>wrapper</td><td>4</td><td>1,444</td><td>Phase 3</td></tr>
+        <tr><td>intc</td><td>1</td><td>616</td><td>Phase 3</td></tr>
+        <tr><td>ip</td><td>3</td><td>2,697</td><td>Phase 3</td></tr>
+        <tr><td>cpu</td><td>1</td><td>661</td><td>Phase 3</td></tr>
+        <tr><td><strong>Subtotal RTL</strong></td><td><strong>38</strong></td><td><strong>14,374</strong></td><td></td></tr>
+        <tr><td>tb</td><td>28</td><td>11,185</td><td>Verification</td></tr>
+        <tr style="font-weight: 700;"><td><strong>Total</strong></td><td><strong>66</strong></td><td><strong>22,201</strong></td><td></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ===== SECTION 5: 时间线 ===== -->
+<section class="section" id="timeline">
+  <h2 class="section-title"><span class="accent-bar"></span> 开发时间线</h2>
+  <p class="section-desc">
+    CaduceusCore 以 Plan 为单位驱动开发，每个 Plan 通过 Atlas 编排、Sisyphus-Junior 执行、Oracle 审计。
+    下方为 12 个 Plans 的完整执行时间线。
+  </p>
+
+  <div class="timeline">
+    <div class="timeline-entry tl-cyan">
+      <div class="timeline-date">2026-06-20</div>
+      <div class="timeline-title">caduceuscore-verify + spike-firmware-run</div>
+      <div class="timeline-desc">Foundation: 安装依赖 + pytests 骨架 + Spike 集成 + MMIO 插件（~13.3h）</div>
+    </div>
+
+    <div class="timeline-entry tl-cyan">
+      <div class="timeline-date">2026-06-21</div>
+      <div class="timeline-title">e2e-forward-pass</div>
+      <div class="timeline-desc">Integration: 2-layer forward pass 通过 Spike 验证 + 126 cmd/layer（~18.6h）</div>
+    </div>
+
+    <div class="timeline-entry tl-cyan">
+      <div class="timeline-date">2026-06-22</div>
+      <div class="timeline-title">cv-arc-model + sync-arch-to-dse + engine-calibration</div>
+      <div class="timeline-desc">Architecture: 八引擎 DSE + Area 模型校准 + CV/LLM 联合评估（~22.5h）</div>
+    </div>
+
+    <div class="timeline-entry tl-green">
+      <div class="timeline-date">2026-06-23</div>
+      <div class="timeline-title">func-model-cycle-timing + dma-noc-model + align-block-64</div>
+      <div class="timeline-desc">Modeling: Timing Engine + Dashboard + DMA + NoC + 全量回归（~5.7h）</div>
+    </div>
+
+    <div class="timeline-entry tl-amber">
+      <div class="timeline-date">2026-06-24–25</div>
+      <div class="timeline-title">mxu-phase1 <span class="status-pass">26h</span></div>
+      <div class="timeline-desc">RTL Phase 1: 64×64 Broadcast MAC 阵列 + 10 scenarios + 100 random + Qwen3B E2E — ALL PASSED</div>
+    </div>
+
+    <div class="timeline-entry tl-amber">
+      <div class="timeline-date">2026-06-25–26</div>
+      <div class="timeline-title">sfu-vector-phase2 <span class="status-pass">30h</span></div>
+      <div class="timeline-desc">RTL Phase 2: SFU 319/319 + Vector 63/63 + INT32→FP16 131,073 scan — ALL PASSED</div>
+    </div>
+
+    <div class="timeline-entry tl-amber">
+      <div class="timeline-date">2026-06-27</div>
+      <div class="timeline-title">soc-phase3-4 <span class="status-pass">3h 45m</span></div>
+      <div class="timeline-desc">RTL Phase 3: SoC 全芯片集成 + Cocotb E2E smoke — ALL PASSED</div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ===== SECTION 6: 关键教训 ===== -->
+<section class="section" id="lessons">
+  <h2 class="section-title accent-amber"><span class="accent-bar"></span> 关键教训</h2>
+
+  <div class="lesson-card">
+    <div class="lesson-tag">LL-001</div>
+    <h3>性能模型不等于精度验证</h3>
+    <p>
+      INT4 全局 scale 方案在 Func Model 首次跑真实 GGUF 权重时发现完全不可用（rel_err 10³–10⁴）。
+      Layer 1 时序模型只把 <code>weight_precision_bits=4</code> 当作字节数计算的除数，从未用真实 Transformer 权重做 INT4 量化→矩阵乘→对比验证。
+      Layer 2 软件协议走 float32 反量化路线，绕过了硬件 INT4 通路。时序假设被默认当成了「已验证的精度方案」。
+    </p>
+    <blockquote>在搭建任何时序模型之前，先建数值模型验证精度方案能不能跑通。时序模型只回答「多快」，不回答「对不对」。</blockquote>
+    <p><strong>修复：</strong>
+      1. Func Model (<code>golden_executor.py</code>) 承担数值模型角色；2. 新增验证门禁：新量化方案必须通过 all-layer PASS；3. Func Model 输出作为 <code>$readmemh</code> golden reference。
+    </p>
+  </div>
+</section>
+
+<!-- ===== FOOTER ===== -->
+<footer class="footer">
+  <p><strong>CaduceusCore Project</strong> &nbsp;·&nbsp; MIT License &nbsp;·&nbsp; Generated 2026-06-27</p>
+  <p style="margin-top: var(--space-sm); font-size: 0.78rem;">
+    <a href="https://github.com/anekin/CaduceusCore">github.com/anekin/CaduceusCore</a>
+  </p>
+</footer>
+
+</div>
+</body>
+</html>
