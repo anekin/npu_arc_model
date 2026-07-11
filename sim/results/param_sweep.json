@@ -1,0 +1,614 @@
+[
+  {
+    "mxu_size": "64\u00d764",
+    "freq_mhz": 800,
+    "l2_mb": 1,
+    "area_mm2": 10.0,
+    "power_w": 1.2,
+    "decode_tok_per_s": 1324.0,
+    "decode_us": 755.6,
+    "meets_target": true,
+    "config_id": 1,
+    "total_configs": 36,
+    "multicore": {
+      "1c": 1324.0,
+      "2c": 2516.0,
+      "4c": 4502.0
+    }
+  },
+  {
+    "mxu_size": "64\u00d764",
+    "freq_mhz": 800,
+    "l2_mb": 2,
+    "area_mm2": 12.0,
+    "power_w": 1.4,
+    "decode_tok_per_s": 1324.0,
+    "decode_us": 755.6,
+    "meets_target": true,
+    "config_id": 2,
+    "total_configs": 36,
+    "multicore": {
+      "1c": 1324.0,
+      "2c": 2516.0,
+      "4c": 4502.0
+    }
+  },
+  {
+    "mxu_size": "64\u00d764",
+    "freq_mhz": 800,
+    "l2_mb": 4,
+    "area_mm2": 16.0,
+    "power_w": 1.9,
+    "decode_tok_per_s": 1324.0,
+    "decode_us": 755.6,
+    "meets_target": true,
+    "config_id": 3,
+    "total_configs": 36,
+    "multicore": {
+      "1c": 1324.0,
+      "2c": 2516.0,
+      "4c": 4502.0
+    }
+  },
+  {
+    "mxu_size": "64\u00d764",
+    "freq_mhz": 800,
+    "l2_mb": 8,
+    "area_mm2": 24.0,
+    "power_w": 2.9,
+    "decode_tok_per_s": 1324.0,
+    "decode_us": 755.6,
+    "meets_target": true,
+    "config_id": 4,
+    "total_configs": 36,
+    "multicore": {
+      "1c": 1324.0,
+      "2c": 2516.0,
+      "4c": 4502.0
+    }
+  },
+  {
+    "mxu_size": "64\u00d764",
+    "freq_mhz": 1000,
+    "l2_mb": 1,
+    "area_mm2": 10.0,
+    "power_w": 1.5,
+    "decode_tok_per_s": 1654.0,
+    "decode_us": 604.4,
+    "meets_target": true,
+    "config_id": 5,
+    "total_configs": 36,
+    "multicore": {
+      "1c": 1654.0,
+      "2c": 3143.0,
+      "4c": 5624.0
+    }
+  },
+  {
+    "mxu_size": "64\u00d764",
+    "freq_mhz": 1000,
+    "l2_mb": 2,
+    "area_mm2": 12.0,
+    "power_w": 1.8,
+    "decode_tok_per_s": 1654.0,
+    "decode_us": 604.4,
+    "meets_target": true,
+    "config_id": 6,
+    "total_configs": 36,
+    "multicore": {
+      "1c": 1654.0,
+      "2c": 3143.0,
+      "4c": 5624.0
+    }
+  },
+  {
+    "mxu_size": "64\u00d764",
+    "freq_mhz": 1000,
+    "l2_mb": 4,
+    "area_mm2": 16.0,
+    "power_w": 2.4,
+    "decode_tok_per_s": 1654.0,
+    "decode_us": 604.4,
+    "meets_target": true,
+    "config_id": 7,
+    "total_configs": 36,
+    "multicore": {
+      "1c": 1654.0,
+      "2c": 3143.0,
+      "4c": 5624.0
+    }
+  },
+  {
+    "mxu_size": "64\u00d764",
+    "freq_mhz": 1000,
+    "l2_mb": 8,
+    "area_mm2": 24.0,
+    "power_w": 3.6,
+    "decode_tok_per_s": 1654.0,
+    "decode_us": 604.4,
+    "meets_target": true,
+    "config_id": 8,
+    "total_configs": 36,
+    "multicore": {
+      "1c": 1654.0,
+      "2c": 3143.0,
+      "4c": 5624.0
+    }
+  },
+  {
+    "mxu_size": "64\u00d764",
+    "freq_mhz": 1200,
+    "l2_mb": 1,
+    "area_mm2": 10.0,
+    "power_w": 1.8,
+    "decode_tok_per_s": 1985.0,
+    "decode_us": 503.7,
+    "meets_target": true,
+    "config_id": 9,
+    "total_configs": 36,
+    "multicore": {
+      "1c": 1985.0,
+      "2c": 3772.0,
+      "4c": 6749.0
+    }
+  },
+  {
+    "mxu_size": "64\u00d764",
+    "freq_mhz": 1200,
+    "l2_mb": 2,
+    "area_mm2": 12.0,
+    "power_w": 2.2,
+    "decode_tok_per_s": 1985.0,
+    "decode_us": 503.7,
+    "meets_target": true,
+    "config_id": 10,
+    "total_configs": 36,
+    "multicore": {
+      "1c": 1985.0,
+      "2c": 3772.0,
+      "4c": 6749.0
+    }
+  },
+  {
+    "mxu_size": "64\u00d764",
+    "freq_mhz": 1200,
+    "l2_mb": 4,
+    "area_mm2": 16.0,
+    "power_w": 2.9,
+    "decode_tok_per_s": 1985.0,
+    "decode_us": 503.7,
+    "meets_target": true,
+    "config_id": 11,
+    "total_configs": 36,
+    "multicore": {
+      "1c": 1985.0,
+      "2c": 3772.0,
+      "4c": 6749.0
+    }
+  },
+  {
+    "mxu_size": "64\u00d764",
+    "freq_mhz": 1200,
+    "l2_mb": 8,
+    "area_mm2": 24.0,
+    "power_w": 4.3,
+    "decode_tok_per_s": 1985.0,
+    "decode_us": 503.7,
+    "meets_target": true,
+    "config_id": 12,
+    "total_configs": 36,
+    "multicore": {
+      "1c": 1985.0,
+      "2c": 3772.0,
+      "4c": 6749.0
+    }
+  },
+  {
+    "mxu_size": "128\u00d7128",
+    "freq_mhz": 800,
+    "l2_mb": 1,
+    "area_mm2": 16.0,
+    "power_w": 1.9,
+    "decode_tok_per_s": 3151.0,
+    "decode_us": 317.4,
+    "meets_target": true,
+    "config_id": 13,
+    "total_configs": 36,
+    "multicore": {
+      "1c": 3151.0,
+      "2c": 5987.0,
+      "4c": 10713.0
+    }
+  },
+  {
+    "mxu_size": "128\u00d7128",
+    "freq_mhz": 800,
+    "l2_mb": 2,
+    "area_mm2": 18.0,
+    "power_w": 2.2,
+    "decode_tok_per_s": 3151.0,
+    "decode_us": 317.4,
+    "meets_target": true,
+    "config_id": 14,
+    "total_configs": 36,
+    "multicore": {
+      "1c": 3151.0,
+      "2c": 5987.0,
+      "4c": 10713.0
+    }
+  },
+  {
+    "mxu_size": "128\u00d7128",
+    "freq_mhz": 800,
+    "l2_mb": 4,
+    "area_mm2": 22.0,
+    "power_w": 2.6,
+    "decode_tok_per_s": 3151.0,
+    "decode_us": 317.4,
+    "meets_target": true,
+    "config_id": 15,
+    "total_configs": 36,
+    "multicore": {
+      "1c": 3151.0,
+      "2c": 5987.0,
+      "4c": 10713.0
+    }
+  },
+  {
+    "mxu_size": "128\u00d7128",
+    "freq_mhz": 800,
+    "l2_mb": 8,
+    "area_mm2": 30.0,
+    "power_w": 3.6,
+    "decode_tok_per_s": 3151.0,
+    "decode_us": 317.4,
+    "meets_target": true,
+    "config_id": 16,
+    "total_configs": 36,
+    "multicore": {
+      "1c": 3151.0,
+      "2c": 5987.0,
+      "4c": 10713.0
+    }
+  },
+  {
+    "mxu_size": "128\u00d7128",
+    "freq_mhz": 1000,
+    "l2_mb": 1,
+    "area_mm2": 16.0,
+    "power_w": 2.4,
+    "decode_tok_per_s": 3938.0,
+    "decode_us": 253.9,
+    "meets_target": true,
+    "config_id": 17,
+    "total_configs": 36,
+    "multicore": {
+      "1c": 3938.0,
+      "2c": 7482.0,
+      "4c": 13389.0
+    }
+  },
+  {
+    "mxu_size": "128\u00d7128",
+    "freq_mhz": 1000,
+    "l2_mb": 2,
+    "area_mm2": 18.0,
+    "power_w": 2.7,
+    "decode_tok_per_s": 3938.0,
+    "decode_us": 253.9,
+    "meets_target": true,
+    "config_id": 18,
+    "total_configs": 36,
+    "multicore": {
+      "1c": 3938.0,
+      "2c": 7482.0,
+      "4c": 13389.0
+    }
+  },
+  {
+    "mxu_size": "128\u00d7128",
+    "freq_mhz": 1000,
+    "l2_mb": 4,
+    "area_mm2": 22.0,
+    "power_w": 3.3,
+    "decode_tok_per_s": 3938.0,
+    "decode_us": 253.9,
+    "meets_target": true,
+    "config_id": 19,
+    "total_configs": 36,
+    "multicore": {
+      "1c": 3938.0,
+      "2c": 7482.0,
+      "4c": 13389.0
+    }
+  },
+  {
+    "mxu_size": "128\u00d7128",
+    "freq_mhz": 1000,
+    "l2_mb": 8,
+    "area_mm2": 30.0,
+    "power_w": 4.5,
+    "decode_tok_per_s": 3938.0,
+    "decode_us": 253.9,
+    "meets_target": true,
+    "config_id": 20,
+    "total_configs": 36,
+    "multicore": {
+      "1c": 3938.0,
+      "2c": 7482.0,
+      "4c": 13389.0
+    }
+  },
+  {
+    "mxu_size": "128\u00d7128",
+    "freq_mhz": 1200,
+    "l2_mb": 1,
+    "area_mm2": 16.0,
+    "power_w": 2.9,
+    "decode_tok_per_s": 4726.0,
+    "decode_us": 211.6,
+    "meets_target": true,
+    "config_id": 21,
+    "total_configs": 36,
+    "multicore": {
+      "1c": 4726.0,
+      "2c": 8979.0,
+      "4c": 16068.0
+    }
+  },
+  {
+    "mxu_size": "128\u00d7128",
+    "freq_mhz": 1200,
+    "l2_mb": 2,
+    "area_mm2": 18.0,
+    "power_w": 3.2,
+    "decode_tok_per_s": 4726.0,
+    "decode_us": 211.6,
+    "meets_target": true,
+    "config_id": 22,
+    "total_configs": 36,
+    "multicore": {
+      "1c": 4726.0,
+      "2c": 8979.0,
+      "4c": 16068.0
+    }
+  },
+  {
+    "mxu_size": "128\u00d7128",
+    "freq_mhz": 1200,
+    "l2_mb": 4,
+    "area_mm2": 22.0,
+    "power_w": 4.0,
+    "decode_tok_per_s": 4726.0,
+    "decode_us": 211.6,
+    "meets_target": true,
+    "config_id": 23,
+    "total_configs": 36,
+    "multicore": {
+      "1c": 4726.0,
+      "2c": 8979.0,
+      "4c": 16068.0
+    }
+  },
+  {
+    "mxu_size": "128\u00d7128",
+    "freq_mhz": 1200,
+    "l2_mb": 8,
+    "area_mm2": 30.0,
+    "power_w": 5.4,
+    "decode_tok_per_s": 4726.0,
+    "decode_us": 211.6,
+    "meets_target": true,
+    "config_id": 24,
+    "total_configs": 36,
+    "multicore": {
+      "1c": 4726.0,
+      "2c": 8979.0,
+      "4c": 16068.0
+    }
+  },
+  {
+    "mxu_size": "256\u00d7128",
+    "freq_mhz": 800,
+    "l2_mb": 1,
+    "area_mm2": 24.0,
+    "power_w": 2.9,
+    "decode_tok_per_s": 3291.0,
+    "decode_us": 303.9,
+    "meets_target": true,
+    "config_id": 25,
+    "total_configs": 36,
+    "multicore": {
+      "1c": 3291.0,
+      "2c": 6253.0,
+      "4c": 11189.0
+    }
+  },
+  {
+    "mxu_size": "256\u00d7128",
+    "freq_mhz": 800,
+    "l2_mb": 2,
+    "area_mm2": 26.0,
+    "power_w": 3.1,
+    "decode_tok_per_s": 3291.0,
+    "decode_us": 303.9,
+    "meets_target": true,
+    "config_id": 26,
+    "total_configs": 36,
+    "multicore": {
+      "1c": 3291.0,
+      "2c": 6253.0,
+      "4c": 11189.0
+    }
+  },
+  {
+    "mxu_size": "256\u00d7128",
+    "freq_mhz": 800,
+    "l2_mb": 4,
+    "area_mm2": 30.0,
+    "power_w": 3.6,
+    "decode_tok_per_s": 3291.0,
+    "decode_us": 303.9,
+    "meets_target": true,
+    "config_id": 27,
+    "total_configs": 36,
+    "multicore": {
+      "1c": 3291.0,
+      "2c": 6253.0,
+      "4c": 11189.0
+    }
+  },
+  {
+    "mxu_size": "256\u00d7128",
+    "freq_mhz": 800,
+    "l2_mb": 8,
+    "area_mm2": 38.0,
+    "power_w": 4.6,
+    "decode_tok_per_s": 3291.0,
+    "decode_us": 303.9,
+    "meets_target": true,
+    "config_id": 28,
+    "total_configs": 36,
+    "multicore": {
+      "1c": 3291.0,
+      "2c": 6253.0,
+      "4c": 11189.0
+    }
+  },
+  {
+    "mxu_size": "256\u00d7128",
+    "freq_mhz": 1000,
+    "l2_mb": 1,
+    "area_mm2": 24.0,
+    "power_w": 3.6,
+    "decode_tok_per_s": 4113.0,
+    "decode_us": 243.1,
+    "meets_target": true,
+    "config_id": 29,
+    "total_configs": 36,
+    "multicore": {
+      "1c": 4113.0,
+      "2c": 7815.0,
+      "4c": 13984.0
+    }
+  },
+  {
+    "mxu_size": "256\u00d7128",
+    "freq_mhz": 1000,
+    "l2_mb": 2,
+    "area_mm2": 26.0,
+    "power_w": 3.9,
+    "decode_tok_per_s": 4113.0,
+    "decode_us": 243.1,
+    "meets_target": true,
+    "config_id": 30,
+    "total_configs": 36,
+    "multicore": {
+      "1c": 4113.0,
+      "2c": 7815.0,
+      "4c": 13984.0
+    }
+  },
+  {
+    "mxu_size": "256\u00d7128",
+    "freq_mhz": 1000,
+    "l2_mb": 4,
+    "area_mm2": 30.0,
+    "power_w": 4.5,
+    "decode_tok_per_s": 4113.0,
+    "decode_us": 243.1,
+    "meets_target": true,
+    "config_id": 31,
+    "total_configs": 36,
+    "multicore": {
+      "1c": 4113.0,
+      "2c": 7815.0,
+      "4c": 13984.0
+    }
+  },
+  {
+    "mxu_size": "256\u00d7128",
+    "freq_mhz": 1000,
+    "l2_mb": 8,
+    "area_mm2": 38.0,
+    "power_w": 5.7,
+    "decode_tok_per_s": 4113.0,
+    "decode_us": 243.1,
+    "meets_target": true,
+    "config_id": 32,
+    "total_configs": 36,
+    "multicore": {
+      "1c": 4113.0,
+      "2c": 7815.0,
+      "4c": 13984.0
+    }
+  },
+  {
+    "mxu_size": "256\u00d7128",
+    "freq_mhz": 1200,
+    "l2_mb": 1,
+    "area_mm2": 24.0,
+    "power_w": 4.3,
+    "decode_tok_per_s": 4936.0,
+    "decode_us": 202.6,
+    "meets_target": true,
+    "config_id": 33,
+    "total_configs": 36,
+    "multicore": {
+      "1c": 4936.0,
+      "2c": 9378.0,
+      "4c": 16782.0
+    }
+  },
+  {
+    "mxu_size": "256\u00d7128",
+    "freq_mhz": 1200,
+    "l2_mb": 2,
+    "area_mm2": 26.0,
+    "power_w": 4.7,
+    "decode_tok_per_s": 4936.0,
+    "decode_us": 202.6,
+    "meets_target": true,
+    "config_id": 34,
+    "total_configs": 36,
+    "multicore": {
+      "1c": 4936.0,
+      "2c": 9378.0,
+      "4c": 16782.0
+    }
+  },
+  {
+    "mxu_size": "256\u00d7128",
+    "freq_mhz": 1200,
+    "l2_mb": 4,
+    "area_mm2": 30.0,
+    "power_w": 5.4,
+    "decode_tok_per_s": 4936.0,
+    "decode_us": 202.6,
+    "meets_target": true,
+    "config_id": 35,
+    "total_configs": 36,
+    "multicore": {
+      "1c": 4936.0,
+      "2c": 9378.0,
+      "4c": 16782.0
+    }
+  },
+  {
+    "mxu_size": "256\u00d7128",
+    "freq_mhz": 1200,
+    "l2_mb": 8,
+    "area_mm2": 38.0,
+    "power_w": 6.8,
+    "decode_tok_per_s": 4936.0,
+    "decode_us": 202.6,
+    "meets_target": true,
+    "config_id": 36,
+    "total_configs": 36,
+    "multicore": {
+      "1c": 4936.0,
+      "2c": 9378.0,
+      "4c": 16782.0
+    }
+  }
+]

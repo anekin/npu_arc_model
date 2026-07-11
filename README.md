@@ -144,8 +144,26 @@ npu_arc_model/
 │           ├── resnet18_trace.py      # ResNet-18
 │           ├── resnet50_trace.py      # ResNet-50
 │           └── sd_unet_trace.py       # Stable Diffusion UNet
+├── scripts/                           # 性能分析与校准脚本
+│   ├── analyze_perf.py                # 综合性能分析
+│   ├── analyze_sfu_perf.py            # SFU 性能分析
+│   ├── analyze_vector_perf.py         # Vector 性能分析
+│   ├── calibrate_mxu_model.py         # MXU 模型校准
+│   ├── compare_mxu_perf.py            # MXU 对比
+│   ├── compare_sfu.py                 # SFU 对比
+│   ├── run_mxu_perf_case.py           # MXU 性能案例
+│   ├── run_sfu_perf_case.py           # SFU 性能案例
+│   ├── run_vector_perf_case.py        # Vector 性能案例
+│   ├── generate_mobilenetv3_ppa.py    # MobileNetV3 PPA
+│   └── export_mobilenetv3_onnx.py     # ONNX 导出
 ├── docs/                              # 架构设计文档
+│   ├── tiny-npu-analysis/             # tiny-NPU 对比分析
+│   └── ...
 ├── reports/                           # DSE 分析报告
+├── sim/results/                       # 扫描与评估结果
+│   ├── engine_eval_v3.md              # 引擎评估 v3
+│   ├── param_sweep.json               # 参数扫描结果
+│   └── param_sweep_v2.json            # 参数扫描 v2
 └── references/                        # 数据溯源
 ```
 
@@ -183,6 +201,21 @@ npu_arc_model/
 | [`docs/ttft_gantt.md`](docs/ttft_gantt.md) | TTFT 分析甘特图 |
 
 ### 3.4 性能校准
+
+| 文档 | 内容 |
+|:---|:---|
+| [`docs/mxu-perf-calibration.md`](docs/mxu-perf-calibration.md) | MXU 性能模型校准 |
+| [`references/area_sources.md`](references/area_sources.md) | PE 面积数据溯源（TPUv1/Eyeriss/RK1828/M4） |
+
+### 3.5 架构对比分析
+
+| 文档 | 内容 |
+|:---|:---|
+| [`docs/tiny-npu-analysis/tiny-NPU五大计算引擎RTL解剖.md`](docs/tiny-npu-analysis/tiny-NPU五大计算引擎RTL解剖.md) | tiny-NPU 5 引擎 RTL 解剖笔记 |
+| [`docs/tiny-npu-analysis/tiny-NPU vs CaduceusCore 深度对比.md`](docs/tiny-npu-analysis/tiny-NPU%20vs%20CaduceusCore%20深度对比.md) | 引擎/控制/面积全面对比 |
+| [`docs/tiny-npu-analysis/Streaming vs LUT Softmax 深度对比.md`](docs/tiny-npu-analysis/Streaming%20vs%20LUT%20Softmax%20深度对比.md) | 两种 Softmax 量化对比 |
+| [`docs/tiny-npu-analysis/tiny-NPU vs CaduceusCore PPA对比.md`](docs/tiny-npu-analysis/tiny-NPU%20vs%20CaduceusCore%20PPA对比.md) | LLM+CV 需求满足度矩阵 |
+| [`docs/控制面调度改进方案.md`](docs/控制面调度改进方案.md) | 记分板+统一接口改造方案（含 mermaid 时序） |
 
 | 文档 | 内容 |
 |:---|:---|

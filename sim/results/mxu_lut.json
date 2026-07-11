@@ -1,0 +1,280 @@
+{
+  "generated_by": "analytical_model",
+  "config": {
+    "array": "128x128",
+    "freq_mhz": 1000,
+    "weight_bits": 4
+  },
+  "entries": {
+    "1x2560x4096": {
+      "compute": 705,
+      "stall_dram": 0,
+      "stall_sram": 0,
+      "total": 726,
+      "utilization": 0.441,
+      "ops": 10485760,
+      "mode": "decode"
+    },
+    "1x2560x256": {
+      "compute": 405,
+      "stall_dram": 0,
+      "stall_sram": 0,
+      "total": 417,
+      "utilization": 0.048,
+      "ops": 655360,
+      "mode": "decode"
+    },
+    "1x4096x2560": {
+      "compute": 705,
+      "stall_dram": 0,
+      "stall_sram": 0,
+      "total": 726,
+      "utilization": 0.441,
+      "ops": 10485760,
+      "mode": "decode"
+    },
+    "1x2560x9728": {
+      "compute": 1145,
+      "stall_dram": 0,
+      "stall_sram": 0,
+      "total": 1179,
+      "utilization": 0.645,
+      "ops": 24903680,
+      "mode": "decode"
+    },
+    "1x9728x2560": {
+      "compute": 1145,
+      "stall_dram": 0,
+      "stall_sram": 0,
+      "total": 1179,
+      "utilization": 0.645,
+      "ops": 24903680,
+      "mode": "decode"
+    },
+    "128x2560x4096": {
+      "compute": 41472,
+      "stall_dram": 60928,
+      "stall_sram": 0,
+      "total": 103644,
+      "utilization": 0.395,
+      "ops": 1342177280,
+      "mode": "prefill_128"
+    },
+    "128x2560x256": {
+      "compute": 3072,
+      "stall_dram": 8806,
+      "stall_sram": 0,
+      "total": 11970,
+      "utilization": 0.214,
+      "ops": 83886080,
+      "mode": "prefill_128"
+    },
+    "128x4096x2560": {
+      "compute": 41472,
+      "stall_dram": 60928,
+      "stall_sram": 0,
+      "total": 103644,
+      "utilization": 0.395,
+      "ops": 1342177280,
+      "mode": "prefill_128"
+    },
+    "128x2560x9728": {
+      "compute": 97792,
+      "stall_dram": 145408,
+      "stall_sram": 0,
+      "total": 246133,
+      "utilization": 0.395,
+      "ops": 3187671040,
+      "mode": "prefill_128"
+    },
+    "128x9728x2560": {
+      "compute": 97792,
+      "stall_dram": 145408,
+      "stall_sram": 0,
+      "total": 246133,
+      "utilization": 0.395,
+      "ops": 3187671040,
+      "mode": "prefill_128"
+    },
+    "256x2560x4096": {
+      "compute": 82560,
+      "stall_dram": 19840,
+      "stall_sram": 0,
+      "total": 104876,
+      "utilization": 0.781,
+      "ops": 2684354560,
+      "mode": "prefill_256"
+    },
+    "256x2560x256": {
+      "compute": 5760,
+      "stall_dram": 11712,
+      "stall_sram": 0,
+      "total": 17644,
+      "utilization": 0.29,
+      "ops": 167772160,
+      "mode": "prefill_256"
+    },
+    "256x4096x2560": {
+      "compute": 82560,
+      "stall_dram": 19840,
+      "stall_sram": 0,
+      "total": 104876,
+      "utilization": 0.781,
+      "ops": 2684354560,
+      "mode": "prefill_256"
+    },
+    "256x2560x9728": {
+      "compute": 195200,
+      "stall_dram": 48000,
+      "stall_sram": 0,
+      "total": 249056,
+      "utilization": 0.781,
+      "ops": 6375342080,
+      "mode": "prefill_256"
+    },
+    "256x9728x2560": {
+      "compute": 195200,
+      "stall_dram": 48000,
+      "stall_sram": 0,
+      "total": 249056,
+      "utilization": 0.781,
+      "ops": 6375342080,
+      "mode": "prefill_256"
+    },
+    "512x2560x4096": {
+      "compute": 164736,
+      "stall_dram": 0,
+      "stall_sram": 0,
+      "total": 169678,
+      "utilization": 0.966,
+      "ops": 5368709120,
+      "mode": "prefill_512"
+    },
+    "512x2560x256": {
+      "compute": 11136,
+      "stall_dram": 22259,
+      "stall_sram": 0,
+      "total": 33729,
+      "utilization": 0.304,
+      "ops": 335544320,
+      "mode": "prefill_512"
+    },
+    "512x4096x2560": {
+      "compute": 164736,
+      "stall_dram": 0,
+      "stall_sram": 0,
+      "total": 169678,
+      "utilization": 0.966,
+      "ops": 5368709120,
+      "mode": "prefill_512"
+    },
+    "512x2560x9728": {
+      "compute": 390016,
+      "stall_dram": 0,
+      "stall_sram": 0,
+      "total": 401716,
+      "utilization": 0.969,
+      "ops": 12750684160,
+      "mode": "prefill_512"
+    },
+    "512x9728x2560": {
+      "compute": 390016,
+      "stall_dram": 0,
+      "stall_sram": 0,
+      "total": 401716,
+      "utilization": 0.969,
+      "ops": 12750684160,
+      "mode": "prefill_512"
+    },
+    "1024x2560x4096": {
+      "compute": 329088,
+      "stall_dram": 0,
+      "stall_sram": 0,
+      "total": 338960,
+      "utilization": 0.967,
+      "ops": 10737418240,
+      "mode": "prefill_1024"
+    },
+    "1024x2560x256": {
+      "compute": 21888,
+      "stall_dram": 44633,
+      "stall_sram": 0,
+      "total": 67178,
+      "utilization": 0.305,
+      "ops": 671088640,
+      "mode": "prefill_1024"
+    },
+    "1024x4096x2560": {
+      "compute": 329088,
+      "stall_dram": 0,
+      "stall_sram": 0,
+      "total": 338960,
+      "utilization": 0.967,
+      "ops": 10737418240,
+      "mode": "prefill_1024"
+    },
+    "1024x2560x9728": {
+      "compute": 779648,
+      "stall_dram": 0,
+      "stall_sram": 0,
+      "total": 803037,
+      "utilization": 0.969,
+      "ops": 25501368320,
+      "mode": "prefill_1024"
+    },
+    "1024x9728x2560": {
+      "compute": 779648,
+      "stall_dram": 0,
+      "stall_sram": 0,
+      "total": 803037,
+      "utilization": 0.969,
+      "ops": 25501368320,
+      "mode": "prefill_1024"
+    },
+    "2048x2560x4096": {
+      "compute": 657792,
+      "stall_dram": 0,
+      "stall_sram": 0,
+      "total": 677525,
+      "utilization": 0.967,
+      "ops": 21474836480,
+      "mode": "prefill_2048"
+    },
+    "2048x2560x256": {
+      "compute": 43392,
+      "stall_dram": 89382,
+      "stall_sram": 0,
+      "total": 134076,
+      "utilization": 0.305,
+      "ops": 1342177280,
+      "mode": "prefill_2048"
+    },
+    "2048x4096x2560": {
+      "compute": 657792,
+      "stall_dram": 0,
+      "stall_sram": 0,
+      "total": 677525,
+      "utilization": 0.967,
+      "ops": 21474836480,
+      "mode": "prefill_2048"
+    },
+    "2048x2560x9728": {
+      "compute": 1558912,
+      "stall_dram": 0,
+      "stall_sram": 0,
+      "total": 1605679,
+      "utilization": 0.969,
+      "ops": 51002736640,
+      "mode": "prefill_2048"
+    },
+    "2048x9728x2560": {
+      "compute": 1558912,
+      "stall_dram": 0,
+      "stall_sram": 0,
+      "total": 1605679,
+      "utilization": 0.969,
+      "ops": 51002736640,
+      "mode": "prefill_2048"
+    }
+  }
+}
