@@ -10,7 +10,7 @@ This engine models:
   - Area overhead: +12% vs baseline systolic array
 """
 
-from dataclasses import dataclass, field
+import math
 from typing import Any, Dict
 
 from engine.mac_engine import EngineResult, MACEngine
@@ -119,72 +119,36 @@ class FSAEngine(MACEngine):
         self, seq_q: int, seq_kv: int, head_dim: int,
         num_heads: int = 1, num_kv_heads: int = 1,
     ) -> EngineResult:
-        """Estimate full FlashAttention including inline softmax.
+        """Full FlashAttention with explicit QK/PV reduction dimensions."""
+        qk = self.estimate(seq_q, head_dim, seq_kv)
+        pv = self.estimate(seq_q, seq_kv, head_dim)
+        softmax_tiles = math.ceil(seq_q / self.H) * math.ceil(seq_kv / self.W)
+        inline_softmax = softmax_tiles * self.softmax_overhead * num_heads
+        compute_cycles = num_heads * (qk.compute_cycles + pv.compute_cycles) + inline_softmax
 
-        FSA's key advantage: softmax is done INLINE in the systolic array
-        via CMP columns and PE Split units. Only ~5 extra cycles per row.
-
-        Returns:
-            EngineResult with attention latency and utilization.
-        """
-        H, W = self.H, self.W
-        overhead = self.softmax_overhead
-
-        # Phase 1: S = QK^T + inline softmax (rowmax/exp/rowsum)
-        # Tiling: ceil(seq_q / H) × ceil(seq_kv / W) tiles
-        tiles_q = (seq_q + H - 1) // H
-        tiles_kv = (seq_kv + W - 1) // W
-        tiles_p1 = tiles_q * tiles_kv
-
-        # Per-tile: H MAC cycles + overhead for CMP/Split inline ops
-        phase1_cycles = tiles_p1 * (H + overhead) if tiles_p1 > 0 else 0
-
-        # Phase 2: O = PV  (P: seq_q×seq_kv, V: seq_kv×head_dim)
-        # Tiling: ceil(seq_q / H) × ceil(head_dim / W)
-        tiles_oq = (seq_q + H - 1) // H
-        tiles_hd = (head_dim + W - 1) // W
-        tiles_p2 = tiles_oq * tiles_hd
-        phase2_cycles = tiles_p2 * (H + 3) if tiles_p2 > 0 else 0  # slightly less overhead
-
-        total_compute = (phase1_cycles + phase2_cycles) * num_kv_heads
-
-        # Total MAC ops (both matmuls)
-        mac_ops = (
-            2 * num_kv_heads * seq_q * seq_kv * head_dim +
-            2 * num_kv_heads * seq_q * head_dim * seq_kv
+        elem_bytes = max(1, self.a_bits // 8)
+        attention_bytes = (
+            num_heads * seq_q * head_dim * elem_bytes
+            + 2 * num_kv_heads * seq_kv * head_dim * elem_bytes
         )
-
-        # DMA for K, V, Q loading
-        elem_bytes = self.a_bits // 8
-        dma_bytes = (
-            num_kv_heads * seq_kv * head_dim * elem_bytes * 2 +  # K + V
-            num_heads * seq_q * head_dim * elem_bytes             # Q
-        )
-        dma_cycles = dma_bytes / self.eff_bw if self.eff_bw > 0 else 0
-
-        total_cycles = max(total_compute, int(dma_cycles))
-        peak = self.peak_macs_per_cycle
-        utilization = mac_ops / (peak * max(total_cycles, 1)) if total_cycles > 0 else 0
-
+        dma_cycles = math.ceil(attention_bytes / max(self.eff_bw, 1e-9))
+        total_cycles = max(compute_cycles, dma_cycles)
+        macs = 2 * num_heads * seq_q * seq_kv * head_dim
         return EngineResult(
-            compute_cycles=int(total_compute),
-            dma_cycles=int(dma_cycles),
-            total_cycles=int(total_cycles),
-            utilization=min(utilization, 1.0),
-            ops=mac_ops,
-            num_tiles=tiles_p1 + tiles_p2,
-            weight_bytes=0,  # no weight — attention is activation-driven
-            bottleneck="compute" if total_compute >= dma_cycles else "dma",
+            compute_cycles=math.ceil(compute_cycles),
+            dma_cycles=dma_cycles,
+            total_cycles=math.ceil(total_cycles),
+            utilization=min(1.0, macs / max(self.H * self.W * total_cycles, 1)),
+            ops=macs * self.ops_per_mac,
+            num_tiles=num_heads * (qk.num_tiles + pv.num_tiles),
+            weight_bytes=0,
+            bottleneck="compute" if compute_cycles >= dma_cycles else "dma",
             details={
-                "tiles_phase1": tiles_p1,
-                "tiles_phase2": tiles_p2,
-                "engine": "fsa",
-                "inline_softmax": True,
-                "softmax_overhead": overhead,
-                "seq_q": seq_q,
-                "seq_kv": seq_kv,
-                "head_dim": head_dim,
-                "num_heads": num_heads,
+                "engine": "fsa", "inline_softmax": True,
+                "softmax_overhead_cycles": inline_softmax,
+                "seq_q": seq_q, "seq_kv": seq_kv,
+                "head_dim": head_dim, "num_heads": num_heads,
                 "num_kv_heads": num_kv_heads,
+                "attention_bytes": attention_bytes,
             },
         )

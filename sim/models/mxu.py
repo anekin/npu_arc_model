@@ -11,6 +11,8 @@ import math
 from dataclasses import dataclass
 from typing import Any, Dict
 
+from dse.memory import effective_bandwidth_bytes_per_cycle
+
 # Marker consumed by overnight_loop.py consistency checks
 V2_BANDWIDTH_AWARE = True
 
@@ -46,16 +48,13 @@ class MXUModel:
         self.double_buffer = bool(mxu.get("double_buffer", True))
 
         mem = config["memory"]
-        self.bw_bytes_per_cycle = float(mem["bandwidth_bytes_per_cycle"])  # 51.2
-        self.dram_efficiency = float(mem.get("dram_efficiency", 0.85))    # 85%
-
-        # DMA bandwidth multiplier (L2 optimization: 128-bit DRAM or 4ch DMA)
+        self.dram_efficiency = float(mem.get("dram_efficiency", 0.85))
         opts = config.get("optimizations", {})
         self.bw_multiplier = float(opts.get("dma_bw_multiplier", 1.0))
-
-        # Effective bandwidth (with multiplier)
-        self.eff_bw = (self.bw_bytes_per_cycle * self.dram_efficiency
-                       * self.bw_multiplier)
+        self.eff_bw = effective_bandwidth_bytes_per_cycle(
+            mem, self.f_mhz, self.bw_multiplier)
+        self.bw_bytes_per_cycle = self.eff_bw / max(
+            self.dram_efficiency * self.bw_multiplier, 1e-9)
 
     @property
     def macs_per_cycle(self) -> int:

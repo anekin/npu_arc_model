@@ -4,6 +4,8 @@ import math
 from dataclasses import dataclass
 from typing import Any, Dict, List, Tuple
 
+from dse.memory import bandwidth_bytes_per_cycle
+
 # Priority lookup for fixed_priority arbitration: higher value = higher priority.
 _REQUEST_TYPE_PRIORITY: Dict[str, int] = {
     "weight_load": 2,
@@ -64,7 +66,9 @@ class DMAModel:
         ]
 
         mem = config["memory"]
-        self.bw_bytes_per_cycle = float(mem["bandwidth_bytes_per_cycle"])  # 51.2
+        frequency_mhz = float(config.get("mxu", config.get("mac_engine", {})).get(
+            "frequency_mhz", 1000))
+        self.bw_bytes_per_cycle = bandwidth_bytes_per_cycle(mem, frequency_mhz)
 
     def estimate_transfer(self, size_bytes: int, direction: str = "load") -> int:
         """Estimate cycles for a single DMA transfer.

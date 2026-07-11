@@ -1,28 +1,11 @@
 """PPA 模型 — 面积/功耗/性能 综合评估"""
 
-from dataclasses import dataclass, field
 from typing import Any, Dict
 
+from dse.types import DSEPoint
 
-@dataclass
-class PPA:
-    """Performance, Power, Area"""
-    tok_s: float
-    area_mm2: float
-    power_w: float
-    efficiency_tok_per_watt: float = 0.0
-    efficiency_tok_per_mm2: float = 0.0
-    config_label: str = ""
-    sram_spill_mb: float = 0.0
-    depthwise_util_pct: float = 0.0
 
-    def __post_init__(self):
-        self.efficiency_tok_per_watt = self.tok_s / max(self.power_w, 0.1)
-        self.efficiency_tok_per_mm2 = self.tok_s / max(self.area_mm2, 0.1)
-
-    def __repr__(self):
-        return (f"PPA(tok={self.tok_s:.0f}/s, {self.area_mm2:.0f}mm², "
-                f"{self.power_w:.1f}W, {self.efficiency_tok_per_watt:.1f}tok/W)")
+PPA = DSEPoint
 
 
 class AreaModel:
@@ -118,6 +101,8 @@ class AreaModel:
         pool2d_area = self.pool2d
         conv_sfu_area = self.conv_sfu
 
+        if not bool(config.get("_cv_workload", False)):
+            im2col_feeder_area = pool2d_area = conv_sfu_area = 0.0
         total = (pe_area + self.sfu + self.riscv + pcie_area +
                  self.crossbar + l1 + l2 + dma_area + dram_phy_area +
                  im2col_feeder_area + pool2d_area + conv_sfu_area)
@@ -126,8 +111,14 @@ class AreaModel:
         if float(onchip.get("capacity_gb", 0)) > 0:
             total *= (1.0 + self.tsv_overhead_pct)
 
+        logic_die_mm2 = round(total, 1)
+        stack_area_mm2 = float(onchip.get("stack_area_mm2", 0.0))
+        package_footprint_mm2 = max(logic_die_mm2, stack_area_mm2)
         return {
-            "total_mm2": round(total, 1),
+            "total_mm2": round(package_footprint_mm2, 1),
+            "logic_die_mm2": logic_die_mm2,
+            "memory_stack_mm2": round(stack_area_mm2, 1),
+            "package_footprint_mm2": round(package_footprint_mm2, 1),
             "im2col_feeder_mm2": im2col_feeder_area,
             "pool2d_mm2": pool2d_area,
             "conv_sfu_mm2": conv_sfu_area,
@@ -174,10 +165,15 @@ class PowerModel:
         sram_mm2 = sram_kb * area_model.l1_per_kb  # rough
         sram_power = sram_mm2 * self.sram_power_density
 
-        # DRAM bandwidth proportional power
+        # External PHY and on-chip stack use different power models.
         mem = config.get("memory", {})
-        bw_ratio = float(mem.get("bandwidth_gbps", 51.2)) / 51.2
-        dram_power = self.dram_phy_power * bw_ratio
+        onchip = config.get("on_chip_memory", {})
+        bandwidth_gbps = float(mem.get("bandwidth_gbps", 51.2))
+        if float(onchip.get("capacity_gb", 0.0)) > 0:
+            memory_power = bandwidth_gbps * float(
+                onchip.get("stack_power_per_gbps_w", 0.015))
+        else:
+            memory_power = self.dram_phy_power * (bandwidth_gbps / 51.2)
 
         # CV unit power
         cv_area = area_model.estimate(config, engine_type)
@@ -185,6 +181,6 @@ class PowerModel:
         pool2d_power = cv_area["pool2d_mm2"] * 0.5           # combinational logic
         conv_sfu_power = cv_area["conv_sfu_mm2"] * 0.3       # LUT + control
 
-        total = (logic_power + sram_power + dram_power + 2.0  # +2W misc
+        total = (logic_power + sram_power + memory_power + 2.0  # +2W misc
                  + im2col_power + pool2d_power + conv_sfu_power)
         return round(total, 1)

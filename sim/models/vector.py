@@ -8,6 +8,8 @@ Pipeline: MXU output → Vector reduce/reshape → SFU (exp/div) → Vector fina
 
 from typing import Any, Dict
 
+from dse.memory import effective_bandwidth_bytes_per_cycle
+
 
 class VectorModel:
     """宽度可配的向量流水线单元。
@@ -39,9 +41,9 @@ class VectorModel:
 
         # DMA bandwidth shared with MXU (SRAM ↔ Vector)
         mem = config.get("memory", {})
-        self.dram_bw = float(mem.get("bandwidth_bytes_per_cycle", 51.2))
+        self.dram_bw = effective_bandwidth_bytes_per_cycle(mem, self.freq_mhz)
         self.dram_efficiency = float(mem.get("dram_efficiency", 0.85))
-        self.effective_bw = self.dram_bw * self.dram_efficiency
+        self.effective_bw = self.dram_bw
 
     def estimate(self, op_type: str, num_elements: int) -> int:
         """Return cycles for processing num_elements through op_type.

@@ -23,7 +23,6 @@ sys.path.insert(0, str(_HERE))
 
 logger = logging.getLogger(__name__)
 
-from q4_dequant import load_weights_from_gguf
 from golden_executor import GoldenMXU
 from quantize import quantize_int4_per_block
 from model_specs import MODELS, get_spec
@@ -237,6 +236,12 @@ class ArcModel:
 
         t0 = time.time()
         try:
+            try:
+                from q4_dequant import load_weights_from_gguf
+            except ModuleNotFoundError as exc:
+                raise RuntimeError(
+                    "GGUF precision evaluation requires the optional q4_dequant adapter"
+                ) from exc
             weights = load_weights_from_gguf(gguf_path)
         except Exception as e:
             report.error = f"GGUF load failed: {e}"

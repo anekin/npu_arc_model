@@ -2,6 +2,8 @@
 
 from typing import Any, Dict
 
+from dse.memory import bandwidth_bytes_per_cycle
+
 
 class DRAMModel:
     """LPDDR5-6400 timing model.
@@ -43,7 +45,7 @@ class DRAMModel:
         At 1GHz, LPDDR5-6400 = 51.2 GB/s raw.
         Effective = raw × (1 - refresh_pct) × row_efficiency
         """
-        raw_bw = self.bw_gbps  # 51.2
+        raw_bw = bandwidth_bytes_per_cycle({"bandwidth_gbps": self.bw_gbps}, self.f_mhz)
         refresh_efficiency = 1.0 - (self.refresh_overhead_pct / 100)
         row_efficiency = 1.0 - (self.row_conflict_prob * 0.3)  # 30% penalty per conflict
         return raw_bw * refresh_efficiency * row_efficiency

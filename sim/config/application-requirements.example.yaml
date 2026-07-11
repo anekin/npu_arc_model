@@ -1,0 +1,28 @@
+name: warehouse_vla
+description: Warehouse embodied-AI controller with camera input
+model: qwen2.5-7b
+seq_len: 1024
+process_nm: 12
+memory:
+  type: on_chip_3d_dram
+  capacity_gb: 5
+  bandwidth_gbps: 500
+  bw_per_mm2_gbps: 7.5
+  stack_area_mm2: 100
+  stack_power_per_gbps_w: 0.015
+  dram_efficiency: 1.0
+constraints:
+  tps_min: 100
+  ttft_ms_max: 800
+  area_mm2_max: 150
+  power_w_max: 70
+objectives: [area_mm2, power_w, -tok_s]
+components:
+  required: [pcie, tsv]
+  excluded: [dram_phy]
+search_space:
+  engines: [block, fsa, systolic]
+  arrays: [[32, 1536], [48, 1536], [64, 1536], [80, 1536]]
+  weight_precision_bits: [4]
+  frequencies_mhz: [800, 1000, 1200]
+  sram_l2_kb: [512, 1024, 2048]

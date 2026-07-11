@@ -11,6 +11,8 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any, Dict, Optional, Tuple
 
+from dse.memory import effective_bandwidth_bytes_per_cycle
+
 
 @dataclass
 class EngineResult:
@@ -53,11 +55,13 @@ class MACEngine(ABC):
         self.ops_per_mac = int(mac.get("ops_per_mac", 2))
 
         mem = config.get("memory", {})
-        self.bw_raw = float(mem.get("bandwidth_bytes_per_cycle", 51.2))
         self.dram_efficiency = float(mem.get("dram_efficiency", 0.85))
         opts = config.get("optimizations", {})
         self.bw_multiplier = float(opts.get("dma_bw_multiplier", 1.0))
-        self.eff_bw = self.bw_raw * self.dram_efficiency * self.bw_multiplier
+        self.eff_bw = effective_bandwidth_bytes_per_cycle(
+            mem, self.f_mhz, self.bw_multiplier)
+        self.bw_raw = self.eff_bw / max(
+            self.dram_efficiency * self.bw_multiplier, 1e-9)
 
         # SRAM: 60% weight buffer, 40% KV tile buffer
         sram = config.get("sram", {})

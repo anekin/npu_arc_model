@@ -15,6 +15,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from engine.ppa_model import AreaModel, PowerModel, PPA
 from engine.mac_engine import create_engine
 from model_specs import get_spec, all_aliases
+from dse.evaluator import evaluate_candidate, ranking_key, violation_score
 
 import yaml
 
@@ -23,6 +24,7 @@ SIM_DIR = Path(__file__).parent
 _CV_MODEL: str = ""
 _CV_TRACE: List[Any] = []
 _CV_ONNX_PATH: str = ""
+_CUSTOM_SCENARIOS: Dict[str, Dict[str, Any]] = {}
 
 _NUM_LAYERS: int = 28
 _LLM_TRACE: List[Tuple] = []
@@ -59,6 +61,101 @@ SFU_CYCLES_PER_LAYER = {
     "attn": 33,   # softmax + layernorm + rope (simplified)
     "ffn": 8,     # gelu + layernorm
 }
+
+
+def _load_base_config() -> Dict[str, Any]:
+    with open(SIM_DIR / "config" / "design_space.yaml", encoding="utf-8") as f:
+        return yaml.safe_load(f)
+
+
+def _load_scenario(scenario_name: str | None) -> Dict[str, Any] | None:
+    if not scenario_name:
+        return None
+    if scenario_name in _CUSTOM_SCENARIOS:
+        return copy.deepcopy(_CUSTOM_SCENARIOS[scenario_name])
+    with open(SIM_DIR / "config" / "scenarios.yaml", encoding="utf-8") as f:
+        data = yaml.safe_load(f)
+    scenario = data.get("scenarios", {}).get(scenario_name)
+    if scenario is None:
+        known = ", ".join(sorted(data.get("scenarios", {}).keys()))
+        raise ValueError(f"Unknown scenario '{scenario_name}'. Known scenarios: {known}")
+    return scenario
+
+
+def _apply_scenario(base: Dict[str, Any], scenario_name: str | None) -> Dict[str, Any]:
+    cfg = copy.deepcopy(base)
+    scenario = _load_scenario(scenario_name)
+    if scenario is None:
+        return cfg
+
+    cfg["_scenario_name"] = scenario_name
+    cfg["_model_name"] = scenario.get("model", "qwen2.5-3b")
+    cfg["_seq_len"] = int(scenario.get("seq_len", 128))
+    if "process_nm" in scenario:
+        cfg.setdefault("area_model", {})["process_node"] = int(scenario["process_nm"])
+
+    memory = scenario.get("memory", {})
+    memory_type = memory.get("type")
+    if memory_type:
+        cfg.setdefault("memory", {})["type"] = memory_type
+    if "bandwidth_gbps" in memory:
+        bw = float(memory["bandwidth_gbps"])
+        cfg.setdefault("memory", {})["bandwidth_gbps"] = bw
+        cfg.setdefault("memory", {})["bandwidth_bytes_per_cycle"] = bw
+    if "dram_efficiency" in memory:
+        cfg.setdefault("memory", {})["dram_efficiency"] = float(memory["dram_efficiency"])
+    if "capacity_gb" in memory:
+        cfg["on_chip_memory"] = {
+            "capacity_gb": float(memory["capacity_gb"]),
+            "bandwidth_gbps": float(memory.get("bandwidth_gbps", 0.0)),
+            "bw_per_mm2_gbps": float(memory.get("bw_per_mm2_gbps", 0.0)),
+            "stack_area_mm2": float(memory.get("stack_area_mm2", 0.0)),
+            "stack_power_per_gbps_w": float(memory.get("stack_power_per_gbps_w", 0.015)),
+        }
+
+    constraints = scenario.get("constraints", {})
+    if constraints:
+        cfg.setdefault("constraints", {}).update(constraints)
+    return cfg
+
+
+def _scenario_dram_configs(scenario: Dict[str, Any] | None, quick: bool) -> List[Tuple[float, int, str]]:
+    if scenario is None:
+        if quick:
+            return [
+                (51.2, 64, "LPDDR5-64b"),
+                (102.4, 128, "LPDDR5-128b"),
+            ]
+        return [
+            (25.6, 32, "LPDDR5-32b"),
+            (51.2, 64, "LPDDR5-64b"),
+            (102.4, 128, "LPDDR5-128b"),
+            (204.8, 256, "LPDDR5-256b"),
+            (460.0, 1024, "HBM2e-1024b"),
+            (819.2, 1024, "HBM3-1024b"),
+        ]
+
+    memory = scenario.get("memory", {})
+    bw = float(memory.get("bandwidth_gbps", 51.2))
+    memory_type = str(memory.get("type", "lpddr5"))
+    width_bits = 64 if memory_type.startswith("lpddr") else 1024
+    label = "on-chip-3D" if memory_type == "on_chip_3d_dram" else f"{memory_type.upper()}-{width_bits}b"
+    return [(bw, width_bits, label)]
+
+
+def _scenario_dims(scenario: Dict[str, Any] | None, quick: bool) -> List[Tuple[int, int]]:
+    if scenario is None:
+        if quick:
+            return [(128, 128), (128, 256), (256, 256)]
+        return [(64, 64), (96, 96), (128, 128), (128, 192),
+                (128, 256), (192, 256), (256, 256)]
+
+    memory_type = scenario.get("memory", {}).get("type")
+    if memory_type == "on_chip_3d_dram":
+        return [(32, 1536), (48, 1536), (64, 1536), (80, 1536), (96, 1536), (128, 1536)]
+    if quick:
+        return [(64, 128), (128, 128), (128, 256)]
+    return [(64, 128), (64, 256), (128, 128), (128, 256), (192, 128)]
 
 
 def _compute_kv_cycles(config: Dict[str, Any], batch_m: int = 1) -> int:
@@ -145,8 +242,7 @@ def simulate_layer(config: Dict[str, Any], batch_m: int = None) -> tuple:
     return total, weight_bytes
 
 
-def tok_s_from_layer(layer_cycles: int, num_layers: int) -> float:
-    f_mhz = 1000
+def tok_s_from_layer(layer_cycles: int, num_layers: int, f_mhz: int = 1000) -> float:
     total_us = layer_cycles * num_layers / f_mhz
     return round(1e6 / total_us, 1) if total_us > 0 else 0
 
@@ -160,59 +256,41 @@ def _depthwise_util_from_cv_result(cv_result: Dict[str, Any]) -> float:
     return sum(utils) / len(utils) if utils else 0.0
 
 
-def generate_configs(quick: bool = False) -> List[Dict[str, Any]]:
+def generate_configs(quick: bool = False, scenario_name: str | None = None,
+                     base_config: Dict[str, Any] | None = None) -> List[Dict[str, Any]]:
     """Generate design space configurations to sweep."""
-    with open(SIM_DIR / "config" / "design_space.yaml") as f:
-        base = yaml.safe_load(f)
+    raw_base = copy.deepcopy(base_config) if base_config is not None else _load_base_config()
+    base = _apply_scenario(raw_base, scenario_name)
+    scenario = _load_scenario(scenario_name)
 
     configs = []
 
-    # Engine types — all seven architectures
+    # Default heuristic search space, optionally overridden by the
+    # application-requirements YAML.
     if quick:
         engines = ["systolic", "block", "gmma"]
     else:
         engines = ["systolic", "os_systolic", "block",
                    "tensor_core", "wmma", "gmma", "input_stationary", "fsa"]
-
-    # Array dimensions (constrained by area)
-    if quick:
-        dims = [(128, 128), (128, 256), (256, 256)]
-    else:
-        dims = [(64, 64), (96, 96), (128, 128), (128, 192),
-                (128, 256), (192, 256), (256, 256)]
-
-    # DRAM bandwidth configurations (GB/s, width_bits, description)
-    if quick:
-        dram_configs = [
-            (51.2, 64, "LPDDR5-64b"),
-            (102.4, 128, "LPDDR5-128b"),
-        ]
-    else:
-        dram_configs = [
-            (25.6, 32, "LPDDR5-32b"),      # Low-end mobile
-            (51.2, 64, "LPDDR5-64b"),      # Baseline
-            (102.4, 128, "LPDDR5-128b"),   # Dual channel / 128-bit
-            (204.8, 256, "LPDDR5-256b"),   # Quad channel
-            (460.0, 1024, "HBM2e-1024b"),  # HBM2e 3.6Gbps
-            (819.2, 1024, "HBM3-1024b"),   # HBM3 6.4Gbps
-        ]
-
-    # Weight precision
-    if quick:
-        precisions = [4]
-    else:
-        precisions = [4, 2]  # INT4, INT2
-
-    # Frequency
+    dims = _scenario_dims(scenario, quick)
+    dram_configs = _scenario_dram_configs(scenario, quick)
+    precisions = [4] if quick else [4, 2]
     freqs = [1000] if quick else [800, 1000, 1200]
-
-    # SRAM L2 sizes (KB) — critical for bandwidth-constrained performance
     sram_l2_sizes = [2048] if quick else [1024, 2048, 4096, 6144, 8192]
+
+    search = (scenario or {}).get("search_space", {})
+    engines = list(search.get("engines", engines))
+    if search.get("arrays"):
+        dims = [tuple(map(int, value)) for value in search["arrays"]]
+    precisions = [int(v) for v in search.get("weight_precision_bits", precisions)]
+    freqs = [int(v) for v in search.get("frequencies_mhz", freqs)]
+    sram_l2_sizes = [int(v) for v in search.get("sram_l2_kb", sram_l2_sizes)]
 
     for engine_type in engines:
         for H, W in dims:
             # Area constraints
-            if engine_type in ("block", "os_systolic") and H * W / (128 * 128) * 32 > 200:
+            area_gate = 400 if scenario is not None else 200
+            if engine_type in ("block", "os_systolic") and H * W / (128 * 128) * 32 > area_gate:
                 continue
             if engine_type == "systolic" and H * W / (128 * 128) * 8 > 80:
                 continue
@@ -244,9 +322,9 @@ def generate_configs(quick: bool = False) -> List[Dict[str, Any]]:
                                 cfg["mac_engine"]["weight_precision_bits"] = w_bits
                                 cfg["mac_engine"]["frequency_mhz"] = freq
                                 cfg["memory"]["bandwidth_gbps"] = bw_gbps
-                                cfg["memory"]["bandwidth_bytes_per_cycle"] = bw_gbps
+                                cfg["memory"]["bandwidth_bytes_per_cycle"] = bw_gbps * 1000.0 / freq
                                 cfg["memory"]["dram_width_bits"] = dw_bits
-                                cfg["memory"]["dram_efficiency"] = 0.85
+                                cfg["memory"]["dram_efficiency"] = float(cfg["memory"].get("dram_efficiency", 0.85))
                                 cfg["sram"]["l2_shared_kb"] = l2_kb
                                 cfg["optimizations"]["weight_cache"] = wc
                                 cfg["optimizations"]["dma_bw_multiplier"] = 1.0
@@ -259,47 +337,36 @@ def generate_configs(quick: bool = False) -> List[Dict[str, Any]]:
 
 def evaluate_config(cfg: Dict[str, Any], area_model: AreaModel,
                     power_model: PowerModel) -> PPA:
-    """Evaluate one configuration → PPA."""
+    """Evaluate one configuration through the canonical DSE evaluator."""
+    if not _CV_MODEL:
+        scenario = _load_scenario(cfg.get("_scenario_name"))
+        return evaluate_candidate(cfg, area_model, power_model, scenario)
+
+    cfg["_cv_workload"] = True
+    from cv.cv_sim import simulate_cv
+    cv_result = simulate_cv(_CV_TRACE, cfg)
+    fps = 1e9 / cv_result["total_cycles"] if cv_result["total_cycles"] > 0 else 0.0
     engine_type = cfg["mac_engine"]["type"]
-
-    if _CV_MODEL:
-        from cv.cv_sim import simulate_cv
-        cv_result = simulate_cv(_CV_TRACE, cfg)
-        fps = 1e9 / cv_result["total_cycles"] if cv_result["total_cycles"] > 0 else 0.0
-        area_result = area_model.estimate(cfg, engine_type)
-        area = area_result["total_mm2"]
-        power = power_model.estimate(area_model, cfg, engine_type)
-        sram_spill = cv_result.get("sram_spill_mb", 0.0)
-        dw_util = _depthwise_util_from_cv_result(cv_result)
-    else:
-        layer_cycles, _ = simulate_layer(cfg)
-        fps = tok_s_from_layer(layer_cycles, _NUM_LAYERS)
-        area_result = area_model.estimate(cfg, engine_type)
-        area = area_result["total_mm2"]
-        power = power_model.estimate(area_model, cfg, engine_type)
-        sram_spill = 0.0
-        dw_util = 0.0
-
-    H = cfg["mac_engine"]["array_height"]
-    W = cfg["mac_engine"]["array_width"]
-    w_bits = cfg["mac_engine"]["weight_precision_bits"]
-    wc = cfg["optimizations"]["weight_cache"]
-    bw = cfg["optimizations"]["dma_bw_multiplier"]
-    freq = cfg["mac_engine"]["frequency_mhz"]
-
-    label = (f"{engine_type[:4]} {H}×{W} INT{w_bits} "
-             f"{freq}MHz "
-             f"{'WC' if wc else ''} "
-             f"{cfg.get('_dram_label', '')}")
-
+    area = area_model.estimate(cfg, engine_type)["total_mm2"]
+    power = power_model.estimate(area_model, cfg, engine_type)
+    mac = cfg["mac_engine"]
     return PPA(
-        tok_s=fps,
-        area_mm2=area,
-        power_w=power,
-        config_label=label,
-        sram_spill_mb=sram_spill,
-        depthwise_util_pct=dw_util,
+        tok_s=fps, area_mm2=area, power_w=power,
+        config_label=f"{engine_type[:4]} {mac['array_height']}x{mac['array_width']}",
+        sram_spill_mb=cv_result.get("sram_spill_mb", 0.0),
+        depthwise_util_pct=_depthwise_util_from_cv_result(cv_result),
+        config={"engine": engine_type, "array_height": mac["array_height"],
+                "array_width": mac["array_width"]},
     )
+
+
+def _tops_int8_from_config(config: Dict[str, Any]) -> float:
+    mac = config.get("mac_engine", {})
+    h = int(mac.get("array_height", 0))
+    w = int(mac.get("array_width", 0))
+    freq = int(mac.get("frequency_mhz", 0))
+    ops_per_mac = int(mac.get("ops_per_mac", 2))
+    return round(h * w * ops_per_mac * freq / 1_000_000, 1)
 
 
 def find_pareto(ppas: List[PPA]) -> List[PPA]:
@@ -554,12 +621,39 @@ def main():
                         help="LLM model spec alias for DSE")
     parser.add_argument("--batch-m", type=int, choices=[1, 2], default=None,
                         help="Batch M dimension for attention ops (1 or 2)")
+    parser.add_argument("--scenario", default=None,
+                        help="Scenario name from sim/config/scenarios.yaml")
+    parser.add_argument("--requirements", default=None,
+                        help="Path to a YAML application-requirements file")
+    parser.add_argument("--seq-len", type=int, default=None,
+                        help="Override scenario sequence length")
     args = parser.parse_args()
 
-    if args.cv_model and (args.model_spec is not None or args.batch_m is not None):
-        parser.error("--cv-model is mutually exclusive with --model-spec and --batch-m")
+    if args.requirements:
+        req_path = Path(args.requirements)
+        with open(req_path, encoding="utf-8") as f:
+            payload = yaml.safe_load(f) or {}
+        custom = payload.get("scenario", payload)
+        custom = copy.deepcopy(custom)
+        name = str(custom.pop("name", req_path.stem))
+        _CUSTOM_SCENARIOS[name] = custom
+        args.scenario = name
+    if args.seq_len is not None:
+        if args.scenario:
+            scenario_copy = _load_scenario(args.scenario) or {}
+            scenario_copy["seq_len"] = args.seq_len
+            _CUSTOM_SCENARIOS[args.scenario] = scenario_copy
 
-    model_spec = args.model_spec if args.model_spec is not None else "qwen2.5-3b"
+    if args.cv_model and (args.model_spec is not None or args.batch_m is not None or args.scenario is not None):
+        parser.error("--cv-model is mutually exclusive with --model-spec, --batch-m, and --scenario")
+
+    scenario = _load_scenario(args.scenario)
+    if args.scenario and args.model_spec is not None:
+        parser.error("--scenario already defines the model; omit --model-spec")
+
+    model_spec = args.model_spec if args.model_spec is not None else (
+        scenario.get("model") if scenario else "qwen2.5-3b"
+    )
     batch_m = args.batch_m if args.batch_m is not None else 1
 
     global _CV_MODEL, _CV_TRACE, _CV_ONNX_PATH, _LLM_TRACE, _NUM_LAYERS
@@ -585,38 +679,66 @@ def main():
         _LLM_TRACE = generate_trace_from_spec(model_spec, batch_m)
         _NUM_LAYERS = get_spec(model_spec).layers
 
-    with open(SIM_DIR / "config" / "design_space.yaml") as f:
-        base_cfg = yaml.safe_load(f)
+    base_cfg = _apply_scenario(_load_base_config(), args.scenario)
+    base_cfg["_model_name"] = model_spec
+    base_cfg["_seq_len"] = int(args.seq_len or (scenario or {}).get("seq_len", 128))
 
     area_model = AreaModel(base_cfg)
     power_model = PowerModel(base_cfg)
 
-    configs = generate_configs(quick=args.quick)
+    if args.scenario and args.scenario not in _CUSTOM_SCENARIOS:
+        from dse_scenario import check_requirements, preflight, print_preflight, print_requirements_check
+        rc = check_requirements(args.scenario, base_cfg)
+        print_requirements_check(rc)
+        pf = preflight(args.scenario, base_cfg)
+        print_preflight(pf)
+    elif args.scenario:
+        print(f"Application requirements: {args.scenario} (custom YAML, all fields explicit)")
+
+    configs = generate_configs(quick=args.quick, scenario_name=args.scenario, base_config=base_cfg)
     print(f"Design space: {len(configs)} configurations")
-    print(f"  Engine types: systolic, block")
+    engine_set = sorted({c["mac_engine"]["type"] for c in configs})
+    print(f"  Engine types: {', '.join(engine_set)}")
     dim_set = set((c['mac_engine']['array_height'],
                    c['mac_engine']['array_width']) for c in configs)
     print(f"  Array dims: {len(dim_set)}")
     print(f"  Sweeping...", end=" ", flush=True)
 
     results: List[PPA] = []
+    invalid_configs: List[Dict[str, str]] = []
     for cfg in configs:
         try:
             ppa = evaluate_config(cfg, area_model, power_model)
             # Filter: unreasonable area
-            if ppa.area_mm2 <= 200:
+            if ppa.area_mm2 <= 1000:
                 results.append(ppa)
-        except Exception as e:
-            pass
+        except (KeyError, TypeError, ValueError, ZeroDivisionError) as e:
+            mac = cfg.get("mac_engine", {})
+            invalid_configs.append({
+                "engine": str(mac.get("type", "")),
+                "array": f"{mac.get('array_height', '?')}x{mac.get('array_width', '?')}",
+                "error": f"{type(e).__name__}: {e}",
+            })
 
     print(f"{len(results)} valid")
+    if invalid_configs:
+        print(f"  {len(invalid_configs)} invalid configs")
 
-    # Pareto frontier
-    pareto = find_pareto(results)
-
-    # Top by tok/s (filter by area < 150mm²)
-    reasonable = [r for r in results if r.area_mm2 <= 150]
-    reasonable.sort(key=lambda x: x.tok_s, reverse=True)
+    # Hard constraints are applied before Pareto/ranking.
+    feasible = [r for r in results if r.constraints_passed]
+    pareto = find_pareto(feasible)
+    active_scenario = _load_scenario(args.scenario)
+    reasonable = sorted(feasible, key=lambda p: ranking_key(p, active_scenario))
+    rejected = [r for r in results if not r.constraints_passed]
+    closest = sorted(rejected, key=lambda p: violation_score(p, active_scenario))
+    print(f"  Constraints: {len(feasible)} passed, {len(rejected)} rejected")
+    if not feasible and closest:
+        best_effort = closest[0]
+        print("  No feasible architecture. Closest candidate: "
+              f"{best_effort.config_label} (violation score "
+              f"{violation_score(best_effort, active_scenario):.3f})")
+        for reason in best_effort.failed_reasons:
+            print(f"    - {reason}")
 
     perf_label = "fps" if _CV_MODEL else "tok/s"
     eff_label = "fps/W" if _CV_MODEL else "tok/W"
@@ -637,7 +759,7 @@ def main():
               f"{p.power_w:>6.1f}W {p.efficiency_tok_per_watt:>7.1f}{extra}")
 
     # ── Top by tok/s ──
-    print(f"\n  Top {args.top} by {perf_label} (area ≤ 150mm²):")
+    print(f"\n  Top {args.top} feasible candidates (scenario objective order):")
     print(f"  {'Config':<45} {perf_label:>8} {'Area':>8} {'Power':>8} {eff_label:>8}{cv_extra_header}")
     print(f"  {'-'*line_width}")
     for p in reasonable[:args.top]:
@@ -648,13 +770,13 @@ def main():
         print(f"  {p.config_label:<45} {p.tok_s:>7.0f} {p.area_mm2:>6.0f}mm² "
               f"{p.power_w:>6.1f}W {p.efficiency_tok_per_watt:>7.1f}{extra} {pareto_flag}")
 
-    # ── Best per engine type ──
-    print(f"\n  Best per engine type (area ≤ 80mm², DRAM ≤ 102.4 GB/s):")
+    # ── Best feasible point per engine type ──
+    print(f"\n  Best feasible per engine type (scenario objective order):")
     for eng in ["systolic", "os_systolic", "block", "tensor_core", "wmma", "gmma", "fsa"]:
-        eng_results = [r for r in results
-                       if eng in r.config_label and r.area_mm2 <= 80]
+        eng_results = [r for r in feasible
+                       if r.config.get("engine") == eng]
         if eng_results:
-            best = max(eng_results, key=lambda x: x.tok_s)
+            best = min(eng_results, key=lambda x: ranking_key(x, active_scenario))
             print(f"    {eng}: {best.tok_s:.0f} {perf_label}, {best.area_mm2:.0f}mm², "
                   f"{best.power_w:.1f}W — {best.config_label}")
 
@@ -667,16 +789,17 @@ def main():
         from dse_scenario import cross_validate as cv_func, print_cross_validate as print_cv
         best = reasonable[0]
         # Auto-detect scenario: on-chip if any config has on_chip_memory
-        has_onchip = any(
-            float(configs[i].get('on_chip_memory', {}).get('capacity_gb', 0)) > 0
-            for i in range(min(len(configs), len(results)))
-            if results[i].config_label == best.config_label
-        )
+        has_onchip = best.config.get("memory_type") == "on_chip_3d_dram"
         scenario = 'onchip_7b' if has_onchip else 'lpddr5_3b'
         cv = cv_func({
             'process_nm': int(base_cfg.get('area_model', {}).get('process_node', 12)),
             'area_mm2': best.area_mm2,
-            'tops_int8': 6.1 if has_onchip else 16.4,  # scenario-dependent typical values
+            'tops_int8': _tops_int8_from_config({"mac_engine": {
+                "array_height": best.config.get("array_height", 0),
+                "array_width": best.config.get("array_width", 0),
+                "frequency_mhz": best.config.get("frequency_mhz", 0),
+                "ops_per_mac": 2,
+            }}),
             'tok_s': best.tok_s,
         }, scenario)
         print_cv(cv)
@@ -685,7 +808,8 @@ def main():
     if args.output:
         def _result_dict(p, on_pareto=False):
             d = {"label": p.config_label, "tok_s": p.tok_s,
-                 "area_mm2": p.area_mm2, "power_w": p.power_w}
+                 "area_mm2": p.area_mm2, "power_w": p.power_w,
+                 "config": p.config}
             if _CV_MODEL:
                 d["sram_spill_mb"] = p.sram_spill_mb
                 d["depthwise_util_pct"] = p.depthwise_util_pct
@@ -715,19 +839,28 @@ def main():
             output = points
         else:
             output = {
+                "arc_version": "v3.1-physics-baseline",
                 "cv_model": _CV_MODEL,
+                "scenario": args.scenario,
                 "model_spec": model_spec,
                 "batch_m": batch_m,
                 "total_configs": len(configs),
                 "valid_results": len(results),
-                "pareto_frontier": [_result_dict(p, True) for p in pareto],
-                "top_results": [_result_dict(p, False) for p in reasonable[:args.top]],
+                "invalid_configs": invalid_configs,
+                "feasible": bool(reasonable),
+                "rejected_results": [p.to_dict() for p in rejected],
+                "closest_candidates": [p.to_dict() for p in closest[:args.top]],
+                "pareto_frontier": [p.to_dict() for p in pareto],
+                "top_results": [p.to_dict() for p in reasonable[:args.top]],
+                "recommended": reasonable[0].to_dict() if reasonable else None,
             }
-        out_path = SIM_DIR / args.output if not args.output.startswith("/") else Path(args.output)
+        out_path = Path(args.output)
+        if not out_path.is_absolute():
+            out_path = SIM_DIR / out_path
         out_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(out_path, "w") as f:
+        with open(out_path, "w", encoding="utf-8") as f:
             json.dump(output, f, indent=2)
-        print(f"\n  Saved to {args.output}")
+        print(f"\n  Saved to {out_path}")
 
 
 if __name__ == "__main__":

@@ -313,7 +313,7 @@ def predict_bottleneck(scenario: Dict) -> Dict[str, Any]:
         # ops_per_token = 2 × params_b × 10^9 (M×K multiply + accumulate)
         # compute_tps = tops × 10^12 / (2 × params_b × 10^9) = tops × 500 / params_b
         ops_per_token = 2 * params_b  # billion ops
-        compute_tps = tops * 500 / ops_per_token  # 500 = 1000/2
+        compute_tps = tops * 1000 / ops_per_token
         compute_ceilings.append(compute_tps)
     
     # Which is lower?
@@ -370,7 +370,7 @@ def validate_components(scenario: Dict, config: Dict[str, Any]) -> List[str]:
     has_onchip = float(oc.get("capacity_gb", 0)) > 0
     
     mem = config.get("memory", {})
-    has_ddr = float(mem.get("bandwidth_gbps", 0)) > 0
+    has_ddr = float(mem.get("bandwidth_gbps", 0)) > 0 and not has_onchip
     
     # Check required components
     if "dram_phy" in required and not has_ddr:
