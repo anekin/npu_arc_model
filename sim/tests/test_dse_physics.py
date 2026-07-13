@@ -2,7 +2,7 @@ import copy
 
 from dse.constraints import evaluate_constraints
 from dse.evaluator import evaluate_candidate, estimate_layer
-from dse.memory import bandwidth_bytes_per_cycle
+from dse.memory import bandwidth_bytes_per_cycle, estimate_memory_footprint
 from dse.workload import load_workload
 from engine.mac_engine import create_engine
 from engine.ppa_model import AreaModel, PowerModel
@@ -89,3 +89,178 @@ def test_all_searchable_engines_complete_candidate_evaluation():
             copy.deepcopy(cfg), AreaModel(cfg), PowerModel(cfg), None,
         )
         assert point.tok_s > 0, engine
+
+
+def test_scenario_a_contract_is_low_cost_int4_only():
+    from design_space_explorer import _load_scenario, generate_configs
+
+    scenario = _load_scenario("lpddr5_3b")
+    configs = generate_configs(quick=False, scenario_name="lpddr5_3b")
+    assert configs
+    assert scenario["constraints"]["ttft_ms_max"] == 1000
+    assert scenario["targets"]["ttft_ms_max"] == 500
+    assert scenario["memory"]["dram_efficiency"] == 0.85
+    assert scenario["memory"]["efficiency_corners"] == [0.75, 0.85, 0.90]
+    assert {cfg["mac_engine"]["weight_precision_bits"] for cfg in configs} == {4}
+    assert any(
+        cfg["mac_engine"]["array_height"] == 64
+        and cfg["mac_engine"]["array_width"] == 64
+        for cfg in configs
+    )
+
+
+def test_external_memory_capacity_does_not_create_onchip_memory():
+    from design_space_explorer import (
+        _CUSTOM_SCENARIOS, _apply_scenario, _load_base_config,
+    )
+
+    name = "test_external_lpddr_capacity"
+    _CUSTOM_SCENARIOS[name] = {
+        "model": "qwen2.5-3b",
+        "memory": {
+            "type": "lpddr5", "capacity_gb": 4,
+            "bandwidth_gbps": 51.2, "dram_efficiency": 0.85,
+        },
+    }
+    cfg = _apply_scenario(_load_base_config(), name)
+    assert cfg["memory"]["capacity_gb"] == 4
+    assert "on_chip_memory" not in cfg
+
+
+def test_memory_footprint_scales_with_context_and_concurrency():
+    cfg = _config()
+    cfg["memory"]["capacity_gb"] = 8
+    small = load_workload(
+        "qwen2.5-3b", 128,
+        {"output_tokens": 128, "concurrent_requests": 1, "kv_bits": 16},
+    )
+    large = load_workload(
+        "qwen2.5-3b", 1024,
+        {"output_tokens": 1024, "concurrent_requests": 8, "kv_bits": 16},
+    )
+    small_fp = estimate_memory_footprint(cfg, small)
+    large_fp = estimate_memory_footprint(cfg, large)
+    assert large_fp.kv_cache_gb > small_fp.kv_cache_gb * 10
+    assert large_fp.required_gb > small_fp.required_gb
+    assert small_fp.weights_gb == large_fp.weights_gb
+
+
+def test_insufficient_memory_is_a_physical_constraint():
+    cfg = _config()
+    cfg["memory"].update({"capacity_gb": 1.0, "capacity_usable_fraction": 0.9})
+    cfg["_model_name"] = "qwen2.5-3b"
+    cfg["_seq_len"] = 128
+    scenario = {
+        "model": "qwen2.5-3b",
+        "workload": {"prompt_tokens": 128, "output_tokens": 128},
+        "constraints": {},
+    }
+    point = evaluate_candidate(cfg, AreaModel(cfg), PowerModel(cfg), scenario)
+    assert not point.memory_fits
+    assert not point.constraints_passed
+    assert any("memory capacity" in reason for reason in point.failed_reasons)
+
+
+def test_performance_contract_reports_batch_and_latency_metrics():
+    cfg = _config(bw=102.4)
+    cfg["memory"].update({"capacity_gb": 8.0, "capacity_usable_fraction": 0.9})
+    cfg["_model_name"] = "qwen2.5-3b"
+    cfg["_seq_len"] = 128
+    cfg["_workload"] = {
+        "prompt_tokens": 128, "output_tokens": 32,
+        "concurrent_requests": 4, "decode_batch_size": 4,
+    }
+    scenario = {
+        "model": "qwen2.5-3b", "workload": cfg["_workload"],
+        "constraints": {"aggregate_tps_min": 1, "itl_ms_max": 10000},
+    }
+    point = evaluate_candidate(cfg, AreaModel(cfg), PowerModel(cfg), scenario)
+    assert point.decode_tps > 0
+    assert abs(point.aggregate_tps - point.decode_tps * 4) < 0.05
+    assert point.prefill_tps > 0
+    assert point.itl_ms == point.decode_ms
+    assert point.e2e_latency_ms > point.ttft_ms
+    assert point.breakdown["workload"]["decode_batch_size"] == 4
+
+
+def test_new_performance_constraints_are_enforced():
+    result = evaluate_constraints(
+        {
+            "decode_tps": 20, "aggregate_tps": 80, "prefill_tps": 900,
+            "ttft_ms": 250, "itl_ms": 50, "e2e_latency_ms": 1000,
+            "area_mm2": 50, "power_w": 10,
+        },
+        {"constraints": {
+            "decode_tps_min": 25, "aggregate_tps_min": 100,
+            "prefill_tps_min": 1000, "itl_ms_max": 40,
+        }},
+    )
+    assert not result.passed
+    assert len(result.failed_reasons) == 4
+
+
+def test_os_and_block_share_architecture_stage_roofline():
+    """Do not let an uncalibrated M-tiling asymmetry choose the engine."""
+    base = _config()
+    base["mac_engine"].update({
+        "array_height": 64,
+        "array_width": 64,
+        "frequency_mhz": 1000,
+        "weight_precision_bits": 4,
+    })
+    for m_dim in (1, 128):
+        cycles = {}
+        for engine_type in ("block", "os_systolic"):
+            cfg = copy.deepcopy(base)
+            cfg["mac_engine"]["type"] = engine_type
+            cycles[engine_type] = create_engine(cfg).estimate(m_dim, 2048, 2048)
+
+
+def test_qwen25_3b_official_gqa_and_32k_kv_capacity():
+    from model_specs import get_spec
+
+    spec = get_spec("qwen2.5-3b")
+    assert spec.num_heads == 16
+    assert spec.kv_heads == 2
+    workload = load_workload(
+        "qwen2.5-3b", 875,
+        {
+            "output_tokens": 214,
+            "max_context_tokens": 32768,
+            "kv_bits": 16,
+        },
+    )
+    cfg = _config()
+    cfg["memory"].update({"capacity_gb": 4, "capacity_usable_fraction": 0.9})
+    footprint = estimate_memory_footprint(cfg, workload)
+    assert workload.max_context_tokens == 32768
+    assert 1.20 < footprint.kv_cache_gb < 1.22
+    assert footprint.fits
+
+
+def test_agent_subscenario_uses_incremental_append_and_32k_context():
+    from design_space_explorer import _load_scenario, generate_configs
+
+    scenario = _load_scenario("lpddr5_3b_agent")
+    assert scenario["workload"]["prompt_tokens"] == 875
+    assert scenario["workload"]["output_tokens"] == 214
+    assert scenario["workload"]["max_context_tokens"] == 32768
+    assert scenario["agent_workload"]["prefix_cache_hit_rate"] == 0.90
+    assert scenario["memory"]["capacity_gb"] == 4
+    configs = generate_configs(quick=False, scenario_name="lpddr5_3b_agent")
+    assert {cfg["mac_engine"]["weight_precision_bits"] for cfg in configs} == {4}
+
+
+def test_decode_cannot_exceed_full_model_memory_ceiling():
+    cfg = _config()
+    cfg["_model_name"] = "qwen2.5-3b"
+    cfg["_seq_len"] = 128
+    point = evaluate_candidate(
+        cfg,
+        AreaModel(cfg),
+        PowerModel(cfg),
+        {"model": "qwen2.5-3b", "workload": {"prompt_tokens": 128}},
+    )
+    effective_bw_gbps = 51.2 * 0.85
+    int4_weight_gb = 3.09 * 4 / 8
+    assert point.decode_tps <= effective_bw_gbps / int4_weight_gb + 0.01

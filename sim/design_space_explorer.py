@@ -15,7 +15,8 @@ sys.path.insert(0, str(Path(__file__).parent))
 from engine.ppa_model import AreaModel, PowerModel, PPA
 from engine.mac_engine import create_engine
 from model_specs import get_spec, all_aliases
-from dse.evaluator import evaluate_candidate, ranking_key, violation_score
+from dse.evaluator import ARC_VERSION, evaluate_candidate, ranking_key, violation_score
+from dse.reporting import build_engine_comparison, print_engine_comparison
 
 import yaml
 
@@ -90,7 +91,17 @@ def _apply_scenario(base: Dict[str, Any], scenario_name: str | None) -> Dict[str
 
     cfg["_scenario_name"] = scenario_name
     cfg["_model_name"] = scenario.get("model", "qwen2.5-3b")
-    cfg["_seq_len"] = int(scenario.get("seq_len", 128))
+    workload = copy.deepcopy(scenario.get("workload", {}))
+    prompt_tokens = int(workload.get("prompt_tokens", scenario.get("seq_len", 128)))
+    workload.setdefault("prompt_tokens", prompt_tokens)
+    workload.setdefault("output_tokens", 128)
+    workload.setdefault("concurrent_requests", 1)
+    workload.setdefault(
+        "decode_batch_size",
+        (workload.get("batching", {}) or {}).get("max_batch_size", 1),
+    )
+    cfg["_seq_len"] = prompt_tokens
+    cfg["_workload"] = workload
     if "process_nm" in scenario:
         cfg.setdefault("area_model", {})["process_node"] = int(scenario["process_nm"])
 
@@ -105,13 +116,19 @@ def _apply_scenario(base: Dict[str, Any], scenario_name: str | None) -> Dict[str
     if "dram_efficiency" in memory:
         cfg.setdefault("memory", {})["dram_efficiency"] = float(memory["dram_efficiency"])
     if "capacity_gb" in memory:
-        cfg["on_chip_memory"] = {
-            "capacity_gb": float(memory["capacity_gb"]),
-            "bandwidth_gbps": float(memory.get("bandwidth_gbps", 0.0)),
-            "bw_per_mm2_gbps": float(memory.get("bw_per_mm2_gbps", 0.0)),
-            "stack_area_mm2": float(memory.get("stack_area_mm2", 0.0)),
-            "stack_power_per_gbps_w": float(memory.get("stack_power_per_gbps_w", 0.015)),
-        }
+        cfg.setdefault("memory", {})["capacity_gb"] = float(memory["capacity_gb"])
+        cfg.setdefault("memory", {})["capacity_usable_fraction"] = float(
+            memory.get("capacity_usable_fraction", 0.90))
+        if memory_type != "on_chip_3d_dram":
+            cfg.pop("on_chip_memory", None)
+        else:
+            cfg["on_chip_memory"] = {
+                "capacity_gb": float(memory["capacity_gb"]),
+                "bandwidth_gbps": float(memory.get("bandwidth_gbps", 0.0)),
+                "bw_per_mm2_gbps": float(memory.get("bw_per_mm2_gbps", 0.0)),
+                "stack_area_mm2": float(memory.get("stack_area_mm2", 0.0)),
+                "stack_power_per_gbps_w": float(memory.get("stack_power_per_gbps_w", 0.015)),
+            }
 
     constraints = scenario.get("constraints", {})
     if constraints:
@@ -642,6 +659,7 @@ def main():
         if args.scenario:
             scenario_copy = _load_scenario(args.scenario) or {}
             scenario_copy["seq_len"] = args.seq_len
+            scenario_copy.setdefault("workload", {})["prompt_tokens"] = args.seq_len
             _CUSTOM_SCENARIOS[args.scenario] = scenario_copy
 
     if args.cv_model and (args.model_spec is not None or args.batch_m is not None or args.scenario is not None):
@@ -681,7 +699,12 @@ def main():
 
     base_cfg = _apply_scenario(_load_base_config(), args.scenario)
     base_cfg["_model_name"] = model_spec
-    base_cfg["_seq_len"] = int(args.seq_len or (scenario or {}).get("seq_len", 128))
+    scenario_workload = (scenario or {}).get("workload", {})
+    base_cfg["_seq_len"] = int(
+        args.seq_len or scenario_workload.get("prompt_tokens", (scenario or {}).get("seq_len", 128)))
+    base_cfg.setdefault("_workload", {})["prompt_tokens"] = base_cfg["_seq_len"]
+    if args.batch_m is not None:
+        base_cfg["_workload"]["decode_batch_size"] = args.batch_m
 
     area_model = AreaModel(base_cfg)
     power_model = PowerModel(base_cfg)
@@ -731,7 +754,18 @@ def main():
     reasonable = sorted(feasible, key=lambda p: ranking_key(p, active_scenario))
     rejected = [r for r in results if not r.constraints_passed]
     closest = sorted(rejected, key=lambda p: violation_score(p, active_scenario))
+    engine_comparison = build_engine_comparison(results, active_scenario)
     print(f"  Constraints: {len(feasible)} passed, {len(rejected)} rejected")
+    if reasonable and not _CV_MODEL:
+        best = reasonable[0]
+        print(
+            f"  Performance: decode={best.decode_tps:.1f} tok/s, "
+            f"aggregate={best.aggregate_tps:.1f} tok/s, "
+            f"prefill={best.prefill_tps:.1f} tok/s, "
+            f"TTFT={best.ttft_ms:.1f}ms, ITL={best.itl_ms:.1f}ms")
+        if best.memory_available_gb > 0:
+            print(f"  Capacity: {best.memory_required_gb:.3f}GB required / "
+                  f"{best.memory_available_gb:.3f}GB usable")
     if not feasible and closest:
         best_effort = closest[0]
         print("  No feasible architecture. Closest candidate: "
@@ -740,8 +774,8 @@ def main():
         for reason in best_effort.failed_reasons:
             print(f"    - {reason}")
 
-    perf_label = "fps" if _CV_MODEL else "tok/s"
-    eff_label = "fps/W" if _CV_MODEL else "tok/W"
+    perf_label = "fps" if _CV_MODEL else "DecTPS"
+    eff_label = "fps/W" if _CV_MODEL else "DecTPS/W"
     cv_extra_header = f" {'SRAM(MB)':>10} {'DW(%)':>8}" if _CV_MODEL else ""
     line_width = 100 if _CV_MODEL else 85
 
@@ -770,15 +804,8 @@ def main():
         print(f"  {p.config_label:<45} {p.tok_s:>7.0f} {p.area_mm2:>6.0f}mm² "
               f"{p.power_w:>6.1f}W {p.efficiency_tok_per_watt:>7.1f}{extra} {pareto_flag}")
 
-    # ── Best feasible point per engine type ──
-    print(f"\n  Best feasible per engine type (scenario objective order):")
-    for eng in ["systolic", "os_systolic", "block", "tensor_core", "wmma", "gmma", "fsa"]:
-        eng_results = [r for r in feasible
-                       if r.config.get("engine") == eng]
-        if eng_results:
-            best = min(eng_results, key=lambda x: ranking_key(x, active_scenario))
-            print(f"    {eng}: {best.tok_s:.0f} {perf_label}, {best.area_mm2:.0f}mm², "
-                  f"{best.power_w:.1f}W — {best.config_label}")
+    # ── Complete per-engine comparison, including closest failed points ──
+    print_engine_comparison(engine_comparison, bool(_CV_MODEL))
 
     # ── Sensitivity Analysis (always run after sweep) ──
     sa = analyze_sensitivity(results)
@@ -839,9 +866,10 @@ def main():
             output = points
         else:
             output = {
-                "arc_version": "v3.1-physics-baseline",
+                "arc_version": ARC_VERSION,
                 "cv_model": _CV_MODEL,
                 "scenario": args.scenario,
+                "scenario_definition": active_scenario,
                 "model_spec": model_spec,
                 "batch_m": batch_m,
                 "total_configs": len(configs),
@@ -852,6 +880,7 @@ def main():
                 "closest_candidates": [p.to_dict() for p in closest[:args.top]],
                 "pareto_frontier": [p.to_dict() for p in pareto],
                 "top_results": [p.to_dict() for p in reasonable[:args.top]],
+                "engine_comparison": engine_comparison,
                 "recommended": reasonable[0].to_dict() if reasonable else None,
             }
         out_path = Path(args.output)

@@ -79,22 +79,6 @@ class MACEngine(ABC):
         """True if all model weights fit in on-chip memory."""
         return self.on_chip_capacity_gb > 0 and self.on_chip_bw > 0
 
-    def _dram_eff_for_bytes(self, transfer_bytes: int) -> float:
-        """DRAM utilization factor for a given transfer size.
-
-        - Small transfers (≤ wbuf) → cached, no DRAM needed
-        - Large transfers → full DRAM read, efficiency depends on buffer ratio
-        Returns 0.0 if fully cached, else [0.55, 0.92] efficiency factor.
-        """
-        if transfer_bytes <= 0:
-            return 1.0
-        wbuf_mb = self.wbuf_kb / 1024.0
-        weight_mb = transfer_bytes / (1024 * 1024.0)
-        if weight_mb <= wbuf_mb:
-            return 0.0  # cached — caller should skip DMA
-        ratio = wbuf_mb / weight_mb
-        return 0.55 + 0.40 * ratio / (0.3 + ratio)
-
     def _kv_dram_efficiency(self, kv_bytes: int) -> float:
         """DRAM efficiency for KV cache reads (uses 40% SRAM buffer)."""
         if kv_bytes <= 0:

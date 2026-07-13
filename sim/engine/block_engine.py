@@ -74,9 +74,9 @@ class BlockEngine(MACEngine):
         elif self.weight_resident:
             weight_cycles = weight_bytes / max(self.eff_bw, 1e-9)
         else:
-            dram_eff = self._dram_eff_for_bytes(weight_bytes)
-            weight_cycles = 0.0 if dram_eff <= 0 else (
-                weight_bytes / max(self.eff_bw * dram_eff, 1e-9))
+            # ``eff_bw`` already includes the scenario-level LPDDR protocol
+            # efficiency. Do not apply a second engine-specific penalty.
+            weight_cycles = weight_bytes / max(self.eff_bw, 1e-9)
         activation_cycles = activation_bytes / max(self.eff_bw, 1e-9)
         total_dma = weight_cycles + activation_cycles
         total_cycles = max(total_compute, total_dma)
@@ -112,9 +112,7 @@ class BlockEngine(MACEngine):
         if self.weight_resident:
             weight_cycles = weight_bytes / max(self.eff_bw, 1e-9)
         else:
-            dram_eff = self._dram_eff_for_bytes(weight_bytes)
-            weight_cycles = 0.0 if dram_eff <= 0 else (
-                weight_bytes / max(self.eff_bw * dram_eff, 1e-9))
+            weight_cycles = weight_bytes / max(self.eff_bw, 1e-9)
         total_dma = weight_cycles + activation_bytes / max(self.eff_bw, 1e-9)
         total_cycles = max(total_compute, total_dma)
         total_macs = 2 * M * K * N

@@ -71,16 +71,13 @@ class FSAEngine(MACEngine):
         # Activations: M×K total, broadcast across N-tiles (read once)
         act_bytes = M * K * self.a_bits // 8
 
-        # SRAM-aware DRAM efficiency
-        dram_eff = self._dram_eff_for_bytes(weight_bytes)
-        if dram_eff <= 0:
-            effective_weight_bytes = 0
-        else:
-            effective_weight_bytes = weight_bytes
-
+        # The scenario-level effective bandwidth already accounts for LPDDR
+        # protocol efficiency. Weight caching must be explicit in the
+        # scheduler rather than inferred from transfer size for one engine.
+        effective_weight_bytes = 0 if weight_preloaded else weight_bytes
         dma_total_bytes = effective_weight_bytes + act_bytes
         dma_cycles = max(
-            dma_total_bytes / (self.eff_bw * max(dram_eff, 0.01)),
+            dma_total_bytes / self.eff_bw,
             compute_cycles * 0.05
         )
 
@@ -104,7 +101,7 @@ class FSAEngine(MACEngine):
                 "pipe_depth": pipe_depth,
                 "engine": "fsa",
                 "inline_softmax": True,
-                "dram_eff": round(dram_eff, 3),
+                "dram_eff": round(self.dram_efficiency, 3),
             },
         )
 
@@ -117,7 +114,7 @@ class FSAEngine(MACEngine):
 
     def estimate_attention(
         self, seq_q: int, seq_kv: int, head_dim: int,
-        num_heads: int = 1, num_kv_heads: int = 1,
+        num_heads: int = 1, num_kv_heads: int = 1, kv_batch_size: int = 1,
     ) -> EngineResult:
         """Full FlashAttention with explicit QK/PV reduction dimensions."""
         qk = self.estimate(seq_q, head_dim, seq_kv)
@@ -130,6 +127,7 @@ class FSAEngine(MACEngine):
         attention_bytes = (
             num_heads * seq_q * head_dim * elem_bytes
             + 2 * num_kv_heads * seq_kv * head_dim * elem_bytes
+            * max(1, kv_batch_size)
         )
         dma_cycles = math.ceil(attention_bytes / max(self.eff_bw, 1e-9))
         total_cycles = max(compute_cycles, dma_cycles)
@@ -149,6 +147,7 @@ class FSAEngine(MACEngine):
                 "seq_q": seq_q, "seq_kv": seq_kv,
                 "head_dim": head_dim, "num_heads": num_heads,
                 "num_kv_heads": num_kv_heads,
+                "kv_batch_size": kv_batch_size,
                 "attention_bytes": attention_bytes,
             },
         )

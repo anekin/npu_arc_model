@@ -12,7 +12,7 @@ import math
 from typing import Any, Dict
 
 from engine.mac_engine import MACEngine, EngineResult
-from engine.block_engine import BROADCAST_SYNC_CYCLES, _accumulate_cycles
+from engine.block_engine import BlockEngine, BROADCAST_SYNC_CYCLES, _accumulate_cycles
 
 
 class OutputStationaryEngine(MACEngine):
@@ -31,7 +31,7 @@ class OutputStationaryEngine(MACEngine):
     def engine_type(self) -> str:
         return "os_systolic"
 
-    def estimate(self, M: int, K: int, N: int,
+    def _legacy_estimate(self, M: int, K: int, N: int,
                  weight_preloaded: bool = False) -> EngineResult:
         """OS GEMM estimate.
 
@@ -89,7 +89,7 @@ class OutputStationaryEngine(MACEngine):
             },
         )
 
-    def estimate_weight_cache_pair(self, M: int, K: int, N: int) -> EngineResult:
+    def _legacy_estimate_weight_cache_pair(self, M: int, K: int, N: int) -> EngineResult:
         """Gate+Up pair with OS weight-cache behavior.
 
         OS keeps output partial sums stationary, so activations can remain in the
@@ -147,3 +147,28 @@ class OutputStationaryEngine(MACEngine):
                 "dataflow": "output_stationary",
             },
         )
+
+    def estimate(self, M: int, K: int, N: int,
+                 weight_preloaded: bool = False) -> EngineResult:
+        """Use the calibrated broadcast roofline shared with BlockEngine.
+
+        At the current architecture-model fidelity, OS and Block use the same
+        H-way K reduction, W output columns, weight traffic and M scaling. A
+        future calibration may split them once RTL measurements justify it.
+        """
+        result = BlockEngine(self.config).estimate(
+            M, K, N, weight_preloaded=weight_preloaded,
+        )
+        result.details.update({
+            "dataflow": "output_stationary",
+            "architecture_stage_equivalence": "block",
+        })
+        return result
+
+    def estimate_weight_cache_pair(self, M: int, K: int, N: int) -> EngineResult:
+        result = BlockEngine(self.config).estimate_weight_cache_pair(M, K, N)
+        result.details.update({
+            "dataflow": "output_stationary",
+            "architecture_stage_equivalence": "block",
+        })
+        return result

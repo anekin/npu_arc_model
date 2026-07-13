@@ -71,12 +71,12 @@ class GMMAEngine(MACEngine):
         total_weight_bytes = K * N * self.w_bits // 8
         act_bytes = M * K * self.a_bits // 8
 
-        # SRAM efficiency
-        weight_dram_eff = self._dram_eff_for_bytes(total_weight_bytes)
-        if weight_dram_eff <= 0:
-            weight_dma_cycles = 0
-        else:
-            weight_dma_cycles = total_weight_bytes / (self.eff_bw * weight_dram_eff)
+        # ``eff_bw`` already contains the scenario-level LPDDR efficiency.
+        # Apply it once and model caching only through explicit preload state.
+        weight_dma_cycles = (
+            0 if weight_preloaded
+            else total_weight_bytes / self.eff_bw
+        )
 
         act_dma_cycles = act_bytes / self.eff_bw
         total_dma = weight_dma_cycles + act_dma_cycles
@@ -109,7 +109,7 @@ class GMMAEngine(MACEngine):
                 "K_tiles": K_tiles, "N_tiles": N_tiles,
                 "per_tile_compute": per_tile_compute,
                 "tma_overlap": self.TMA_OVERLAP,
-                "weight_dram_eff": round(weight_dram_eff, 3),
+                "weight_dram_eff": round(self.dram_efficiency, 3),
             },
         )
 

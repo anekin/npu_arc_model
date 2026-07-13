@@ -47,7 +47,7 @@ CRITICAL_FIELDS = {
         "why": "Drives minimum TOPS requirement. 200ms is typical for interactive use.",
         "impact": "High — tighter TTFT = more TOPS = larger die.",
         "default": 200,
-        "validate": lambda v: isinstance(v, (int, float)) and 0 < v < 5000,
+        "validate": lambda v: isinstance(v, (int, float)) and v > 0,
     },
     "tps_min": {
         "question": "What is the minimum acceptable decode throughput (tok/s)?",
@@ -268,7 +268,7 @@ def _estimate_min_tops(params_b: float, seq_len: int, constraints: Dict) -> floa
 
 def _load_scenarios() -> Dict:
     path = SIM_DIR / "config" / "scenarios.yaml"
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         return yaml.safe_load(f)
 
 def list_scenarios() -> List[str]:

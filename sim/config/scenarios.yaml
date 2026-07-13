@@ -6,21 +6,37 @@ scenarios:
   lpddr5_3b:
     description: "LPDDR5-64b + 3B 端侧低成本"
     model: "qwen2.5-3b"
-    model_params_gb: 1.5
+    model_params_gb: 1.545
     seq_len: 128
-    ttft_ms_max: 200
+    ttft_ms_target: 500
+    ttft_ms_max: 1000
     tps_min: 20
     process_nm: 12
+    workload:
+      prompt_tokens: 128
+      output_tokens: 128
+      concurrent_requests: 1
+      decode_batch_size: 1
+      activation_bits: 8
+      kv_bits: 16
     memory:
       type: lpddr5
       bandwidth_gbps: 51.2
       dram_efficiency: 0.85
-      effective_bw_gbps: 43.5
+      effective_bw_gbps: 43.52
+      efficiency_corners: [0.75, 0.85, 0.90]
     constraints:
-      ttft_ms_max: 200
+      ttft_ms_max: 1000
       tps_min: 20
       area_mm2_max: 80
+    targets:
+      ttft_ms_max: 500
+    tie_breakers:
+      engine_preference: [block, os_systolic]
     objectives: [area_mm2, power_w, -tok_s]
+    search_space:
+      arrays: [[32, 32], [32, 64], [64, 64], [64, 128], [96, 96], [64, 256], [128, 128], [192, 128], [128, 256], [256, 256]]
+      weight_precision_bits: [4]
     components:
       required: [dram_phy, pcie]
       excluded: [tsv]
@@ -30,6 +46,51 @@ scenarios:
         area_mm2: 8
         tops_int8: 35
         note: "Apple A18 ANE / Snapdragon 8 Gen3 NPU"
+  lpddr5_3b_agent:
+    description: "LPDDR5-64b + 3B low-cost local agent workload"
+    model: "qwen2.5-3b"
+    model_params_gb: 1.545
+    seq_len: 875
+    ttft_ms_target: 2000
+    ttft_ms_max: 5000
+    tps_min: 20
+    process_nm: 12
+    agent_workload:
+      representative_steps: 16
+      prefix_cache_hit_rate: 0.90
+      stress_append_tokens: 10000
+    workload:
+      prompt_tokens: 875
+      output_tokens: 214
+      max_context_tokens: 32768
+      concurrent_requests: 1
+      decode_batch_size: 1
+      activation_bits: 8
+      kv_bits: 16
+    memory:
+      type: lpddr5
+      capacity_gb: 4
+      capacity_usable_fraction: 0.90
+      bandwidth_gbps: 51.2
+      dram_efficiency: 0.85
+      effective_bw_gbps: 43.52
+      efficiency_corners: [0.75, 0.85, 0.90]
+    constraints:
+      ttft_ms_max: 5000
+      tps_min: 20
+      area_mm2_max: 80
+    targets:
+      ttft_ms_max: 2000
+      prefill_tps_min: 500
+    objectives: [area_mm2, power_w, -tok_s]
+    tie_breakers:
+      engine_preference: [block, os_systolic]
+    search_space:
+      arrays: [[32, 32], [32, 64], [64, 64], [64, 128], [96, 96], [64, 256], [128, 128], [192, 128], [128, 256], [256, 256]]
+      weight_precision_bits: [4]
+    components:
+      required: [dram_phy, pcie]
+      excluded: [tsv]
 
   onchip_7b:
     description: "On-chip 3D DRAM + 7B 高端端侧 (VLM/VLA)"

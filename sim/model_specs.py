@@ -13,6 +13,8 @@ class ModelSpec:
     head_dim: int = 128
     model_type: str = "llm"
     cv_trace_module: str | None = None
+    parameters_b: float = 0.0
+    vocab_size: int = 0
 
     def __getitem__(self, idx: int):
         """Preserve legacy tuple access: (qkv, hidden, intermediate, layers, num_heads, kv_heads)."""
@@ -24,11 +26,11 @@ class ModelSpec:
 
 
 MODELS = {
-    "qwen2.5-1.5b": ModelSpec("qwen2.5-1.5b", 1536, 1536, 8960, 28, 12, 2, head_dim=128),
-    "qwen2.5-3b":   ModelSpec("qwen2.5-3b",   2048, 2048, 11008, 36, 16, 16, head_dim=128),
-    "qwen2.5-7b":   ModelSpec("qwen2.5-7b",   3584, 3584, 18944, 28, 28, 4, head_dim=128),
-    "qwen3-8b":     ModelSpec("qwen3-8b",     4096, 4096, 12288, 32, 32, 4, head_dim=128),
-    "gemma-4-12b":  ModelSpec("gemma-4-12b",  4096, 4096, 16384, 40, 16, 8, head_dim=256),
+    "qwen2.5-1.5b": ModelSpec("qwen2.5-1.5b", 1536, 1536, 8960, 28, 12, 2, head_dim=128, parameters_b=1.54, vocab_size=151936),
+    "qwen2.5-3b":   ModelSpec("qwen2.5-3b",   2048, 2048, 11008, 36, 16, 2, head_dim=128, parameters_b=3.09, vocab_size=151936),
+    "qwen2.5-7b":   ModelSpec("qwen2.5-7b",   3584, 3584, 18944, 28, 28, 4, head_dim=128, parameters_b=7.62, vocab_size=152064),
+    "qwen3-8b":     ModelSpec("qwen3-8b",     4096, 4096, 12288, 32, 32, 4, head_dim=128, parameters_b=8.20, vocab_size=151936),
+    "gemma-4-12b":  ModelSpec("gemma-4-12b",  4096, 4096, 16384, 40, 16, 8, head_dim=256, parameters_b=12.0, vocab_size=262144),
     "mobilenetv3":  ModelSpec("mobilenetv3",  0, 0, 0, 0, 0, 0, head_dim=0,
                               model_type="cv", cv_trace_module="sim.cv.cv_trace"),
     "resnet18":     ModelSpec("resnet18",     0, 0, 0, 0, 0, 0, head_dim=0,
