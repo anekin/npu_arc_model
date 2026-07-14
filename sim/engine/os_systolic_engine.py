@@ -1,174 +1,164 @@
-"""Output-Stationary Engine — Gemmini 风格
+"""Output-stationary systolic-array analytical model.
 
-参考: Gemmini (UC Berkeley), "Architectural Insights: Comparing WS and OS" (IEEE 2024)
+The array rows and columns map the output matrix M and N dimensions.  Each PE
+keeps one output partial sum while K is accumulated temporally.  This differs
+from BlockEngine, which maps array rows onto the K reduction dimension and
+serializes M.
 
-Output-stationary: 每个 PE 持有一个输出元素，权重和激活流动后累加。
-与 WS-Systolic 不同，OS 没有 diagonal pipeline fill/drain；但每个 tile 仍需
-广播同步（fan-out + PE latch enable）和累加/归约周期，不是理想化的零周期。
-面积代价：每个 PE 带完整 accumulator + 双缓冲，约 4× 同规模 systolic。
+The cycle model follows the standard systolic wavefront for an active
+rows-by-columns output tile:
+
+    K + active_rows + active_columns - 2
+
+A small configurable control cost covers preload/flush sequencing.  External
+memory traffic remains a logical GEMM roofline (A and B once); detailed
+scratchpad-bank conflicts and transposer stalls require future RTL calibration.
+
+References:
+- Gemmini, arXiv:1911.09925, sections 2.1-2.3
+- SCALE-Sim, arXiv:1811.02883
 """
 
 import math
-from typing import Any, Dict
+from typing import Any, Dict, Tuple
 
-from engine.mac_engine import MACEngine, EngineResult
-from engine.block_engine import BlockEngine, BROADCAST_SYNC_CYCLES, _accumulate_cycles
+from engine.mac_engine import EngineResult, MACEngine
 
 
 class OutputStationaryEngine(MACEngine):
-    """Output-stationary systolic array — Gemmini 风格.
+    """Gemmini-style output-stationary systolic array."""
 
-    每个 PE 持有一个 output element (M,N)。
-    权重和激活流入后，在 PE 内累加为部分和。
-
-    对 M=1 decode:
-      - 无 WS 的 fill/drain 开销
-      - 但每 tile 仍需 broadcast-sync + accumulate 周期
-      - DMA 模型与 BlockEngine 相同
-    """
+    def _parse_config(self, config: Dict[str, Any]):
+        super()._parse_config(config)
+        mac = config.get("mac_engine", config.get("mxu", {}))
+        self.tile_control_cycles = int(mac.get("os_tile_control_cycles", 2))
+        if self.tile_control_cycles < 0:
+            raise ValueError("os_tile_control_cycles must be non-negative")
 
     @property
     def engine_type(self) -> str:
         return "os_systolic"
 
-    def _legacy_estimate(self, M: int, K: int, N: int,
-                 weight_preloaded: bool = False) -> EngineResult:
-        """OS GEMM estimate.
+    def _compute_schedule(
+        self, M: int, K: int, N: int,
+    ) -> Tuple[int, int, int, int]:
+        """Return compute cycles, M tiles, N tiles and wavefront-only cycles."""
+        if min(M, K, N) <= 0:
+            raise ValueError("OS GEMM dimensions must be positive")
 
-        Tiling 与 BlockEngine 对齐：
-          - K 维度切成 K_tiles = ceil(K / H)
-          - N 维度切成 N_tiles = ceil(N / W)
-          - 每 tile 加载 H×W 权重 + M×H 激活
+        m_tiles = math.ceil(M / self.H)
+        n_tiles = math.ceil(N / self.W)
+        wavefront_cycles = 0
 
-        Compute 模型：
-          - 无 diagonal pipeline fill/drain
-          - 但每 tile 支付 broadcast_sync + accumulate/reduction 周期
-        """
-        K_tiles = math.ceil(K / self.H)
-        N_tiles = math.ceil(N / self.W)
-        total_tiles = K_tiles * N_tiles
+        for m_index in range(m_tiles):
+            active_rows = min(self.H, M - m_index * self.H)
+            for n_index in range(n_tiles):
+                active_columns = min(self.W, N - n_index * self.W)
+                wavefront_cycles += K + active_rows + active_columns - 2
 
-        # Per-tile data movement (identical DMA model to BlockEngine)
-        tile_weight_bytes = math.ceil(self.H * self.W * self.w_bits / 8)
-        tile_act_bytes = math.ceil(M * self.H * self.a_bits / 8)
-        per_tile_dma = (tile_weight_bytes + tile_act_bytes) / self.eff_bw
+        num_tiles = m_tiles * n_tiles
+        compute_cycles = (
+            wavefront_cycles + num_tiles * self.tile_control_cycles
+        )
+        return compute_cycles, m_tiles, n_tiles, wavefront_cycles
 
-        # Per-tile compute: realistic broadcast-sync + accumulate latency
-        per_tile_compute = BROADCAST_SYNC_CYCLES + \
-            _accumulate_cycles(self.w_bits, self.a_bits)
+    def estimate(
+        self,
+        M: int,
+        K: int,
+        N: int,
+        weight_preloaded: bool = False,
+    ) -> EngineResult:
+        """Estimate one GEMM with M/N spatial and K temporal mapping."""
+        compute_cycles, m_tiles, n_tiles, wavefront_cycles = (
+            self._compute_schedule(M, K, N)
+        )
 
-        # Double-buffering between DMA and compute
-        bottleneck = max(per_tile_compute, per_tile_dma)
-        first_cold = per_tile_dma + per_tile_compute
-
-        if total_tiles > 1:
-            total = int(first_cold + (total_tiles - 1) * bottleneck)
-        else:
-            total = int(first_cold)
-
+        weight_bytes = math.ceil(K * N * self.w_bits / 8)
+        activation_bytes = math.ceil(M * K * self.a_bits / 8)
+        transferred_weight_bytes = 0 if weight_preloaded else weight_bytes
+        dma_bytes = transferred_weight_bytes + activation_bytes
+        dma_cycles = math.ceil(dma_bytes / max(self.eff_bw, 1e-9))
+        total_cycles = max(compute_cycles, dma_cycles)
         total_macs = M * K * N
-        total_weight_bytes = total_tiles * (tile_weight_bytes + tile_act_bytes)
-        ideal = math.ceil(total_macs / self.peak_macs_per_cycle)
-        util = ideal / total if total > 0 else 0.0
+        num_tiles = m_tiles * n_tiles
 
         return EngineResult(
-            compute_cycles=int(per_tile_compute * total_tiles),
-            dma_cycles=int(total - per_tile_compute * total_tiles),
-            total_cycles=total,
-            utilization=util,
-            ops=total_macs,
-            num_tiles=total_tiles,
-            weight_bytes=total_weight_bytes,
-            bottleneck="dma" if per_tile_dma > per_tile_compute else "compute",
+            compute_cycles=compute_cycles,
+            dma_cycles=dma_cycles,
+            total_cycles=total_cycles,
+            utilization=min(
+                1.0,
+                total_macs / max(self.H * self.W * total_cycles, 1),
+            ),
+            ops=total_macs * self.ops_per_mac,
+            num_tiles=num_tiles,
+            weight_bytes=weight_bytes,
+            bottleneck="compute" if compute_cycles >= dma_cycles else "dma",
             details={
-                "K_tiles": K_tiles, "N_tiles": N_tiles,
-                "per_tile_dma": round(per_tile_dma, 1),
-                "per_tile_compute": per_tile_compute,
-                "broadcast_sync": BROADCAST_SYNC_CYCLES,
                 "dataflow": "output_stationary",
+                "mapping": "M_by_N_spatial_K_temporal",
+                "M_tiles": m_tiles,
+                "N_tiles": n_tiles,
+                "K_accumulation_cycles": K,
+                "K_streaming_assumption": "continuous_partial_sum_residency",
+                "wavefront_cycles": wavefront_cycles,
+                "tile_control_cycles": self.tile_control_cycles,
+                "transposer": "pipelined_A_input",
+                "output_partial_sum_location": "PE_accumulator",
+                "weight_bytes": weight_bytes,
+                "weight_transfer_bytes": transferred_weight_bytes,
+                "activation_bytes": activation_bytes,
+                "weight_preloaded": weight_preloaded,
+                "roofline_overlap": True,
             },
         )
 
-    def _legacy_estimate_weight_cache_pair(self, M: int, K: int, N: int) -> EngineResult:
-        """Gate+Up pair with OS weight-cache behavior.
+    def estimate_weight_cache_pair(
+        self, M: int, K: int, N: int,
+    ) -> EngineResult:
+        """Estimate Gate+Up as two OS outputs with shared activation fetch.
 
-        OS keeps output partial sums stationary, so activations can remain in the
-        PE array while gate and up weight tiles are streamed through. The pair
-        loads both gate and up weights but only one activation per tile, then
-        performs two accumulations back-to-back.
-
-        This is *not* the same as WS weight-cache savings (PE dual weight
-        registers); it is an activation-reuse benefit.
+        OS does not use BlockEngine's dual-weight register mechanism.  The two
+        output matrices require separate wavefronts and PE accumulations, while
+        the common activation matrix may remain in the scratchpad.
         """
-        K_tiles = math.ceil(K / self.H)
-        N_tiles = math.ceil(N / self.W)
-        total_tiles = K_tiles * N_tiles
-
-        tile_weight_bytes = math.ceil(self.H * self.W * self.w_bits / 8)
-        tile_act_bytes = math.ceil(M * self.H * self.a_bits / 8)
-
-        # Both gate and up weights, but one activation tile.
-        dual_weight_bytes = 2 * tile_weight_bytes
-        per_tile_dma = (dual_weight_bytes + tile_act_bytes) / self.eff_bw
-
-        # Two accumulations per tile.
-        per_tile_compute = 2 * (BROADCAST_SYNC_CYCLES +
-                                _accumulate_cycles(self.w_bits, self.a_bits))
-
-        bottleneck = max(per_tile_compute, per_tile_dma)
-        first_cold = per_tile_dma + per_tile_compute
-
-        if total_tiles > 1:
-            total = int(first_cold + (total_tiles - 1) * bottleneck)
-        else:
-            total = int(first_cold)
-
-        total_macs = M * K * N * 2
-        total_weight_bytes = total_tiles * (dual_weight_bytes + tile_act_bytes)
-        ideal = math.ceil(total_macs / self.peak_macs_per_cycle)
-        util = ideal / total if total > 0 else 0.0
-
-        activation_savings = total_tiles * tile_act_bytes / self.eff_bw
+        single_compute, m_tiles, n_tiles, wavefront_cycles = (
+            self._compute_schedule(M, K, N)
+        )
+        compute_cycles = 2 * single_compute
+        one_weight_bytes = math.ceil(K * N * self.w_bits / 8)
+        weight_bytes = 2 * one_weight_bytes
+        activation_bytes = math.ceil(M * K * self.a_bits / 8)
+        dma_bytes = weight_bytes + activation_bytes
+        dma_cycles = math.ceil(dma_bytes / max(self.eff_bw, 1e-9))
+        total_cycles = max(compute_cycles, dma_cycles)
+        total_macs = 2 * M * K * N
+        num_tiles = 2 * m_tiles * n_tiles
 
         return EngineResult(
-            compute_cycles=int(per_tile_compute * total_tiles),
-            dma_cycles=int(total - per_tile_compute * total_tiles),
-            total_cycles=total,
-            utilization=util,
-            ops=total_macs,
-            num_tiles=total_tiles,
-            weight_bytes=total_weight_bytes,
-            bottleneck="dma" if per_tile_dma > per_tile_compute else "compute",
+            compute_cycles=compute_cycles,
+            dma_cycles=dma_cycles,
+            total_cycles=total_cycles,
+            utilization=min(
+                1.0,
+                total_macs / max(self.H * self.W * total_cycles, 1),
+            ),
+            ops=total_macs * self.ops_per_mac,
+            num_tiles=num_tiles,
+            weight_bytes=weight_bytes,
+            bottleneck="compute" if compute_cycles >= dma_cycles else "dma",
             details={
-                "K_tiles": K_tiles, "N_tiles": N_tiles,
-                "per_tile_dma": round(per_tile_dma, 1),
-                "per_tile_compute": per_tile_compute,
-                "activation_reuse_savings": int(activation_savings),
                 "dataflow": "output_stationary",
+                "mapping": "M_by_N_spatial_K_temporal",
+                "M_tiles": m_tiles,
+                "N_tiles": n_tiles,
+                "wavefront_cycles_per_output": wavefront_cycles,
+                "tile_control_cycles": self.tile_control_cycles,
+                "shared_activation": True,
+                "weight_cache_mechanism": "scratchpad_activation_reuse",
+                "weight_bytes": weight_bytes,
+                "activation_bytes": activation_bytes,
+                "roofline_overlap": True,
             },
         )
-
-    def estimate(self, M: int, K: int, N: int,
-                 weight_preloaded: bool = False) -> EngineResult:
-        """Use the calibrated broadcast roofline shared with BlockEngine.
-
-        At the current architecture-model fidelity, OS and Block use the same
-        H-way K reduction, W output columns, weight traffic and M scaling. A
-        future calibration may split them once RTL measurements justify it.
-        """
-        result = BlockEngine(self.config).estimate(
-            M, K, N, weight_preloaded=weight_preloaded,
-        )
-        result.details.update({
-            "dataflow": "output_stationary",
-            "architecture_stage_equivalence": "block",
-        })
-        return result
-
-    def estimate_weight_cache_pair(self, M: int, K: int, N: int) -> EngineResult:
-        result = BlockEngine(self.config).estimate_weight_cache_pair(M, K, N)
-        result.details.update({
-            "dataflow": "output_stationary",
-            "architecture_stage_equivalence": "block",
-        })
-        return result

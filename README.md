@@ -111,6 +111,7 @@ DSE 先执行硬约束过滤，再优先选择满足 `targets` 的候选，最�
 - 物理带宽统一以 GB/s 输入，并按候选频率换算为 bytes/cycle。
 - Decode 与 Prefill 分开建模。
 - Attention 显式计入 QK、Softmax、PV 和 KV 流量，并区分 append 长度、cached prefix、容量上限与 attention 精度。
+- OS Systolic 使用独立的 M×N 空间映射、K 时间累加 wavefront 模型；不再复用 Block 周期，分析结果会标记尚未校准的 transposer、SRAM bank conflict 与 RTL timing。
 - 原始 FSA 使用上游 RTL 调度作论文参考外推，只作为研究候选。
 - `block_fused_attention` 与 `os_systolic_fused_attention` 在现有 Block/OS 上引入 FSA 启发的融合 Attention；Projection/FFN 复用各自基线，融合周期和增量 PPA 在 RTL 校准前保持研究门控。
 - On-chip memory 带宽与逻辑 die 面积耦合。

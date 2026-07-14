@@ -1,5 +1,7 @@
 # FSA 启发的融合 Attention 架构候选与 DSE 对比
 
+> **历史 v3.4 报告：** 本版本的 `os_systolic` 性能模型直接复用 Block，因此 Block/OS 对比无效。修正后的独立 OS 建模和 DSE 结论见 `reports/os-dataflow-v35-dse-2026-07-14.md`。
+
 日期：2026-07-14  
 Arc Model：v3.4-fused-attention-candidates  
 场景：lpddr5_3b、lpddr5_3b_agent

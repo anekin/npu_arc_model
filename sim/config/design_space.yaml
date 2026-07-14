@@ -14,6 +14,7 @@ mac_engine:
   dataflow: weight_stationary  # weight_stationary | output_stationary (systolic only)
   double_buffer: true
   ops_per_mac: 2
+  os_tile_control_cycles: 2  # OS tile preload/flush control; wavefront uses K+Mtile+Ntile-2
 
 # ── 存储层次 ──
 memory:

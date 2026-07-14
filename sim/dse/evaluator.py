@@ -21,7 +21,7 @@ from engine.mac_engine import create_engine
 from models.sfu import SFUModel
 from models.vector import VectorModel
 
-ARC_VERSION = "v3.4-fused-attention-candidates"
+ARC_VERSION = "v3.5-os-dataflow"
 
 
 def _hash(value: Any) -> str:
@@ -297,6 +297,24 @@ def evaluate_candidate(config, area_model, power_model, scenario=None) -> DSEPoi
     }
     constraint_result = evaluate_constraints(metrics, scenario_payload)
     result_warnings = list(constraint_result.warnings)
+    constraints_cfg = scenario_payload.get("constraints", {}) or {}
+    tps_min = float(constraints_cfg.get("tps_min", 0.0))
+    if (
+        constraint_result.passed
+        and tps_min > 0
+        and decode_tps < 1.05 * tps_min
+    ):
+        margin_pct = 100.0 * (decode_tps / tps_min - 1.0)
+        result_warnings.append(
+            f"decode TPS margin is only {margin_pct:.2f}% above the hard minimum"
+        )
+    if engine_type in {"os_systolic", "os_systolic_fused_attention"}:
+        result_warnings.append(
+            "OS uses an analytical MxN-spatial/K-temporal wavefront model; "
+            "transposer backpressure, scratchpad bank conflicts, K-stream chunking, "
+            "and RTL timing "
+            "remain uncalibrated"
+        )
     recommendation_eligible = True
     fused_candidates = {
         "block_fused_attention",
@@ -432,6 +450,8 @@ def evaluate_candidate(config, area_model, power_model, scenario=None) -> DSEPoi
                 "paper_extrapolation" if engine_type == "fsa"
                 else "fsa_inspired_analytical"
                 if engine_type in fused_candidates
+                else "dataflow_analytical"
+                if engine_type == "os_systolic"
                 else "architecture_stage"
             ),
             "recommendation_eligible": recommendation_eligible,

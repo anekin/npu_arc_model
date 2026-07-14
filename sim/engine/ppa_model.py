@@ -60,7 +60,7 @@ class AreaModel:
         # PE array
         engine_area_map = {
             "systolic": self.systolic_pe_baseline,
-            "os_systolic": self.block_pe_baseline,
+            "os_systolic": self.os_pe_baseline,
             "block": self.block_pe_baseline,
             "block_fused_attention": self.block_fused_pe_baseline,
             "os_systolic_fused_attention": self.os_fused_pe_baseline,
@@ -150,7 +150,7 @@ class PowerModel:
         # Logic power
         engine_area_map = {
             "systolic": area_model.systolic_pe_baseline,
-            "os_systolic": area_model.block_pe_baseline,
+            "os_systolic": area_model.os_pe_baseline,
             "block": area_model.block_pe_baseline,
             "block_fused_attention": area_model.block_fused_pe_baseline,
             "os_systolic_fused_attention": area_model.os_fused_pe_baseline,

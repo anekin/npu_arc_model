@@ -286,7 +286,7 @@ def generate_configs(quick: bool = False, scenario_name: str | None = None,
     # application-requirements YAML.
     if quick:
         engines = [
-            "systolic", "block", "block_fused_attention",
+            "systolic", "os_systolic", "block", "block_fused_attention",
             "os_systolic_fused_attention", "gmma",
         ]
     else:

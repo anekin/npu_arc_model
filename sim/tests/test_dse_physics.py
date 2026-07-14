@@ -1,4 +1,5 @@
 import copy
+import math
 
 from dse.constraints import evaluate_constraints
 from dse.evaluator import evaluate_candidate, estimate_layer
@@ -201,8 +202,7 @@ def test_new_performance_constraints_are_enforced():
     assert len(result.failed_reasons) == 4
 
 
-def test_os_and_block_share_architecture_stage_roofline():
-    """Do not let an uncalibrated M-tiling asymmetry choose the engine."""
+def test_os_and_block_have_distinct_dataflow_scaling():
     base = _config()
     base["mac_engine"].update({
         "array_height": 64,
@@ -210,12 +210,52 @@ def test_os_and_block_share_architecture_stage_roofline():
         "frequency_mhz": 1000,
         "weight_precision_bits": 4,
     })
+
+    results = {}
     for m_dim in (1, 128):
-        cycles = {}
+        results[m_dim] = {}
         for engine_type in ("block", "os_systolic"):
             cfg = copy.deepcopy(base)
             cfg["mac_engine"]["type"] = engine_type
-            cycles[engine_type] = create_engine(cfg).estimate(m_dim, 2048, 2048)
+            results[m_dim][engine_type] = create_engine(cfg).estimate(
+                m_dim, 2048, 2048,
+            )
+
+    # Block maps H onto the K reduction and is efficient for M=1 decode.
+    assert results[1]["block"].total_cycles < results[1]["os_systolic"].total_cycles
+    # OS maps H onto M and amortizes K across a full prefill tile.
+    assert results[128]["os_systolic"].total_cycles < results[128]["block"].total_cycles
+
+    os_decode = results[1]["os_systolic"]
+    assert os_decode.details["mapping"] == "M_by_N_spatial_K_temporal"
+    assert os_decode.details["M_tiles"] == 1
+    assert os_decode.compute_cycles >= math.ceil(1 * 2048 * 2048 / (64 * 64))
+
+
+def test_os_ppa_uses_independent_area_baseline():
+    block_cfg = _config(engine="block")
+    block_cfg["area_model"].update({
+        "block_pe_area_mm2": 4.0,
+        "os_pe_area_mm2": 3.0,
+    })
+    os_cfg = copy.deepcopy(block_cfg)
+    os_cfg["mac_engine"]["type"] = "os_systolic"
+
+    block_area = AreaModel(block_cfg).estimate(block_cfg, "block")["total_mm2"]
+    os_area = AreaModel(os_cfg).estimate(os_cfg, "os_systolic")["total_mm2"]
+    assert os_area < block_area
+
+
+def test_os_point_records_analytical_calibration():
+    cfg = _config(engine="os_systolic")
+    point = evaluate_candidate(
+        cfg,
+        AreaModel(cfg),
+        PowerModel(cfg),
+        {"model": "qwen2.5-3b", "workload": {"prompt_tokens": 128}},
+    )
+    assert point.provenance["calibration_tier"] == "dataflow_analytical"
+    assert any("OS uses an analytical" in warning for warning in point.warnings)
 
 
 def test_qwen25_3b_official_gqa_and_32k_kv_capacity():
@@ -390,6 +430,30 @@ def test_fused_attention_reduces_agent_prefill_without_changing_context():
     assert attention["inline_softmax"]
     assert attention["external_softmax_cycles"] == 0
     assert attention["query_position_offset_required"]
+
+
+def test_fused_os_and_block_preserve_distinct_dataflows():
+    workload = load_workload(
+        "qwen2.5-3b",
+        875,
+        {
+            "cached_prefix_tokens": 30000,
+            "max_context_tokens": 32768,
+            "attention_bits": 16,
+            "causal_attention": True,
+        },
+    )
+    block_fused = estimate_layer(
+        _config(engine="block_fused_attention"), workload, "prefill",
+    )
+    os_fused = estimate_layer(
+        _config(engine="os_systolic_fused_attention"), workload, "prefill",
+    )
+    assert os_fused.total_cycles < block_fused.total_cycles
+    assert (
+        os_fused.details["attention"]["projection_engine"]
+        == "os_systolic"
+    )
 
 
 def test_fused_attention_has_incremental_area_over_its_baseline():
