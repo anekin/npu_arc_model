@@ -29,7 +29,9 @@ class AreaModel:
         self.tensor_core_pe_baseline = float(am.get("tc_pe_area_mm2", 4.0)) * self.node_scale          # TC ≈ block
         self.wmma_pe_baseline        = float(am.get("wmma_pe_area_mm2", 6.0)) * self.node_scale        # ~1.5× block (warp-level control)
         self.gmma_pe_baseline        = float(am.get("gmma_pe_area_mm2", 7.0)) * self.node_scale        # ~1.75× block (async copy + TMA)
-        self.fsa_pe_baseline         = float(am.get("fsa_pe_area_mm2", 2.2)) * self.node_scale         # 1.1× systolic (CMP + Split overhead)
+        self.fsa_pe_baseline         = float(am.get("fsa_pe_area_mm2", 2.24)) * self.node_scale        # paper: +12% array only
+        self.block_fused_pe_baseline = float(am.get("block_fused_attention_pe_area_mm2", 4.24)) * self.node_scale
+        self.os_fused_pe_baseline    = float(am.get("os_fused_attention_pe_area_mm2", 4.24)) * self.node_scale
         self.sfu = float(am.get("sfu_area_mm2", 1.5)) * self.node_scale
         self.l1_per_kb = float(am.get("l1_sram_per_kb_mm2", 0.002)) * self.node_scale
         self.l2_per_kb = float(am.get("l2_sram_per_kb_mm2", 0.0015)) * self.node_scale
@@ -60,6 +62,8 @@ class AreaModel:
             "systolic": self.systolic_pe_baseline,
             "os_systolic": self.block_pe_baseline,
             "block": self.block_pe_baseline,
+            "block_fused_attention": self.block_fused_pe_baseline,
+            "os_systolic_fused_attention": self.os_fused_pe_baseline,
             "tensor_core": self.tensor_core_pe_baseline,
             "wmma": self.wmma_pe_baseline,
             "gmma": self.gmma_pe_baseline,
@@ -148,6 +152,8 @@ class PowerModel:
             "systolic": area_model.systolic_pe_baseline,
             "os_systolic": area_model.block_pe_baseline,
             "block": area_model.block_pe_baseline,
+            "block_fused_attention": area_model.block_fused_pe_baseline,
+            "os_systolic_fused_attention": area_model.os_fused_pe_baseline,
             "tensor_core": area_model.tensor_core_pe_baseline,
             "wmma": area_model.wmma_pe_baseline,
             "gmma": area_model.gmma_pe_baseline,

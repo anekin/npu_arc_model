@@ -23,6 +23,9 @@ class WorkloadSpec:
     runtime_reserve_mb: float = 256.0
     parameters_b: float = 0.0
     context_window_tokens: int = 0
+    cached_prefix_tokens: int = 0
+    attention_bits: int = 16
+    causal_attention: bool = True
     vocab_size: int = 0
 
     @property
@@ -31,9 +34,26 @@ class WorkloadSpec:
         return self.seq_len
 
     @property
+    def prefill_context_tokens(self) -> int:
+        """K/V length seen by the incremental prefill query rows."""
+        return self.cached_prefix_tokens + self.prompt_tokens
+
+    @property
+    def decode_context_tokens(self) -> int:
+        """Initial K/V length seen by the first generated token."""
+        return self.prefill_context_tokens
+
+    @property
     def max_context_tokens(self) -> int:
-        active = self.prompt_tokens + self.output_tokens
+        active = self.prefill_context_tokens + self.output_tokens
         return max(active, self.context_window_tokens)
+
+    @property
+    def causal_prefill_compute_context_tokens(self) -> int:
+        """Equivalent visible K/V length for causal append compute."""
+        if not self.causal_attention:
+            return self.prefill_context_tokens
+        return self.cached_prefix_tokens + (self.prompt_tokens + 2) // 2
 
 
 @dataclass
@@ -62,6 +82,7 @@ class LayerEstimate:
     sfu_cycles: int = 0
     kv_cycles: int = 0
     transferred_bytes: int = 0
+    details: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, int]:
         return asdict(self)
@@ -104,6 +125,7 @@ class DSEPoint:
     memory_margin_gb: float = 0.0
     memory_fits: bool = True
     constraints_passed: bool = True
+    recommendation_eligible: bool = True
     failed_reasons: List[str] = field(default_factory=list)
     warnings: List[str] = field(default_factory=list)
     breakdown: Dict[str, Any] = field(default_factory=dict)

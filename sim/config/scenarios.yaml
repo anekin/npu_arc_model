@@ -18,7 +18,9 @@ scenarios:
       concurrent_requests: 1
       decode_batch_size: 1
       activation_bits: 8
+      attention_bits: 16
       kv_bits: 16
+      causal_attention: true
     memory:
       type: lpddr5
       bandwidth_gbps: 51.2
@@ -62,11 +64,14 @@ scenarios:
     workload:
       prompt_tokens: 875
       output_tokens: 214
+      cached_prefix_tokens: 30000
       max_context_tokens: 32768
       concurrent_requests: 1
       decode_batch_size: 1
       activation_bits: 8
+      attention_bits: 16
       kv_bits: 16
+      causal_attention: true
     memory:
       type: lpddr5
       capacity_gb: 4

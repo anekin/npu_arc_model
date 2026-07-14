@@ -135,6 +135,12 @@ def create_engine(config: Dict[str, Any]) -> MACEngine:
     elif engine_type == "gmma":
         from engine.gmma_engine import GMMAEngine
         return GMMAEngine(config)
+    elif engine_type == "block_fused_attention":
+        from engine.fused_attention_engine import BlockFusedAttentionEngine
+        return BlockFusedAttentionEngine(config)
+    elif engine_type == "os_systolic_fused_attention":
+        from engine.fused_attention_engine import OutputStationaryFusedAttentionEngine
+        return OutputStationaryFusedAttentionEngine(config)
     elif engine_type == "fsa":
         from engine.fsa_engine import FSAEngine
         return FSAEngine(config)

@@ -10,8 +10,10 @@ from dse.types import DSEPoint
 
 ENGINE_ORDER = [
     "systolic",
-    "os_systolic",
     "block",
+    "block_fused_attention",
+    "os_systolic",
+    "os_systolic_fused_attention",
     "tensor_core",
     "wmma",
     "gmma",
@@ -40,18 +42,34 @@ def build_engine_comparison(
     for engine in _engine_names(results):
         candidates = [p for p in results if p.config.get("engine") == engine]
         feasible = [p for p in candidates if p.constraints_passed]
-        if feasible:
-            selected = min(feasible, key=lambda p: ranking_key(p, scenario))
+        eligible = [p for p in candidates if p.recommendation_eligible]
+        eligible_feasible = [p for p in eligible if p.constraints_passed]
+        if eligible_feasible:
+            selected = min(
+                eligible_feasible, key=lambda p: ranking_key(p, scenario),
+            )
             status = "PASS"
             selection = "scenario_objective"
             distance = 0.0
             sort_key = (0, *ranking_key(selected, scenario))
-        else:
-            selected = min(candidates, key=lambda p: violation_score(p, scenario))
+        elif eligible:
+            selected = min(eligible, key=lambda p: violation_score(p, scenario))
             status = "FAIL"
             selection = "closest_to_constraints"
             distance = violation_score(selected, scenario)
             sort_key = (1, distance, -selected.decode_tps)
+        elif feasible:
+            selected = min(feasible, key=lambda p: ranking_key(p, scenario))
+            status = "PASS"
+            selection = "research_scenario_objective"
+            distance = 0.0
+            sort_key = (2, *ranking_key(selected, scenario))
+        else:
+            selected = min(candidates, key=lambda p: violation_score(p, scenario))
+            status = "FAIL"
+            selection = "research_closest_to_constraints"
+            distance = violation_score(selected, scenario)
+            sort_key = (3, distance, -selected.decode_tps)
 
         rows.append({
             "engine": engine,
@@ -59,6 +77,11 @@ def build_engine_comparison(
             "selection": selection,
             "evaluated_configs": len(candidates),
             "feasible_configs": len(feasible),
+            "recommendation_eligible_configs": len(eligible),
+            "recommendation_eligible": selected.recommendation_eligible,
+            "eligibility_status": (
+                "RECOMMEND" if selected.recommendation_eligible else "RESEARCH"
+            ),
             "violation_score": distance,
             "target_status": (
                 "MET" if target_violation_score(selected, scenario) == 0 else "MISS"
@@ -100,23 +123,25 @@ def print_engine_comparison(
         return
     print("\n  Engine comparison (best feasible or closest failed point):")
     if cv_mode:
-        print(f"  {'#':>2} {'Engine':<18} {'Status':<6} {'Config':<36} "
+        print(f"  {'#':>2} {'Engine':<18} {'Status':<6} {'Elig':<4} {'Config':<36} "
               f"{'FPS':>9} {'Area':>8} {'Power':>8}")
         print(f"  {'-'*92}")
         for row in rows:
             m = row["metrics"]
             print(f"  {row['rank']:>2} {row['engine']:<18} {row['status']:<6} "
+                  f"{('REC' if row['recommendation_eligible'] else 'R&D'):<4} "
                   f"{row['config_label'][:36]:<36} {m['decode_tps']:>9.2f} "
                   f"{m['area_mm2']:>7.1f} {m['power_w']:>7.1f}")
     else:
         print("  Units: TPS=tok/s, latency=ms, area=mm2, power=W")
-        print(f"  {'#':>2} {'Engine':<16} {'Stat':<4} {'Tgt':<4} {'Config':<26} "
+        print(f"  {'#':>2} {'Engine':<16} {'Stat':<4} {'Tgt':<4} {'Elig':<4} {'Config':<26} "
               f"{'Dec':>7} {'Agg':>7} {'Pre':>8} {'TTFT':>7} {'ITL':>7} {'Area':>6} {'Pwr':>6}")
         print(f"  {'-'*113}")
         for row in rows:
             m = row["metrics"]
             print(f"  {row['rank']:>2} {row['engine']:<16} {row['status']:<4} "
                   f"{row['target_status']:<4} "
+                  f"{('REC' if row['recommendation_eligible'] else 'R&D'):<4} "
                   f"{row['config_label'][:26]:<26} {m['decode_tps']:>7.2f} "
                   f"{m['aggregate_tps']:>7.2f} {m['prefill_tps']:>8.1f} "
                   f"{m['ttft_ms']:>7.1f} {m['itl_ms']:>7.1f} "

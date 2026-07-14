@@ -1,5 +1,7 @@
 # NPU 架构选型 DSE 报告
 
+> **历史 v2 报告，不代表当前可复现结论。** 本报告把 array-only 面积开销、固定 softmax 周期和未校准的 INT4/INT8 FSA 投影用于端到端推荐，结论已被 `reports/fsa-v3-controlled-integration-2026-07-14.md` 取代。
+
 **日期**: 2026-06-27  
 **分支**: `feat/fsa-arc-eval`  
 **方法**: 两阶段设计空间搜索 → 约束收敛 → 最优架构选定

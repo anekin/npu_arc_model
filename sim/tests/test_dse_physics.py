@@ -74,8 +74,10 @@ def test_all_searchable_engines_complete_candidate_evaluation():
     from design_space_explorer import generate_configs
 
     expected = {
-        "block", "fsa", "gmma", "input_stationary", "os_systolic",
-        "systolic", "tensor_core", "wmma",
+        "block", "block_fused_attention", "fsa", "gmma",
+        "input_stationary", "os_systolic",
+        "os_systolic_fused_attention", "systolic",
+        "tensor_core", "wmma",
     }
     first_by_engine = {}
     for cfg in generate_configs(quick=False):
@@ -234,6 +236,7 @@ def test_qwen25_3b_official_gqa_and_32k_kv_capacity():
     cfg["memory"].update({"capacity_gb": 4, "capacity_usable_fraction": 0.9})
     footprint = estimate_memory_footprint(cfg, workload)
     assert workload.max_context_tokens == 32768
+
     assert 1.20 < footprint.kv_cache_gb < 1.22
     assert footprint.fits
 
@@ -245,6 +248,8 @@ def test_agent_subscenario_uses_incremental_append_and_32k_context():
     assert scenario["workload"]["prompt_tokens"] == 875
     assert scenario["workload"]["output_tokens"] == 214
     assert scenario["workload"]["max_context_tokens"] == 32768
+    assert scenario["workload"]["cached_prefix_tokens"] == 30000
+    assert scenario["workload"]["attention_bits"] == 16
     assert scenario["agent_workload"]["prefix_cache_hit_rate"] == 0.90
     assert scenario["memory"]["capacity_gb"] == 4
     configs = generate_configs(quick=False, scenario_name="lpddr5_3b_agent")
@@ -264,3 +269,174 @@ def test_decode_cannot_exceed_full_model_memory_ceiling():
     effective_bw_gbps = 51.2 * 0.85
     int4_weight_gb = 3.09 * 4 / 8
     assert point.decode_tps <= effective_bw_gbps / int4_weight_gb + 0.01
+
+def test_cached_prefix_separates_prompt_from_attention_context():
+    workload = load_workload(
+        "qwen2.5-3b",
+        875,
+        {
+            "output_tokens": 214,
+            "cached_prefix_tokens": 30000,
+            "max_context_tokens": 32768,
+            "causal_attention": True,
+        },
+    )
+    assert workload.prompt_tokens == 875
+    assert workload.prefill_context_tokens == 30875
+    assert workload.causal_prefill_compute_context_tokens == 30438
+    assert workload.max_context_tokens == 32768
+
+    short = load_workload(
+        "qwen2.5-3b",
+        128,
+        {"causal_attention": True},
+    )
+    assert short.causal_prefill_compute_context_tokens == 65
+
+
+def test_fsa_attention_uses_explicit_precision_and_rtl_schedule():
+    cfg = _config(engine="fsa")
+    cfg["mac_engine"].update({"array_height": 128, "array_width": 128})
+    engine = create_engine(cfg)
+    fp8 = engine.estimate_attention(128, 128, 128, attention_bits=8)
+    fp16 = engine.estimate_attention(128, 128, 128, attention_bits=16)
+    assert fp16.details["attention_bytes"] == 2 * fp8.details["attention_bytes"]
+    assert fp16.details["schedule_source"] == "upstream_execution_plan"
+    assert fp16.details["calibration_status"] == "paper_extrapolation"
+    assert fp16.details["mapping_compatible"]
+
+
+def test_fsa_gate_up_pair_counts_two_distinct_weights():
+    engine = create_engine(_config(engine="fsa"))
+    single = engine.estimate(32, 2048, 11008)
+    pair = engine.estimate_weight_cache_pair(32, 2048, 11008)
+    assert pair.total_cycles == 2 * single.total_cycles
+    assert pair.weight_bytes == 2 * single.weight_bytes
+    assert pair.ops == 2 * single.ops
+
+
+def test_fsa_is_reported_but_not_automatically_recommended():
+    cfg = _config(engine="fsa")
+    cfg["mac_engine"].update({"array_height": 128, "array_width": 128})
+    scenario = {
+        "model": "qwen2.5-3b",
+        "workload": {
+            "prompt_tokens": 128,
+            "output_tokens": 32,
+            "attention_bits": 16,
+            "causal_attention": True,
+        },
+        "constraints": {},
+    }
+    point = evaluate_candidate(cfg, AreaModel(cfg), PowerModel(cfg), scenario)
+    assert point.constraints_passed
+    assert not point.recommendation_eligible
+    assert point.provenance["calibration_tier"] == "paper_extrapolation"
+    assert any("research candidate" in warning for warning in point.warnings)
+
+
+def test_fsa_search_respects_public_rtl_mapping():
+    from design_space_explorer import generate_configs
+
+    base = generate_configs(quick=False, scenario_name="lpddr5_3b")
+    base_fsa = [cfg for cfg in base if cfg["mac_engine"]["type"] == "fsa"]
+    assert base_fsa
+    assert {
+        (cfg["mac_engine"]["array_height"], cfg["mac_engine"]["array_width"])
+        for cfg in base_fsa
+    } == {(128, 128)}
+
+    agent = generate_configs(quick=False, scenario_name="lpddr5_3b_agent")
+    agent_fsa = [cfg for cfg in agent if cfg["mac_engine"]["type"] == "fsa"]
+    assert agent_fsa
+    assert {cfg["mac_engine"]["array_height"] for cfg in agent_fsa} == {128}
+
+def test_fused_attention_projection_paths_match_their_baselines():
+    pairs = (
+        ("block", "block_fused_attention"),
+        ("os_systolic", "os_systolic_fused_attention"),
+    )
+    for baseline_type, fused_type in pairs:
+        baseline = create_engine(_config(engine=baseline_type))
+        fused = create_engine(_config(engine=fused_type))
+        for method in ("estimate", "estimate_weight_cache_pair"):
+            base_result = getattr(baseline, method)(32, 2048, 11008)
+            fused_result = getattr(fused, method)(32, 2048, 11008)
+            assert fused_result.total_cycles == base_result.total_cycles
+            assert fused_result.compute_cycles == base_result.compute_cycles
+            assert fused_result.dma_cycles == base_result.dma_cycles
+            assert fused_result.weight_bytes == base_result.weight_bytes
+
+
+def test_fused_attention_reduces_agent_prefill_without_changing_context():
+    workload = load_workload(
+        "qwen2.5-3b",
+        875,
+        {
+            "cached_prefix_tokens": 30000,
+            "max_context_tokens": 32768,
+            "attention_bits": 16,
+            "causal_attention": True,
+        },
+    )
+    baseline = estimate_layer(_config(engine="block"), workload, "prefill")
+    fused = estimate_layer(
+        _config(engine="block_fused_attention"), workload, "prefill",
+    )
+    assert fused.total_cycles < baseline.total_cycles
+    assert fused.details["context_tokens"] == baseline.details["context_tokens"] == 30875
+    attention = fused.details["attention"]
+    assert attention["projection_engine"] == "block"
+    assert attention["inline_softmax"]
+    assert attention["external_softmax_cycles"] == 0
+    assert attention["query_position_offset_required"]
+
+
+def test_fused_attention_has_incremental_area_over_its_baseline():
+    for baseline_type, fused_type in (
+        ("block", "block_fused_attention"),
+        ("os_systolic", "os_systolic_fused_attention"),
+    ):
+        baseline_cfg = _config(engine=baseline_type)
+        fused_cfg = _config(engine=fused_type)
+        baseline_area = AreaModel(baseline_cfg).estimate(
+            baseline_cfg, baseline_type,
+        )["total_mm2"]
+        fused_area = AreaModel(fused_cfg).estimate(
+            fused_cfg, fused_type,
+        )["total_mm2"]
+        assert fused_area > baseline_area
+        assert fused_area - baseline_area < 1.0
+
+
+def test_fused_attention_candidates_are_distinct_research_points():
+    cfg = _config(engine="block_fused_attention")
+    scenario = {
+        "model": "qwen2.5-3b",
+        "workload": {
+            "prompt_tokens": 128,
+            "attention_bits": 16,
+            "causal_attention": True,
+        },
+        "constraints": {},
+    }
+    point = evaluate_candidate(cfg, AreaModel(cfg), PowerModel(cfg), scenario)
+    assert point.config_label.startswith("bfsa ")
+    assert point.config["engine"] == "block_fused_attention"
+    assert point.config["projection_engine"] == "block"
+    assert point.config["attention_mode"] == "fused_array"
+    assert not point.recommendation_eligible
+    assert point.provenance["calibration_tier"] == "fsa_inspired_analytical"
+
+
+def test_fused_attention_search_is_not_limited_to_paper_fsa_mapping():
+    from design_space_explorer import generate_configs
+
+    configs = generate_configs(quick=True, scenario_name="lpddr5_3b")
+    dims = {
+        (cfg["mac_engine"]["array_height"], cfg["mac_engine"]["array_width"])
+        for cfg in configs
+        if cfg["mac_engine"]["type"] == "block_fused_attention"
+    }
+    assert (64, 64) in dims
+    assert any(height != 128 for height, _ in dims)

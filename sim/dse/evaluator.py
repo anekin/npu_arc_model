@@ -21,7 +21,7 @@ from engine.mac_engine import create_engine
 from models.sfu import SFUModel
 from models.vector import VectorModel
 
-ARC_VERSION = "v3.2-performance-contract"
+ARC_VERSION = "v3.4-fused-attention-candidates"
 
 
 def _hash(value: Any) -> str:
@@ -47,10 +47,13 @@ def _attention(
     workload: WorkloadSpec,
     token_rows: int,
     context_len: int,
+    compute_context_len: int,
     kv_instances: int = 1,
+    causal: bool = False,
+    cached_prefix_tokens: int = 0,
 ) -> LayerEstimate:
-    """Attention with explicit QK, softmax, PV and K/V traffic."""
-    if engine.engine_type == "fsa":
+    """Attention with separate logical compute and physical K/V contexts."""
+    if hasattr(engine, "estimate_attention"):
         result = engine.estimate_attention(
             seq_q=token_rows,
             seq_kv=context_len,
@@ -58,6 +61,9 @@ def _attention(
             num_heads=workload.num_heads,
             num_kv_heads=workload.kv_heads,
             kv_batch_size=kv_instances,
+            attention_bits=workload.attention_bits,
+            causal=causal,
+            cached_prefix_tokens=cached_prefix_tokens,
         )
         return LayerEstimate(
             total_cycles=result.total_cycles,
@@ -65,22 +71,23 @@ def _attention(
             memory_cycles=result.dma_cycles,
             attention_cycles=result.total_cycles,
             transferred_bytes=int(result.details.get("attention_bytes", 0)),
+            details=result.details,
         )
 
-    qk = engine.estimate(token_rows, workload.head_dim, context_len)
-    pv = engine.estimate(token_rows, context_len, workload.head_dim)
+    qk = engine.estimate(token_rows, workload.head_dim, compute_context_len)
+    pv = engine.estimate(token_rows, compute_context_len, workload.head_dim)
     compute_cycles = workload.num_heads * (qk.compute_cycles + pv.compute_cycles)
 
-    elem_bytes = max(1, engine.a_bits // 8)
+    elem_bytes = max(1, math.ceil(workload.attention_bits / 8))
     attention_bytes = (
-        workload.num_heads * token_rows * workload.head_dim * elem_bytes
+        2 * workload.num_heads * token_rows * workload.head_dim * elem_bytes
         + 2 * workload.kv_heads * context_len * workload.head_dim
         * elem_bytes * kv_instances
     )
     memory_cycles = math.ceil(attention_bytes / max(engine.eff_bw, 1e-9))
     matrix_cycles = max(compute_cycles, memory_cycles)
 
-    elements = workload.num_heads * token_rows * context_len
+    elements = workload.num_heads * token_rows * compute_context_len
     sfu = SFUModel(config)
     vector = VectorModel(config)
     sfu_parts = sfu.estimate_softmax_decomposed(elements)
@@ -94,6 +101,13 @@ def _attention(
         attention_cycles=matrix_cycles,
         sfu_cycles=softmax_cycles,
         transferred_bytes=attention_bytes,
+        details={
+            "context_tokens": context_len,
+            "compute_context_tokens": compute_context_len,
+            "attention_bits": workload.attention_bits,
+            "causal": causal,
+            "cached_prefix_tokens": cached_prefix_tokens,
+        },
     )
 
 
@@ -103,7 +117,16 @@ def estimate_layer(
     if mode not in ("decode", "prefill"):
         raise ValueError(f"unsupported workload mode: {mode}")
     token_rows = workload.decode_batch_size if mode == "decode" else workload.prompt_tokens
-    context_len = workload.prompt_tokens
+    if mode == "decode":
+        context_len = workload.decode_context_tokens
+        compute_context_len = context_len
+        causal = False  # every K/V entry is visible to the newest decode query
+        cached_prefix_tokens = 0
+    else:
+        context_len = workload.prefill_context_tokens
+        compute_context_len = workload.causal_prefill_compute_context_tokens
+        causal = workload.causal_attention
+        cached_prefix_tokens = workload.cached_prefix_tokens
     kv_instances = workload.decode_batch_size if mode == "decode" else 1
     engine = create_engine(config)
     weight_cache = bool(config.get("optimizations", {}).get("weight_cache", False))
@@ -126,7 +149,15 @@ def estimate_layer(
         transferred_bytes += result.weight_bytes
 
     attention = _attention(
-        engine, config, workload, token_rows, context_len, kv_instances,
+        engine,
+        config,
+        workload,
+        token_rows,
+        context_len,
+        compute_context_len,
+        kv_instances,
+        causal,
+        cached_prefix_tokens,
     )
 
     sfu = SFUModel(config)
@@ -146,7 +177,7 @@ def estimate_layer(
     if mode == "prefill":
         kv_write_bytes = (
             2 * workload.kv_heads * token_rows * workload.head_dim
-            * max(1, engine.a_bits // 8)
+            * max(1, math.ceil(workload.attention_bits / 8))
         )
         kv_write_cycles = math.ceil(kv_write_bytes / max(engine.eff_bw, 1e-9))
 
@@ -159,6 +190,12 @@ def estimate_layer(
         sfu_cycles=int(attention.sfu_cycles + post_cycles),
         kv_cycles=int(kv_write_cycles),
         transferred_bytes=int(transferred_bytes + attention.transferred_bytes + kv_write_bytes),
+        details={
+            "mode": mode,
+            "context_tokens": context_len,
+            "compute_context_tokens": compute_context_len,
+            "attention": attention.details,
+        },
     )
 
 
@@ -259,9 +296,61 @@ def evaluate_candidate(config, area_model, power_model, scenario=None) -> DSEPoi
         "concurrent_requests": workload.concurrent_requests,
     }
     constraint_result = evaluate_constraints(metrics, scenario_payload)
+    result_warnings = list(constraint_result.warnings)
+    recommendation_eligible = True
+    fused_candidates = {
+        "block_fused_attention",
+        "os_systolic_fused_attention",
+    }
+    experimental_engines = {"fsa", *fused_candidates}
+    if engine_type in experimental_engines:
+        allowed_experimental = scenario_payload.get(
+            "allow_experimental_engines", [],
+        )
+        if allowed_experimental is True:
+            allowed_experimental = list(experimental_engines)
+        recommendation_eligible = engine_type in allowed_experimental
+        attention_details = prefill.details.get("attention", {})
+        if not attention_details.get("mapping_compatible", False):
+            recommendation_eligible = False
+            result_warnings.append(
+                f"{engine_type} does not support this attention mapping"
+            )
+        if engine_type == "fsa":
+            result_warnings.append(
+                "FSA is a paper-reference research candidate: attention is extrapolated "
+                "from the FP16/FP32 RTL schedule; INT4/INT8 projections, GQA, "
+                "LPDDR5 end-to-end TPS, and whole-chip PPA are not calibrated"
+            )
+            if workload.cached_prefix_tokens > 0 and workload.causal_attention:
+                result_warnings.append(
+                    "upstream FSA causal kernel has no cached-prefix query "
+                    "offset; incremental attention is modeled conservatively "
+                    "as a full rectangular schedule"
+                )
+        else:
+            result_warnings.append(
+                f"{engine_type} reuses the calibrated baseline projection/FFN "
+                "model, but its FSA-inspired attention overlap and incremental "
+                "PPA remain analytical until native RTL is calibrated"
+            )
+            if workload.cached_prefix_tokens > 0:
+                result_warnings.append(
+                    "the candidate architecture requires a native cached-prefix "
+                    "query-position offset in its future RTL"
+                )
+        if not recommendation_eligible:
+            result_warnings.append(
+                f"{engine_type} is excluded from automatic recommendation "
+                "until the scenario explicitly allows this experimental engine"
+            )
 
+    label_prefix = {
+        "block_fused_attention": "bfsa",
+        "os_systolic_fused_attention": "ofsa",
+    }.get(engine_type, engine_type[:4])
     label = (
-        f"{engine_type[:4]} {mac['array_height']}x{mac['array_width']} "
+        f"{label_prefix} {mac['array_height']}x{mac['array_width']} "
         f"INT{mac['weight_precision_bits']} {freq_mhz}MHz "
         f"B{workload.decode_batch_size} "
         f"{'WC ' if cfg.get('optimizations', {}).get('weight_cache') else ''}"
@@ -284,6 +373,18 @@ def evaluate_candidate(config, area_model, power_model, scenario=None) -> DSEPoi
         "output_tokens": workload.output_tokens,
         "concurrent_requests": workload.concurrent_requests,
         "decode_batch_size": workload.decode_batch_size,
+        "cached_prefix_tokens": workload.cached_prefix_tokens,
+        "prefill_context_tokens": workload.prefill_context_tokens,
+        "attention_bits": workload.attention_bits,
+        "causal_attention": workload.causal_attention,
+        "attention_mode": (
+            "fused_array" if engine_type in fused_candidates else "baseline"
+        ),
+        "projection_engine": (
+            "block" if engine_type == "block_fused_attention"
+            else "os_systolic" if engine_type == "os_systolic_fused_attention"
+            else engine_type
+        ),
     }
     return DSEPoint(
         tok_s=round(decode_tps, 2),
@@ -307,8 +408,9 @@ def evaluate_candidate(config, area_model, power_model, scenario=None) -> DSEPoi
         memory_margin_gb=footprint.margin_gb,
         memory_fits=footprint.fits,
         constraints_passed=constraint_result.passed,
+        recommendation_eligible=recommendation_eligible,
         failed_reasons=constraint_result.failed_reasons,
-        warnings=constraint_result.warnings,
+        warnings=result_warnings,
         breakdown={
             "decode": decode.to_dict(),
             "prefill": prefill.to_dict(),
@@ -326,6 +428,13 @@ def evaluate_candidate(config, area_model, power_model, scenario=None) -> DSEPoi
             "scenario_hash": _hash(scenario_payload),
             "config_hash": _hash(point_config),
             "model_spec": model_name,
+            "calibration_tier": (
+                "paper_extrapolation" if engine_type == "fsa"
+                else "fsa_inspired_analytical"
+                if engine_type in fused_candidates
+                else "architecture_stage"
+            ),
+            "recommendation_eligible": recommendation_eligible,
         },
     )
 

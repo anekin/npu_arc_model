@@ -42,7 +42,7 @@ Linux/macOS 请将 `.venv\Scripts\python` 换成 `.venv/bin/python`。
   64-bit LPDDR5-6400，标称有效带宽效率 85%（75%/90% 保守/乐观角）；
   Decode TPS ≥20，TTFT 设计目标 ≤500ms、硬上限 ≤1000ms，目标达标点
   优先按面积和功耗排序。
-- **场景 A 的 Agent 子场景**（`lpddr5_3b_agent`）。使用缓存前缀之后的
+- **场景 A 的 Agent 子场景**（`lpddr5_3b_agent`）。使用 30,000-token 缓存前缀、
   875-token 增量 append、214-token 输出和 32K 最大上下文；保持 batch=1，
   4GB LPDDR 容量必须容纳 INT4 权重、FP16 KV 和运行时预留。TTFT≤2s 与
   Prefill TPS≥500 是待本地产品 trace 校准的设计目标，TTFT≤5s 是暂定硬上限。
@@ -76,14 +76,17 @@ objectives: [area_mm2, power_w, -tok_s]
 ```
 
 性能优先场景可在 `workload` 中提供 `prompt_tokens`、`output_tokens`、
-`max_context_tokens`、`concurrent_requests`、`decode_batch_size`、`kv_bits` 和
+`cached_prefix_tokens`、`max_context_tokens`、`concurrent_requests`、
+`decode_batch_size`、`attention_bits`、`causal_attention`、`kv_bits` 和
 `runtime_reserve_mb`。Arc Model 分别输出单请求 Decode TPS、Aggregate TPS、
 Prefill TPS、TTFT、ITL 和 E2E latency。若配置 `memory.capacity_gb`，
 权重、最大上下文 KV Cache、激活和运行时预留必须装入可用容量，否则候选
 会作为物理不可行点淘汰。
 
-每次DSE还会为所有参与搜索的Engine输出统一对比表；无可行配置的Engine
-显示距离约束最近的候选及失败原因。JSON结果保存在 `engine_comparison` 字段。
+每次 DSE 还会为所有参与搜索的 Engine 输出统一对比表；无可行配置的 Engine
+显示距离约束最近的候选及失败原因。JSON 结果保存在 `engine_comparison` 字段。
+未完成场景级校准的研究引擎保存在 `research_candidates`，并以
+`recommendation_eligible: false` 与正式推荐隔离。
 
 DSE 先执行硬约束过滤，再优先选择满足 `targets` 的候选，最后按
 `objectives` 做字典序排序。若没有目标达标点，会在硬约束可行范围内选择
@@ -107,7 +110,9 @@ DSE 先执行硬约束过滤，再优先选择满足 `targets` 的候选，最�
 
 - 物理带宽统一以 GB/s 输入，并按候选频率换算为 bytes/cycle。
 - Decode 与 Prefill 分开建模。
-- Attention 显式计入 QK、Softmax、PV 和 KV 流量。
+- Attention 显式计入 QK、Softmax、PV 和 KV 流量，并区分 append 长度、cached prefix、容量上限与 attention 精度。
+- 原始 FSA 使用上游 RTL 调度作论文参考外推，只作为研究候选。
+- `block_fused_attention` 与 `os_systolic_fused_attention` 在现有 Block/OS 上引入 FSA 启发的融合 Attention；Projection/FFN 复用各自基线，融合周期和增量 PPA 在 RTL 校准前保持研究门控。
 - On-chip memory 带宽与逻辑 die 面积耦合。
 - 输出记录场景、配置、模型版本哈希和分项周期，便于复核。
 - PPA 仍是分析估算；在获得 Func/RTL/综合/硅后数据后应通过版本化校准数据更新，而不是复制实现代码。

@@ -285,10 +285,16 @@ def generate_configs(quick: bool = False, scenario_name: str | None = None,
     # Default heuristic search space, optionally overridden by the
     # application-requirements YAML.
     if quick:
-        engines = ["systolic", "block", "gmma"]
+        engines = [
+            "systolic", "block", "block_fused_attention",
+            "os_systolic_fused_attention", "gmma",
+        ]
     else:
-        engines = ["systolic", "os_systolic", "block",
-                   "tensor_core", "wmma", "gmma", "input_stationary", "fsa"]
+        engines = [
+            "systolic", "os_systolic", "block",
+            "block_fused_attention", "os_systolic_fused_attention",
+            "tensor_core", "wmma", "gmma", "input_stationary", "fsa",
+        ]
     dims = _scenario_dims(scenario, quick)
     dram_configs = _scenario_dram_configs(scenario, quick)
     precisions = [4] if quick else [4, 2]
@@ -302,12 +308,31 @@ def generate_configs(quick: bool = False, scenario_name: str | None = None,
     precisions = [int(v) for v in search.get("weight_precision_bits", precisions)]
     freqs = [int(v) for v in search.get("frequencies_mhz", freqs)]
     sram_l2_sizes = [int(v) for v in search.get("sram_l2_kb", sram_l2_sizes)]
+    workload_cfg = (scenario or {}).get("workload", {})
+    fsa_head_dim = get_spec((scenario or {}).get("model", "qwen2.5-3b")).head_dim
+    fsa_causal = bool(workload_cfg.get("causal_attention", True))
+    fsa_cached_prefix = int(workload_cfg.get("cached_prefix_tokens", 0))
 
     for engine_type in engines:
         for H, W in dims:
+            # Public FSA maps head_dim to array rows. Its causal block loop
+            # additionally assumes square aligned Q/KV tiles unless the cached
+            # prefix path is conservatively modeled as non-causal rectangular.
+            if engine_type == "fsa" and H != fsa_head_dim:
+                continue
+            if (
+                engine_type == "fsa"
+                and fsa_causal
+                and fsa_cached_prefix == 0
+                and W != H
+            ):
+                continue
             # Area constraints
             area_gate = 400 if scenario is not None else 200
-            if engine_type in ("block", "os_systolic") and H * W / (128 * 128) * 32 > area_gate:
+            if engine_type in (
+                "block", "os_systolic", "block_fused_attention",
+                "os_systolic_fused_attention",
+            ) and H * W / (128 * 128) * 32 > area_gate:
                 continue
             if engine_type == "systolic" and H * W / (128 * 128) * 8 > 80:
                 continue
@@ -324,7 +349,10 @@ def generate_configs(quick: bool = False, scenario_name: str | None = None,
                         for l2_kb in sram_l2_sizes:
                             # weight_cache only for systolic
                             wc_options = [False]
-                            if engine_type in ("systolic", "block", "gmma"):
+                            if engine_type in (
+                                "systolic", "block", "block_fused_attention",
+                                "gmma",
+                            ):
                                 wc_options = [False, True]
 
                             for wc in wc_options:
@@ -421,6 +449,8 @@ def _parse_label(label: str) -> Dict[str, Any]:
     m = re.match(r'(\S+)', label)
     if m:
         eng_map = {'syst': 'systolic', 'os_s': 'os_systolic', 'bloc': 'block',
+                   'bfsa': 'block_fused_attention',
+                   'ofsa': 'os_systolic_fused_attention',
                    'tens': 'tensor_core', 'wmma': 'wmma', 'gmma': 'gmma',
                    'inpu': 'input_stationary', 'fsa': 'fsa', 'fsa ': 'fsa'}
         params['engine'] = eng_map.get(m.group(1), m.group(1))
@@ -748,14 +778,33 @@ def main():
         print(f"  {len(invalid_configs)} invalid configs")
 
     # Hard constraints are applied before Pareto/ranking.
-    feasible = [r for r in results if r.constraints_passed]
+    application_feasible = [r for r in results if r.constraints_passed]
+    feasible = [
+        r for r in application_feasible if r.recommendation_eligible
+    ]
+    research_candidates = [
+        r for r in results if not r.recommendation_eligible
+    ]
     pareto = find_pareto(feasible)
     active_scenario = _load_scenario(args.scenario)
     reasonable = sorted(feasible, key=lambda p: ranking_key(p, active_scenario))
+    research_candidates = sorted(
+        research_candidates,
+        key=lambda p: (
+            not p.constraints_passed,
+            violation_score(p, active_scenario),
+            ranking_key(p, active_scenario),
+        ),
+    )
     rejected = [r for r in results if not r.constraints_passed]
-    closest = sorted(rejected, key=lambda p: violation_score(p, active_scenario))
+    closest = sorted(
+        [r for r in rejected if r.recommendation_eligible],
+        key=lambda p: violation_score(p, active_scenario),
+    )
     engine_comparison = build_engine_comparison(results, active_scenario)
-    print(f"  Constraints: {len(feasible)} passed, {len(rejected)} rejected")
+    print(f"  Constraints: {len(application_feasible)} passed, {len(rejected)} rejected; ")
+    print(f"  Eligibility: {len(feasible)} recommendation-eligible, ")
+    print(f"               {len(research_candidates)} research-only")
     if reasonable and not _CV_MODEL:
         best = reasonable[0]
         print(
@@ -845,6 +894,8 @@ def main():
                     "syst": "systolic",
                     "os_s": "os_systolic",
                     "bloc": "block",
+                    "bfsa": "block_fused_attention",
+                    "ofsa": "os_systolic_fused_attention",
                     "tens": "tensor_core",
                     "wmma": "wmma",
                     "gmma": "gmma",
@@ -878,6 +929,9 @@ def main():
                 "feasible": bool(reasonable),
                 "rejected_results": [p.to_dict() for p in rejected],
                 "closest_candidates": [p.to_dict() for p in closest[:args.top]],
+                "research_candidates": [
+                    p.to_dict() for p in research_candidates[:args.top]
+                ],
                 "pareto_frontier": [p.to_dict() for p in pareto],
                 "top_results": [p.to_dict() for p in reasonable[:args.top]],
                 "engine_comparison": engine_comparison,

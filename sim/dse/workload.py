@@ -54,6 +54,9 @@ def load_workload(
         runtime_reserve_mb=float(cfg.get("runtime_reserve_mb", 256.0)),
         parameters_b=float(spec.parameters_b),
         context_window_tokens=int(cfg.get("max_context_tokens", 0)),
+        cached_prefix_tokens=int(cfg.get("cached_prefix_tokens", 0)),
+        attention_bits=int(cfg.get("attention_bits", 16)),
+        causal_attention=bool(cfg.get("causal_attention", True)),
         vocab_size=int(spec.vocab_size),
     )
 
