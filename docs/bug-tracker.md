@@ -1,7 +1,7 @@
 # Arc Model Bug Tracker
 
-> Tracker revision: 1.0  
-> Last updated: 2026-07-15  
+> Tracker revision: 1.4
+> Last updated: 2026-07-15
 > Scope: Arc Model framework、NPU Engine、DSE、场景配置、报告与可复现性
 
 本文档是与代码一起版本化的 **Signoff 缺陷台账**。GitHub Issue 用于讨论、
@@ -81,9 +81,11 @@ NEW -> TRIAGED -> IN_PROGRESS -> FIXED -> VERIFIED -> CLOSED
 | ARC-BUG-002 | P1 | CLOSED | GMMA scheduler | Weight-cache pair 可能产生性能倒退 | 已在 `2897dff` 合入并关闭 |
 | ARC-BUG-003 | P0 | CLOSED | EngineResult/metrics | Engine `ops` 单位不一致 | 已在 `2897dff` 合入；历史指标按范围处置 |
 | ARC-BUG-004 | P1 | CLOSED | Windows CLI | GBK stdout 导致 DSE 输出前崩溃 | 已在 `2897dff` 合入并关闭 |
+| ARC-BUG-005 | P1 | CLOSED | WC PPA/reporting | WC 成本缺失且 ON/OFF 被合并 | 已在 `2ddcccf` 合入并关闭 |
+| ARC-BUG-006 | P1 | CLOSED | Systolic WC scheduler | WC pair 缺少单调 fallback | 已在 `2ddcccf` 合入并关闭 |
 
-当前没有 `NEW`、`TRIAGED`、`IN_PROGRESS` 或 `REOPENED` 的 P0/P1；四项修复及
-回归测试已由提交 `2897dff` 合入目标功能分支，状态均为 `CLOSED`。
+当前没有 `NEW`、`TRIAGED`、`IN_PROGRESS` 或 `REOPENED` 的 P0/P1；六项修复及
+回归测试已由提交 `2897dff` 和 `2ddcccf` 合入目标功能分支，状态均为 `CLOSED`。
 
 ## 5. 缺陷记录
 
@@ -171,7 +173,7 @@ NEW -> TRIAGED -> IN_PROGRESS -> FIXED -> VERIFIED -> CLOSED
 
 | Field | Content |
 |---|---|
-| Severity / Status | P1 / VERIFIED |
+| Severity / Status | P1 / CLOSED |
 | Detected / Verified | 2026-07-15 / 2026-07-15 |
 | Component / Owner | `sim/engine/ppa_model.py`, DSE reporting / Arc Model maintainer |
 | Affected versions | v3.6 and earlier |
@@ -184,14 +186,14 @@ NEW -> TRIAGED -> IN_PROGRESS -> FIXED -> VERIFIED -> CLOSED
 | Fix | Configurable per-engine WC PE-area proxy, shared area/power accounting, structured hardware identity, and `engine_variant_comparison` |
 | Regression | `test_weight_cache_hardware_variant_has_nonzero_ppa_cost`; `test_weight_cache_variants_are_not_collapsed` |
 | Evidence | Updated LPDDR5 scenario A and Agent DSE artifacts; 125-test full regression |
-| Commit / GitHub Issue | pending / not created |
-| Signoff disposition | Fix verified locally; keep report PPA marked architecture-stage until independent calibration |
+| Commit / GitHub Issue | `2ddcccf` / not created |
+| Signoff disposition | Closed in target branch; WC PPA remains architecture-stage until independent calibration |
 
 ### ARC-BUG-006 — Systolic WC pair could regress selected FFN shapes
 
 | Field | Content |
 |---|---|
-| Severity / Status | P1 / VERIFIED |
+| Severity / Status | P1 / CLOSED |
 | Detected / Verified | 2026-07-15 / 2026-07-15 |
 | Component / Owner | `sim/engine/systolic_engine.py` / Arc Model maintainer |
 | Affected versions | v3.6 and v3.7 pre-fix working tree |
@@ -204,8 +206,8 @@ NEW -> TRIAGED -> IN_PROGRESS -> FIXED -> VERIFIED -> CLOSED
 | Fix | Return two independent GEMMs when the combined WC schedule is not faster |
 | Regression | `test_weight_cache_pair_is_monotonic_for_decode_and_agent_ffn_shapes` |
 | Evidence | Updated scenario A/Agent WC variant DSE artifacts; 125-test full regression |
-| Commit / GitHub Issue | pending / not created |
-| Signoff disposition | Fix verified locally; close after commit |
+| Commit / GitHub Issue | `2ddcccf` / not created |
+| Signoff disposition | Closed in target branch; monotonic fallback is a permanent regression gate |
 
 ## 6. 新 Bug 登记模板
 
@@ -250,3 +252,4 @@ NEW -> TRIAGED -> IN_PROGRESS -> FIXED -> VERIFIED -> CLOSED
 | 1.1 | 2026-07-15 | `2897dff` 合入修复，ARC-BUG-001～004 更新为 CLOSED |
 | 1.2 | 2026-07-15 | 登记并验证 ARC-BUG-005；WC ON/OFF 独立建模与报告 |
 | 1.3 | 2026-07-15 | 登记并验证 ARC-BUG-006；Systolic WC 调度增加单调 fallback |
+| 1.4 | 2026-07-15 | `2ddcccf` 合入 WC 修复，ARC-BUG-005/006 更新为 CLOSED |

@@ -73,6 +73,8 @@ JSON 新增：
 2. **ARC-BUG-002 — GMMA weight-cache pair**：合并 Gate/Up 慢于两个独立 GEMM 时，scheduler 现在显式 fallback，保证优化不产生性能倒退。
 3. **ARC-BUG-003 — EngineResult.ops 口径**：Systolic、Tensor Core、WMMA、GMMA、IS 原先记录 MAC 数，Block/OS/FSA 记录 operation 数。现统一为 `M×K×N×ops_per_mac`。
 4. **ARC-BUG-004 — Windows CLI 编码**：GBK stdout 无法输出状态符号导致搜索前崩溃。CLI 现在显式使用 UTF-8 输出并以 replacement 处理不支持字符。
+5. **ARC-BUG-005 — WC 硬件成本与报告**：WC ON/OFF 现在作为独立硬件变体，分别计入性能、面积和功耗。
+6. **ARC-BUG-006 — Systolic WC 单调性**：WC pair 较慢时回退到两个独立 GEMM，防止启用可选硬件后性能倒退。
 
 ## 4. 测试矩阵与结果
 
@@ -107,24 +109,20 @@ combined coverage:  95%
 
 对整个被插桩集合计入未纳入当前 DSE 主路径的 compiler/ISA/multicore/timeline 以及 CLI 主函数后，总覆盖率为 60%。因此不能把 97% 解读为整个仓库已完成 Signoff。
 
-三次独立场景 A quick DSE 的 JSON 哈希均为：
-
-```text
-ce20ef44755cccfaeaa0771cd1d6e634f20b9640b552400737b3a4569d58e81d
-```
+v3.7 正式场景 A、Agent 及 75%/90% 带宽效率角已独立运行；最新 summary 为每个源结果保存 SHA-256。详细证据见 `sim/results/lpddr5_latest_dse_summary_2026-07-15.json`。
 
 ## 6. 场景 A 完整 DSE
 
 搜索：1965 配置，1965 valid，invalid_configs=0。
-约束：771 raw feasible，343 comparison-ready feasible，0 product-qualified。
+约束：756 raw feasible，334 comparison-ready feasible，0 product-qualified。
 
 | Engine | M | Status | Decode TPS | Prefill TPS | TTFT | Area | Power |
 |---|---:|---|---:|---:|---:|---:|---:|
 | os_systolic | M2 | PASS/MET | 20.03 | 667.2 | 241.8ms | 42.8mm² | 8.8W |
 | os_systolic_fused_attention | M1 | PASS/MET | 20.06 | 674.8 | 239.6ms | 42.9mm² | 8.9W |
-| block | M2 | PASS/MET | 28.05 | 286.4 | 482.7ms | 44.3mm² | 8.8W |
-| block_fused_attention | M1 | PASS/MET | 28.08 | 288.1 | 479.9ms | 44.4mm² | 8.9W |
-| systolic | M2 | PASS/MET | 20.75 | 1433.4 | 137.5ms | 47.2mm² | 12.1W |
+| block | M2 | PASS/MET | 28.04 | 286.4 | 482.7ms | 44.3mm² | 8.84W |
+| block_fused_attention | M1 | PASS/MET | 28.07 | 288.1 | 479.9ms | 44.4mm² | 8.91W |
+| systolic | M2 | PASS/MET | 20.75 | 1433.4 | 137.5ms | 48.1mm² | 12.60W |
 | fsa | M1 | PASS/MET | 20.46 | 1718.2 | 123.4ms | 47.9mm² | 11.4W |
 | gmma | M1 | PASS/MET | 20.51 | 1673.7 | 125.2ms | 61.9mm² | 18.4W |
 | tensor_core | M1 | PASS/MISS | 24.96 | 165.2 | 814.8ms | 44.3mm² | 10.3W |
@@ -138,7 +136,7 @@ Raw 和 Comparison-ready 的名义最优均为 OS 32×64 @1GHz：20.03 TPS、241
 - `product_recommended`：null；
 - 场景 A 产品 Signoff：**NOT SIGNED**。
 
-Block 64×64 @800MHz 仍应与 OS 32×64 @1.2GHz 一起保留到下一轮 calibration shortlist，不能用当前小面积差直接冻结产品架构。
+Block 64×64 @800MHz WC OFF 仍应与 OS 32×64 @1GHz 一起保留到下一轮 calibration shortlist，不能用当前小面积差直接冻结产品架构。WC ON/OFF 的完整比较以 `reports/lpddr5-latest-dse-2026-07-15.md` 为准。
 
 ## 7. 场景 A Agent 完整 DSE
 
@@ -153,7 +151,7 @@ Block 64×64 @800MHz 仍应与 OS 32×64 @1.2GHz 一起保留到下一轮 calibr
 | block | M2 | 14.75 | 141.9 | 6232.2ms | TPS、TTFT |
 | os_systolic | M2 | 12.69 | 153.5 | 5777.6ms | TPS、TTFT |
 | gmma | M1 | 9.64 | 154.5 | 5766.2ms | TPS、TTFT |
-| systolic | M2 | 7.60 | 146.1 | 6120.1ms | TPS、TTFT |
+| systolic | M2 | 7.61 | 146.1 | 6120.0ms | TPS、TTFT |
 | tensor_core | M1 | 13.85 | 81.7 | 10781.9ms | TPS、TTFT |
 | input_stationary | M1 | 0.76 | 139.8 | 7578.4ms | TPS、TTFT |
 | wmma | M1 | 0.02 | 0.5 | 1958110.6ms | TPS、TTFT |
@@ -186,21 +184,22 @@ BFSA/OFSA/FSA 的 Attention 优化能够显著改善 TTFT，但没有解决完�
 
 ```bash
 .venv\Scripts\python -m pytest sim/tests -q
-.venv\Scripts\python sim/engine_audit.py \
-  --output sim/results/engine_admission_audit_v36.json
+.venv\Scripts\python sim/engine_audit.py
 .venv\Scripts\python sim/design_space_explorer.py \
-  --scenario lpddr5_3b --top 10 \
-  --output results/scenario_a_lpddr5_v36_engine_evidence.json
+  --scenario lpddr5_3b --top 50 \
+  --output results/lpddr5_3b_latest_2026-07-15.json
 .venv\Scripts\python sim/design_space_explorer.py \
-  --scenario lpddr5_3b_agent --top 10 \
-  --output results/scenario_a_agent_lpddr5_v36_engine_evidence.json
+  --scenario lpddr5_3b_agent --top 50 \
+  --output results/lpddr5_3b_agent_latest_2026-07-15.json
 ```
 
 ## 11. 产物
 
 - `sim/config/engine_manifests.yaml`
 - `sim/results/engine_admission_audit_v36.json`
-- `sim/results/scenario_a_lpddr5_v36_engine_evidence.json`
-- `sim/results/scenario_a_agent_lpddr5_v36_engine_evidence.json`
+- `sim/results/lpddr5_3b_latest_2026-07-15.json`
+- `sim/results/lpddr5_3b_agent_latest_2026-07-15.json`
+- `sim/results/lpddr5_latest_dse_summary_2026-07-15.json`
+- `reports/lpddr5-latest-dse-2026-07-15.md`
 - `docs/new-engine-integration-methodology.md`
 - `docs/arc-model-test-signoff-plan.md`

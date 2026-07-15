@@ -101,6 +101,7 @@ DSE 先执行硬约束过滤，再优先选择满足 `targets` 的候选，最�
 
 ## 核心目录
 
+- `handoff.md`：当前工作状态、关键结论、复现命令、已知缺口和接手清单。
 - `sim/design_space_explorer.py`：正式 DSE CLI。
 - `sim/dse/`：工作负载、单位换算、约束、候选评估与结构化结果。
 - `sim/engine/`：计算引擎和 PPA 分析模型。

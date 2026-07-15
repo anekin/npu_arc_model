@@ -134,7 +134,7 @@
 | Agent 架构探索 | INFEASIBLE | 75%/85%/90% 均无 raw/M2 feasible 配置 |
 | WC 产品 PPA | NOT SIGNED | 当前增量为架构阶段 proxy，尚无独立 RTL/综合/布局校准 |
 
-本轮登记 `ARC-BUG-005`：旧版本 WC 性能收益未计硬件成本，且报告按 Engine 合并了 WC ON/OFF。修复已通过全量回归和六次 DSE，当前状态为 `VERIFIED`；提交合入后再更新为 `CLOSED`。 同时登记 `ARC-BUG-006`：Systolic WC pair 缺少两次独立 GEMM fallback；修复后 Agent FFN shape 满足 WC 单调性。
+本轮关闭 `ARC-BUG-005/006`：WC ON/OFF 已计入独立 PPA 并分别报告，Systolic WC pair 已保留两次独立 GEMM fallback。修复由提交 `2ddcccf` 合入目标分支，并通过 125 项回归和六次 DSE。
 
 ## 11. 结果文件与复现
 
