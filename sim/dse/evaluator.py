@@ -18,10 +18,11 @@ from dse.memory import (
 from dse.types import DSEPoint, LayerEstimate, WorkloadSpec
 from dse.workload import load_workload, projection_trace
 from engine.mac_engine import create_engine
+from engine.manifest import get_engine_manifest
 from models.sfu import SFUModel
 from models.vector import VectorModel
 
-ARC_VERSION = "v3.5-os-dataflow"
+ARC_VERSION = "v3.6-engine-evidence"
 
 
 def _hash(value: Any) -> str:
@@ -219,6 +220,7 @@ def estimate_output_head(
 def evaluate_candidate(config, area_model, power_model, scenario=None) -> DSEPoint:
     cfg = copy.deepcopy(config)
     engine_type = cfg["mac_engine"]["type"]
+    manifest = get_engine_manifest(engine_type)
 
     area_result = area_model.estimate(cfg, engine_type)
     couple_on_chip_bandwidth(cfg, area_result.get("logic_die_mm2", area_result["total_mm2"]))
@@ -315,53 +317,56 @@ def evaluate_candidate(config, area_model, power_model, scenario=None) -> DSEPoi
             "and RTL timing "
             "remain uncalibrated"
         )
-    recommendation_eligible = True
     fused_candidates = {
         "block_fused_attention",
         "os_systolic_fused_attention",
     }
-    experimental_engines = {"fsa", *fused_candidates}
-    if engine_type in experimental_engines:
-        allowed_experimental = scenario_payload.get(
-            "allow_experimental_engines", [],
-        )
-        if allowed_experimental is True:
-            allowed_experimental = list(experimental_engines)
-        recommendation_eligible = engine_type in allowed_experimental
+    raw_exploration_eligible = manifest.raw_exploration_eligible
+    comparison_eligible = manifest.comparison_ready
+    product_eligible = manifest.product_qualified
+    recommendation_eligible = comparison_eligible
+
+    if engine_type in {"fsa", *fused_candidates}:
         attention_details = prefill.details.get("attention", {})
         if not attention_details.get("mapping_compatible", False):
+            comparison_eligible = False
+            product_eligible = False
             recommendation_eligible = False
             result_warnings.append(
                 f"{engine_type} does not support this attention mapping"
             )
         if engine_type == "fsa":
             result_warnings.append(
-                "FSA is a paper-reference research candidate: attention is extrapolated "
-                "from the FP16/FP32 RTL schedule; INT4/INT8 projections, GQA, "
-                "LPDDR5 end-to-end TPS, and whole-chip PPA are not calibrated"
+                "FSA attention follows the upstream schedule, while mixed-precision "
+                "projections, GQA, LPDDR5 end-to-end TPS and whole-chip PPA remain "
+                "paper extrapolations"
             )
             if workload.cached_prefix_tokens > 0 and workload.causal_attention:
                 result_warnings.append(
-                    "upstream FSA causal kernel has no cached-prefix query "
-                    "offset; incremental attention is modeled conservatively "
-                    "as a full rectangular schedule"
+                    "upstream FSA causal kernel has no cached-prefix query offset; "
+                    "incremental attention is modeled as a full rectangular schedule"
                 )
         else:
             result_warnings.append(
-                f"{engine_type} reuses the calibrated baseline projection/FFN "
-                "model, but its FSA-inspired attention overlap and incremental "
-                "PPA remain analytical until native RTL is calibrated"
+                f"{engine_type} uses its baseline projection/FFN path, but fused "
+                "attention overlap and incremental PPA remain analytical"
             )
             if workload.cached_prefix_tokens > 0:
                 result_warnings.append(
-                    "the candidate architecture requires a native cached-prefix "
-                    "query-position offset in its future RTL"
+                    "the candidate requires a cached-prefix query-position offset "
+                    "in a future native RTL implementation"
                 )
-        if not recommendation_eligible:
-            result_warnings.append(
-                f"{engine_type} is excluded from automatic recommendation "
-                "until the scenario explicitly allows this experimental engine"
-            )
+
+    if manifest.maturity == "M1":
+        result_warnings.append(
+            f"{engine_type} is maturity M1: included in raw exploration but not "
+            "in comparison-ready or product-qualified ranking"
+        )
+    elif not manifest.product_qualified:
+        result_warnings.append(
+            f"{engine_type} is maturity {manifest.maturity}: comparison-ready, "
+            "but product qualification requires M3 calibration and guardband"
+        )
 
     label_prefix = {
         "block_fused_attention": "bfsa",
@@ -377,6 +382,7 @@ def evaluate_candidate(config, area_model, power_model, scenario=None) -> DSEPoi
     point_config = {
         "scenario": cfg.get("_scenario_name", ""),
         "engine": engine_type,
+        "maturity": manifest.maturity,
         "array_height": int(mac["array_height"]),
         "array_width": int(mac["array_width"]),
         "frequency_mhz": freq_mhz,
@@ -426,6 +432,10 @@ def evaluate_candidate(config, area_model, power_model, scenario=None) -> DSEPoi
         memory_margin_gb=footprint.margin_gb,
         memory_fits=footprint.fits,
         constraints_passed=constraint_result.passed,
+        maturity=manifest.maturity,
+        raw_exploration_eligible=raw_exploration_eligible,
+        comparison_eligible=comparison_eligible,
+        product_eligible=product_eligible,
         recommendation_eligible=recommendation_eligible,
         failed_reasons=constraint_result.failed_reasons,
         warnings=result_warnings,
@@ -446,14 +456,12 @@ def evaluate_candidate(config, area_model, power_model, scenario=None) -> DSEPoi
             "scenario_hash": _hash(scenario_payload),
             "config_hash": _hash(point_config),
             "model_spec": model_name,
-            "calibration_tier": (
-                "paper_extrapolation" if engine_type == "fsa"
-                else "fsa_inspired_analytical"
-                if engine_type in fused_candidates
-                else "dataflow_analytical"
-                if engine_type == "os_systolic"
-                else "architecture_stage"
-            ),
+            "calibration_tier": manifest.calibration_tier,
+            "engine_maturity": manifest.maturity,
+            "engine_manifest_hash": _hash(manifest.to_dict()),
+            "raw_exploration_eligible": raw_exploration_eligible,
+            "comparison_eligible": comparison_eligible,
+            "product_eligible": product_eligible,
             "recommendation_eligible": recommendation_eligible,
         },
     )

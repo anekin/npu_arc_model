@@ -33,6 +33,9 @@ python -m venv .venv
 
 # 回归测试
 .venv\Scripts\python -m pytest sim/tests -q
+
+# 全 Engine 准入与物理属性审计
+.venv\Scripts\python sim/engine_audit.py
 ```
 
 Linux/macOS 请将 `.venv\Scripts\python` 换成 `.venv/bin/python`。
@@ -85,8 +88,11 @@ Prefill TPS、TTFT、ITL 和 E2E latency。若配置 `memory.capacity_gb`，
 
 每次 DSE 还会为所有参与搜索的 Engine 输出统一对比表；无可行配置的 Engine
 显示距离约束最近的候选及失败原因。JSON 结果保存在 `engine_comparison` 字段。
-未完成场景级校准的研究引擎保存在 `research_candidates`，并以
-`recommendation_eligible: false` 与正式推荐隔离。
+v3.6 起按 [`docs/new-engine-integration-methodology.md`](docs/new-engine-integration-methodology.md)
+和 `sim/config/engine_manifests.yaml` 输出三层结论：所有 M1 以上 Engine 进入
+Raw Exploration，M2 以上进入 Comparison-ready Pareto，M3/M4 才进入
+Product-qualified Shortlist。`recommended` 表示架构比较结果，只有
+`product_recommended` 才表示完成产品资格过滤；成熟度不会修改原始性能指标。
 
 DSE 先执行硬约束过滤，再优先选择满足 `targets` 的候选，最后按
 `objectives` 做字典序排序。若没有目标达标点，会在硬约束可行范围内选择
@@ -99,8 +105,19 @@ DSE 先执行硬约束过滤，再优先选择满足 `targets` 的候选，最�
 - `sim/dse/`：工作负载、单位换算、约束、候选评估与结构化结果。
 - `sim/engine/`：计算引擎和 PPA 分析模型。
 - `sim/config/scenarios.yaml`：内置应用场景。
+- `sim/config/engine_manifests.yaml`：Engine 成熟度、证据、范围、不确定度与缺口。
 - `sim/config/application-requirements.example.yaml`：自定义需求示例。
 - `sim/tests/`：物理模型与仓库边界回归测试。
+- `docs/new-engine-integration-methodology.md`：新 Engine 的架构契约、成熟度、
+  论文复刻、归一化比较和 DSE 准入方法。
+- `docs/arc-model-test-signoff-plan.md`：Framework、Engine、Scenario 三级测试
+  与 Signoff 标准、执行阶段和首轮 backlog。
+- `docs/bug-tracker.md`：正式缺陷编号、严重级别、状态流转、Signoff 阻断规则
+  和关闭证据；GitHub Bug Issue 必须与该台账互相链接。
+- `reports/engine-admission-and-signoff-test-2026-07-15.md`：v3.6 Engine
+  inventory、准入测试、覆盖率和场景 Signoff 结果。
+- `reports/lpddr5-latest-dse-2026-07-15.md`：当前 v3.6 模型的 LPDDR5
+  场景 A、Agent 子场景及 75%/85%/90% 带宽效率角完整 DSE 报告。
 - `references/`：面积等模型参数的来源。
 - `reports/`：历史搜索报告；历史数值不等于当前版本的可复现结论。
 
@@ -112,8 +129,8 @@ DSE 先执行硬约束过滤，再优先选择满足 `targets` 的候选，最�
 - Decode 与 Prefill 分开建模。
 - Attention 显式计入 QK、Softmax、PV 和 KV 流量，并区分 append 长度、cached prefix、容量上限与 attention 精度。
 - OS Systolic 使用独立的 M×N 空间映射、K 时间累加 wavefront 模型；不再复用 Block 周期，分析结果会标记尚未校准的 transposer、SRAM bank conflict 与 RTL timing。
-- 原始 FSA 使用上游 RTL 调度作论文参考外推，只作为研究候选。
-- `block_fused_attention` 与 `os_systolic_fused_attention` 在现有 Block/OS 上引入 FSA 启发的融合 Attention；Projection/FFN 复用各自基线，融合周期和增量 PPA 在 RTL 校准前保持研究门控。
+- 原始 FSA 使用上游 RTL 调度作论文参考外推；整机当前为 M1，进入 Raw Exploration。
+- `block_fused_attention` 与 `os_systolic_fused_attention` 在现有 Block/OS 上引入 FSA 启发的融合 Attention；Projection/FFN 复用各自基线，融合周期和增量 PPA 在 RTL 校准前保持 M1，只进入 Raw Exploration。
 - On-chip memory 带宽与逻辑 die 面积耦合。
 - 输出记录场景、配置、模型版本哈希和分项周期，便于复核。
 - PPA 仍是分析估算；在获得 Func/RTL/综合/硅后数据后应通过版本化校准数据更新，而不是复制实现代码。

@@ -13,7 +13,7 @@ from typing import Dict, Any, List, Tuple
 
 sys.path.insert(0, str(Path(__file__).parent))
 from engine.ppa_model import AreaModel, PowerModel, PPA
-from engine.mac_engine import create_engine
+from engine.mac_engine import ENGINE_TYPES, create_engine
 from model_specs import get_spec, all_aliases
 from dse.evaluator import ARC_VERSION, evaluate_candidate, ranking_key, violation_score
 from dse.reporting import build_engine_comparison, print_engine_comparison
@@ -290,11 +290,7 @@ def generate_configs(quick: bool = False, scenario_name: str | None = None,
             "os_systolic_fused_attention", "gmma",
         ]
     else:
-        engines = [
-            "systolic", "os_systolic", "block",
-            "block_fused_attention", "os_systolic_fused_attention",
-            "tensor_core", "wmma", "gmma", "input_stationary", "fsa",
-        ]
+        engines = list(ENGINE_TYPES)
     dims = _scenario_dims(scenario, quick)
     dram_configs = _scenario_dram_configs(scenario, quick)
     precisions = [4] if quick else [4, 2]
@@ -653,6 +649,10 @@ def print_sensitivity_report(sa: Dict[str, Any]):
 
 
 def main():
+    # Windows commonly defaults redirected stdout to GBK, while the DSE
+    # report intentionally contains Unicode units and status markers.
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("--quick", action="store_true")
@@ -777,17 +777,20 @@ def main():
     if invalid_configs:
         print(f"  {len(invalid_configs)} invalid configs")
 
-    # Hard constraints are applied before Pareto/ranking.
+    # Hard constraints are applied before maturity-specific ranking.
     application_feasible = [r for r in results if r.constraints_passed]
-    feasible = [
-        r for r in application_feasible if r.recommendation_eligible
-    ]
-    research_candidates = [
-        r for r in results if not r.recommendation_eligible
-    ]
+    raw_reasonable = sorted(
+        application_feasible, key=lambda p: ranking_key(p, _load_scenario(args.scenario)),
+    )
+    feasible = [r for r in application_feasible if r.comparison_eligible]
+    product_feasible = [r for r in application_feasible if r.product_eligible]
+    research_candidates = [r for r in results if not r.comparison_eligible]
     pareto = find_pareto(feasible)
     active_scenario = _load_scenario(args.scenario)
     reasonable = sorted(feasible, key=lambda p: ranking_key(p, active_scenario))
+    product_reasonable = sorted(
+        product_feasible, key=lambda p: ranking_key(p, active_scenario),
+    )
     research_candidates = sorted(
         research_candidates,
         key=lambda p: (
@@ -798,17 +801,24 @@ def main():
     )
     rejected = [r for r in results if not r.constraints_passed]
     closest = sorted(
-        [r for r in rejected if r.recommendation_eligible],
+        [r for r in rejected if r.comparison_eligible],
         key=lambda p: violation_score(p, active_scenario),
     )
     engine_comparison = build_engine_comparison(results, active_scenario)
-    print(f"  Constraints: {len(application_feasible)} passed, {len(rejected)} rejected; ")
-    print(f"  Eligibility: {len(feasible)} recommendation-eligible, ")
-    print(f"               {len(research_candidates)} research-only")
+    print(f"  Constraints: {len(application_feasible)} passed, {len(rejected)} rejected")
+    print(f"  Maturity: {len(raw_reasonable)} raw-feasible, "
+          f"{len(reasonable)} comparison-ready, "
+          f"{len(product_reasonable)} product-qualified")
+    if raw_reasonable and not _CV_MODEL:
+        raw_best = raw_reasonable[0]
+        print(
+            f"  Raw best: {raw_best.config_label}, "
+            f"decode={raw_best.decode_tps:.1f} tok/s, "
+            f"TTFT={raw_best.ttft_ms:.1f}ms, maturity={raw_best.maturity}")
     if reasonable and not _CV_MODEL:
         best = reasonable[0]
         print(
-            f"  Performance: decode={best.decode_tps:.1f} tok/s, "
+            f"  Comparison-ready best: decode={best.decode_tps:.1f} tok/s, "
             f"aggregate={best.aggregate_tps:.1f} tok/s, "
             f"prefill={best.prefill_tps:.1f} tok/s, "
             f"TTFT={best.ttft_ms:.1f}ms, ITL={best.itl_ms:.1f}ms")
@@ -817,7 +827,7 @@ def main():
                   f"{best.memory_available_gb:.3f}GB usable")
     if not feasible and closest:
         best_effort = closest[0]
-        print("  No feasible architecture. Closest candidate: "
+        print("  No feasible comparison-ready architecture. Closest candidate: "
               f"{best_effort.config_label} (violation score "
               f"{violation_score(best_effort, active_scenario):.3f})")
         for reason in best_effort.failed_reasons:
@@ -842,7 +852,7 @@ def main():
               f"{p.power_w:>6.1f}W {p.efficiency_tok_per_watt:>7.1f}{extra}")
 
     # ── Top by tok/s ──
-    print(f"\n  Top {args.top} feasible candidates (scenario objective order):")
+    print(f"\n  Top {args.top} comparison-ready candidates (scenario objective order):")
     print(f"  {'Config':<45} {perf_label:>8} {'Area':>8} {'Power':>8} {eff_label:>8}{cv_extra_header}")
     print(f"  {'-'*line_width}")
     for p in reasonable[:args.top]:
@@ -927,15 +937,27 @@ def main():
                 "valid_results": len(results),
                 "invalid_configs": invalid_configs,
                 "feasible": bool(reasonable),
+                "raw_feasible": bool(raw_reasonable),
+                "product_feasible": bool(product_reasonable),
                 "rejected_results": [p.to_dict() for p in rejected],
                 "closest_candidates": [p.to_dict() for p in closest[:args.top]],
                 "research_candidates": [
                     p.to_dict() for p in research_candidates[:args.top]
                 ],
                 "pareto_frontier": [p.to_dict() for p in pareto],
+                "raw_top_results": [p.to_dict() for p in raw_reasonable[:args.top]],
                 "top_results": [p.to_dict() for p in reasonable[:args.top]],
+                "product_top_results": [
+                    p.to_dict() for p in product_reasonable[:args.top]
+                ],
                 "engine_comparison": engine_comparison,
+                "raw_recommended": (
+                    raw_reasonable[0].to_dict() if raw_reasonable else None
+                ),
                 "recommended": reasonable[0].to_dict() if reasonable else None,
+                "product_recommended": (
+                    product_reasonable[0].to_dict() if product_reasonable else None
+                ),
             }
         out_path = Path(args.output)
         if not out_path.is_absolute():

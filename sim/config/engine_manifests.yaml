@@ -1,0 +1,271 @@
+schema_version: 1
+engines:
+  systolic:
+    display_name: Weight-Stationary Systolic
+    module: engine.systolic_engine
+    class_name: SystolicEngine
+    role: dse_candidate
+    maturity: M2
+    evidence:
+      performance: {level: 3, kind: rtl_module_calibrated}
+      ppa: {level: 1, kind: analytical_proxy}
+      functional_scope: {level: 2, kind: full_workload_analytical}
+      system_integration: {level: 2, kind: memory_and_workload_model}
+    scope:
+      dataflow: weight_stationary
+      workload: full_model
+      weight_bits: [2, 4]
+      attention: baseline_unfused
+    fallbacks: {}
+    uncertainty: {performance_pct: 20, area_pct: 30, power_pct: 35}
+    calibration_dataset: docs/mxu-perf-calibration.md
+    known_gaps:
+      - Module RTL uses direct-feed inputs while DSE includes DMA and DRAM.
+      - End-to-end workload timing is not RTL-calibrated.
+    sources:
+      - docs/mxu-perf-calibration.md
+      - references/area_sources.md
+
+  os_systolic:
+    display_name: Output-Stationary Systolic
+    module: engine.os_systolic_engine
+    class_name: OutputStationaryEngine
+    role: dse_candidate
+    maturity: M2
+    evidence:
+      performance: {level: 2, kind: dataflow_analytical}
+      ppa: {level: 1, kind: analytical_proxy}
+      functional_scope: {level: 2, kind: full_workload_analytical}
+      system_integration: {level: 2, kind: memory_and_workload_model}
+    scope:
+      dataflow: output_stationary
+      workload: full_model
+      weight_bits: [2, 4]
+      attention: baseline_unfused
+    fallbacks: {}
+    uncertainty: {performance_pct: 25, area_pct: 30, power_pct: 35}
+    calibration_dataset: null
+    known_gaps:
+      - Transposer backpressure and SRAM bank conflicts are not calibrated.
+      - K-stream chunking, preload overlap and RTL timing are not calibrated.
+    sources:
+      - reports/os-dataflow-v35-dse-2026-07-14.md
+      - references/area_sources.md
+
+  block:
+    display_name: Broadcast Block Array
+    module: engine.block_engine
+    class_name: BlockEngine
+    role: dse_candidate
+    maturity: M2
+    evidence:
+      performance: {level: 2, kind: architecture_analytical_crosscheck}
+      ppa: {level: 1, kind: analytical_proxy}
+      functional_scope: {level: 2, kind: full_workload_analytical}
+      system_integration: {level: 2, kind: memory_and_workload_model}
+    scope:
+      dataflow: broadcast_block
+      workload: full_model
+      weight_bits: [2, 4]
+      attention: baseline_unfused
+    fallbacks:
+      weight_cache_pair: two_independent_gemms
+    uncertainty: {performance_pct: 20, area_pct: 30, power_pct: 35}
+    calibration_dataset: null
+    known_gaps:
+      - Broadcast synchronization and reduction constants are analytical.
+      - Crossbar and local accumulator PPA are not synthesized.
+    sources:
+      - docs/NPU硬件详细架构设计v0.1.md
+      - references/area_sources.md
+
+  block_fused_attention:
+    display_name: Block with FSA-Inspired Attention
+    module: engine.fused_attention_engine
+    class_name: BlockFusedAttentionEngine
+    role: dse_candidate
+    maturity: M1
+    evidence:
+      performance: {level: 1, kind: fsa_inspired_analytical}
+      ppa: {level: 1, kind: analytical_proxy}
+      functional_scope: {level: 1, kind: full_workload_with_explicit_fallback}
+      system_integration: {level: 1, kind: workload_level_proxy}
+    scope:
+      dataflow: broadcast_block_with_fused_attention
+      workload: full_model_with_fallback
+      weight_bits: [2, 4]
+      attention: qk_online_softmax_pv_fused
+    fallbacks:
+      projection: block
+      ffn: block
+      output_head: block
+    uncertainty: {performance_pct: 30, area_pct: 35, power_pct: 40}
+    calibration_dataset: null
+    known_gaps:
+      - Fusion overlap and control cycles have no native RTL calibration.
+      - Incremental PPA uses a paper-derived first-order proxy.
+    sources:
+      - reports/fused-attention-v34-dse-2026-07-14.md
+      - reports/os-dataflow-v35-dse-2026-07-14.md
+
+  os_systolic_fused_attention:
+    display_name: OS Systolic with FSA-Inspired Attention
+    module: engine.fused_attention_engine
+    class_name: OutputStationaryFusedAttentionEngine
+    role: dse_candidate
+    maturity: M1
+    evidence:
+      performance: {level: 1, kind: fsa_inspired_analytical}
+      ppa: {level: 1, kind: analytical_proxy}
+      functional_scope: {level: 1, kind: full_workload_with_explicit_fallback}
+      system_integration: {level: 1, kind: workload_level_proxy}
+    scope:
+      dataflow: output_stationary_with_fused_attention
+      workload: full_model_with_fallback
+      weight_bits: [2, 4]
+      attention: qk_online_softmax_pv_fused
+    fallbacks:
+      projection: os_systolic
+      ffn: os_systolic
+      output_head: os_systolic
+    uncertainty: {performance_pct: 35, area_pct: 35, power_pct: 40}
+    calibration_dataset: null
+    known_gaps:
+      - Inherits uncalibrated OS transposer and SRAM behavior.
+      - Fusion overlap, cached-prefix control and PPA have no native RTL.
+    sources:
+      - reports/fused-attention-v34-dse-2026-07-14.md
+      - reports/os-dataflow-v35-dse-2026-07-14.md
+
+  tensor_core:
+    display_name: Tensor-Core Fragment Array
+    module: engine.tensor_core_engine
+    class_name: TensorCoreEngine
+    role: dse_candidate
+    maturity: M1
+    evidence:
+      performance: {level: 1, kind: architecture_analytical}
+      ppa: {level: 1, kind: analytical_proxy}
+      functional_scope: {level: 1, kind: full_workload_analytical}
+      system_integration: {level: 1, kind: workload_level_proxy}
+    scope:
+      dataflow: fragmented_tensor_core
+      workload: full_model
+      weight_bits: [2, 4]
+      attention: baseline_unfused
+    fallbacks: {}
+    uncertainty: {performance_pct: 35, area_pct: 35, power_pct: 40}
+    calibration_dataset: null
+    known_gaps:
+      - Fragment dispatch and DMA startup are analytical proxies.
+      - The model is inspired by GPU Tensor Cores, not a reproduced NPU RTL.
+    sources:
+      - references/area_sources.md
+
+  wmma:
+    display_name: Warp-Level Matrix Array
+    module: engine.wmma_engine
+    class_name: WMMAEngine
+    role: dse_candidate
+    maturity: M1
+    evidence:
+      performance: {level: 1, kind: architecture_analytical}
+      ppa: {level: 1, kind: analytical_proxy}
+      functional_scope: {level: 1, kind: full_workload_analytical}
+      system_integration: {level: 1, kind: workload_level_proxy}
+    scope:
+      dataflow: warp_fragmented_mma
+      workload: full_model
+      weight_bits: [2, 4]
+      attention: baseline_unfused
+    fallbacks: {}
+    uncertainty: {performance_pct: 40, area_pct: 40, power_pct: 45}
+    calibration_dataset: null
+    known_gaps:
+      - Warp serialization and DMA startup constants are not calibrated.
+      - No native NPU scheduler or RTL implements the assumed WMMA path.
+    sources:
+      - references/area_sources.md
+
+  gmma:
+    display_name: Group MMA with TMA
+    module: engine.gmma_engine
+    class_name: GMMAEngine
+    role: dse_candidate
+    maturity: M1
+    evidence:
+      performance: {level: 1, kind: architecture_analytical}
+      ppa: {level: 1, kind: analytical_proxy}
+      functional_scope: {level: 1, kind: full_workload_analytical}
+      system_integration: {level: 1, kind: workload_level_proxy}
+    scope:
+      dataflow: group_mma_async_dma
+      workload: full_model
+      weight_bits: [2, 4]
+      attention: baseline_unfused
+    fallbacks:
+      weight_cache_pair: two_independent_gemms
+    uncertainty: {performance_pct: 35, area_pct: 40, power_pct: 45}
+    calibration_dataset: null
+    known_gaps:
+      - TMA descriptor and scheduling behavior are analytical.
+      - TMA and shared-memory PPA are not separately synthesized.
+    sources:
+      - references/area_sources.md
+
+  input_stationary:
+    display_name: Input-Stationary Systolic
+    module: engine.is_systolic_engine
+    class_name: InputStationaryEngine
+    role: dse_candidate
+    maturity: M1
+    evidence:
+      performance: {level: 1, kind: dataflow_analytical}
+      ppa: {level: 1, kind: analytical_proxy}
+      functional_scope: {level: 1, kind: full_workload_analytical}
+      system_integration: {level: 1, kind: workload_level_proxy}
+    scope:
+      dataflow: input_stationary
+      workload: full_model
+      weight_bits: [2, 4]
+      attention: baseline_unfused
+    fallbacks: {}
+    uncertainty: {performance_pct: 35, area_pct: 35, power_pct: 40}
+    calibration_dataset: null
+    known_gaps:
+      - Activation-reuse scaling is analytical and has no independent trace.
+      - SRAM port and weight-stream conflicts are not modeled.
+    sources:
+      - references/area_sources.md
+
+  fsa:
+    display_name: Paper FSA Reference
+    module: engine.fsa_engine
+    class_name: FSAEngine
+    role: dse_candidate
+    maturity: M1
+    evidence:
+      performance: {level: 1, kind: paper_extrapolation}
+      ppa: {level: 1, kind: paper_array_proxy}
+      functional_scope: {level: 1, kind: full_workload_with_projection_proxy}
+      system_integration: {level: 1, kind: workload_level_proxy}
+    component_evidence:
+      attention_kernel: {level: 2, kind: upstream_schedule_reproduced}
+      projection_ffn: {level: 1, kind: local_analytical_proxy}
+    scope:
+      dataflow: fused_flashattention_systolic
+      workload: full_model_with_projection_proxy
+      weight_bits: [2, 4]
+      attention: upstream_qk_online_softmax_pv
+    fallbacks:
+      projection: local_fsa_projection_proxy
+      ffn: local_fsa_projection_proxy
+    uncertainty: {performance_pct: 40, area_pct: 40, power_pct: 45}
+    calibration_dataset: null
+    known_gaps:
+      - Public RTL attention is FP16/FP32 while scenario A projections use INT4/INT8.
+      - GQA, cached-prefix attention, LPDDR TPS and whole-chip PPA are extrapolated.
+    sources:
+      - https://github.com/VCA-EPFL/FSA
+      - https://arxiv.org/abs/2507.11331
+      - reports/fsa-v3-controlled-integration-2026-07-14.md

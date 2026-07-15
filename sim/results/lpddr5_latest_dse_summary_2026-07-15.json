@@ -1,0 +1,4951 @@
+{
+  "report_schema": "lpddr-dse-summary-v1",
+  "generated_date": "2026-07-15",
+  "nominal_efficiency": 0.85,
+  "efficiency_corners": [
+    0.75,
+    0.85,
+    0.9
+  ],
+  "notes": [
+    "75% and 90% runs use exact scenario copies with only memory.dram_efficiency and effective_bw_gbps changed.",
+    "Raw, comparison-ready and product-qualified results are kept separate.",
+    "Full nominal JSON files are retained in sim/results; corner outputs are distilled here with source hashes."
+  ],
+  "runs": {
+    "base_75": {
+      "arc_version": "v3.6-engine-evidence",
+      "scenario": "lpddr5_3b_eff75",
+      "scenario_definition": {
+        "description": "LPDDR5-64b + 3B edge low-cost, 75% DRAM efficiency corner",
+        "model": "qwen2.5-3b",
+        "model_params_gb": 1.545,
+        "seq_len": 128,
+        "process_nm": 12,
+        "workload": {
+          "prompt_tokens": 128,
+          "output_tokens": 128,
+          "concurrent_requests": 1,
+          "decode_batch_size": 1,
+          "activation_bits": 8,
+          "attention_bits": 16,
+          "kv_bits": 16,
+          "causal_attention": true
+        },
+        "memory": {
+          "type": "lpddr5",
+          "bandwidth_gbps": 51.2,
+          "dram_efficiency": 0.75,
+          "effective_bw_gbps": 38.4
+        },
+        "constraints": {
+          "ttft_ms_max": 1000,
+          "tps_min": 20,
+          "area_mm2_max": 80
+        },
+        "targets": {
+          "ttft_ms_max": 500
+        },
+        "objectives": [
+          "area_mm2",
+          "power_w",
+          "-tok_s"
+        ],
+        "tie_breakers": {
+          "engine_preference": [
+            "block",
+            "os_systolic"
+          ]
+        },
+        "search_space": {
+          "arrays": [
+            [
+              32,
+              32
+            ],
+            [
+              32,
+              64
+            ],
+            [
+              64,
+              64
+            ],
+            [
+              64,
+              128
+            ],
+            [
+              96,
+              96
+            ],
+            [
+              64,
+              256
+            ],
+            [
+              128,
+              128
+            ],
+            [
+              192,
+              128
+            ],
+            [
+              128,
+              256
+            ],
+            [
+              256,
+              256
+            ]
+          ],
+          "weight_precision_bits": [
+            4
+          ]
+        },
+        "components": {
+          "required": [
+            "dram_phy",
+            "pcie"
+          ],
+          "excluded": [
+            "tsv"
+          ]
+        }
+      },
+      "source_sha256": "c0bfaf40b5397eb8d8a84f035f223807b9c6d970c7cbd8be06dc332480ae90df",
+      "total_configs": 1965,
+      "valid_results": 1965,
+      "invalid_configs": [],
+      "raw_feasible_configs": 762,
+      "comparison_ready_feasible_configs": 334,
+      "product_qualified_feasible_configs": 0,
+      "rejected_configs": 1203,
+      "raw_feasible": true,
+      "comparison_ready_feasible": true,
+      "product_feasible": false,
+      "raw_recommended": {
+        "config_label": "os_s 32x64 INT4 1000MHz B1 LPDDR5-64b",
+        "config": {
+          "scenario": "lpddr5_3b_eff75",
+          "engine": "os_systolic",
+          "maturity": "M2",
+          "array_height": 32,
+          "array_width": 64,
+          "frequency_mhz": 1000,
+          "weight_precision_bits": 4,
+          "weight_cache": false,
+          "memory_type": "lpddr5",
+          "memory_bandwidth_gbps": 51.2,
+          "memory_capacity_gb": 0.0,
+          "sram_l2_kb": 1024,
+          "model": "qwen2.5-3b",
+          "prompt_tokens": 128,
+          "output_tokens": 128,
+          "concurrent_requests": 1,
+          "decode_batch_size": 1,
+          "cached_prefix_tokens": 0,
+          "prefill_context_tokens": 128,
+          "attention_bits": 16,
+          "causal_attention": true,
+          "attention_mode": "baseline",
+          "projection_engine": "os_systolic"
+        },
+        "maturity": "M2",
+        "decode_tps": 20.03,
+        "prefill_tps": 667.17,
+        "ttft_ms": 241.775,
+        "itl_ms": 49.919,
+        "e2e_latency_ms": 6581.514,
+        "area_mm2": 42.8,
+        "power_w": 8.8,
+        "constraints_passed": true,
+        "failed_reasons": [],
+        "warnings": [
+          "memory capacity is unspecified; capacity feasibility was not checked",
+          "power_w_max is not specified by the scenario",
+          "decode TPS margin is only 0.16% above the hard minimum",
+          "OS uses an analytical MxN-spatial/K-temporal wavefront model; transposer backpressure, scratchpad bank conflicts, K-stream chunking, and RTL timing remain uncalibrated",
+          "os_systolic is maturity M2: comparison-ready, but product qualification requires M3 calibration and guardband"
+        ],
+        "provenance": {
+          "arc_version": "v3.6-engine-evidence",
+          "scenario_hash": "63cfa1b1312d905b",
+          "config_hash": "c1a2eb5e03e31ff0",
+          "model_spec": "qwen2.5-3b",
+          "calibration_tier": "dataflow_analytical",
+          "engine_maturity": "M2",
+          "engine_manifest_hash": "7c2ee9f651ad8940",
+          "raw_exploration_eligible": true,
+          "comparison_eligible": true,
+          "product_eligible": false,
+          "recommendation_eligible": true
+        }
+      },
+      "comparison_ready_recommended": {
+        "config_label": "os_s 32x64 INT4 1000MHz B1 LPDDR5-64b",
+        "config": {
+          "scenario": "lpddr5_3b_eff75",
+          "engine": "os_systolic",
+          "maturity": "M2",
+          "array_height": 32,
+          "array_width": 64,
+          "frequency_mhz": 1000,
+          "weight_precision_bits": 4,
+          "weight_cache": false,
+          "memory_type": "lpddr5",
+          "memory_bandwidth_gbps": 51.2,
+          "memory_capacity_gb": 0.0,
+          "sram_l2_kb": 1024,
+          "model": "qwen2.5-3b",
+          "prompt_tokens": 128,
+          "output_tokens": 128,
+          "concurrent_requests": 1,
+          "decode_batch_size": 1,
+          "cached_prefix_tokens": 0,
+          "prefill_context_tokens": 128,
+          "attention_bits": 16,
+          "causal_attention": true,
+          "attention_mode": "baseline",
+          "projection_engine": "os_systolic"
+        },
+        "maturity": "M2",
+        "decode_tps": 20.03,
+        "prefill_tps": 667.17,
+        "ttft_ms": 241.775,
+        "itl_ms": 49.919,
+        "e2e_latency_ms": 6581.514,
+        "area_mm2": 42.8,
+        "power_w": 8.8,
+        "constraints_passed": true,
+        "failed_reasons": [],
+        "warnings": [
+          "memory capacity is unspecified; capacity feasibility was not checked",
+          "power_w_max is not specified by the scenario",
+          "decode TPS margin is only 0.16% above the hard minimum",
+          "OS uses an analytical MxN-spatial/K-temporal wavefront model; transposer backpressure, scratchpad bank conflicts, K-stream chunking, and RTL timing remain uncalibrated",
+          "os_systolic is maturity M2: comparison-ready, but product qualification requires M3 calibration and guardband"
+        ],
+        "provenance": {
+          "arc_version": "v3.6-engine-evidence",
+          "scenario_hash": "63cfa1b1312d905b",
+          "config_hash": "c1a2eb5e03e31ff0",
+          "model_spec": "qwen2.5-3b",
+          "calibration_tier": "dataflow_analytical",
+          "engine_maturity": "M2",
+          "engine_manifest_hash": "7c2ee9f651ad8940",
+          "raw_exploration_eligible": true,
+          "comparison_eligible": true,
+          "product_eligible": false,
+          "recommendation_eligible": true
+        }
+      },
+      "product_recommended": null,
+      "closest_comparison_ready": {
+        "config_label": "syst 128x128 INT4 1200MHz B1 WC LPDDR5-64b",
+        "config": {
+          "scenario": "lpddr5_3b_eff75",
+          "engine": "systolic",
+          "maturity": "M2",
+          "array_height": 128,
+          "array_width": 128,
+          "frequency_mhz": 1200,
+          "weight_precision_bits": 4,
+          "weight_cache": true,
+          "memory_type": "lpddr5",
+          "memory_bandwidth_gbps": 51.2,
+          "memory_capacity_gb": 0.0,
+          "sram_l2_kb": 1024,
+          "model": "qwen2.5-3b",
+          "prompt_tokens": 128,
+          "output_tokens": 128,
+          "concurrent_requests": 1,
+          "decode_batch_size": 1,
+          "cached_prefix_tokens": 0,
+          "prefill_context_tokens": 128,
+          "attention_bits": 16,
+          "causal_attention": true,
+          "attention_mode": "baseline",
+          "projection_engine": "systolic"
+        },
+        "maturity": "M2",
+        "decode_tps": 19.72,
+        "prefill_tps": 1283.75,
+        "ttft_ms": 150.413,
+        "itl_ms": 50.706,
+        "e2e_latency_ms": 6590.015,
+        "area_mm2": 47.2,
+        "power_w": 12.1,
+        "constraints_passed": false,
+        "failed_reasons": [
+          "decode TPS 19.72 < required 20.00"
+        ],
+        "warnings": [
+          "memory capacity is unspecified; capacity feasibility was not checked",
+          "power_w_max is not specified by the scenario",
+          "systolic is maturity M2: comparison-ready, but product qualification requires M3 calibration and guardband"
+        ],
+        "provenance": {
+          "arc_version": "v3.6-engine-evidence",
+          "scenario_hash": "63cfa1b1312d905b",
+          "config_hash": "dca9b2d9d0f53fdc",
+          "model_spec": "qwen2.5-3b",
+          "calibration_tier": "rtl_module_calibrated",
+          "engine_maturity": "M2",
+          "engine_manifest_hash": "cfcec7826cb7e201",
+          "raw_exploration_eligible": true,
+          "comparison_eligible": true,
+          "product_eligible": false,
+          "recommendation_eligible": true
+        }
+      },
+      "engine_comparison": [
+        {
+          "rank": 1,
+          "engine": "os_systolic",
+          "maturity": "M2",
+          "eligibility_status": "COMPARE",
+          "status": "PASS",
+          "target_status": "MET",
+          "config_label": "os_s 32x64 INT4 1000MHz B1 LPDDR5-64b",
+          "config": {
+            "scenario": "lpddr5_3b_eff75",
+            "engine": "os_systolic",
+            "maturity": "M2",
+            "array_height": 32,
+            "array_width": 64,
+            "frequency_mhz": 1000,
+            "weight_precision_bits": 4,
+            "weight_cache": false,
+            "memory_type": "lpddr5",
+            "memory_bandwidth_gbps": 51.2,
+            "memory_capacity_gb": 0.0,
+            "sram_l2_kb": 1024,
+            "model": "qwen2.5-3b",
+            "prompt_tokens": 128,
+            "output_tokens": 128,
+            "concurrent_requests": 1,
+            "decode_batch_size": 1,
+            "cached_prefix_tokens": 0,
+            "prefill_context_tokens": 128,
+            "attention_bits": 16,
+            "causal_attention": true,
+            "attention_mode": "baseline",
+            "projection_engine": "os_systolic"
+          },
+          "metrics": {
+            "decode_tps": 20.03,
+            "aggregate_tps": 20.03,
+            "prefill_tps": 667.17,
+            "ttft_ms": 241.775,
+            "itl_ms": 49.919,
+            "e2e_latency_ms": 6581.514,
+            "area_mm2": 42.8,
+            "power_w": 8.8,
+            "tops_int8": 4.1,
+            "bandwidth_util_pct": 60.56,
+            "memory_required_gb": 1.8105,
+            "memory_available_gb": 0.0
+          },
+          "failed_reasons": [],
+          "warnings": [
+            "memory capacity is unspecified; capacity feasibility was not checked",
+            "power_w_max is not specified by the scenario",
+            "decode TPS margin is only 0.16% above the hard minimum",
+            "OS uses an analytical MxN-spatial/K-temporal wavefront model; transposer backpressure, scratchpad bank conflicts, K-stream chunking, and RTL timing remain uncalibrated",
+            "os_systolic is maturity M2: comparison-ready, but product qualification requires M3 calibration and guardband"
+          ],
+          "evaluated_configs": 150,
+          "feasible_configs": 92
+        },
+        {
+          "rank": 2,
+          "engine": "os_systolic_fused_attention",
+          "maturity": "M1",
+          "eligibility_status": "EXPLORE",
+          "status": "PASS",
+          "target_status": "MET",
+          "config_label": "ofsa 32x64 INT4 1000MHz B1 LPDDR5-64b",
+          "config": {
+            "scenario": "lpddr5_3b_eff75",
+            "engine": "os_systolic_fused_attention",
+            "maturity": "M1",
+            "array_height": 32,
+            "array_width": 64,
+            "frequency_mhz": 1000,
+            "weight_precision_bits": 4,
+            "weight_cache": false,
+            "memory_type": "lpddr5",
+            "memory_bandwidth_gbps": 51.2,
+            "memory_capacity_gb": 0.0,
+            "sram_l2_kb": 1024,
+            "model": "qwen2.5-3b",
+            "prompt_tokens": 128,
+            "output_tokens": 128,
+            "concurrent_requests": 1,
+            "decode_batch_size": 1,
+            "cached_prefix_tokens": 0,
+            "prefill_context_tokens": 128,
+            "attention_bits": 16,
+            "causal_attention": true,
+            "attention_mode": "fused_array",
+            "projection_engine": "os_systolic"
+          },
+          "metrics": {
+            "decode_tps": 20.06,
+            "aggregate_tps": 20.06,
+            "prefill_tps": 674.69,
+            "ttft_ms": 239.564,
+            "itl_ms": 49.849,
+            "e2e_latency_ms": 6570.365,
+            "area_mm2": 42.9,
+            "power_w": 8.9,
+            "tops_int8": 4.1,
+            "bandwidth_util_pct": 60.65,
+            "memory_required_gb": 1.8105,
+            "memory_available_gb": 0.0
+          },
+          "failed_reasons": [],
+          "warnings": [
+            "memory capacity is unspecified; capacity feasibility was not checked",
+            "power_w_max is not specified by the scenario",
+            "decode TPS margin is only 0.30% above the hard minimum",
+            "OS uses an analytical MxN-spatial/K-temporal wavefront model; transposer backpressure, scratchpad bank conflicts, K-stream chunking, and RTL timing remain uncalibrated",
+            "os_systolic_fused_attention uses its baseline projection/FFN path, but fused attention overlap and incremental PPA remain analytical",
+            "os_systolic_fused_attention is maturity M1: included in raw exploration but not in comparison-ready or product-qualified ranking"
+          ],
+          "evaluated_configs": 150,
+          "feasible_configs": 92
+        },
+        {
+          "rank": 3,
+          "engine": "block",
+          "maturity": "M2",
+          "eligibility_status": "COMPARE",
+          "status": "PASS",
+          "target_status": "MET",
+          "config_label": "bloc 64x64 INT4 800MHz B1 LPDDR5-64b",
+          "config": {
+            "scenario": "lpddr5_3b_eff75",
+            "engine": "block",
+            "maturity": "M2",
+            "array_height": 64,
+            "array_width": 64,
+            "frequency_mhz": 800,
+            "weight_precision_bits": 4,
+            "weight_cache": false,
+            "memory_type": "lpddr5",
+            "memory_bandwidth_gbps": 51.2,
+            "memory_capacity_gb": 0.0,
+            "sram_l2_kb": 1024,
+            "model": "qwen2.5-3b",
+            "prompt_tokens": 128,
+            "output_tokens": 128,
+            "concurrent_requests": 1,
+            "decode_batch_size": 1,
+            "cached_prefix_tokens": 0,
+            "prefill_context_tokens": 128,
+            "attention_bits": 16,
+            "causal_attention": true,
+            "attention_mode": "baseline",
+            "projection_engine": "block"
+          },
+          "metrics": {
+            "decode_tps": 24.75,
+            "aggregate_tps": 24.75,
+            "prefill_tps": 286.03,
+            "ttft_ms": 487.906,
+            "itl_ms": 40.403,
+            "e2e_latency_ms": 5619.12,
+            "area_mm2": 44.3,
+            "power_w": 8.8,
+            "tops_int8": 6.55,
+            "bandwidth_util_pct": 74.82,
+            "memory_required_gb": 1.8105,
+            "memory_available_gb": 0.0
+          },
+          "failed_reasons": [],
+          "warnings": [
+            "memory capacity is unspecified; capacity feasibility was not checked",
+            "power_w_max is not specified by the scenario",
+            "block is maturity M2: comparison-ready, but product qualification requires M3 calibration and guardband"
+          ],
+          "evaluated_configs": 300,
+          "feasible_configs": 204
+        },
+        {
+          "rank": 4,
+          "engine": "block_fused_attention",
+          "maturity": "M1",
+          "eligibility_status": "EXPLORE",
+          "status": "PASS",
+          "target_status": "MET",
+          "config_label": "bfsa 64x64 INT4 800MHz B1 WC LPDDR5-64b",
+          "config": {
+            "scenario": "lpddr5_3b_eff75",
+            "engine": "block_fused_attention",
+            "maturity": "M1",
+            "array_height": 64,
+            "array_width": 64,
+            "frequency_mhz": 800,
+            "weight_precision_bits": 4,
+            "weight_cache": true,
+            "memory_type": "lpddr5",
+            "memory_bandwidth_gbps": 51.2,
+            "memory_capacity_gb": 0.0,
+            "sram_l2_kb": 1024,
+            "model": "qwen2.5-3b",
+            "prompt_tokens": 128,
+            "output_tokens": 128,
+            "concurrent_requests": 1,
+            "decode_batch_size": 1,
+            "cached_prefix_tokens": 0,
+            "prefill_context_tokens": 128,
+            "attention_bits": 16,
+            "causal_attention": true,
+            "attention_mode": "fused_array",
+            "projection_engine": "block"
+          },
+          "metrics": {
+            "decode_tps": 24.78,
+            "aggregate_tps": 24.78,
+            "prefill_tps": 287.81,
+            "ttft_ms": 485.096,
+            "itl_ms": 40.363,
+            "e2e_latency_ms": 5611.224,
+            "area_mm2": 44.4,
+            "power_w": 8.9,
+            "tops_int8": 6.55,
+            "bandwidth_util_pct": 74.9,
+            "memory_required_gb": 1.8105,
+            "memory_available_gb": 0.0
+          },
+          "failed_reasons": [],
+          "warnings": [
+            "memory capacity is unspecified; capacity feasibility was not checked",
+            "power_w_max is not specified by the scenario",
+            "block_fused_attention uses its baseline projection/FFN path, but fused attention overlap and incremental PPA remain analytical",
+            "block_fused_attention is maturity M1: included in raw exploration but not in comparison-ready or product-qualified ranking"
+          ],
+          "evaluated_configs": 300,
+          "feasible_configs": 204
+        },
+        {
+          "rank": 5,
+          "engine": "fsa",
+          "maturity": "M1",
+          "eligibility_status": "EXPLORE",
+          "status": "PASS",
+          "target_status": "MET",
+          "config_label": "fsa 128x128 INT4 1000MHz B1 LPDDR5-64b",
+          "config": {
+            "scenario": "lpddr5_3b_eff75",
+            "engine": "fsa",
+            "maturity": "M1",
+            "array_height": 128,
+            "array_width": 128,
+            "frequency_mhz": 1000,
+            "weight_precision_bits": 4,
+            "weight_cache": false,
+            "memory_type": "lpddr5",
+            "memory_bandwidth_gbps": 51.2,
+            "memory_capacity_gb": 0.0,
+            "sram_l2_kb": 1024,
+            "model": "qwen2.5-3b",
+            "prompt_tokens": 128,
+            "output_tokens": 128,
+            "concurrent_requests": 1,
+            "decode_batch_size": 1,
+            "cached_prefix_tokens": 0,
+            "prefill_context_tokens": 128,
+            "attention_bits": 16,
+            "causal_attention": true,
+            "attention_mode": "baseline",
+            "projection_engine": "fsa"
+          },
+          "metrics": {
+            "decode_tps": 20.46,
+            "aggregate_tps": 20.46,
+            "prefill_tps": 1712.64,
+            "ttft_ms": 123.624,
+            "itl_ms": 48.885,
+            "e2e_latency_ms": 6332.06,
+            "area_mm2": 47.9,
+            "power_w": 11.4,
+            "tops_int8": 32.77,
+            "bandwidth_util_pct": 61.84,
+            "memory_required_gb": 1.8105,
+            "memory_available_gb": 0.0
+          },
+          "failed_reasons": [],
+          "warnings": [
+            "memory capacity is unspecified; capacity feasibility was not checked",
+            "power_w_max is not specified by the scenario",
+            "decode TPS margin is only 2.28% above the hard minimum",
+            "FSA attention follows the upstream schedule, while mixed-precision projections, GQA, LPDDR5 end-to-end TPS and whole-chip PPA remain paper extrapolations",
+            "fsa is maturity M1: included in raw exploration but not in comparison-ready or product-qualified ranking"
+          ],
+          "evaluated_configs": 15,
+          "feasible_configs": 10
+        },
+        {
+          "rank": 6,
+          "engine": "systolic",
+          "maturity": "M2",
+          "eligibility_status": "COMPARE",
+          "status": "PASS",
+          "target_status": "MET",
+          "config_label": "syst 192x128 INT4 1200MHz B1 WC LPDDR5-64b",
+          "config": {
+            "scenario": "lpddr5_3b_eff75",
+            "engine": "systolic",
+            "maturity": "M2",
+            "array_height": 192,
+            "array_width": 128,
+            "frequency_mhz": 1200,
+            "weight_precision_bits": 4,
+            "weight_cache": true,
+            "memory_type": "lpddr5",
+            "memory_bandwidth_gbps": 51.2,
+            "memory_capacity_gb": 0.0,
+            "sram_l2_kb": 1024,
+            "model": "qwen2.5-3b",
+            "prompt_tokens": 128,
+            "output_tokens": 128,
+            "concurrent_requests": 1,
+            "decode_batch_size": 1,
+            "cached_prefix_tokens": 0,
+            "prefill_context_tokens": 128,
+            "attention_bits": 16,
+            "causal_attention": true,
+            "attention_mode": "baseline",
+            "projection_engine": "systolic"
+          },
+          "metrics": {
+            "decode_tps": 20.5,
+            "aggregate_tps": 20.5,
+            "prefill_tps": 1098.99,
+            "ttft_ms": 165.249,
+            "itl_ms": 48.779,
+            "e2e_latency_ms": 6360.138,
+            "area_mm2": 50.1,
+            "power_w": 13.8,
+            "tops_int8": 58.98,
+            "bandwidth_util_pct": 64.32,
+            "memory_required_gb": 1.8105,
+            "memory_available_gb": 0.0
+          },
+          "failed_reasons": [],
+          "warnings": [
+            "memory capacity is unspecified; capacity feasibility was not checked",
+            "power_w_max is not specified by the scenario",
+            "decode TPS margin is only 2.50% above the hard minimum",
+            "systolic is maturity M2: comparison-ready, but product qualification requires M3 calibration and guardband"
+          ],
+          "evaluated_configs": 300,
+          "feasible_configs": 38
+        },
+        {
+          "rank": 7,
+          "engine": "gmma",
+          "maturity": "M1",
+          "eligibility_status": "EXPLORE",
+          "status": "PASS",
+          "target_status": "MET",
+          "config_label": "gmma 128x128 INT4 1000MHz B1 LPDDR5-64b",
+          "config": {
+            "scenario": "lpddr5_3b_eff75",
+            "engine": "gmma",
+            "maturity": "M1",
+            "array_height": 128,
+            "array_width": 128,
+            "frequency_mhz": 1000,
+            "weight_precision_bits": 4,
+            "weight_cache": false,
+            "memory_type": "lpddr5",
+            "memory_bandwidth_gbps": 51.2,
+            "memory_capacity_gb": 0.0,
+            "sram_l2_kb": 1024,
+            "model": "qwen2.5-3b",
+            "prompt_tokens": 128,
+            "output_tokens": 128,
+            "concurrent_requests": 1,
+            "decode_batch_size": 1,
+            "cached_prefix_tokens": 0,
+            "prefill_context_tokens": 128,
+            "attention_bits": 16,
+            "causal_attention": true,
+            "attention_mode": "baseline",
+            "projection_engine": "gmma"
+          },
+          "metrics": {
+            "decode_tps": 20.51,
+            "aggregate_tps": 20.51,
+            "prefill_tps": 1668.35,
+            "ttft_ms": 125.479,
+            "itl_ms": 48.756,
+            "e2e_latency_ms": 6317.529,
+            "area_mm2": 61.9,
+            "power_w": 18.4,
+            "tops_int8": 32.77,
+            "bandwidth_util_pct": 62.01,
+            "memory_required_gb": 1.8105,
+            "memory_available_gb": 0.0
+          },
+          "failed_reasons": [],
+          "warnings": [
+            "memory capacity is unspecified; capacity feasibility was not checked",
+            "power_w_max is not specified by the scenario",
+            "decode TPS margin is only 2.55% above the hard minimum",
+            "gmma is maturity M1: included in raw exploration but not in comparison-ready or product-qualified ranking"
+          ],
+          "evaluated_configs": 300,
+          "feasible_configs": 20
+        },
+        {
+          "rank": 8,
+          "engine": "tensor_core",
+          "maturity": "M1",
+          "eligibility_status": "EXPLORE",
+          "status": "PASS",
+          "target_status": "MISS",
+          "config_label": "tens 64x64 INT4 1200MHz B1 LPDDR5-64b",
+          "config": {
+            "scenario": "lpddr5_3b_eff75",
+            "engine": "tensor_core",
+            "maturity": "M1",
+            "array_height": 64,
+            "array_width": 64,
+            "frequency_mhz": 1200,
+            "weight_precision_bits": 4,
+            "weight_cache": false,
+            "memory_type": "lpddr5",
+            "memory_bandwidth_gbps": 51.2,
+            "memory_capacity_gb": 0.0,
+            "sram_l2_kb": 1024,
+            "model": "qwen2.5-3b",
+            "prompt_tokens": 128,
+            "output_tokens": 128,
+            "concurrent_requests": 1,
+            "decode_batch_size": 1,
+            "cached_prefix_tokens": 0,
+            "prefill_context_tokens": 128,
+            "attention_bits": 16,
+            "causal_attention": true,
+            "attention_mode": "baseline",
+            "projection_engine": "tensor_core"
+          },
+          "metrics": {
+            "decode_tps": 22.03,
+            "aggregate_tps": 22.03,
+            "prefill_tps": 145.88,
+            "ttft_ms": 922.815,
+            "itl_ms": 45.397,
+            "e2e_latency_ms": 6688.253,
+            "area_mm2": 44.3,
+            "power_w": 10.3,
+            "tops_int8": 9.83,
+            "bandwidth_util_pct": 74.89,
+            "memory_required_gb": 1.8105,
+            "memory_available_gb": 0.0
+          },
+          "failed_reasons": [],
+          "warnings": [
+            "memory capacity is unspecified; capacity feasibility was not checked",
+            "power_w_max is not specified by the scenario",
+            "tensor_core is maturity M1: included in raw exploration but not in comparison-ready or product-qualified ranking"
+          ],
+          "evaluated_configs": 150,
+          "feasible_configs": 102
+        },
+        {
+          "rank": 9,
+          "engine": "input_stationary",
+          "maturity": "M1",
+          "eligibility_status": "EXPLORE",
+          "status": "FAIL",
+          "target_status": "MET",
+          "config_label": "inpu 32x64 INT4 1200MHz B1 LPDDR5-64b",
+          "config": {
+            "scenario": "lpddr5_3b_eff75",
+            "engine": "input_stationary",
+            "maturity": "M1",
+            "array_height": 32,
+            "array_width": 64,
+            "frequency_mhz": 1200,
+            "weight_precision_bits": 4,
+            "weight_cache": false,
+            "memory_type": "lpddr5",
+            "memory_bandwidth_gbps": 51.2,
+            "memory_capacity_gb": 0.0,
+            "sram_l2_kb": 1024,
+            "model": "qwen2.5-3b",
+            "prompt_tokens": 128,
+            "output_tokens": 128,
+            "concurrent_requests": 1,
+            "decode_batch_size": 1,
+            "cached_prefix_tokens": 0,
+            "prefill_context_tokens": 128,
+            "attention_bits": 16,
+            "causal_attention": true,
+            "attention_mode": "baseline",
+            "projection_engine": "input_stationary"
+          },
+          "metrics": {
+            "decode_tps": 10.59,
+            "aggregate_tps": 10.59,
+            "prefill_tps": 419.69,
+            "ttft_ms": 399.446,
+            "itl_ms": 94.458,
+            "e2e_latency_ms": 12395.635,
+            "area_mm2": 42.8,
+            "power_w": 9.4,
+            "tops_int8": 4.92,
+            "bandwidth_util_pct": 33.0,
+            "memory_required_gb": 1.8105,
+            "memory_available_gb": 0.0
+          },
+          "failed_reasons": [
+            "decode TPS 10.59 < required 20.00"
+          ],
+          "warnings": [
+            "memory capacity is unspecified; capacity feasibility was not checked",
+            "power_w_max is not specified by the scenario",
+            "input_stationary is maturity M1: included in raw exploration but not in comparison-ready or product-qualified ranking"
+          ],
+          "evaluated_configs": 150,
+          "feasible_configs": 0
+        },
+        {
+          "rank": 10,
+          "engine": "wmma",
+          "maturity": "M1",
+          "eligibility_status": "EXPLORE",
+          "status": "FAIL",
+          "target_status": "MISS",
+          "config_label": "wmma 96x96 INT4 1200MHz B1 LPDDR5-64b",
+          "config": {
+            "scenario": "lpddr5_3b_eff75",
+            "engine": "wmma",
+            "maturity": "M1",
+            "array_height": 96,
+            "array_width": 96,
+            "frequency_mhz": 1200,
+            "weight_precision_bits": 4,
+            "weight_cache": false,
+            "memory_type": "lpddr5",
+            "memory_bandwidth_gbps": 51.2,
+            "memory_capacity_gb": 0.0,
+            "sram_l2_kb": 1024,
+            "model": "qwen2.5-3b",
+            "prompt_tokens": 128,
+            "output_tokens": 128,
+            "concurrent_requests": 1,
+            "decode_batch_size": 1,
+            "cached_prefix_tokens": 0,
+            "prefill_context_tokens": 128,
+            "attention_bits": 16,
+            "causal_attention": true,
+            "attention_mode": "baseline",
+            "projection_engine": "wmma"
+          },
+          "metrics": {
+            "decode_tps": 0.06,
+            "aggregate_tps": 0.06,
+            "prefill_tps": 1.06,
+            "ttft_ms": 137264.639,
+            "itl_ms": 16267.65,
+            "e2e_latency_ms": 2203256.177,
+            "area_mm2": 51.2,
+            "power_w": 14.5,
+            "tops_int8": 22.12,
+            "bandwidth_util_pct": 0.2,
+            "memory_required_gb": 1.8105,
+            "memory_available_gb": 0.0
+          },
+          "failed_reasons": [
+            "decode TPS 0.06 < required 20.00",
+            "TTFT 137264.64ms > limit 1000.00ms"
+          ],
+          "warnings": [
+            "memory capacity is unspecified; capacity feasibility was not checked",
+            "power_w_max is not specified by the scenario",
+            "wmma is maturity M1: included in raw exploration but not in comparison-ready or product-qualified ranking"
+          ],
+          "evaluated_configs": 150,
+          "feasible_configs": 0
+        }
+      ]
+    },
+    "base_85": {
+      "arc_version": "v3.6-engine-evidence",
+      "scenario": "lpddr5_3b",
+      "scenario_definition": {
+        "description": "LPDDR5-64b + 3B 端侧低成本",
+        "model": "qwen2.5-3b",
+        "model_params_gb": 1.545,
+        "seq_len": 128,
+        "ttft_ms_target": 500,
+        "ttft_ms_max": 1000,
+        "tps_min": 20,
+        "process_nm": 12,
+        "workload": {
+          "prompt_tokens": 128,
+          "output_tokens": 128,
+          "concurrent_requests": 1,
+          "decode_batch_size": 1,
+          "activation_bits": 8,
+          "attention_bits": 16,
+          "kv_bits": 16,
+          "causal_attention": true
+        },
+        "memory": {
+          "type": "lpddr5",
+          "bandwidth_gbps": 51.2,
+          "dram_efficiency": 0.85,
+          "effective_bw_gbps": 43.52,
+          "efficiency_corners": [
+            0.75,
+            0.85,
+            0.9
+          ]
+        },
+        "constraints": {
+          "ttft_ms_max": 1000,
+          "tps_min": 20,
+          "area_mm2_max": 80
+        },
+        "targets": {
+          "ttft_ms_max": 500
+        },
+        "tie_breakers": {
+          "engine_preference": [
+            "block",
+            "os_systolic"
+          ]
+        },
+        "objectives": [
+          "area_mm2",
+          "power_w",
+          "-tok_s"
+        ],
+        "search_space": {
+          "arrays": [
+            [
+              32,
+              32
+            ],
+            [
+              32,
+              64
+            ],
+            [
+              64,
+              64
+            ],
+            [
+              64,
+              128
+            ],
+            [
+              96,
+              96
+            ],
+            [
+              64,
+              256
+            ],
+            [
+              128,
+              128
+            ],
+            [
+              192,
+              128
+            ],
+            [
+              128,
+              256
+            ],
+            [
+              256,
+              256
+            ]
+          ],
+          "weight_precision_bits": [
+            4
+          ]
+        },
+        "components": {
+          "required": [
+            "dram_phy",
+            "pcie"
+          ],
+          "excluded": [
+            "tsv"
+          ]
+        },
+        "benchmarks": [
+          {
+            "name": "典型手机 NPU (2024)",
+            "process_nm": 4,
+            "area_mm2": 8,
+            "tops_int8": 35,
+            "note": "Apple A18 ANE / Snapdragon 8 Gen3 NPU"
+          }
+        ]
+      },
+      "source_sha256": "491c42f6e8bbaa1dfc43f3f5fd630c03cb40f3eee6b88bb1de5e039923b19818",
+      "total_configs": 1965,
+      "valid_results": 1965,
+      "invalid_configs": [],
+      "raw_feasible_configs": 771,
+      "comparison_ready_feasible_configs": 343,
+      "product_qualified_feasible_configs": 0,
+      "rejected_configs": 1194,
+      "raw_feasible": true,
+      "comparison_ready_feasible": true,
+      "product_feasible": false,
+      "raw_recommended": {
+        "config_label": "os_s 32x64 INT4 1000MHz B1 LPDDR5-64b",
+        "config": {
+          "scenario": "lpddr5_3b",
+          "engine": "os_systolic",
+          "maturity": "M2",
+          "array_height": 32,
+          "array_width": 64,
+          "frequency_mhz": 1000,
+          "weight_precision_bits": 4,
+          "weight_cache": false,
+          "memory_type": "lpddr5",
+          "memory_bandwidth_gbps": 51.2,
+          "memory_capacity_gb": 0.0,
+          "sram_l2_kb": 1024,
+          "model": "qwen2.5-3b",
+          "prompt_tokens": 128,
+          "output_tokens": 128,
+          "concurrent_requests": 1,
+          "decode_batch_size": 1,
+          "cached_prefix_tokens": 0,
+          "prefill_context_tokens": 128,
+          "attention_bits": 16,
+          "causal_attention": true,
+          "attention_mode": "baseline",
+          "projection_engine": "os_systolic"
+        },
+        "maturity": "M2",
+        "decode_tps": 20.03,
+        "prefill_tps": 667.22,
+        "ttft_ms": 241.761,
+        "itl_ms": 49.919,
+        "e2e_latency_ms": 6581.5,
+        "area_mm2": 42.8,
+        "power_w": 8.8,
+        "constraints_passed": true,
+        "failed_reasons": [],
+        "warnings": [
+          "memory capacity is unspecified; capacity feasibility was not checked",
+          "power_w_max is not specified by the scenario",
+          "decode TPS margin is only 0.16% above the hard minimum",
+          "OS uses an analytical MxN-spatial/K-temporal wavefront model; transposer backpressure, scratchpad bank conflicts, K-stream chunking, and RTL timing remain uncalibrated",
+          "os_systolic is maturity M2: comparison-ready, but product qualification requires M3 calibration and guardband"
+        ],
+        "provenance": {
+          "arc_version": "v3.6-engine-evidence",
+          "scenario_hash": "9c0565384f3b2a1c",
+          "config_hash": "525213f075f092e1",
+          "model_spec": "qwen2.5-3b",
+          "calibration_tier": "dataflow_analytical",
+          "engine_maturity": "M2",
+          "engine_manifest_hash": "7c2ee9f651ad8940",
+          "raw_exploration_eligible": true,
+          "comparison_eligible": true,
+          "product_eligible": false,
+          "recommendation_eligible": true
+        }
+      },
+      "comparison_ready_recommended": {
+        "config_label": "os_s 32x64 INT4 1000MHz B1 LPDDR5-64b",
+        "config": {
+          "scenario": "lpddr5_3b",
+          "engine": "os_systolic",
+          "maturity": "M2",
+          "array_height": 32,
+          "array_width": 64,
+          "frequency_mhz": 1000,
+          "weight_precision_bits": 4,
+          "weight_cache": false,
+          "memory_type": "lpddr5",
+          "memory_bandwidth_gbps": 51.2,
+          "memory_capacity_gb": 0.0,
+          "sram_l2_kb": 1024,
+          "model": "qwen2.5-3b",
+          "prompt_tokens": 128,
+          "output_tokens": 128,
+          "concurrent_requests": 1,
+          "decode_batch_size": 1,
+          "cached_prefix_tokens": 0,
+          "prefill_context_tokens": 128,
+          "attention_bits": 16,
+          "causal_attention": true,
+          "attention_mode": "baseline",
+          "projection_engine": "os_systolic"
+        },
+        "maturity": "M2",
+        "decode_tps": 20.03,
+        "prefill_tps": 667.22,
+        "ttft_ms": 241.761,
+        "itl_ms": 49.919,
+        "e2e_latency_ms": 6581.5,
+        "area_mm2": 42.8,
+        "power_w": 8.8,
+        "constraints_passed": true,
+        "failed_reasons": [],
+        "warnings": [
+          "memory capacity is unspecified; capacity feasibility was not checked",
+          "power_w_max is not specified by the scenario",
+          "decode TPS margin is only 0.16% above the hard minimum",
+          "OS uses an analytical MxN-spatial/K-temporal wavefront model; transposer backpressure, scratchpad bank conflicts, K-stream chunking, and RTL timing remain uncalibrated",
+          "os_systolic is maturity M2: comparison-ready, but product qualification requires M3 calibration and guardband"
+        ],
+        "provenance": {
+          "arc_version": "v3.6-engine-evidence",
+          "scenario_hash": "9c0565384f3b2a1c",
+          "config_hash": "525213f075f092e1",
+          "model_spec": "qwen2.5-3b",
+          "calibration_tier": "dataflow_analytical",
+          "engine_maturity": "M2",
+          "engine_manifest_hash": "7c2ee9f651ad8940",
+          "raw_exploration_eligible": true,
+          "comparison_eligible": true,
+          "product_eligible": false,
+          "recommendation_eligible": true
+        }
+      },
+      "product_recommended": null,
+      "closest_comparison_ready": {
+        "config_label": "os_s 192x128 INT4 800MHz B1 LPDDR5-64b",
+        "config": {
+          "scenario": "lpddr5_3b",
+          "engine": "os_systolic",
+          "maturity": "M2",
+          "array_height": 192,
+          "array_width": 128,
+          "frequency_mhz": 800,
+          "weight_precision_bits": 4,
+          "weight_cache": false,
+          "memory_type": "lpddr5",
+          "memory_bandwidth_gbps": 51.2,
+          "memory_capacity_gb": 0.0,
+          "sram_l2_kb": 6144,
+          "model": "qwen2.5-3b",
+          "prompt_tokens": 128,
+          "output_tokens": 128,
+          "concurrent_requests": 1,
+          "decode_batch_size": 1,
+          "cached_prefix_tokens": 0,
+          "prefill_context_tokens": 128,
+          "attention_bits": 16,
+          "causal_attention": true,
+          "attention_mode": "baseline",
+          "projection_engine": "os_systolic"
+        },
+        "maturity": "M2",
+        "decode_tps": 27.84,
+        "prefill_tps": 2791.07,
+        "ttft_ms": 81.774,
+        "itl_ms": 35.913,
+        "e2e_latency_ms": 4642.783,
+        "area_mm2": 81.5,
+        "power_w": 17.7,
+        "constraints_passed": false,
+        "failed_reasons": [
+          "area 81.50mm2 > limit 80.00mm2"
+        ],
+        "warnings": [
+          "memory capacity is unspecified; capacity feasibility was not checked",
+          "power_w_max is not specified by the scenario",
+          "OS uses an analytical MxN-spatial/K-temporal wavefront model; transposer backpressure, scratchpad bank conflicts, K-stream chunking, and RTL timing remain uncalibrated",
+          "os_systolic is maturity M2: comparison-ready, but product qualification requires M3 calibration and guardband"
+        ],
+        "provenance": {
+          "arc_version": "v3.6-engine-evidence",
+          "scenario_hash": "9c0565384f3b2a1c",
+          "config_hash": "5cf0deeba9f820a0",
+          "model_spec": "qwen2.5-3b",
+          "calibration_tier": "dataflow_analytical",
+          "engine_maturity": "M2",
+          "engine_manifest_hash": "7c2ee9f651ad8940",
+          "raw_exploration_eligible": true,
+          "comparison_eligible": true,
+          "product_eligible": false,
+          "recommendation_eligible": true
+        }
+      },
+      "engine_comparison": [
+        {
+          "rank": 1,
+          "engine": "os_systolic",
+          "maturity": "M2",
+          "eligibility_status": "COMPARE",
+          "status": "PASS",
+          "target_status": "MET",
+          "config_label": "os_s 32x64 INT4 1000MHz B1 LPDDR5-64b",
+          "config": {
+            "scenario": "lpddr5_3b",
+            "engine": "os_systolic",
+            "maturity": "M2",
+            "array_height": 32,
+            "array_width": 64,
+            "frequency_mhz": 1000,
+            "weight_precision_bits": 4,
+            "weight_cache": false,
+            "memory_type": "lpddr5",
+            "memory_bandwidth_gbps": 51.2,
+            "memory_capacity_gb": 0.0,
+            "sram_l2_kb": 1024,
+            "model": "qwen2.5-3b",
+            "prompt_tokens": 128,
+            "output_tokens": 128,
+            "concurrent_requests": 1,
+            "decode_batch_size": 1,
+            "cached_prefix_tokens": 0,
+            "prefill_context_tokens": 128,
+            "attention_bits": 16,
+            "causal_attention": true,
+            "attention_mode": "baseline",
+            "projection_engine": "os_systolic"
+          },
+          "metrics": {
+            "decode_tps": 20.03,
+            "aggregate_tps": 20.03,
+            "prefill_tps": 667.22,
+            "ttft_ms": 241.761,
+            "itl_ms": 49.919,
+            "e2e_latency_ms": 6581.5,
+            "area_mm2": 42.8,
+            "power_w": 8.8,
+            "tops_int8": 4.1,
+            "bandwidth_util_pct": 60.56,
+            "memory_required_gb": 1.8105,
+            "memory_available_gb": 0.0
+          },
+          "failed_reasons": [],
+          "warnings": [
+            "memory capacity is unspecified; capacity feasibility was not checked",
+            "power_w_max is not specified by the scenario",
+            "decode TPS margin is only 0.16% above the hard minimum",
+            "OS uses an analytical MxN-spatial/K-temporal wavefront model; transposer backpressure, scratchpad bank conflicts, K-stream chunking, and RTL timing remain uncalibrated",
+            "os_systolic is maturity M2: comparison-ready, but product qualification requires M3 calibration and guardband"
+          ],
+          "evaluated_configs": 150,
+          "feasible_configs": 92
+        },
+        {
+          "rank": 2,
+          "engine": "os_systolic_fused_attention",
+          "maturity": "M1",
+          "eligibility_status": "EXPLORE",
+          "status": "PASS",
+          "target_status": "MET",
+          "config_label": "ofsa 32x64 INT4 1000MHz B1 LPDDR5-64b",
+          "config": {
+            "scenario": "lpddr5_3b",
+            "engine": "os_systolic_fused_attention",
+            "maturity": "M1",
+            "array_height": 32,
+            "array_width": 64,
+            "frequency_mhz": 1000,
+            "weight_precision_bits": 4,
+            "weight_cache": false,
+            "memory_type": "lpddr5",
+            "memory_bandwidth_gbps": 51.2,
+            "memory_capacity_gb": 0.0,
+            "sram_l2_kb": 1024,
+            "model": "qwen2.5-3b",
+            "prompt_tokens": 128,
+            "output_tokens": 128,
+            "concurrent_requests": 1,
+            "decode_batch_size": 1,
+            "cached_prefix_tokens": 0,
+            "prefill_context_tokens": 128,
+            "attention_bits": 16,
+            "causal_attention": true,
+            "attention_mode": "fused_array",
+            "projection_engine": "os_systolic"
+          },
+          "metrics": {
+            "decode_tps": 20.06,
+            "aggregate_tps": 20.06,
+            "prefill_tps": 674.75,
+            "ttft_ms": 239.55,
+            "itl_ms": 49.849,
+            "e2e_latency_ms": 6570.351,
+            "area_mm2": 42.9,
+            "power_w": 8.9,
+            "tops_int8": 4.1,
+            "bandwidth_util_pct": 60.65,
+            "memory_required_gb": 1.8105,
+            "memory_available_gb": 0.0
+          },
+          "failed_reasons": [],
+          "warnings": [
+            "memory capacity is unspecified; capacity feasibility was not checked",
+            "power_w_max is not specified by the scenario",
+            "decode TPS margin is only 0.30% above the hard minimum",
+            "OS uses an analytical MxN-spatial/K-temporal wavefront model; transposer backpressure, scratchpad bank conflicts, K-stream chunking, and RTL timing remain uncalibrated",
+            "os_systolic_fused_attention uses its baseline projection/FFN path, but fused attention overlap and incremental PPA remain analytical",
+            "os_systolic_fused_attention is maturity M1: included in raw exploration but not in comparison-ready or product-qualified ranking"
+          ],
+          "evaluated_configs": 150,
+          "feasible_configs": 92
+        },
+        {
+          "rank": 3,
+          "engine": "block",
+          "maturity": "M2",
+          "eligibility_status": "COMPARE",
+          "status": "PASS",
+          "target_status": "MET",
+          "config_label": "bloc 64x64 INT4 800MHz B1 WC LPDDR5-64b",
+          "config": {
+            "scenario": "lpddr5_3b",
+            "engine": "block",
+            "maturity": "M2",
+            "array_height": 64,
+            "array_width": 64,
+            "frequency_mhz": 800,
+            "weight_precision_bits": 4,
+            "weight_cache": true,
+            "memory_type": "lpddr5",
+            "memory_bandwidth_gbps": 51.2,
+            "memory_capacity_gb": 0.0,
+            "sram_l2_kb": 1024,
+            "model": "qwen2.5-3b",
+            "prompt_tokens": 128,
+            "output_tokens": 128,
+            "concurrent_requests": 1,
+            "decode_batch_size": 1,
+            "cached_prefix_tokens": 0,
+            "prefill_context_tokens": 128,
+            "attention_bits": 16,
+            "causal_attention": true,
+            "attention_mode": "baseline",
+            "projection_engine": "block"
+          },
+          "metrics": {
+            "decode_tps": 28.05,
+            "aggregate_tps": 28.05,
+            "prefill_tps": 286.35,
+            "ttft_ms": 482.668,
+            "itl_ms": 35.657,
+            "e2e_latency_ms": 5011.084,
+            "area_mm2": 44.3,
+            "power_w": 8.8,
+            "tops_int8": 6.55,
+            "bandwidth_util_pct": 84.79,
+            "memory_required_gb": 1.8105,
+            "memory_available_gb": 0.0
+          },
+          "failed_reasons": [],
+          "warnings": [
+            "memory capacity is unspecified; capacity feasibility was not checked",
+            "power_w_max is not specified by the scenario",
+            "block is maturity M2: comparison-ready, but product qualification requires M3 calibration and guardband"
+          ],
+          "evaluated_configs": 300,
+          "feasible_configs": 204
+        },
+        {
+          "rank": 4,
+          "engine": "block_fused_attention",
+          "maturity": "M1",
+          "eligibility_status": "EXPLORE",
+          "status": "PASS",
+          "target_status": "MET",
+          "config_label": "bfsa 64x64 INT4 800MHz B1 WC LPDDR5-64b",
+          "config": {
+            "scenario": "lpddr5_3b",
+            "engine": "block_fused_attention",
+            "maturity": "M1",
+            "array_height": 64,
+            "array_width": 64,
+            "frequency_mhz": 800,
+            "weight_precision_bits": 4,
+            "weight_cache": true,
+            "memory_type": "lpddr5",
+            "memory_bandwidth_gbps": 51.2,
+            "memory_capacity_gb": 0.0,
+            "sram_l2_kb": 1024,
+            "model": "qwen2.5-3b",
+            "prompt_tokens": 128,
+            "output_tokens": 128,
+            "concurrent_requests": 1,
+            "decode_batch_size": 1,
+            "cached_prefix_tokens": 0,
+            "prefill_context_tokens": 128,
+            "attention_bits": 16,
+            "causal_attention": true,
+            "attention_mode": "fused_array",
+            "projection_engine": "block"
+          },
+          "metrics": {
+            "decode_tps": 28.08,
+            "aggregate_tps": 28.08,
+            "prefill_tps": 288.13,
+            "ttft_ms": 479.86,
+            "itl_ms": 35.619,
+            "e2e_latency_ms": 5003.43,
+            "area_mm2": 44.4,
+            "power_w": 8.9,
+            "tops_int8": 6.55,
+            "bandwidth_util_pct": 84.88,
+            "memory_required_gb": 1.8105,
+            "memory_available_gb": 0.0
+          },
+          "failed_reasons": [],
+          "warnings": [
+            "memory capacity is unspecified; capacity feasibility was not checked",
+            "power_w_max is not specified by the scenario",
+            "block_fused_attention uses its baseline projection/FFN path, but fused attention overlap and incremental PPA remain analytical",
+            "block_fused_attention is maturity M1: included in raw exploration but not in comparison-ready or product-qualified ranking"
+          ],
+          "evaluated_configs": 300,
+          "feasible_configs": 204
+        },
+        {
+          "rank": 5,
+          "engine": "systolic",
+          "maturity": "M2",
+          "eligibility_status": "COMPARE",
+          "status": "PASS",
+          "target_status": "MET",
+          "config_label": "syst 128x128 INT4 1200MHz B1 WC LPDDR5-64b",
+          "config": {
+            "scenario": "lpddr5_3b",
+            "engine": "systolic",
+            "maturity": "M2",
+            "array_height": 128,
+            "array_width": 128,
+            "frequency_mhz": 1200,
+            "weight_precision_bits": 4,
+            "weight_cache": true,
+            "memory_type": "lpddr5",
+            "memory_bandwidth_gbps": 51.2,
+            "memory_capacity_gb": 0.0,
+            "sram_l2_kb": 1024,
+            "model": "qwen2.5-3b",
+            "prompt_tokens": 128,
+            "output_tokens": 128,
+            "concurrent_requests": 1,
+            "decode_batch_size": 1,
+            "cached_prefix_tokens": 0,
+            "prefill_context_tokens": 128,
+            "attention_bits": 16,
+            "causal_attention": true,
+            "attention_mode": "baseline",
+            "projection_engine": "systolic"
+          },
+          "metrics": {
+            "decode_tps": 20.75,
+            "aggregate_tps": 20.75,
+            "prefill_tps": 1433.38,
+            "ttft_ms": 137.494,
+            "itl_ms": 48.195,
+            "e2e_latency_ms": 6258.245,
+            "area_mm2": 47.2,
+            "power_w": 12.1,
+            "tops_int8": 39.32,
+            "bandwidth_util_pct": 63.45,
+            "memory_required_gb": 1.8105,
+            "memory_available_gb": 0.0
+          },
+          "failed_reasons": [],
+          "warnings": [
+            "memory capacity is unspecified; capacity feasibility was not checked",
+            "power_w_max is not specified by the scenario",
+            "decode TPS margin is only 3.75% above the hard minimum",
+            "systolic is maturity M2: comparison-ready, but product qualification requires M3 calibration and guardband"
+          ],
+          "evaluated_configs": 300,
+          "feasible_configs": 47
+        },
+        {
+          "rank": 6,
+          "engine": "fsa",
+          "maturity": "M1",
+          "eligibility_status": "EXPLORE",
+          "status": "PASS",
+          "target_status": "MET",
+          "config_label": "fsa 128x128 INT4 1000MHz B1 LPDDR5-64b",
+          "config": {
+            "scenario": "lpddr5_3b",
+            "engine": "fsa",
+            "maturity": "M1",
+            "array_height": 128,
+            "array_width": 128,
+            "frequency_mhz": 1000,
+            "weight_precision_bits": 4,
+            "weight_cache": false,
+            "memory_type": "lpddr5",
+            "memory_bandwidth_gbps": 51.2,
+            "memory_capacity_gb": 0.0,
+            "sram_l2_kb": 1024,
+            "model": "qwen2.5-3b",
+            "prompt_tokens": 128,
+            "output_tokens": 128,
+            "concurrent_requests": 1,
+            "decode_batch_size": 1,
+            "cached_prefix_tokens": 0,
+            "prefill_context_tokens": 128,
+            "attention_bits": 16,
+            "causal_attention": true,
+            "attention_mode": "baseline",
+            "projection_engine": "fsa"
+          },
+          "metrics": {
+            "decode_tps": 20.46,
+            "aggregate_tps": 20.46,
+            "prefill_tps": 1718.23,
+            "ttft_ms": 123.381,
+            "itl_ms": 48.885,
+            "e2e_latency_ms": 6331.817,
+            "area_mm2": 47.9,
+            "power_w": 11.4,
+            "tops_int8": 32.77,
+            "bandwidth_util_pct": 61.84,
+            "memory_required_gb": 1.8105,
+            "memory_available_gb": 0.0
+          },
+          "failed_reasons": [],
+          "warnings": [
+            "memory capacity is unspecified; capacity feasibility was not checked",
+            "power_w_max is not specified by the scenario",
+            "decode TPS margin is only 2.28% above the hard minimum",
+            "FSA attention follows the upstream schedule, while mixed-precision projections, GQA, LPDDR5 end-to-end TPS and whole-chip PPA remain paper extrapolations",
+            "fsa is maturity M1: included in raw exploration but not in comparison-ready or product-qualified ranking"
+          ],
+          "evaluated_configs": 15,
+          "feasible_configs": 10
+        },
+        {
+          "rank": 7,
+          "engine": "gmma",
+          "maturity": "M1",
+          "eligibility_status": "EXPLORE",
+          "status": "PASS",
+          "target_status": "MET",
+          "config_label": "gmma 128x128 INT4 1000MHz B1 LPDDR5-64b",
+          "config": {
+            "scenario": "lpddr5_3b",
+            "engine": "gmma",
+            "maturity": "M1",
+            "array_height": 128,
+            "array_width": 128,
+            "frequency_mhz": 1000,
+            "weight_precision_bits": 4,
+            "weight_cache": false,
+            "memory_type": "lpddr5",
+            "memory_bandwidth_gbps": 51.2,
+            "memory_capacity_gb": 0.0,
+            "sram_l2_kb": 1024,
+            "model": "qwen2.5-3b",
+            "prompt_tokens": 128,
+            "output_tokens": 128,
+            "concurrent_requests": 1,
+            "decode_batch_size": 1,
+            "cached_prefix_tokens": 0,
+            "prefill_context_tokens": 128,
+            "attention_bits": 16,
+            "causal_attention": true,
+            "attention_mode": "baseline",
+            "projection_engine": "gmma"
+          },
+          "metrics": {
+            "decode_tps": 20.51,
+            "aggregate_tps": 20.51,
+            "prefill_tps": 1673.65,
+            "ttft_ms": 125.236,
+            "itl_ms": 48.756,
+            "e2e_latency_ms": 6317.287,
+            "area_mm2": 61.9,
+            "power_w": 18.4,
+            "tops_int8": 32.77,
+            "bandwidth_util_pct": 62.01,
+            "memory_required_gb": 1.8105,
+            "memory_available_gb": 0.0
+          },
+          "failed_reasons": [],
+          "warnings": [
+            "memory capacity is unspecified; capacity feasibility was not checked",
+            "power_w_max is not specified by the scenario",
+            "decode TPS margin is only 2.55% above the hard minimum",
+            "gmma is maturity M1: included in raw exploration but not in comparison-ready or product-qualified ranking"
+          ],
+          "evaluated_configs": 300,
+          "feasible_configs": 20
+        },
+        {
+          "rank": 8,
+          "engine": "tensor_core",
+          "maturity": "M1",
+          "eligibility_status": "EXPLORE",
+          "status": "PASS",
+          "target_status": "MISS",
+          "config_label": "tens 64x64 INT4 1200MHz B1 LPDDR5-64b",
+          "config": {
+            "scenario": "lpddr5_3b",
+            "engine": "tensor_core",
+            "maturity": "M1",
+            "array_height": 64,
+            "array_width": 64,
+            "frequency_mhz": 1200,
+            "weight_precision_bits": 4,
+            "weight_cache": false,
+            "memory_type": "lpddr5",
+            "memory_bandwidth_gbps": 51.2,
+            "memory_capacity_gb": 0.0,
+            "sram_l2_kb": 1024,
+            "model": "qwen2.5-3b",
+            "prompt_tokens": 128,
+            "output_tokens": 128,
+            "concurrent_requests": 1,
+            "decode_batch_size": 1,
+            "cached_prefix_tokens": 0,
+            "prefill_context_tokens": 128,
+            "attention_bits": 16,
+            "causal_attention": true,
+            "attention_mode": "baseline",
+            "projection_engine": "tensor_core"
+          },
+          "metrics": {
+            "decode_tps": 24.96,
+            "aggregate_tps": 24.96,
+            "prefill_tps": 165.22,
+            "ttft_ms": 814.796,
+            "itl_ms": 40.064,
+            "e2e_latency_ms": 5902.916,
+            "area_mm2": 44.3,
+            "power_w": 10.3,
+            "tops_int8": 9.83,
+            "bandwidth_util_pct": 84.86,
+            "memory_required_gb": 1.8105,
+            "memory_available_gb": 0.0
+          },
+          "failed_reasons": [],
+          "warnings": [
+            "memory capacity is unspecified; capacity feasibility was not checked",
+            "power_w_max is not specified by the scenario",
+            "tensor_core is maturity M1: included in raw exploration but not in comparison-ready or product-qualified ranking"
+          ],
+          "evaluated_configs": 150,
+          "feasible_configs": 102
+        },
+        {
+          "rank": 9,
+          "engine": "input_stationary",
+          "maturity": "M1",
+          "eligibility_status": "EXPLORE",
+          "status": "FAIL",
+          "target_status": "MET",
+          "config_label": "inpu 32x64 INT4 1200MHz B1 LPDDR5-64b",
+          "config": {
+            "scenario": "lpddr5_3b",
+            "engine": "input_stationary",
+            "maturity": "M1",
+            "array_height": 32,
+            "array_width": 64,
+            "frequency_mhz": 1200,
+            "weight_precision_bits": 4,
+            "weight_cache": false,
+            "memory_type": "lpddr5",
+            "memory_bandwidth_gbps": 51.2,
+            "memory_capacity_gb": 0.0,
+            "sram_l2_kb": 1024,
+            "model": "qwen2.5-3b",
+            "prompt_tokens": 128,
+            "output_tokens": 128,
+            "concurrent_requests": 1,
+            "decode_batch_size": 1,
+            "cached_prefix_tokens": 0,
+            "prefill_context_tokens": 128,
+            "attention_bits": 16,
+            "causal_attention": true,
+            "attention_mode": "baseline",
+            "projection_engine": "input_stationary"
+          },
+          "metrics": {
+            "decode_tps": 10.6,
+            "aggregate_tps": 10.6,
+            "prefill_tps": 472.6,
+            "ttft_ms": 365.214,
+            "itl_ms": 94.373,
+            "e2e_latency_ms": 12350.595,
+            "area_mm2": 42.8,
+            "power_w": 9.4,
+            "tops_int8": 4.92,
+            "bandwidth_util_pct": 33.03,
+            "memory_required_gb": 1.8105,
+            "memory_available_gb": 0.0
+          },
+          "failed_reasons": [
+            "decode TPS 10.60 < required 20.00"
+          ],
+          "warnings": [
+            "memory capacity is unspecified; capacity feasibility was not checked",
+            "power_w_max is not specified by the scenario",
+            "input_stationary is maturity M1: included in raw exploration but not in comparison-ready or product-qualified ranking"
+          ],
+          "evaluated_configs": 150,
+          "feasible_configs": 0
+        },
+        {
+          "rank": 10,
+          "engine": "wmma",
+          "maturity": "M1",
+          "eligibility_status": "EXPLORE",
+          "status": "FAIL",
+          "target_status": "MISS",
+          "config_label": "wmma 96x96 INT4 1200MHz B1 LPDDR5-64b",
+          "config": {
+            "scenario": "lpddr5_3b",
+            "engine": "wmma",
+            "maturity": "M1",
+            "array_height": 96,
+            "array_width": 96,
+            "frequency_mhz": 1200,
+            "weight_precision_bits": 4,
+            "weight_cache": false,
+            "memory_type": "lpddr5",
+            "memory_bandwidth_gbps": 51.2,
+            "memory_capacity_gb": 0.0,
+            "sram_l2_kb": 1024,
+            "model": "qwen2.5-3b",
+            "prompt_tokens": 128,
+            "output_tokens": 128,
+            "concurrent_requests": 1,
+            "decode_batch_size": 1,
+            "cached_prefix_tokens": 0,
+            "prefill_context_tokens": 128,
+            "attention_bits": 16,
+            "causal_attention": true,
+            "attention_mode": "baseline",
+            "projection_engine": "wmma"
+          },
+          "metrics": {
+            "decode_tps": 0.06,
+            "aggregate_tps": 0.06,
+            "prefill_tps": 1.06,
+            "ttft_ms": 137264.608,
+            "itl_ms": 16267.646,
+            "e2e_latency_ms": 2203255.663,
+            "area_mm2": 51.2,
+            "power_w": 14.5,
+            "tops_int8": 22.12,
+            "bandwidth_util_pct": 0.2,
+            "memory_required_gb": 1.8105,
+            "memory_available_gb": 0.0
+          },
+          "failed_reasons": [
+            "decode TPS 0.06 < required 20.00",
+            "TTFT 137264.61ms > limit 1000.00ms"
+          ],
+          "warnings": [
+            "memory capacity is unspecified; capacity feasibility was not checked",
+            "power_w_max is not specified by the scenario",
+            "wmma is maturity M1: included in raw exploration but not in comparison-ready or product-qualified ranking"
+          ],
+          "evaluated_configs": 150,
+          "feasible_configs": 0
+        }
+      ]
+    },
+    "base_90": {
+      "arc_version": "v3.6-engine-evidence",
+      "scenario": "lpddr5_3b_eff90",
+      "scenario_definition": {
+        "description": "LPDDR5-64b + 3B edge low-cost, 90% DRAM efficiency corner",
+        "model": "qwen2.5-3b",
+        "model_params_gb": 1.545,
+        "seq_len": 128,
+        "process_nm": 12,
+        "workload": {
+          "prompt_tokens": 128,
+          "output_tokens": 128,
+          "concurrent_requests": 1,
+          "decode_batch_size": 1,
+          "activation_bits": 8,
+          "attention_bits": 16,
+          "kv_bits": 16,
+          "causal_attention": true
+        },
+        "memory": {
+          "type": "lpddr5",
+          "bandwidth_gbps": 51.2,
+          "dram_efficiency": 0.9,
+          "effective_bw_gbps": 46.08
+        },
+        "constraints": {
+          "ttft_ms_max": 1000,
+          "tps_min": 20,
+          "area_mm2_max": 80
+        },
+        "targets": {
+          "ttft_ms_max": 500
+        },
+        "objectives": [
+          "area_mm2",
+          "power_w",
+          "-tok_s"
+        ],
+        "tie_breakers": {
+          "engine_preference": [
+            "block",
+            "os_systolic"
+          ]
+        },
+        "search_space": {
+          "arrays": [
+            [
+              32,
+              32
+            ],
+            [
+              32,
+              64
+            ],
+            [
+              64,
+              64
+            ],
+            [
+              64,
+              128
+            ],
+            [
+              96,
+              96
+            ],
+            [
+              64,
+              256
+            ],
+            [
+              128,
+              128
+            ],
+            [
+              192,
+              128
+            ],
+            [
+              128,
+              256
+            ],
+            [
+              256,
+              256
+            ]
+          ],
+          "weight_precision_bits": [
+            4
+          ]
+        },
+        "components": {
+          "required": [
+            "dram_phy",
+            "pcie"
+          ],
+          "excluded": [
+            "tsv"
+          ]
+        }
+      },
+      "source_sha256": "7d263f8f97dcef29c2d082644696774dc86472eb2bae7df4181a6f8960542c61",
+      "total_configs": 1965,
+      "valid_results": 1965,
+      "invalid_configs": [],
+      "raw_feasible_configs": 771,
+      "comparison_ready_feasible_configs": 343,
+      "product_qualified_feasible_configs": 0,
+      "rejected_configs": 1194,
+      "raw_feasible": true,
+      "comparison_ready_feasible": true,
+      "product_feasible": false,
+      "raw_recommended": {
+        "config_label": "os_s 32x64 INT4 1000MHz B1 LPDDR5-64b",
+        "config": {
+          "scenario": "lpddr5_3b_eff90",
+          "engine": "os_systolic",
+          "maturity": "M2",
+          "array_height": 32,
+          "array_width": 64,
+          "frequency_mhz": 1000,
+          "weight_precision_bits": 4,
+          "weight_cache": false,
+          "memory_type": "lpddr5",
+          "memory_bandwidth_gbps": 51.2,
+          "memory_capacity_gb": 0.0,
+          "sram_l2_kb": 1024,
+          "model": "qwen2.5-3b",
+          "prompt_tokens": 128,
+          "output_tokens": 128,
+          "concurrent_requests": 1,
+          "decode_batch_size": 1,
+          "cached_prefix_tokens": 0,
+          "prefill_context_tokens": 128,
+          "attention_bits": 16,
+          "causal_attention": true,
+          "attention_mode": "baseline",
+          "projection_engine": "os_systolic"
+        },
+        "maturity": "M2",
+        "decode_tps": 20.03,
+        "prefill_tps": 667.24,
+        "ttft_ms": 241.755,
+        "itl_ms": 49.919,
+        "e2e_latency_ms": 6581.494,
+        "area_mm2": 42.8,
+        "power_w": 8.8,
+        "constraints_passed": true,
+        "failed_reasons": [],
+        "warnings": [
+          "memory capacity is unspecified; capacity feasibility was not checked",
+          "power_w_max is not specified by the scenario",
+          "decode TPS margin is only 0.16% above the hard minimum",
+          "OS uses an analytical MxN-spatial/K-temporal wavefront model; transposer backpressure, scratchpad bank conflicts, K-stream chunking, and RTL timing remain uncalibrated",
+          "os_systolic is maturity M2: comparison-ready, but product qualification requires M3 calibration and guardband"
+        ],
+        "provenance": {
+          "arc_version": "v3.6-engine-evidence",
+          "scenario_hash": "40e3b4cacbb4a940",
+          "config_hash": "1d10eed1e6e0ed55",
+          "model_spec": "qwen2.5-3b",
+          "calibration_tier": "dataflow_analytical",
+          "engine_maturity": "M2",
+          "engine_manifest_hash": "7c2ee9f651ad8940",
+          "raw_exploration_eligible": true,
+          "comparison_eligible": true,
+          "product_eligible": false,
+          "recommendation_eligible": true
+        }
+      },
+      "comparison_ready_recommended": {
+        "config_label": "os_s 32x64 INT4 1000MHz B1 LPDDR5-64b",
+        "config": {
+          "scenario": "lpddr5_3b_eff90",
+          "engine": "os_systolic",
+          "maturity": "M2",
+          "array_height": 32,
+          "array_width": 64,
+          "frequency_mhz": 1000,
+          "weight_precision_bits": 4,
+          "weight_cache": false,
+          "memory_type": "lpddr5",
+          "memory_bandwidth_gbps": 51.2,
+          "memory_capacity_gb": 0.0,
+          "sram_l2_kb": 1024,
+          "model": "qwen2.5-3b",
+          "prompt_tokens": 128,
+          "output_tokens": 128,
+          "concurrent_requests": 1,
+          "decode_batch_size": 1,
+          "cached_prefix_tokens": 0,
+          "prefill_context_tokens": 128,
+          "attention_bits": 16,
+          "causal_attention": true,
+          "attention_mode": "baseline",
+          "projection_engine": "os_systolic"
+        },
+        "maturity": "M2",
+        "decode_tps": 20.03,
+        "prefill_tps": 667.24,
+        "ttft_ms": 241.755,
+        "itl_ms": 49.919,
+        "e2e_latency_ms": 6581.494,
+        "area_mm2": 42.8,
+        "power_w": 8.8,
+        "constraints_passed": true,
+        "failed_reasons": [],
+        "warnings": [
+          "memory capacity is unspecified; capacity feasibility was not checked",
+          "power_w_max is not specified by the scenario",
+          "decode TPS margin is only 0.16% above the hard minimum",
+          "OS uses an analytical MxN-spatial/K-temporal wavefront model; transposer backpressure, scratchpad bank conflicts, K-stream chunking, and RTL timing remain uncalibrated",
+          "os_systolic is maturity M2: comparison-ready, but product qualification requires M3 calibration and guardband"
+        ],
+        "provenance": {
+          "arc_version": "v3.6-engine-evidence",
+          "scenario_hash": "40e3b4cacbb4a940",
+          "config_hash": "1d10eed1e6e0ed55",
+          "model_spec": "qwen2.5-3b",
+          "calibration_tier": "dataflow_analytical",
+          "engine_maturity": "M2",
+          "engine_manifest_hash": "7c2ee9f651ad8940",
+          "raw_exploration_eligible": true,
+          "comparison_eligible": true,
+          "product_eligible": false,
+          "recommendation_eligible": true
+        }
+      },
+      "product_recommended": null,
+      "closest_comparison_ready": {
+        "config_label": "syst 192x128 INT4 1000MHz B1 WC LPDDR5-64b",
+        "config": {
+          "scenario": "lpddr5_3b_eff90",
+          "engine": "systolic",
+          "maturity": "M2",
+          "array_height": 192,
+          "array_width": 128,
+          "frequency_mhz": 1000,
+          "weight_precision_bits": 4,
+          "weight_cache": true,
+          "memory_type": "lpddr5",
+          "memory_bandwidth_gbps": 51.2,
+          "memory_capacity_gb": 0.0,
+          "sram_l2_kb": 1024,
+          "model": "qwen2.5-3b",
+          "prompt_tokens": 128,
+          "output_tokens": 128,
+          "concurrent_requests": 1,
+          "decode_batch_size": 1,
+          "cached_prefix_tokens": 0,
+          "prefill_context_tokens": 128,
+          "attention_bits": 16,
+          "causal_attention": true,
+          "attention_mode": "baseline",
+          "projection_engine": "systolic"
+        },
+        "maturity": "M2",
+        "decode_tps": 19.82,
+        "prefill_tps": 1267.83,
+        "ttft_ms": 151.419,
+        "itl_ms": 50.458,
+        "e2e_latency_ms": 6559.633,
+        "area_mm2": 50.1,
+        "power_w": 12.5,
+        "constraints_passed": false,
+        "failed_reasons": [
+          "decode TPS 19.82 < required 20.00"
+        ],
+        "warnings": [
+          "memory capacity is unspecified; capacity feasibility was not checked",
+          "power_w_max is not specified by the scenario",
+          "systolic is maturity M2: comparison-ready, but product qualification requires M3 calibration and guardband"
+        ],
+        "provenance": {
+          "arc_version": "v3.6-engine-evidence",
+          "scenario_hash": "40e3b4cacbb4a940",
+          "config_hash": "1e0ec72fb7226ea9",
+          "model_spec": "qwen2.5-3b",
+          "calibration_tier": "rtl_module_calibrated",
+          "engine_maturity": "M2",
+          "engine_manifest_hash": "cfcec7826cb7e201",
+          "raw_exploration_eligible": true,
+          "comparison_eligible": true,
+          "product_eligible": false,
+          "recommendation_eligible": true
+        }
+      },
+      "engine_comparison": [
+        {
+          "rank": 1,
+          "engine": "os_systolic",
+          "maturity": "M2",
+          "eligibility_status": "COMPARE",
+          "status": "PASS",
+          "target_status": "MET",
+          "config_label": "os_s 32x64 INT4 1000MHz B1 LPDDR5-64b",
+          "config": {
+            "scenario": "lpddr5_3b_eff90",
+            "engine": "os_systolic",
+            "maturity": "M2",
+            "array_height": 32,
+            "array_width": 64,
+            "frequency_mhz": 1000,
+            "weight_precision_bits": 4,
+            "weight_cache": false,
+            "memory_type": "lpddr5",
+            "memory_bandwidth_gbps": 51.2,
+            "memory_capacity_gb": 0.0,
+            "sram_l2_kb": 1024,
+            "model": "qwen2.5-3b",
+            "prompt_tokens": 128,
+            "output_tokens": 128,
+            "concurrent_requests": 1,
+            "decode_batch_size": 1,
+            "cached_prefix_tokens": 0,
+            "prefill_context_tokens": 128,
+            "attention_bits": 16,
+            "causal_attention": true,
+            "attention_mode": "baseline",
+            "projection_engine": "os_systolic"
+          },
+          "metrics": {
+            "decode_tps": 20.03,
+            "aggregate_tps": 20.03,
+            "prefill_tps": 667.24,
+            "ttft_ms": 241.755,
+            "itl_ms": 49.919,
+            "e2e_latency_ms": 6581.494,
+            "area_mm2": 42.8,
+            "power_w": 8.8,
+            "tops_int8": 4.1,
+            "bandwidth_util_pct": 60.56,
+            "memory_required_gb": 1.8105,
+            "memory_available_gb": 0.0
+          },
+          "failed_reasons": [],
+          "warnings": [
+            "memory capacity is unspecified; capacity feasibility was not checked",
+            "power_w_max is not specified by the scenario",
+            "decode TPS margin is only 0.16% above the hard minimum",
+            "OS uses an analytical MxN-spatial/K-temporal wavefront model; transposer backpressure, scratchpad bank conflicts, K-stream chunking, and RTL timing remain uncalibrated",
+            "os_systolic is maturity M2: comparison-ready, but product qualification requires M3 calibration and guardband"
+          ],
+          "evaluated_configs": 150,
+          "feasible_configs": 92
+        },
+        {
+          "rank": 2,
+          "engine": "os_systolic_fused_attention",
+          "maturity": "M1",
+          "eligibility_status": "EXPLORE",
+          "status": "PASS",
+          "target_status": "MET",
+          "config_label": "ofsa 32x64 INT4 1000MHz B1 LPDDR5-64b",
+          "config": {
+            "scenario": "lpddr5_3b_eff90",
+            "engine": "os_systolic_fused_attention",
+            "maturity": "M1",
+            "array_height": 32,
+            "array_width": 64,
+            "frequency_mhz": 1000,
+            "weight_precision_bits": 4,
+            "weight_cache": false,
+            "memory_type": "lpddr5",
+            "memory_bandwidth_gbps": 51.2,
+            "memory_capacity_gb": 0.0,
+            "sram_l2_kb": 1024,
+            "model": "qwen2.5-3b",
+            "prompt_tokens": 128,
+            "output_tokens": 128,
+            "concurrent_requests": 1,
+            "decode_batch_size": 1,
+            "cached_prefix_tokens": 0,
+            "prefill_context_tokens": 128,
+            "attention_bits": 16,
+            "causal_attention": true,
+            "attention_mode": "fused_array",
+            "projection_engine": "os_systolic"
+          },
+          "metrics": {
+            "decode_tps": 20.06,
+            "aggregate_tps": 20.06,
+            "prefill_tps": 674.77,
+            "ttft_ms": 239.544,
+            "itl_ms": 49.849,
+            "e2e_latency_ms": 6570.345,
+            "area_mm2": 42.9,
+            "power_w": 8.9,
+            "tops_int8": 4.1,
+            "bandwidth_util_pct": 60.65,
+            "memory_required_gb": 1.8105,
+            "memory_available_gb": 0.0
+          },
+          "failed_reasons": [],
+          "warnings": [
+            "memory capacity is unspecified; capacity feasibility was not checked",
+            "power_w_max is not specified by the scenario",
+            "decode TPS margin is only 0.30% above the hard minimum",
+            "OS uses an analytical MxN-spatial/K-temporal wavefront model; transposer backpressure, scratchpad bank conflicts, K-stream chunking, and RTL timing remain uncalibrated",
+            "os_systolic_fused_attention uses its baseline projection/FFN path, but fused attention overlap and incremental PPA remain analytical",
+            "os_systolic_fused_attention is maturity M1: included in raw exploration but not in comparison-ready or product-qualified ranking"
+          ],
+          "evaluated_configs": 150,
+          "feasible_configs": 92
+        },
+        {
+          "rank": 3,
+          "engine": "block",
+          "maturity": "M2",
+          "eligibility_status": "COMPARE",
+          "status": "PASS",
+          "target_status": "MET",
+          "config_label": "bloc 64x64 INT4 800MHz B1 LPDDR5-64b",
+          "config": {
+            "scenario": "lpddr5_3b_eff90",
+            "engine": "block",
+            "maturity": "M2",
+            "array_height": 64,
+            "array_width": 64,
+            "frequency_mhz": 800,
+            "weight_precision_bits": 4,
+            "weight_cache": false,
+            "memory_type": "lpddr5",
+            "memory_bandwidth_gbps": 51.2,
+            "memory_capacity_gb": 0.0,
+            "sram_l2_kb": 1024,
+            "model": "qwen2.5-3b",
+            "prompt_tokens": 128,
+            "output_tokens": 128,
+            "concurrent_requests": 1,
+            "decode_batch_size": 1,
+            "cached_prefix_tokens": 0,
+            "prefill_context_tokens": 128,
+            "attention_bits": 16,
+            "causal_attention": true,
+            "attention_mode": "baseline",
+            "projection_engine": "block"
+          },
+          "metrics": {
+            "decode_tps": 29.69,
+            "aggregate_tps": 29.69,
+            "prefill_tps": 286.48,
+            "ttft_ms": 480.488,
+            "itl_ms": 33.682,
+            "e2e_latency_ms": 4758.04,
+            "area_mm2": 44.3,
+            "power_w": 8.8,
+            "tops_int8": 6.55,
+            "bandwidth_util_pct": 89.76,
+            "memory_required_gb": 1.8105,
+            "memory_available_gb": 0.0
+          },
+          "failed_reasons": [],
+          "warnings": [
+            "memory capacity is unspecified; capacity feasibility was not checked",
+            "power_w_max is not specified by the scenario",
+            "block is maturity M2: comparison-ready, but product qualification requires M3 calibration and guardband"
+          ],
+          "evaluated_configs": 300,
+          "feasible_configs": 204
+        },
+        {
+          "rank": 4,
+          "engine": "block_fused_attention",
+          "maturity": "M1",
+          "eligibility_status": "EXPLORE",
+          "status": "PASS",
+          "target_status": "MET",
+          "config_label": "bfsa 64x64 INT4 800MHz B1 LPDDR5-64b",
+          "config": {
+            "scenario": "lpddr5_3b_eff90",
+            "engine": "block_fused_attention",
+            "maturity": "M1",
+            "array_height": 64,
+            "array_width": 64,
+            "frequency_mhz": 800,
+            "weight_precision_bits": 4,
+            "weight_cache": false,
+            "memory_type": "lpddr5",
+            "memory_bandwidth_gbps": 51.2,
+            "memory_capacity_gb": 0.0,
+            "sram_l2_kb": 1024,
+            "model": "qwen2.5-3b",
+            "prompt_tokens": 128,
+            "output_tokens": 128,
+            "concurrent_requests": 1,
+            "decode_batch_size": 1,
+            "cached_prefix_tokens": 0,
+            "prefill_context_tokens": 128,
+            "attention_bits": 16,
+            "causal_attention": true,
+            "attention_mode": "fused_array",
+            "projection_engine": "block"
+          },
+          "metrics": {
+            "decode_tps": 29.72,
+            "aggregate_tps": 29.72,
+            "prefill_tps": 288.26,
+            "ttft_ms": 477.68,
+            "itl_ms": 33.643,
+            "e2e_latency_ms": 4750.386,
+            "area_mm2": 44.4,
+            "power_w": 8.9,
+            "tops_int8": 6.55,
+            "bandwidth_util_pct": 89.86,
+            "memory_required_gb": 1.8105,
+            "memory_available_gb": 0.0
+          },
+          "failed_reasons": [],
+          "warnings": [
+            "memory capacity is unspecified; capacity feasibility was not checked",
+            "power_w_max is not specified by the scenario",
+            "block_fused_attention uses its baseline projection/FFN path, but fused attention overlap and incremental PPA remain analytical",
+            "block_fused_attention is maturity M1: included in raw exploration but not in comparison-ready or product-qualified ranking"
+          ],
+          "evaluated_configs": 300,
+          "feasible_configs": 204
+        },
+        {
+          "rank": 5,
+          "engine": "systolic",
+          "maturity": "M2",
+          "eligibility_status": "COMPARE",
+          "status": "PASS",
+          "target_status": "MET",
+          "config_label": "syst 128x128 INT4 1200MHz B1 WC LPDDR5-64b",
+          "config": {
+            "scenario": "lpddr5_3b_eff90",
+            "engine": "systolic",
+            "maturity": "M2",
+            "array_height": 128,
+            "array_width": 128,
+            "frequency_mhz": 1200,
+            "weight_precision_bits": 4,
+            "weight_cache": true,
+            "memory_type": "lpddr5",
+            "memory_bandwidth_gbps": 51.2,
+            "memory_capacity_gb": 0.0,
+            "sram_l2_kb": 1024,
+            "model": "qwen2.5-3b",
+            "prompt_tokens": 128,
+            "output_tokens": 128,
+            "concurrent_requests": 1,
+            "decode_batch_size": 1,
+            "cached_prefix_tokens": 0,
+            "prefill_context_tokens": 128,
+            "attention_bits": 16,
+            "causal_attention": true,
+            "attention_mode": "baseline",
+            "projection_engine": "systolic"
+          },
+          "metrics": {
+            "decode_tps": 21.21,
+            "aggregate_tps": 21.21,
+            "prefill_tps": 1506.55,
+            "ttft_ms": 132.111,
+            "itl_ms": 47.149,
+            "e2e_latency_ms": 6120.009,
+            "area_mm2": 47.2,
+            "power_w": 12.1,
+            "tops_int8": 39.32,
+            "bandwidth_util_pct": 64.86,
+            "memory_required_gb": 1.8105,
+            "memory_available_gb": 0.0
+          },
+          "failed_reasons": [],
+          "warnings": [
+            "memory capacity is unspecified; capacity feasibility was not checked",
+            "power_w_max is not specified by the scenario",
+            "systolic is maturity M2: comparison-ready, but product qualification requires M3 calibration and guardband"
+          ],
+          "evaluated_configs": 300,
+          "feasible_configs": 47
+        },
+        {
+          "rank": 6,
+          "engine": "fsa",
+          "maturity": "M1",
+          "eligibility_status": "EXPLORE",
+          "status": "PASS",
+          "target_status": "MET",
+          "config_label": "fsa 128x128 INT4 1000MHz B1 LPDDR5-64b",
+          "config": {
+            "scenario": "lpddr5_3b_eff90",
+            "engine": "fsa",
+            "maturity": "M1",
+            "array_height": 128,
+            "array_width": 128,
+            "frequency_mhz": 1000,
+            "weight_precision_bits": 4,
+            "weight_cache": false,
+            "memory_type": "lpddr5",
+            "memory_bandwidth_gbps": 51.2,
+            "memory_capacity_gb": 0.0,
+            "sram_l2_kb": 1024,
+            "model": "qwen2.5-3b",
+            "prompt_tokens": 128,
+            "output_tokens": 128,
+            "concurrent_requests": 1,
+            "decode_batch_size": 1,
+            "cached_prefix_tokens": 0,
+            "prefill_context_tokens": 128,
+            "attention_bits": 16,
+            "causal_attention": true,
+            "attention_mode": "baseline",
+            "projection_engine": "fsa"
+          },
+          "metrics": {
+            "decode_tps": 20.46,
+            "aggregate_tps": 20.46,
+            "prefill_tps": 1719.62,
+            "ttft_ms": 123.32,
+            "itl_ms": 48.885,
+            "e2e_latency_ms": 6331.757,
+            "area_mm2": 47.9,
+            "power_w": 11.4,
+            "tops_int8": 32.77,
+            "bandwidth_util_pct": 61.84,
+            "memory_required_gb": 1.8105,
+            "memory_available_gb": 0.0
+          },
+          "failed_reasons": [],
+          "warnings": [
+            "memory capacity is unspecified; capacity feasibility was not checked",
+            "power_w_max is not specified by the scenario",
+            "decode TPS margin is only 2.28% above the hard minimum",
+            "FSA attention follows the upstream schedule, while mixed-precision projections, GQA, LPDDR5 end-to-end TPS and whole-chip PPA remain paper extrapolations",
+            "fsa is maturity M1: included in raw exploration but not in comparison-ready or product-qualified ranking"
+          ],
+          "evaluated_configs": 15,
+          "feasible_configs": 10
+        },
+        {
+          "rank": 7,
+          "engine": "gmma",
+          "maturity": "M1",
+          "eligibility_status": "EXPLORE",
+          "status": "PASS",
+          "target_status": "MET",
+          "config_label": "gmma 128x128 INT4 1000MHz B1 LPDDR5-64b",
+          "config": {
+            "scenario": "lpddr5_3b_eff90",
+            "engine": "gmma",
+            "maturity": "M1",
+            "array_height": 128,
+            "array_width": 128,
+            "frequency_mhz": 1000,
+            "weight_precision_bits": 4,
+            "weight_cache": false,
+            "memory_type": "lpddr5",
+            "memory_bandwidth_gbps": 51.2,
+            "memory_capacity_gb": 0.0,
+            "sram_l2_kb": 1024,
+            "model": "qwen2.5-3b",
+            "prompt_tokens": 128,
+            "output_tokens": 128,
+            "concurrent_requests": 1,
+            "decode_batch_size": 1,
+            "cached_prefix_tokens": 0,
+            "prefill_context_tokens": 128,
+            "attention_bits": 16,
+            "causal_attention": true,
+            "attention_mode": "baseline",
+            "projection_engine": "gmma"
+          },
+          "metrics": {
+            "decode_tps": 20.51,
+            "aggregate_tps": 20.51,
+            "prefill_tps": 1674.97,
+            "ttft_ms": 125.176,
+            "itl_ms": 48.756,
+            "e2e_latency_ms": 6317.226,
+            "area_mm2": 61.9,
+            "power_w": 18.4,
+            "tops_int8": 32.77,
+            "bandwidth_util_pct": 62.01,
+            "memory_required_gb": 1.8105,
+            "memory_available_gb": 0.0
+          },
+          "failed_reasons": [],
+          "warnings": [
+            "memory capacity is unspecified; capacity feasibility was not checked",
+            "power_w_max is not specified by the scenario",
+            "decode TPS margin is only 2.55% above the hard minimum",
+            "gmma is maturity M1: included in raw exploration but not in comparison-ready or product-qualified ranking"
+          ],
+          "evaluated_configs": 300,
+          "feasible_configs": 20
+        },
+        {
+          "rank": 8,
+          "engine": "tensor_core",
+          "maturity": "M1",
+          "eligibility_status": "EXPLORE",
+          "status": "PASS",
+          "target_status": "MISS",
+          "config_label": "tens 64x64 INT4 1200MHz B1 LPDDR5-64b",
+          "config": {
+            "scenario": "lpddr5_3b_eff90",
+            "engine": "tensor_core",
+            "maturity": "M1",
+            "array_height": 64,
+            "array_width": 64,
+            "frequency_mhz": 1200,
+            "weight_precision_bits": 4,
+            "weight_cache": false,
+            "memory_type": "lpddr5",
+            "memory_bandwidth_gbps": 51.2,
+            "memory_capacity_gb": 0.0,
+            "sram_l2_kb": 1024,
+            "model": "qwen2.5-3b",
+            "prompt_tokens": 128,
+            "output_tokens": 128,
+            "concurrent_requests": 1,
+            "decode_batch_size": 1,
+            "cached_prefix_tokens": 0,
+            "prefill_context_tokens": 128,
+            "attention_bits": 16,
+            "causal_attention": true,
+            "attention_mode": "baseline",
+            "projection_engine": "tensor_core"
+          },
+          "metrics": {
+            "decode_tps": 26.43,
+            "aggregate_tps": 26.43,
+            "prefill_tps": 174.88,
+            "ttft_ms": 769.788,
+            "itl_ms": 37.842,
+            "e2e_latency_ms": 5575.717,
+            "area_mm2": 44.3,
+            "power_w": 10.3,
+            "tops_int8": 9.83,
+            "bandwidth_util_pct": 89.84,
+            "memory_required_gb": 1.8105,
+            "memory_available_gb": 0.0
+          },
+          "failed_reasons": [],
+          "warnings": [
+            "memory capacity is unspecified; capacity feasibility was not checked",
+            "power_w_max is not specified by the scenario",
+            "tensor_core is maturity M1: included in raw exploration but not in comparison-ready or product-qualified ranking"
+          ],
+          "evaluated_configs": 150,
+          "feasible_configs": 102
+        },
+        {
+          "rank": 9,
+          "engine": "input_stationary",
+          "maturity": "M1",
+          "eligibility_status": "EXPLORE",
+          "status": "FAIL",
+          "target_status": "MET",
+          "config_label": "inpu 32x64 INT4 1200MHz B1 LPDDR5-64b",
+          "config": {
+            "scenario": "lpddr5_3b_eff90",
+            "engine": "input_stationary",
+            "maturity": "M1",
+            "array_height": 32,
+            "array_width": 64,
+            "frequency_mhz": 1200,
+            "weight_precision_bits": 4,
+            "weight_cache": false,
+            "memory_type": "lpddr5",
+            "memory_bandwidth_gbps": 51.2,
+            "memory_capacity_gb": 0.0,
+            "sram_l2_kb": 1024,
+            "model": "qwen2.5-3b",
+            "prompt_tokens": 128,
+            "output_tokens": 128,
+            "concurrent_requests": 1,
+            "decode_batch_size": 1,
+            "cached_prefix_tokens": 0,
+            "prefill_context_tokens": 128,
+            "attention_bits": 16,
+            "causal_attention": true,
+            "attention_mode": "baseline",
+            "projection_engine": "input_stationary"
+          },
+          "metrics": {
+            "decode_tps": 10.6,
+            "aggregate_tps": 10.6,
+            "prefill_tps": 498.81,
+            "ttft_ms": 350.951,
+            "itl_ms": 94.338,
+            "e2e_latency_ms": 12331.848,
+            "area_mm2": 42.8,
+            "power_w": 9.4,
+            "tops_int8": 4.92,
+            "bandwidth_util_pct": 33.04,
+            "memory_required_gb": 1.8105,
+            "memory_available_gb": 0.0
+          },
+          "failed_reasons": [
+            "decode TPS 10.60 < required 20.00"
+          ],
+          "warnings": [
+            "memory capacity is unspecified; capacity feasibility was not checked",
+            "power_w_max is not specified by the scenario",
+            "input_stationary is maturity M1: included in raw exploration but not in comparison-ready or product-qualified ranking"
+          ],
+          "evaluated_configs": 150,
+          "feasible_configs": 0
+        },
+        {
+          "rank": 10,
+          "engine": "wmma",
+          "maturity": "M1",
+          "eligibility_status": "EXPLORE",
+          "status": "FAIL",
+          "target_status": "MISS",
+          "config_label": "wmma 96x96 INT4 1200MHz B1 LPDDR5-64b",
+          "config": {
+            "scenario": "lpddr5_3b_eff90",
+            "engine": "wmma",
+            "maturity": "M1",
+            "array_height": 96,
+            "array_width": 96,
+            "frequency_mhz": 1200,
+            "weight_precision_bits": 4,
+            "weight_cache": false,
+            "memory_type": "lpddr5",
+            "memory_bandwidth_gbps": 51.2,
+            "memory_capacity_gb": 0.0,
+            "sram_l2_kb": 1024,
+            "model": "qwen2.5-3b",
+            "prompt_tokens": 128,
+            "output_tokens": 128,
+            "concurrent_requests": 1,
+            "decode_batch_size": 1,
+            "cached_prefix_tokens": 0,
+            "prefill_context_tokens": 128,
+            "attention_bits": 16,
+            "causal_attention": true,
+            "attention_mode": "baseline",
+            "projection_engine": "wmma"
+          },
+          "metrics": {
+            "decode_tps": 0.06,
+            "aggregate_tps": 0.06,
+            "prefill_tps": 1.06,
+            "ttft_ms": 137264.595,
+            "itl_ms": 16267.645,
+            "e2e_latency_ms": 2203255.463,
+            "area_mm2": 51.2,
+            "power_w": 14.5,
+            "tops_int8": 22.12,
+            "bandwidth_util_pct": 0.2,
+            "memory_required_gb": 1.8105,
+            "memory_available_gb": 0.0
+          },
+          "failed_reasons": [
+            "decode TPS 0.06 < required 20.00",
+            "TTFT 137264.60ms > limit 1000.00ms"
+          ],
+          "warnings": [
+            "memory capacity is unspecified; capacity feasibility was not checked",
+            "power_w_max is not specified by the scenario",
+            "wmma is maturity M1: included in raw exploration but not in comparison-ready or product-qualified ranking"
+          ],
+          "evaluated_configs": 150,
+          "feasible_configs": 0
+        }
+      ]
+    },
+    "agent_75": {
+      "arc_version": "v3.6-engine-evidence",
+      "scenario": "lpddr5_3b_agent_eff75",
+      "scenario_definition": {
+        "description": "LPDDR5-64b + 3B local agent, 75% DRAM efficiency corner",
+        "model": "qwen2.5-3b",
+        "model_params_gb": 1.545,
+        "seq_len": 875,
+        "process_nm": 12,
+        "agent_workload": {
+          "representative_steps": 16,
+          "prefix_cache_hit_rate": 0.9,
+          "stress_append_tokens": 10000
+        },
+        "workload": {
+          "prompt_tokens": 875,
+          "output_tokens": 214,
+          "cached_prefix_tokens": 30000,
+          "max_context_tokens": 32768,
+          "concurrent_requests": 1,
+          "decode_batch_size": 1,
+          "activation_bits": 8,
+          "attention_bits": 16,
+          "kv_bits": 16,
+          "causal_attention": true
+        },
+        "memory": {
+          "type": "lpddr5",
+          "capacity_gb": 4,
+          "capacity_usable_fraction": 0.9,
+          "bandwidth_gbps": 51.2,
+          "dram_efficiency": 0.75,
+          "effective_bw_gbps": 38.4
+        },
+        "constraints": {
+          "ttft_ms_max": 5000,
+          "tps_min": 20,
+          "area_mm2_max": 80
+        },
+        "targets": {
+          "ttft_ms_max": 2000,
+          "prefill_tps_min": 500
+        },
+        "objectives": [
+          "area_mm2",
+          "power_w",
+          "-tok_s"
+        ],
+        "tie_breakers": {
+          "engine_preference": [
+            "block",
+            "os_systolic"
+          ]
+        },
+        "search_space": {
+          "arrays": [
+            [
+              32,
+              32
+            ],
+            [
+              32,
+              64
+            ],
+            [
+              64,
+              64
+            ],
+            [
+              64,
+              128
+            ],
+            [
+              96,
+              96
+            ],
+            [
+              64,
+              256
+            ],
+            [
+              128,
+              128
+            ],
+            [
+              192,
+              128
+            ],
+            [
+              128,
+              256
+            ],
+            [
+              256,
+              256
+            ]
+          ],
+          "weight_precision_bits": [
+            4
+          ]
+        },
+        "components": {
+          "required": [
+            "dram_phy",
+            "pcie"
+          ],
+          "excluded": [
+            "tsv"
+          ]
+        }
+      },
+      "source_sha256": "ff8ee9ef698e765e17c5a71f08232e7d6f2959b9c142a94eed1179f97c28453f",
+      "total_configs": 1980,
+      "valid_results": 1980,
+      "invalid_configs": [],
+      "raw_feasible_configs": 0,
+      "comparison_ready_feasible_configs": 0,
+      "product_qualified_feasible_configs": 0,
+      "rejected_configs": 1980,
+      "raw_feasible": false,
+      "comparison_ready_feasible": false,
+      "product_feasible": false,
+      "raw_recommended": null,
+      "comparison_ready_recommended": null,
+      "product_recommended": null,
+      "closest_comparison_ready": {
+        "config_label": "os_s 128x256 INT4 1200MHz B1 LPDDR5-64b",
+        "config": {
+          "scenario": "lpddr5_3b_agent_eff75",
+          "engine": "os_systolic",
+          "maturity": "M2",
+          "array_height": 128,
+          "array_width": 256,
+          "frequency_mhz": 1200,
+          "weight_precision_bits": 4,
+          "weight_cache": false,
+          "memory_type": "lpddr5",
+          "memory_bandwidth_gbps": 51.2,
+          "memory_capacity_gb": 4.0,
+          "sram_l2_kb": 1024,
+          "model": "qwen2.5-3b",
+          "prompt_tokens": 875,
+          "output_tokens": 214,
+          "concurrent_requests": 1,
+          "decode_batch_size": 1,
+          "cached_prefix_tokens": 30000,
+          "prefill_context_tokens": 30875,
+          "attention_bits": 16,
+          "causal_attention": true,
+          "attention_mode": "baseline",
+          "projection_engine": "os_systolic"
+        },
+        "maturity": "M2",
+        "decode_tps": 11.97,
+        "prefill_tps": 153.5,
+        "ttft_ms": 5783.787,
+        "itl_ms": 83.555,
+        "e2e_latency_ms": 23580.934,
+        "area_mm2": 64.8,
+        "power_w": 22.7,
+        "constraints_passed": false,
+        "failed_reasons": [
+          "decode TPS 11.97 < required 20.00",
+          "TTFT 5783.79ms > limit 5000.00ms"
+        ],
+        "warnings": [
+          "power_w_max is not specified by the scenario",
+          "OS uses an analytical MxN-spatial/K-temporal wavefront model; transposer backpressure, scratchpad bank conflicts, K-stream chunking, and RTL timing remain uncalibrated",
+          "os_systolic is maturity M2: comparison-ready, but product qualification requires M3 calibration and guardband"
+        ],
+        "provenance": {
+          "arc_version": "v3.6-engine-evidence",
+          "scenario_hash": "f404714819ed94d8",
+          "config_hash": "f931ba5bbd09529b",
+          "model_spec": "qwen2.5-3b",
+          "calibration_tier": "dataflow_analytical",
+          "engine_maturity": "M2",
+          "engine_manifest_hash": "7c2ee9f651ad8940",
+          "raw_exploration_eligible": true,
+          "comparison_eligible": true,
+          "product_eligible": false,
+          "recommendation_eligible": true
+        }
+      },
+      "engine_comparison": [
+        {
+          "rank": 1,
+          "engine": "block_fused_attention",
+          "maturity": "M1",
+          "eligibility_status": "EXPLORE",
+          "status": "FAIL",
+          "target_status": "MISS",
+          "config_label": "bfsa 64x64 INT4 1200MHz B1 LPDDR5-64b",
+          "config": {
+            "scenario": "lpddr5_3b_agent_eff75",
+            "engine": "block_fused_attention",
+            "maturity": "M1",
+            "array_height": 64,
+            "array_width": 64,
+            "frequency_mhz": 1200,
+            "weight_precision_bits": 4,
+            "weight_cache": false,
+            "memory_type": "lpddr5",
+            "memory_bandwidth_gbps": 51.2,
+            "memory_capacity_gb": 4.0,
+            "sram_l2_kb": 1024,
+            "model": "qwen2.5-3b",
+            "prompt_tokens": 875,
+            "output_tokens": 214,
+            "concurrent_requests": 1,
+            "decode_batch_size": 1,
+            "cached_prefix_tokens": 30000,
+            "prefill_context_tokens": 30875,
+            "attention_bits": 16,
+            "causal_attention": true,
+            "attention_mode": "fused_array",
+            "projection_engine": "block"
+          },
+          "metrics": {
+            "decode_tps": 14.31,
+            "aggregate_tps": 14.31,
+            "prefill_tps": 179.09,
+            "ttft_ms": 4955.638,
+            "itl_ms": 69.871,
+            "e2e_latency_ms": 19838.101,
+            "area_mm2": 44.4,
+            "power_w": 10.4,
+            "tops_int8": 9.83,
+            "bandwidth_util_pct": 74.95,
+            "memory_required_gb": 3.009,
+            "memory_available_gb": 3.6
+          },
+          "failed_reasons": [
+            "decode TPS 14.31 < required 20.00"
+          ],
+          "warnings": [
+            "power_w_max is not specified by the scenario",
+            "block_fused_attention uses its baseline projection/FFN path, but fused attention overlap and incremental PPA remain analytical",
+            "the candidate requires a cached-prefix query-position offset in a future native RTL implementation",
+            "block_fused_attention is maturity M1: included in raw exploration but not in comparison-ready or product-qualified ranking"
+          ],
+          "evaluated_configs": 300,
+          "feasible_configs": 0
+        },
+        {
+          "rank": 2,
+          "engine": "os_systolic_fused_attention",
+          "maturity": "M1",
+          "eligibility_status": "EXPLORE",
+          "status": "FAIL",
+          "target_status": "MET",
+          "config_label": "ofsa 128x256 INT4 1200MHz B1 LPDDR5-64b",
+          "config": {
+            "scenario": "lpddr5_3b_agent_eff75",
+            "engine": "os_systolic_fused_attention",
+            "maturity": "M1",
+            "array_height": 128,
+            "array_width": 256,
+            "frequency_mhz": 1200,
+            "weight_precision_bits": 4,
+            "weight_cache": false,
+            "memory_type": "lpddr5",
+            "memory_bandwidth_gbps": 51.2,
+            "memory_capacity_gb": 4.0,
+            "sram_l2_kb": 1024,
+            "model": "qwen2.5-3b",
+            "prompt_tokens": 875,
+            "output_tokens": 214,
+            "concurrent_requests": 1,
+            "decode_batch_size": 1,
+            "cached_prefix_tokens": 30000,
+            "prefill_context_tokens": 30875,
+            "attention_bits": 16,
+            "causal_attention": true,
+            "attention_mode": "fused_array",
+            "projection_engine": "os_systolic"
+          },
+          "metrics": {
+            "decode_tps": 13.53,
+            "aggregate_tps": 13.53,
+            "prefill_tps": 2320.14,
+            "ttft_ms": 451.062,
+            "itl_ms": 73.93,
+            "e2e_latency_ms": 16198.194,
+            "area_mm2": 66.2,
+            "power_w": 23.5,
+            "tops_int8": 78.64,
+            "bandwidth_util_pct": 70.84,
+            "memory_required_gb": 3.009,
+            "memory_available_gb": 3.6
+          },
+          "failed_reasons": [
+            "decode TPS 13.53 < required 20.00"
+          ],
+          "warnings": [
+            "power_w_max is not specified by the scenario",
+            "OS uses an analytical MxN-spatial/K-temporal wavefront model; transposer backpressure, scratchpad bank conflicts, K-stream chunking, and RTL timing remain uncalibrated",
+            "os_systolic_fused_attention uses its baseline projection/FFN path, but fused attention overlap and incremental PPA remain analytical",
+            "the candidate requires a cached-prefix query-position offset in a future native RTL implementation",
+            "os_systolic_fused_attention is maturity M1: included in raw exploration but not in comparison-ready or product-qualified ranking"
+          ],
+          "evaluated_configs": 150,
+          "feasible_configs": 0
+        },
+        {
+          "rank": 3,
+          "engine": "fsa",
+          "maturity": "M1",
+          "eligibility_status": "EXPLORE",
+          "status": "FAIL",
+          "target_status": "MET",
+          "config_label": "fsa 128x256 INT4 1200MHz B1 LPDDR5-64b",
+          "config": {
+            "scenario": "lpddr5_3b_agent_eff75",
+            "engine": "fsa",
+            "maturity": "M1",
+            "array_height": 128,
+            "array_width": 256,
+            "frequency_mhz": 1200,
+            "weight_precision_bits": 4,
+            "weight_cache": false,
+            "memory_type": "lpddr5",
+            "memory_bandwidth_gbps": 51.2,
+            "memory_capacity_gb": 4.0,
+            "sram_l2_kb": 1024,
+            "model": "qwen2.5-3b",
+            "prompt_tokens": 875,
+            "output_tokens": 214,
+            "concurrent_requests": 1,
+            "decode_batch_size": 1,
+            "cached_prefix_tokens": 30000,
+            "prefill_context_tokens": 30875,
+            "attention_bits": 16,
+            "causal_attention": true,
+            "attention_mode": "baseline",
+            "projection_engine": "fsa"
+          },
+          "metrics": {
+            "decode_tps": 9.91,
+            "aggregate_tps": 9.91,
+            "prefill_tps": 983.67,
+            "ttft_ms": 990.462,
+            "itl_ms": 100.933,
+            "e2e_latency_ms": 22489.285,
+            "area_mm2": 54.5,
+            "power_w": 16.4,
+            "tops_int8": 78.64,
+            "bandwidth_util_pct": 51.89,
+            "memory_required_gb": 3.009,
+            "memory_available_gb": 3.6
+          },
+          "failed_reasons": [
+            "decode TPS 9.91 < required 20.00"
+          ],
+          "warnings": [
+            "power_w_max is not specified by the scenario",
+            "FSA attention follows the upstream schedule, while mixed-precision projections, GQA, LPDDR5 end-to-end TPS and whole-chip PPA remain paper extrapolations",
+            "upstream FSA causal kernel has no cached-prefix query offset; incremental attention is modeled as a full rectangular schedule",
+            "fsa is maturity M1: included in raw exploration but not in comparison-ready or product-qualified ranking"
+          ],
+          "evaluated_configs": 30,
+          "feasible_configs": 0
+        },
+        {
+          "rank": 4,
+          "engine": "os_systolic",
+          "maturity": "M2",
+          "eligibility_status": "COMPARE",
+          "status": "FAIL",
+          "target_status": "MISS",
+          "config_label": "os_s 128x256 INT4 1200MHz B1 LPDDR5-64b",
+          "config": {
+            "scenario": "lpddr5_3b_agent_eff75",
+            "engine": "os_systolic",
+            "maturity": "M2",
+            "array_height": 128,
+            "array_width": 256,
+            "frequency_mhz": 1200,
+            "weight_precision_bits": 4,
+            "weight_cache": false,
+            "memory_type": "lpddr5",
+            "memory_bandwidth_gbps": 51.2,
+            "memory_capacity_gb": 4.0,
+            "sram_l2_kb": 1024,
+            "model": "qwen2.5-3b",
+            "prompt_tokens": 875,
+            "output_tokens": 214,
+            "concurrent_requests": 1,
+            "decode_batch_size": 1,
+            "cached_prefix_tokens": 30000,
+            "prefill_context_tokens": 30875,
+            "attention_bits": 16,
+            "causal_attention": true,
+            "attention_mode": "baseline",
+            "projection_engine": "os_systolic"
+          },
+          "metrics": {
+            "decode_tps": 11.97,
+            "aggregate_tps": 11.97,
+            "prefill_tps": 153.5,
+            "ttft_ms": 5783.787,
+            "itl_ms": 83.555,
+            "e2e_latency_ms": 23580.934,
+            "area_mm2": 64.8,
+            "power_w": 22.7,
+            "tops_int8": 78.64,
+            "bandwidth_util_pct": 62.68,
+            "memory_required_gb": 3.009,
+            "memory_available_gb": 3.6
+          },
+          "failed_reasons": [
+            "decode TPS 11.97 < required 20.00",
+            "TTFT 5783.79ms > limit 5000.00ms"
+          ],
+          "warnings": [
+            "power_w_max is not specified by the scenario",
+            "OS uses an analytical MxN-spatial/K-temporal wavefront model; transposer backpressure, scratchpad bank conflicts, K-stream chunking, and RTL timing remain uncalibrated",
+            "os_systolic is maturity M2: comparison-ready, but product qualification requires M3 calibration and guardband"
+          ],
+          "evaluated_configs": 150,
+          "feasible_configs": 0
+        },
+        {
+          "rank": 5,
+          "engine": "block",
+          "maturity": "M2",
+          "eligibility_status": "COMPARE",
+          "status": "FAIL",
+          "target_status": "MISS",
+          "config_label": "bloc 128x256 INT4 1200MHz B1 WC LPDDR5-64b",
+          "config": {
+            "scenario": "lpddr5_3b_agent_eff75",
+            "engine": "block",
+            "maturity": "M2",
+            "array_height": 128,
+            "array_width": 256,
+            "frequency_mhz": 1200,
+            "weight_precision_bits": 4,
+            "weight_cache": true,
+            "memory_type": "lpddr5",
+            "memory_bandwidth_gbps": 51.2,
+            "memory_capacity_gb": 4.0,
+            "sram_l2_kb": 1024,
+            "model": "qwen2.5-3b",
+            "prompt_tokens": 875,
+            "output_tokens": 214,
+            "concurrent_requests": 1,
+            "decode_batch_size": 1,
+            "cached_prefix_tokens": 30000,
+            "prefill_context_tokens": 30875,
+            "attention_bits": 16,
+            "causal_attention": true,
+            "attention_mode": "baseline",
+            "projection_engine": "block"
+          },
+          "metrics": {
+            "decode_tps": 13.16,
+            "aggregate_tps": 13.16,
+            "prefill_tps": 141.92,
+            "ttft_ms": 6241.419,
+            "itl_ms": 76.006,
+            "e2e_latency_ms": 22430.74,
+            "area_mm2": 64.8,
+            "power_w": 22.7,
+            "tops_int8": 78.64,
+            "bandwidth_util_pct": 68.9,
+            "memory_required_gb": 3.009,
+            "memory_available_gb": 3.6
+          },
+          "failed_reasons": [
+            "decode TPS 13.16 < required 20.00",
+            "TTFT 6241.42ms > limit 5000.00ms"
+          ],
+          "warnings": [
+            "power_w_max is not specified by the scenario",
+            "block is maturity M2: comparison-ready, but product qualification requires M3 calibration and guardband"
+          ],
+          "evaluated_configs": 300,
+          "feasible_configs": 0
+        },
+        {
+          "rank": 6,
+          "engine": "gmma",
+          "maturity": "M1",
+          "eligibility_status": "EXPLORE",
+          "status": "FAIL",
+          "target_status": "MISS",
+          "config_label": "gmma 192x128 INT4 1200MHz B1 LPDDR5-64b",
+          "config": {
+            "scenario": "lpddr5_3b_agent_eff75",
+            "engine": "gmma",
+            "maturity": "M1",
+            "array_height": 192,
+            "array_width": 128,
+            "frequency_mhz": 1200,
+            "weight_precision_bits": 4,
+            "weight_cache": false,
+            "memory_type": "lpddr5",
+            "memory_bandwidth_gbps": 51.2,
+            "memory_capacity_gb": 4.0,
+            "sram_l2_kb": 1024,
+            "model": "qwen2.5-3b",
+            "prompt_tokens": 875,
+            "output_tokens": 214,
+            "concurrent_requests": 1,
+            "decode_batch_size": 1,
+            "cached_prefix_tokens": 30000,
+            "prefill_context_tokens": 30875,
+            "attention_bits": 16,
+            "causal_attention": true,
+            "attention_mode": "baseline",
+            "projection_engine": "gmma"
+          },
+          "metrics": {
+            "decode_tps": 9.22,
+            "aggregate_tps": 9.22,
+            "prefill_tps": 154.5,
+            "ttft_ms": 5771.943,
+            "itl_ms": 108.455,
+            "e2e_latency_ms": 28872.79,
+            "area_mm2": 72.2,
+            "power_w": 27.1,
+            "tops_int8": 58.98,
+            "bandwidth_util_pct": 48.29,
+            "memory_required_gb": 3.009,
+            "memory_available_gb": 3.6
+          },
+          "failed_reasons": [
+            "decode TPS 9.22 < required 20.00",
+            "TTFT 5771.94ms > limit 5000.00ms"
+          ],
+          "warnings": [
+            "power_w_max is not specified by the scenario",
+            "gmma is maturity M1: included in raw exploration but not in comparison-ready or product-qualified ranking"
+          ],
+          "evaluated_configs": 300,
+          "feasible_configs": 0
+        },
+        {
+          "rank": 7,
+          "engine": "systolic",
+          "maturity": "M2",
+          "eligibility_status": "COMPARE",
+          "status": "FAIL",
+          "target_status": "MISS",
+          "config_label": "syst 256x256 INT4 1200MHz B1 WC LPDDR5-64b",
+          "config": {
+            "scenario": "lpddr5_3b_agent_eff75",
+            "engine": "systolic",
+            "maturity": "M2",
+            "array_height": 256,
+            "array_width": 256,
+            "frequency_mhz": 1200,
+            "weight_precision_bits": 4,
+            "weight_cache": true,
+            "memory_type": "lpddr5",
+            "memory_bandwidth_gbps": 51.2,
+            "memory_capacity_gb": 4.0,
+            "sram_l2_kb": 1024,
+            "model": "qwen2.5-3b",
+            "prompt_tokens": 875,
+            "output_tokens": 214,
+            "concurrent_requests": 1,
+            "decode_batch_size": 1,
+            "cached_prefix_tokens": 30000,
+            "prefill_context_tokens": 30875,
+            "attention_bits": 16,
+            "causal_attention": true,
+            "attention_mode": "baseline",
+            "projection_engine": "systolic"
+          },
+          "metrics": {
+            "decode_tps": 7.34,
+            "aggregate_tps": 7.34,
+            "prefill_tps": 145.45,
+            "ttft_ms": 6152.338,
+            "itl_ms": 136.325,
+            "e2e_latency_ms": 35189.459,
+            "area_mm2": 64.8,
+            "power_w": 22.7,
+            "tops_int8": 157.29,
+            "bandwidth_util_pct": 38.54,
+            "memory_required_gb": 3.009,
+            "memory_available_gb": 3.6
+          },
+          "failed_reasons": [
+            "decode TPS 7.34 < required 20.00",
+            "TTFT 6152.34ms > limit 5000.00ms"
+          ],
+          "warnings": [
+            "power_w_max is not specified by the scenario",
+            "systolic is maturity M2: comparison-ready, but product qualification requires M3 calibration and guardband"
+          ],
+          "evaluated_configs": 300,
+          "feasible_configs": 0
+        },
+        {
+          "rank": 8,
+          "engine": "input_stationary",
+          "maturity": "M1",
+          "eligibility_status": "EXPLORE",
+          "status": "FAIL",
+          "target_status": "MISS",
+          "config_label": "inpu 64x256 INT4 1200MHz B1 LPDDR5-64b",
+          "config": {
+            "scenario": "lpddr5_3b_agent_eff75",
+            "engine": "input_stationary",
+            "maturity": "M1",
+            "array_height": 64,
+            "array_width": 256,
+            "frequency_mhz": 1200,
+            "weight_precision_bits": 4,
+            "weight_cache": false,
+            "memory_type": "lpddr5",
+            "memory_bandwidth_gbps": 51.2,
+            "memory_capacity_gb": 4.0,
+            "sram_l2_kb": 1024,
+            "model": "qwen2.5-3b",
+            "prompt_tokens": 875,
+            "output_tokens": 214,
+            "concurrent_requests": 1,
+            "decode_batch_size": 1,
+            "cached_prefix_tokens": 30000,
+            "prefill_context_tokens": 30875,
+            "attention_bits": 16,
+            "causal_attention": true,
+            "attention_mode": "baseline",
+            "projection_engine": "input_stationary"
+          },
+          "metrics": {
+            "decode_tps": 0.76,
+            "aggregate_tps": 0.76,
+            "prefill_tps": 137.86,
+            "ttft_ms": 7669.161,
+            "itl_ms": 1322.268,
+            "e2e_latency_ms": 289312.151,
+            "area_mm2": 53.1,
+            "power_w": 15.6,
+            "tops_int8": 39.32,
+            "bandwidth_util_pct": 3.98,
+            "memory_required_gb": 3.009,
+            "memory_available_gb": 3.6
+          },
+          "failed_reasons": [
+            "decode TPS 0.76 < required 20.00",
+            "TTFT 7669.16ms > limit 5000.00ms"
+          ],
+          "warnings": [
+            "power_w_max is not specified by the scenario",
+            "input_stationary is maturity M1: included in raw exploration but not in comparison-ready or product-qualified ranking"
+          ],
+          "evaluated_configs": 150,
+          "feasible_configs": 0
+        },
+        {
+          "rank": 9,
+          "engine": "tensor_core",
+          "maturity": "M1",
+          "eligibility_status": "EXPLORE",
+          "status": "FAIL",
+          "target_status": "MISS",
+          "config_label": "tens 128x256 INT4 1200MHz B1 LPDDR5-64b",
+          "config": {
+            "scenario": "lpddr5_3b_agent_eff75",
+            "engine": "tensor_core",
+            "maturity": "M1",
+            "array_height": 128,
+            "array_width": 256,
+            "frequency_mhz": 1200,
+            "weight_precision_bits": 4,
+            "weight_cache": false,
+            "memory_type": "lpddr5",
+            "memory_bandwidth_gbps": 51.2,
+            "memory_capacity_gb": 4.0,
+            "sram_l2_kb": 1024,
+            "model": "qwen2.5-3b",
+            "prompt_tokens": 875,
+            "output_tokens": 214,
+            "concurrent_requests": 1,
+            "decode_batch_size": 1,
+            "cached_prefix_tokens": 30000,
+            "prefill_context_tokens": 30875,
+            "attention_bits": 16,
+            "causal_attention": true,
+            "attention_mode": "baseline",
+            "projection_engine": "tensor_core"
+          },
+          "metrics": {
+            "decode_tps": 12.34,
+            "aggregate_tps": 12.34,
+            "prefill_tps": 76.68,
+            "ttft_ms": 11492.628,
+            "itl_ms": 81.026,
+            "e2e_latency_ms": 28751.215,
+            "area_mm2": 64.8,
+            "power_w": 22.7,
+            "tops_int8": 78.64,
+            "bandwidth_util_pct": 69.28,
+            "memory_required_gb": 3.009,
+            "memory_available_gb": 3.6
+          },
+          "failed_reasons": [
+            "decode TPS 12.34 < required 20.00",
+            "TTFT 11492.63ms > limit 5000.00ms"
+          ],
+          "warnings": [
+            "power_w_max is not specified by the scenario",
+            "tensor_core is maturity M1: included in raw exploration but not in comparison-ready or product-qualified ranking"
+          ],
+          "evaluated_configs": 150,
+          "feasible_configs": 0
+        },
+        {
+          "rank": 10,
+          "engine": "wmma",
+          "maturity": "M1",
+          "eligibility_status": "EXPLORE",
+          "status": "FAIL",
+          "target_status": "MISS",
+          "config_label": "wmma 32x32 INT4 1200MHz B1 LPDDR5-64b",
+          "config": {
+            "scenario": "lpddr5_3b_agent_eff75",
+            "engine": "wmma",
+            "maturity": "M1",
+            "array_height": 32,
+            "array_width": 32,
+            "frequency_mhz": 1200,
+            "weight_precision_bits": 4,
+            "weight_cache": false,
+            "memory_type": "lpddr5",
+            "memory_bandwidth_gbps": 51.2,
+            "memory_capacity_gb": 4.0,
+            "sram_l2_kb": 1024,
+            "model": "qwen2.5-3b",
+            "prompt_tokens": 875,
+            "output_tokens": 214,
+            "concurrent_requests": 1,
+            "decode_batch_size": 1,
+            "cached_prefix_tokens": 30000,
+            "prefill_context_tokens": 30875,
+            "attention_bits": 16,
+            "causal_attention": true,
+            "attention_mode": "baseline",
+            "projection_engine": "wmma"
+          },
+          "metrics": {
+            "decode_tps": 0.02,
+            "aggregate_tps": 0.02,
+            "prefill_tps": 0.46,
+            "ttft_ms": 1958110.697,
+            "itl_ms": 40986.966,
+            "e2e_latency_ms": 10688334.507,
+            "area_mm2": 42.4,
+            "power_w": 9.2,
+            "tops_int8": 2.46,
+            "bandwidth_util_pct": 0.13,
+            "memory_required_gb": 3.009,
+            "memory_available_gb": 3.6
+          },
+          "failed_reasons": [
+            "decode TPS 0.02 < required 20.00",
+            "TTFT 1958110.70ms > limit 5000.00ms"
+          ],
+          "warnings": [
+            "power_w_max is not specified by the scenario",
+            "wmma is maturity M1: included in raw exploration but not in comparison-ready or product-qualified ranking"
+          ],
+          "evaluated_configs": 150,
+          "feasible_configs": 0
+        }
+      ]
+    },
+    "agent_85": {
+      "arc_version": "v3.6-engine-evidence",
+      "scenario": "lpddr5_3b_agent",
+      "scenario_definition": {
+        "description": "LPDDR5-64b + 3B low-cost local agent workload",
+        "model": "qwen2.5-3b",
+        "model_params_gb": 1.545,
+        "seq_len": 875,
+        "ttft_ms_target": 2000,
+        "ttft_ms_max": 5000,
+        "tps_min": 20,
+        "process_nm": 12,
+        "agent_workload": {
+          "representative_steps": 16,
+          "prefix_cache_hit_rate": 0.9,
+          "stress_append_tokens": 10000
+        },
+        "workload": {
+          "prompt_tokens": 875,
+          "output_tokens": 214,
+          "cached_prefix_tokens": 30000,
+          "max_context_tokens": 32768,
+          "concurrent_requests": 1,
+          "decode_batch_size": 1,
+          "activation_bits": 8,
+          "attention_bits": 16,
+          "kv_bits": 16,
+          "causal_attention": true
+        },
+        "memory": {
+          "type": "lpddr5",
+          "capacity_gb": 4,
+          "capacity_usable_fraction": 0.9,
+          "bandwidth_gbps": 51.2,
+          "dram_efficiency": 0.85,
+          "effective_bw_gbps": 43.52,
+          "efficiency_corners": [
+            0.75,
+            0.85,
+            0.9
+          ]
+        },
+        "constraints": {
+          "ttft_ms_max": 5000,
+          "tps_min": 20,
+          "area_mm2_max": 80
+        },
+        "targets": {
+          "ttft_ms_max": 2000,
+          "prefill_tps_min": 500
+        },
+        "objectives": [
+          "area_mm2",
+          "power_w",
+          "-tok_s"
+        ],
+        "tie_breakers": {
+          "engine_preference": [
+            "block",
+            "os_systolic"
+          ]
+        },
+        "search_space": {
+          "arrays": [
+            [
+              32,
+              32
+            ],
+            [
+              32,
+              64
+            ],
+            [
+              64,
+              64
+            ],
+            [
+              64,
+              128
+            ],
+            [
+              96,
+              96
+            ],
+            [
+              64,
+              256
+            ],
+            [
+              128,
+              128
+            ],
+            [
+              192,
+              128
+            ],
+            [
+              128,
+              256
+            ],
+            [
+              256,
+              256
+            ]
+          ],
+          "weight_precision_bits": [
+            4
+          ]
+        },
+        "components": {
+          "required": [
+            "dram_phy",
+            "pcie"
+          ],
+          "excluded": [
+            "tsv"
+          ]
+        }
+      },
+      "source_sha256": "801e7d54495f2b28ad483f39454c842d7852a66d396065f638a4fbf72b3c8aa5",
+      "total_configs": 1980,
+      "valid_results": 1980,
+      "invalid_configs": [],
+      "raw_feasible_configs": 0,
+      "comparison_ready_feasible_configs": 0,
+      "product_qualified_feasible_configs": 0,
+      "rejected_configs": 1980,
+      "raw_feasible": false,
+      "comparison_ready_feasible": false,
+      "product_feasible": false,
+      "raw_recommended": null,
+      "comparison_ready_recommended": null,
+      "product_recommended": null,
+      "closest_comparison_ready": {
+        "config_label": "bloc 128x256 INT4 1200MHz B1 WC LPDDR5-64b",
+        "config": {
+          "scenario": "lpddr5_3b_agent",
+          "engine": "block",
+          "maturity": "M2",
+          "array_height": 128,
+          "array_width": 256,
+          "frequency_mhz": 1200,
+          "weight_precision_bits": 4,
+          "weight_cache": true,
+          "memory_type": "lpddr5",
+          "memory_bandwidth_gbps": 51.2,
+          "memory_capacity_gb": 4.0,
+          "sram_l2_kb": 1024,
+          "model": "qwen2.5-3b",
+          "prompt_tokens": 875,
+          "output_tokens": 214,
+          "concurrent_requests": 1,
+          "decode_batch_size": 1,
+          "cached_prefix_tokens": 30000,
+          "prefill_context_tokens": 30875,
+          "attention_bits": 16,
+          "causal_attention": true,
+          "attention_mode": "baseline",
+          "projection_engine": "block"
+        },
+        "maturity": "M2",
+        "decode_tps": 14.75,
+        "prefill_tps": 141.94,
+        "ttft_ms": 6232.173,
+        "itl_ms": 67.789,
+        "e2e_latency_ms": 20671.254,
+        "area_mm2": 64.8,
+        "power_w": 22.7,
+        "constraints_passed": false,
+        "failed_reasons": [
+          "decode TPS 14.75 < required 20.00",
+          "TTFT 6232.17ms > limit 5000.00ms"
+        ],
+        "warnings": [
+          "power_w_max is not specified by the scenario",
+          "block is maturity M2: comparison-ready, but product qualification requires M3 calibration and guardband"
+        ],
+        "provenance": {
+          "arc_version": "v3.6-engine-evidence",
+          "scenario_hash": "965baf0258d42353",
+          "config_hash": "1393b8fa4fba2609",
+          "model_spec": "qwen2.5-3b",
+          "calibration_tier": "architecture_analytical_crosscheck",
+          "engine_maturity": "M2",
+          "engine_manifest_hash": "e785c1a7cb2d6b25",
+          "raw_exploration_eligible": true,
+          "comparison_eligible": true,
+          "product_eligible": false,
+          "recommendation_eligible": true
+        }
+      },
+      "engine_comparison": [
+        {
+          "rank": 1,
+          "engine": "block_fused_attention",
+          "maturity": "M1",
+          "eligibility_status": "EXPLORE",
+          "status": "FAIL",
+          "target_status": "MISS",
+          "config_label": "bfsa 64x64 INT4 1200MHz B1 LPDDR5-64b",
+          "config": {
+            "scenario": "lpddr5_3b_agent",
+            "engine": "block_fused_attention",
+            "maturity": "M1",
+            "array_height": 64,
+            "array_width": 64,
+            "frequency_mhz": 1200,
+            "weight_precision_bits": 4,
+            "weight_cache": false,
+            "memory_type": "lpddr5",
+            "memory_bandwidth_gbps": 51.2,
+            "memory_capacity_gb": 4.0,
+            "sram_l2_kb": 1024,
+            "model": "qwen2.5-3b",
+            "prompt_tokens": 875,
+            "output_tokens": 214,
+            "concurrent_requests": 1,
+            "decode_batch_size": 1,
+            "cached_prefix_tokens": 30000,
+            "prefill_context_tokens": 30875,
+            "attention_bits": 16,
+            "causal_attention": true,
+            "attention_mode": "fused_array",
+            "projection_engine": "block"
+          },
+          "metrics": {
+            "decode_tps": 16.22,
+            "aggregate_tps": 16.22,
+            "prefill_tps": 179.11,
+            "ttft_ms": 4946.845,
+            "itl_ms": 61.653,
+            "e2e_latency_ms": 18079.024,
+            "area_mm2": 44.4,
+            "power_w": 10.4,
+            "tops_int8": 9.83,
+            "bandwidth_util_pct": 84.94,
+            "memory_required_gb": 3.009,
+            "memory_available_gb": 3.6
+          },
+          "failed_reasons": [
+            "decode TPS 16.22 < required 20.00"
+          ],
+          "warnings": [
+            "power_w_max is not specified by the scenario",
+            "block_fused_attention uses its baseline projection/FFN path, but fused attention overlap and incremental PPA remain analytical",
+            "the candidate requires a cached-prefix query-position offset in a future native RTL implementation",
+            "block_fused_attention is maturity M1: included in raw exploration but not in comparison-ready or product-qualified ranking"
+          ],
+          "evaluated_configs": 300,
+          "feasible_configs": 0
+        },
+        {
+          "rank": 2,
+          "engine": "os_systolic_fused_attention",
+          "maturity": "M1",
+          "eligibility_status": "EXPLORE",
+          "status": "FAIL",
+          "target_status": "MET",
+          "config_label": "ofsa 128x256 INT4 1200MHz B1 LPDDR5-64b",
+          "config": {
+            "scenario": "lpddr5_3b_agent",
+            "engine": "os_systolic_fused_attention",
+            "maturity": "M1",
+            "array_height": 128,
+            "array_width": 256,
+            "frequency_mhz": 1200,
+            "weight_precision_bits": 4,
+            "weight_cache": false,
+            "memory_type": "lpddr5",
+            "memory_bandwidth_gbps": 51.2,
+            "memory_capacity_gb": 4.0,
+            "sram_l2_kb": 1024,
+            "model": "qwen2.5-3b",
+            "prompt_tokens": 875,
+            "output_tokens": 214,
+            "concurrent_requests": 1,
+            "decode_batch_size": 1,
+            "cached_prefix_tokens": 30000,
+            "prefill_context_tokens": 30875,
+            "attention_bits": 16,
+            "causal_attention": true,
+            "attention_mode": "fused_array",
+            "projection_engine": "os_systolic"
+          },
+          "metrics": {
+            "decode_tps": 14.45,
+            "aggregate_tps": 14.45,
+            "prefill_tps": 2329.36,
+            "ttft_ms": 444.84,
+            "itl_ms": 69.201,
+            "e2e_latency_ms": 15184.621,
+            "area_mm2": 66.2,
+            "power_w": 23.5,
+            "tops_int8": 78.64,
+            "bandwidth_util_pct": 75.68,
+            "memory_required_gb": 3.009,
+            "memory_available_gb": 3.6
+          },
+          "failed_reasons": [
+            "decode TPS 14.45 < required 20.00"
+          ],
+          "warnings": [
+            "power_w_max is not specified by the scenario",
+            "OS uses an analytical MxN-spatial/K-temporal wavefront model; transposer backpressure, scratchpad bank conflicts, K-stream chunking, and RTL timing remain uncalibrated",
+            "os_systolic_fused_attention uses its baseline projection/FFN path, but fused attention overlap and incremental PPA remain analytical",
+            "the candidate requires a cached-prefix query-position offset in a future native RTL implementation",
+            "os_systolic_fused_attention is maturity M1: included in raw exploration but not in comparison-ready or product-qualified ranking"
+          ],
+          "evaluated_configs": 150,
+          "feasible_configs": 0
+        },
+        {
+          "rank": 3,
+          "engine": "fsa",
+          "maturity": "M1",
+          "eligibility_status": "EXPLORE",
+          "status": "FAIL",
+          "target_status": "MET",
+          "config_label": "fsa 128x256 INT4 1200MHz B1 LPDDR5-64b",
+          "config": {
+            "scenario": "lpddr5_3b_agent",
+            "engine": "fsa",
+            "maturity": "M1",
+            "array_height": 128,
+            "array_width": 256,
+            "frequency_mhz": 1200,
+            "weight_precision_bits": 4,
+            "weight_cache": false,
+            "memory_type": "lpddr5",
+            "memory_bandwidth_gbps": 51.2,
+            "memory_capacity_gb": 4.0,
+            "sram_l2_kb": 1024,
+            "model": "qwen2.5-3b",
+            "prompt_tokens": 875,
+            "output_tokens": 214,
+            "concurrent_requests": 1,
+            "decode_batch_size": 1,
+            "cached_prefix_tokens": 30000,
+            "prefill_context_tokens": 30875,
+            "attention_bits": 16,
+            "causal_attention": true,
+            "attention_mode": "baseline",
+            "projection_engine": "fsa"
+          },
+          "metrics": {
+            "decode_tps": 10.39,
+            "aggregate_tps": 10.39,
+            "prefill_tps": 984.3,
+            "ttft_ms": 985.157,
+            "itl_ms": 96.204,
+            "e2e_latency_ms": 21476.629,
+            "area_mm2": 54.5,
+            "power_w": 16.4,
+            "tops_int8": 78.64,
+            "bandwidth_util_pct": 54.44,
+            "memory_required_gb": 3.009,
+            "memory_available_gb": 3.6
+          },
+          "failed_reasons": [
+            "decode TPS 10.39 < required 20.00"
+          ],
+          "warnings": [
+            "power_w_max is not specified by the scenario",
+            "FSA attention follows the upstream schedule, while mixed-precision projections, GQA, LPDDR5 end-to-end TPS and whole-chip PPA remain paper extrapolations",
+            "upstream FSA causal kernel has no cached-prefix query offset; incremental attention is modeled as a full rectangular schedule",
+            "fsa is maturity M1: included in raw exploration but not in comparison-ready or product-qualified ranking"
+          ],
+          "evaluated_configs": 30,
+          "feasible_configs": 0
+        },
+        {
+          "rank": 4,
+          "engine": "block",
+          "maturity": "M2",
+          "eligibility_status": "COMPARE",
+          "status": "FAIL",
+          "target_status": "MISS",
+          "config_label": "bloc 128x256 INT4 1200MHz B1 WC LPDDR5-64b",
+          "config": {
+            "scenario": "lpddr5_3b_agent",
+            "engine": "block",
+            "maturity": "M2",
+            "array_height": 128,
+            "array_width": 256,
+            "frequency_mhz": 1200,
+            "weight_precision_bits": 4,
+            "weight_cache": true,
+            "memory_type": "lpddr5",
+            "memory_bandwidth_gbps": 51.2,
+            "memory_capacity_gb": 4.0,
+            "sram_l2_kb": 1024,
+            "model": "qwen2.5-3b",
+            "prompt_tokens": 875,
+            "output_tokens": 214,
+            "concurrent_requests": 1,
+            "decode_batch_size": 1,
+            "cached_prefix_tokens": 30000,
+            "prefill_context_tokens": 30875,
+            "attention_bits": 16,
+            "causal_attention": true,
+            "attention_mode": "baseline",
+            "projection_engine": "block"
+          },
+          "metrics": {
+            "decode_tps": 14.75,
+            "aggregate_tps": 14.75,
+            "prefill_tps": 141.94,
+            "ttft_ms": 6232.173,
+            "itl_ms": 67.789,
+            "e2e_latency_ms": 20671.254,
+            "area_mm2": 64.8,
+            "power_w": 22.7,
+            "tops_int8": 78.64,
+            "bandwidth_util_pct": 77.25,
+            "memory_required_gb": 3.009,
+            "memory_available_gb": 3.6
+          },
+          "failed_reasons": [
+            "decode TPS 14.75 < required 20.00",
+            "TTFT 6232.17ms > limit 5000.00ms"
+          ],
+          "warnings": [
+            "power_w_max is not specified by the scenario",
+            "block is maturity M2: comparison-ready, but product qualification requires M3 calibration and guardband"
+          ],
+          "evaluated_configs": 300,
+          "feasible_configs": 0
+        },
+        {
+          "rank": 5,
+          "engine": "os_systolic",
+          "maturity": "M2",
+          "eligibility_status": "COMPARE",
+          "status": "FAIL",
+          "target_status": "MISS",
+          "config_label": "os_s 128x256 INT4 1200MHz B1 LPDDR5-64b",
+          "config": {
+            "scenario": "lpddr5_3b_agent",
+            "engine": "os_systolic",
+            "maturity": "M2",
+            "array_height": 128,
+            "array_width": 256,
+            "frequency_mhz": 1200,
+            "weight_precision_bits": 4,
+            "weight_cache": false,
+            "memory_type": "lpddr5",
+            "memory_bandwidth_gbps": 51.2,
+            "memory_capacity_gb": 4.0,
+            "sram_l2_kb": 1024,
+            "model": "qwen2.5-3b",
+            "prompt_tokens": 875,
+            "output_tokens": 214,
+            "concurrent_requests": 1,
+            "decode_batch_size": 1,
+            "cached_prefix_tokens": 30000,
+            "prefill_context_tokens": 30875,
+            "attention_bits": 16,
+            "causal_attention": true,
+            "attention_mode": "baseline",
+            "projection_engine": "os_systolic"
+          },
+          "metrics": {
+            "decode_tps": 12.69,
+            "aggregate_tps": 12.69,
+            "prefill_tps": 153.54,
+            "ttft_ms": 5777.565,
+            "itl_ms": 78.825,
+            "e2e_latency_ms": 22567.361,
+            "area_mm2": 64.8,
+            "power_w": 22.7,
+            "tops_int8": 78.64,
+            "bandwidth_util_pct": 66.44,
+            "memory_required_gb": 3.009,
+            "memory_available_gb": 3.6
+          },
+          "failed_reasons": [
+            "decode TPS 12.69 < required 20.00",
+            "TTFT 5777.57ms > limit 5000.00ms"
+          ],
+          "warnings": [
+            "power_w_max is not specified by the scenario",
+            "OS uses an analytical MxN-spatial/K-temporal wavefront model; transposer backpressure, scratchpad bank conflicts, K-stream chunking, and RTL timing remain uncalibrated",
+            "os_systolic is maturity M2: comparison-ready, but product qualification requires M3 calibration and guardband"
+          ],
+          "evaluated_configs": 150,
+          "feasible_configs": 0
+        },
+        {
+          "rank": 6,
+          "engine": "gmma",
+          "maturity": "M1",
+          "eligibility_status": "EXPLORE",
+          "status": "FAIL",
+          "target_status": "MISS",
+          "config_label": "gmma 192x128 INT4 1200MHz B1 LPDDR5-64b",
+          "config": {
+            "scenario": "lpddr5_3b_agent",
+            "engine": "gmma",
+            "maturity": "M1",
+            "array_height": 192,
+            "array_width": 128,
+            "frequency_mhz": 1200,
+            "weight_precision_bits": 4,
+            "weight_cache": false,
+            "memory_type": "lpddr5",
+            "memory_bandwidth_gbps": 51.2,
+            "memory_capacity_gb": 4.0,
+            "sram_l2_kb": 1024,
+            "model": "qwen2.5-3b",
+            "prompt_tokens": 875,
+            "output_tokens": 214,
+            "concurrent_requests": 1,
+            "decode_batch_size": 1,
+            "cached_prefix_tokens": 30000,
+            "prefill_context_tokens": 30875,
+            "attention_bits": 16,
+            "causal_attention": true,
+            "attention_mode": "baseline",
+            "projection_engine": "gmma"
+          },
+          "metrics": {
+            "decode_tps": 9.64,
+            "aggregate_tps": 9.64,
+            "prefill_tps": 154.53,
+            "ttft_ms": 5766.185,
+            "itl_ms": 103.725,
+            "e2e_latency_ms": 27859.636,
+            "area_mm2": 72.2,
+            "power_w": 27.1,
+            "tops_int8": 58.98,
+            "bandwidth_util_pct": 50.49,
+            "memory_required_gb": 3.009,
+            "memory_available_gb": 3.6
+          },
+          "failed_reasons": [
+            "decode TPS 9.64 < required 20.00",
+            "TTFT 5766.18ms > limit 5000.00ms"
+          ],
+          "warnings": [
+            "power_w_max is not specified by the scenario",
+            "gmma is maturity M1: included in raw exploration but not in comparison-ready or product-qualified ranking"
+          ],
+          "evaluated_configs": 300,
+          "feasible_configs": 0
+        },
+        {
+          "rank": 7,
+          "engine": "systolic",
+          "maturity": "M2",
+          "eligibility_status": "COMPARE",
+          "status": "FAIL",
+          "target_status": "MISS",
+          "config_label": "syst 256x256 INT4 1200MHz B1 WC LPDDR5-64b",
+          "config": {
+            "scenario": "lpddr5_3b_agent",
+            "engine": "systolic",
+            "maturity": "M2",
+            "array_height": 256,
+            "array_width": 256,
+            "frequency_mhz": 1200,
+            "weight_precision_bits": 4,
+            "weight_cache": true,
+            "memory_type": "lpddr5",
+            "memory_bandwidth_gbps": 51.2,
+            "memory_capacity_gb": 4.0,
+            "sram_l2_kb": 1024,
+            "model": "qwen2.5-3b",
+            "prompt_tokens": 875,
+            "output_tokens": 214,
+            "concurrent_requests": 1,
+            "decode_batch_size": 1,
+            "cached_prefix_tokens": 30000,
+            "prefill_context_tokens": 30875,
+            "attention_bits": 16,
+            "causal_attention": true,
+            "attention_mode": "baseline",
+            "projection_engine": "systolic"
+          },
+          "metrics": {
+            "decode_tps": 7.6,
+            "aggregate_tps": 7.6,
+            "prefill_tps": 146.11,
+            "ttft_ms": 6120.145,
+            "itl_ms": 131.57,
+            "e2e_latency_ms": 34144.538,
+            "area_mm2": 64.8,
+            "power_w": 22.7,
+            "tops_int8": 157.29,
+            "bandwidth_util_pct": 39.94,
+            "memory_required_gb": 3.009,
+            "memory_available_gb": 3.6
+          },
+          "failed_reasons": [
+            "decode TPS 7.60 < required 20.00",
+            "TTFT 6120.15ms > limit 5000.00ms"
+          ],
+          "warnings": [
+            "power_w_max is not specified by the scenario",
+            "systolic is maturity M2: comparison-ready, but product qualification requires M3 calibration and guardband"
+          ],
+          "evaluated_configs": 300,
+          "feasible_configs": 0
+        },
+        {
+          "rank": 8,
+          "engine": "tensor_core",
+          "maturity": "M1",
+          "eligibility_status": "EXPLORE",
+          "status": "FAIL",
+          "target_status": "MISS",
+          "config_label": "tens 128x256 INT4 1200MHz B1 LPDDR5-64b",
+          "config": {
+            "scenario": "lpddr5_3b_agent",
+            "engine": "tensor_core",
+            "maturity": "M1",
+            "array_height": 128,
+            "array_width": 256,
+            "frequency_mhz": 1200,
+            "weight_precision_bits": 4,
+            "weight_cache": false,
+            "memory_type": "lpddr5",
+            "memory_bandwidth_gbps": 51.2,
+            "memory_capacity_gb": 4.0,
+            "sram_l2_kb": 1024,
+            "model": "qwen2.5-3b",
+            "prompt_tokens": 875,
+            "output_tokens": 214,
+            "concurrent_requests": 1,
+            "decode_batch_size": 1,
+            "cached_prefix_tokens": 30000,
+            "prefill_context_tokens": 30875,
+            "attention_bits": 16,
+            "causal_attention": true,
+            "attention_mode": "baseline",
+            "projection_engine": "tensor_core"
+          },
+          "metrics": {
+            "decode_tps": 13.85,
+            "aggregate_tps": 13.85,
+            "prefill_tps": 81.7,
+            "ttft_ms": 10781.903,
+            "itl_ms": 72.22,
+            "e2e_latency_ms": 26164.854,
+            "area_mm2": 64.8,
+            "power_w": 22.7,
+            "tops_int8": 78.64,
+            "bandwidth_util_pct": 77.73,
+            "memory_required_gb": 3.009,
+            "memory_available_gb": 3.6
+          },
+          "failed_reasons": [
+            "decode TPS 13.85 < required 20.00",
+            "TTFT 10781.90ms > limit 5000.00ms"
+          ],
+          "warnings": [
+            "power_w_max is not specified by the scenario",
+            "tensor_core is maturity M1: included in raw exploration but not in comparison-ready or product-qualified ranking"
+          ],
+          "evaluated_configs": 150,
+          "feasible_configs": 0
+        },
+        {
+          "rank": 9,
+          "engine": "input_stationary",
+          "maturity": "M1",
+          "eligibility_status": "EXPLORE",
+          "status": "FAIL",
+          "target_status": "MISS",
+          "config_label": "inpu 64x256 INT4 1200MHz B1 LPDDR5-64b",
+          "config": {
+            "scenario": "lpddr5_3b_agent",
+            "engine": "input_stationary",
+            "maturity": "M1",
+            "array_height": 64,
+            "array_width": 256,
+            "frequency_mhz": 1200,
+            "weight_precision_bits": 4,
+            "weight_cache": false,
+            "memory_type": "lpddr5",
+            "memory_bandwidth_gbps": 51.2,
+            "memory_capacity_gb": 4.0,
+            "sram_l2_kb": 1024,
+            "model": "qwen2.5-3b",
+            "prompt_tokens": 875,
+            "output_tokens": 214,
+            "concurrent_requests": 1,
+            "decode_batch_size": 1,
+            "cached_prefix_tokens": 30000,
+            "prefill_context_tokens": 30875,
+            "attention_bits": 16,
+            "causal_attention": true,
+            "attention_mode": "baseline",
+            "projection_engine": "input_stationary"
+          },
+          "metrics": {
+            "decode_tps": 0.76,
+            "aggregate_tps": 0.76,
+            "prefill_tps": 139.83,
+            "ttft_ms": 7578.378,
+            "itl_ms": 1320.839,
+            "e2e_latency_ms": 288917.045,
+            "area_mm2": 53.1,
+            "power_w": 15.6,
+            "tops_int8": 39.32,
+            "bandwidth_util_pct": 3.98,
+            "memory_required_gb": 3.009,
+            "memory_available_gb": 3.6
+          },
+          "failed_reasons": [
+            "decode TPS 0.76 < required 20.00",
+            "TTFT 7578.38ms > limit 5000.00ms"
+          ],
+          "warnings": [
+            "power_w_max is not specified by the scenario",
+            "input_stationary is maturity M1: included in raw exploration but not in comparison-ready or product-qualified ranking"
+          ],
+          "evaluated_configs": 150,
+          "feasible_configs": 0
+        },
+        {
+          "rank": 10,
+          "engine": "wmma",
+          "maturity": "M1",
+          "eligibility_status": "EXPLORE",
+          "status": "FAIL",
+          "target_status": "MISS",
+          "config_label": "wmma 32x32 INT4 1200MHz B1 LPDDR5-64b",
+          "config": {
+            "scenario": "lpddr5_3b_agent",
+            "engine": "wmma",
+            "maturity": "M1",
+            "array_height": 32,
+            "array_width": 32,
+            "frequency_mhz": 1200,
+            "weight_precision_bits": 4,
+            "weight_cache": false,
+            "memory_type": "lpddr5",
+            "memory_bandwidth_gbps": 51.2,
+            "memory_capacity_gb": 4.0,
+            "sram_l2_kb": 1024,
+            "model": "qwen2.5-3b",
+            "prompt_tokens": 875,
+            "output_tokens": 214,
+            "concurrent_requests": 1,
+            "decode_batch_size": 1,
+            "cached_prefix_tokens": 30000,
+            "prefill_context_tokens": 30875,
+            "attention_bits": 16,
+            "causal_attention": true,
+            "attention_mode": "baseline",
+            "projection_engine": "wmma"
+          },
+          "metrics": {
+            "decode_tps": 0.02,
+            "aggregate_tps": 0.02,
+            "prefill_tps": 0.46,
+            "ttft_ms": 1958110.575,
+            "itl_ms": 40986.966,
+            "e2e_latency_ms": 10688334.296,
+            "area_mm2": 42.4,
+            "power_w": 9.2,
+            "tops_int8": 2.46,
+            "bandwidth_util_pct": 0.13,
+            "memory_required_gb": 3.009,
+            "memory_available_gb": 3.6
+          },
+          "failed_reasons": [
+            "decode TPS 0.02 < required 20.00",
+            "TTFT 1958110.58ms > limit 5000.00ms"
+          ],
+          "warnings": [
+            "power_w_max is not specified by the scenario",
+            "wmma is maturity M1: included in raw exploration but not in comparison-ready or product-qualified ranking"
+          ],
+          "evaluated_configs": 150,
+          "feasible_configs": 0
+        }
+      ]
+    },
+    "agent_90": {
+      "arc_version": "v3.6-engine-evidence",
+      "scenario": "lpddr5_3b_agent_eff90",
+      "scenario_definition": {
+        "description": "LPDDR5-64b + 3B local agent, 90% DRAM efficiency corner",
+        "model": "qwen2.5-3b",
+        "model_params_gb": 1.545,
+        "seq_len": 875,
+        "process_nm": 12,
+        "agent_workload": {
+          "representative_steps": 16,
+          "prefix_cache_hit_rate": 0.9,
+          "stress_append_tokens": 10000
+        },
+        "workload": {
+          "prompt_tokens": 875,
+          "output_tokens": 214,
+          "cached_prefix_tokens": 30000,
+          "max_context_tokens": 32768,
+          "concurrent_requests": 1,
+          "decode_batch_size": 1,
+          "activation_bits": 8,
+          "attention_bits": 16,
+          "kv_bits": 16,
+          "causal_attention": true
+        },
+        "memory": {
+          "type": "lpddr5",
+          "capacity_gb": 4,
+          "capacity_usable_fraction": 0.9,
+          "bandwidth_gbps": 51.2,
+          "dram_efficiency": 0.9,
+          "effective_bw_gbps": 46.08
+        },
+        "constraints": {
+          "ttft_ms_max": 5000,
+          "tps_min": 20,
+          "area_mm2_max": 80
+        },
+        "targets": {
+          "ttft_ms_max": 2000,
+          "prefill_tps_min": 500
+        },
+        "objectives": [
+          "area_mm2",
+          "power_w",
+          "-tok_s"
+        ],
+        "tie_breakers": {
+          "engine_preference": [
+            "block",
+            "os_systolic"
+          ]
+        },
+        "search_space": {
+          "arrays": [
+            [
+              32,
+              32
+            ],
+            [
+              32,
+              64
+            ],
+            [
+              64,
+              64
+            ],
+            [
+              64,
+              128
+            ],
+            [
+              96,
+              96
+            ],
+            [
+              64,
+              256
+            ],
+            [
+              128,
+              128
+            ],
+            [
+              192,
+              128
+            ],
+            [
+              128,
+              256
+            ],
+            [
+              256,
+              256
+            ]
+          ],
+          "weight_precision_bits": [
+            4
+          ]
+        },
+        "components": {
+          "required": [
+            "dram_phy",
+            "pcie"
+          ],
+          "excluded": [
+            "tsv"
+          ]
+        }
+      },
+      "source_sha256": "17c23e14e846c58f6905b0ffd25a8fca6a69a460ee584b33f7902d774830722b",
+      "total_configs": 1980,
+      "valid_results": 1980,
+      "invalid_configs": [],
+      "raw_feasible_configs": 0,
+      "comparison_ready_feasible_configs": 0,
+      "product_qualified_feasible_configs": 0,
+      "rejected_configs": 1980,
+      "raw_feasible": false,
+      "comparison_ready_feasible": false,
+      "product_feasible": false,
+      "raw_recommended": null,
+      "comparison_ready_recommended": null,
+      "product_recommended": null,
+      "closest_comparison_ready": {
+        "config_label": "bloc 128x256 INT4 1200MHz B1 WC LPDDR5-64b",
+        "config": {
+          "scenario": "lpddr5_3b_agent_eff90",
+          "engine": "block",
+          "maturity": "M2",
+          "array_height": 128,
+          "array_width": 256,
+          "frequency_mhz": 1200,
+          "weight_precision_bits": 4,
+          "weight_cache": true,
+          "memory_type": "lpddr5",
+          "memory_bandwidth_gbps": 51.2,
+          "memory_capacity_gb": 4.0,
+          "sram_l2_kb": 1024,
+          "model": "qwen2.5-3b",
+          "prompt_tokens": 875,
+          "output_tokens": 214,
+          "concurrent_requests": 1,
+          "decode_batch_size": 1,
+          "cached_prefix_tokens": 30000,
+          "prefill_context_tokens": 30875,
+          "attention_bits": 16,
+          "causal_attention": true,
+          "attention_mode": "baseline",
+          "projection_engine": "block"
+        },
+        "maturity": "M2",
+        "decode_tps": 15.54,
+        "prefill_tps": 141.95,
+        "ttft_ms": 6228.471,
+        "itl_ms": 64.365,
+        "e2e_latency_ms": 19938.272,
+        "area_mm2": 64.8,
+        "power_w": 22.7,
+        "constraints_passed": false,
+        "failed_reasons": [
+          "decode TPS 15.54 < required 20.00",
+          "TTFT 6228.47ms > limit 5000.00ms"
+        ],
+        "warnings": [
+          "power_w_max is not specified by the scenario",
+          "block is maturity M2: comparison-ready, but product qualification requires M3 calibration and guardband"
+        ],
+        "provenance": {
+          "arc_version": "v3.6-engine-evidence",
+          "scenario_hash": "7d283c4182f77054",
+          "config_hash": "3eef26c313057339",
+          "model_spec": "qwen2.5-3b",
+          "calibration_tier": "architecture_analytical_crosscheck",
+          "engine_maturity": "M2",
+          "engine_manifest_hash": "e785c1a7cb2d6b25",
+          "raw_exploration_eligible": true,
+          "comparison_eligible": true,
+          "product_eligible": false,
+          "recommendation_eligible": true
+        }
+      },
+      "engine_comparison": [
+        {
+          "rank": 1,
+          "engine": "block_fused_attention",
+          "maturity": "M1",
+          "eligibility_status": "EXPLORE",
+          "status": "FAIL",
+          "target_status": "MISS",
+          "config_label": "bfsa 64x64 INT4 1200MHz B1 LPDDR5-64b",
+          "config": {
+            "scenario": "lpddr5_3b_agent_eff90",
+            "engine": "block_fused_attention",
+            "maturity": "M1",
+            "array_height": 64,
+            "array_width": 64,
+            "frequency_mhz": 1200,
+            "weight_precision_bits": 4,
+            "weight_cache": false,
+            "memory_type": "lpddr5",
+            "memory_bandwidth_gbps": 51.2,
+            "memory_capacity_gb": 4.0,
+            "sram_l2_kb": 1024,
+            "model": "qwen2.5-3b",
+            "prompt_tokens": 875,
+            "output_tokens": 214,
+            "concurrent_requests": 1,
+            "decode_batch_size": 1,
+            "cached_prefix_tokens": 30000,
+            "prefill_context_tokens": 30875,
+            "attention_bits": 16,
+            "causal_attention": true,
+            "attention_mode": "fused_array",
+            "projection_engine": "block"
+          },
+          "metrics": {
+            "decode_tps": 17.17,
+            "aggregate_tps": 17.17,
+            "prefill_tps": 179.12,
+            "ttft_ms": 4943.181,
+            "itl_ms": 58.229,
+            "e2e_latency_ms": 17346.054,
+            "area_mm2": 44.4,
+            "power_w": 10.4,
+            "tops_int8": 9.83,
+            "bandwidth_util_pct": 89.94,
+            "memory_required_gb": 3.009,
+            "memory_available_gb": 3.6
+          },
+          "failed_reasons": [
+            "decode TPS 17.17 < required 20.00"
+          ],
+          "warnings": [
+            "power_w_max is not specified by the scenario",
+            "block_fused_attention uses its baseline projection/FFN path, but fused attention overlap and incremental PPA remain analytical",
+            "the candidate requires a cached-prefix query-position offset in a future native RTL implementation",
+            "block_fused_attention is maturity M1: included in raw exploration but not in comparison-ready or product-qualified ranking"
+          ],
+          "evaluated_configs": 300,
+          "feasible_configs": 0
+        },
+        {
+          "rank": 2,
+          "engine": "os_systolic_fused_attention",
+          "maturity": "M1",
+          "eligibility_status": "EXPLORE",
+          "status": "FAIL",
+          "target_status": "MET",
+          "config_label": "ofsa 128x256 INT4 1200MHz B1 LPDDR5-64b",
+          "config": {
+            "scenario": "lpddr5_3b_agent_eff90",
+            "engine": "os_systolic_fused_attention",
+            "maturity": "M1",
+            "array_height": 128,
+            "array_width": 256,
+            "frequency_mhz": 1200,
+            "weight_precision_bits": 4,
+            "weight_cache": false,
+            "memory_type": "lpddr5",
+            "memory_bandwidth_gbps": 51.2,
+            "memory_capacity_gb": 4.0,
+            "sram_l2_kb": 1024,
+            "model": "qwen2.5-3b",
+            "prompt_tokens": 875,
+            "output_tokens": 214,
+            "concurrent_requests": 1,
+            "decode_batch_size": 1,
+            "cached_prefix_tokens": 30000,
+            "prefill_context_tokens": 30875,
+            "attention_bits": 16,
+            "causal_attention": true,
+            "attention_mode": "fused_array",
+            "projection_engine": "os_systolic"
+          },
+          "metrics": {
+            "decode_tps": 14.87,
+            "aggregate_tps": 14.87,
+            "prefill_tps": 2332.03,
+            "ttft_ms": 442.441,
+            "itl_ms": 67.23,
+            "e2e_latency_ms": 14762.473,
+            "area_mm2": 66.2,
+            "power_w": 23.5,
+            "tops_int8": 78.64,
+            "bandwidth_util_pct": 77.9,
+            "memory_required_gb": 3.009,
+            "memory_available_gb": 3.6
+          },
+          "failed_reasons": [
+            "decode TPS 14.87 < required 20.00"
+          ],
+          "warnings": [
+            "power_w_max is not specified by the scenario",
+            "OS uses an analytical MxN-spatial/K-temporal wavefront model; transposer backpressure, scratchpad bank conflicts, K-stream chunking, and RTL timing remain uncalibrated",
+            "os_systolic_fused_attention uses its baseline projection/FFN path, but fused attention overlap and incremental PPA remain analytical",
+            "the candidate requires a cached-prefix query-position offset in a future native RTL implementation",
+            "os_systolic_fused_attention is maturity M1: included in raw exploration but not in comparison-ready or product-qualified ranking"
+          ],
+          "evaluated_configs": 150,
+          "feasible_configs": 0
+        },
+        {
+          "rank": 3,
+          "engine": "block",
+          "maturity": "M2",
+          "eligibility_status": "COMPARE",
+          "status": "FAIL",
+          "target_status": "MISS",
+          "config_label": "bloc 128x256 INT4 1200MHz B1 WC LPDDR5-64b",
+          "config": {
+            "scenario": "lpddr5_3b_agent_eff90",
+            "engine": "block",
+            "maturity": "M2",
+            "array_height": 128,
+            "array_width": 256,
+            "frequency_mhz": 1200,
+            "weight_precision_bits": 4,
+            "weight_cache": true,
+            "memory_type": "lpddr5",
+            "memory_bandwidth_gbps": 51.2,
+            "memory_capacity_gb": 4.0,
+            "sram_l2_kb": 1024,
+            "model": "qwen2.5-3b",
+            "prompt_tokens": 875,
+            "output_tokens": 214,
+            "concurrent_requests": 1,
+            "decode_batch_size": 1,
+            "cached_prefix_tokens": 30000,
+            "prefill_context_tokens": 30875,
+            "attention_bits": 16,
+            "causal_attention": true,
+            "attention_mode": "baseline",
+            "projection_engine": "block"
+          },
+          "metrics": {
+            "decode_tps": 15.54,
+            "aggregate_tps": 15.54,
+            "prefill_tps": 141.95,
+            "ttft_ms": 6228.471,
+            "itl_ms": 64.365,
+            "e2e_latency_ms": 19938.272,
+            "area_mm2": 64.8,
+            "power_w": 22.7,
+            "tops_int8": 78.64,
+            "bandwidth_util_pct": 81.36,
+            "memory_required_gb": 3.009,
+            "memory_available_gb": 3.6
+          },
+          "failed_reasons": [
+            "decode TPS 15.54 < required 20.00",
+            "TTFT 6228.47ms > limit 5000.00ms"
+          ],
+          "warnings": [
+            "power_w_max is not specified by the scenario",
+            "block is maturity M2: comparison-ready, but product qualification requires M3 calibration and guardband"
+          ],
+          "evaluated_configs": 300,
+          "feasible_configs": 0
+        },
+        {
+          "rank": 4,
+          "engine": "fsa",
+          "maturity": "M1",
+          "eligibility_status": "EXPLORE",
+          "status": "FAIL",
+          "target_status": "MET",
+          "config_label": "fsa 128x256 INT4 1200MHz B1 LPDDR5-64b",
+          "config": {
+            "scenario": "lpddr5_3b_agent_eff90",
+            "engine": "fsa",
+            "maturity": "M1",
+            "array_height": 128,
+            "array_width": 256,
+            "frequency_mhz": 1200,
+            "weight_precision_bits": 4,
+            "weight_cache": false,
+            "memory_type": "lpddr5",
+            "memory_bandwidth_gbps": 51.2,
+            "memory_capacity_gb": 4.0,
+            "sram_l2_kb": 1024,
+            "model": "qwen2.5-3b",
+            "prompt_tokens": 875,
+            "output_tokens": 214,
+            "concurrent_requests": 1,
+            "decode_batch_size": 1,
+            "cached_prefix_tokens": 30000,
+            "prefill_context_tokens": 30875,
+            "attention_bits": 16,
+            "causal_attention": true,
+            "attention_mode": "baseline",
+            "projection_engine": "fsa"
+          },
+          "metrics": {
+            "decode_tps": 10.61,
+            "aggregate_tps": 10.61,
+            "prefill_tps": 984.57,
+            "ttft_ms": 982.947,
+            "itl_ms": 94.233,
+            "e2e_latency_ms": 21054.669,
+            "area_mm2": 54.5,
+            "power_w": 16.4,
+            "tops_int8": 78.64,
+            "bandwidth_util_pct": 55.57,
+            "memory_required_gb": 3.009,
+            "memory_available_gb": 3.6
+          },
+          "failed_reasons": [
+            "decode TPS 10.61 < required 20.00"
+          ],
+          "warnings": [
+            "power_w_max is not specified by the scenario",
+            "FSA attention follows the upstream schedule, while mixed-precision projections, GQA, LPDDR5 end-to-end TPS and whole-chip PPA remain paper extrapolations",
+            "upstream FSA causal kernel has no cached-prefix query offset; incremental attention is modeled as a full rectangular schedule",
+            "fsa is maturity M1: included in raw exploration but not in comparison-ready or product-qualified ranking"
+          ],
+          "evaluated_configs": 30,
+          "feasible_configs": 0
+        },
+        {
+          "rank": 5,
+          "engine": "os_systolic",
+          "maturity": "M2",
+          "eligibility_status": "COMPARE",
+          "status": "FAIL",
+          "target_status": "MISS",
+          "config_label": "os_s 128x256 INT4 1200MHz B1 LPDDR5-64b",
+          "config": {
+            "scenario": "lpddr5_3b_agent_eff90",
+            "engine": "os_systolic",
+            "maturity": "M2",
+            "array_height": 128,
+            "array_width": 256,
+            "frequency_mhz": 1200,
+            "weight_precision_bits": 4,
+            "weight_cache": false,
+            "memory_type": "lpddr5",
+            "memory_bandwidth_gbps": 51.2,
+            "memory_capacity_gb": 4.0,
+            "sram_l2_kb": 1024,
+            "model": "qwen2.5-3b",
+            "prompt_tokens": 875,
+            "output_tokens": 214,
+            "concurrent_requests": 1,
+            "decode_batch_size": 1,
+            "cached_prefix_tokens": 30000,
+            "prefill_context_tokens": 30875,
+            "attention_bits": 16,
+            "causal_attention": true,
+            "attention_mode": "baseline",
+            "projection_engine": "os_systolic"
+          },
+          "metrics": {
+            "decode_tps": 13.01,
+            "aggregate_tps": 13.01,
+            "prefill_tps": 153.55,
+            "ttft_ms": 5775.166,
+            "itl_ms": 76.855,
+            "e2e_latency_ms": 22145.213,
+            "area_mm2": 64.8,
+            "power_w": 22.7,
+            "tops_int8": 78.64,
+            "bandwidth_util_pct": 68.14,
+            "memory_required_gb": 3.009,
+            "memory_available_gb": 3.6
+          },
+          "failed_reasons": [
+            "decode TPS 13.01 < required 20.00",
+            "TTFT 5775.17ms > limit 5000.00ms"
+          ],
+          "warnings": [
+            "power_w_max is not specified by the scenario",
+            "OS uses an analytical MxN-spatial/K-temporal wavefront model; transposer backpressure, scratchpad bank conflicts, K-stream chunking, and RTL timing remain uncalibrated",
+            "os_systolic is maturity M2: comparison-ready, but product qualification requires M3 calibration and guardband"
+          ],
+          "evaluated_configs": 150,
+          "feasible_configs": 0
+        },
+        {
+          "rank": 6,
+          "engine": "gmma",
+          "maturity": "M1",
+          "eligibility_status": "EXPLORE",
+          "status": "FAIL",
+          "target_status": "MISS",
+          "config_label": "gmma 192x128 INT4 1200MHz B1 LPDDR5-64b",
+          "config": {
+            "scenario": "lpddr5_3b_agent_eff90",
+            "engine": "gmma",
+            "maturity": "M1",
+            "array_height": 192,
+            "array_width": 128,
+            "frequency_mhz": 1200,
+            "weight_precision_bits": 4,
+            "weight_cache": false,
+            "memory_type": "lpddr5",
+            "memory_bandwidth_gbps": 51.2,
+            "memory_capacity_gb": 4.0,
+            "sram_l2_kb": 1024,
+            "model": "qwen2.5-3b",
+            "prompt_tokens": 875,
+            "output_tokens": 214,
+            "concurrent_requests": 1,
+            "decode_batch_size": 1,
+            "cached_prefix_tokens": 30000,
+            "prefill_context_tokens": 30875,
+            "attention_bits": 16,
+            "causal_attention": true,
+            "attention_mode": "baseline",
+            "projection_engine": "gmma"
+          },
+          "metrics": {
+            "decode_tps": 9.74,
+            "aggregate_tps": 9.74,
+            "prefill_tps": 154.54,
+            "ttft_ms": 5764.865,
+            "itl_ms": 102.717,
+            "e2e_latency_ms": 27643.643,
+            "area_mm2": 72.2,
+            "power_w": 27.1,
+            "tops_int8": 58.98,
+            "bandwidth_util_pct": 50.98,
+            "memory_required_gb": 3.009,
+            "memory_available_gb": 3.6
+          },
+          "failed_reasons": [
+            "decode TPS 9.74 < required 20.00",
+            "TTFT 5764.86ms > limit 5000.00ms"
+          ],
+          "warnings": [
+            "power_w_max is not specified by the scenario",
+            "gmma is maturity M1: included in raw exploration but not in comparison-ready or product-qualified ranking"
+          ],
+          "evaluated_configs": 300,
+          "feasible_configs": 0
+        },
+        {
+          "rank": 7,
+          "engine": "systolic",
+          "maturity": "M2",
+          "eligibility_status": "COMPARE",
+          "status": "FAIL",
+          "target_status": "MISS",
+          "config_label": "syst 256x256 INT4 1200MHz B1 WC LPDDR5-64b",
+          "config": {
+            "scenario": "lpddr5_3b_agent_eff90",
+            "engine": "systolic",
+            "maturity": "M2",
+            "array_height": 256,
+            "array_width": 256,
+            "frequency_mhz": 1200,
+            "weight_precision_bits": 4,
+            "weight_cache": true,
+            "memory_type": "lpddr5",
+            "memory_bandwidth_gbps": 51.2,
+            "memory_capacity_gb": 4.0,
+            "sram_l2_kb": 1024,
+            "model": "qwen2.5-3b",
+            "prompt_tokens": 875,
+            "output_tokens": 214,
+            "concurrent_requests": 1,
+            "decode_batch_size": 1,
+            "cached_prefix_tokens": 30000,
+            "prefill_context_tokens": 30875,
+            "attention_bits": 16,
+            "causal_attention": true,
+            "attention_mode": "baseline",
+            "projection_engine": "systolic"
+          },
+          "metrics": {
+            "decode_tps": 7.72,
+            "aggregate_tps": 7.72,
+            "prefill_tps": 146.39,
+            "ttft_ms": 6106.732,
+            "itl_ms": 129.589,
+            "e2e_latency_ms": 33709.183,
+            "area_mm2": 64.8,
+            "power_w": 22.7,
+            "tops_int8": 157.29,
+            "bandwidth_util_pct": 40.55,
+            "memory_required_gb": 3.009,
+            "memory_available_gb": 3.6
+          },
+          "failed_reasons": [
+            "decode TPS 7.72 < required 20.00",
+            "TTFT 6106.73ms > limit 5000.00ms"
+          ],
+          "warnings": [
+            "power_w_max is not specified by the scenario",
+            "systolic is maturity M2: comparison-ready, but product qualification requires M3 calibration and guardband"
+          ],
+          "evaluated_configs": 300,
+          "feasible_configs": 0
+        },
+        {
+          "rank": 8,
+          "engine": "tensor_core",
+          "maturity": "M1",
+          "eligibility_status": "EXPLORE",
+          "status": "FAIL",
+          "target_status": "MISS",
+          "config_label": "tens 128x256 INT4 1200MHz B1 LPDDR5-64b",
+          "config": {
+            "scenario": "lpddr5_3b_agent_eff90",
+            "engine": "tensor_core",
+            "maturity": "M1",
+            "array_height": 128,
+            "array_width": 256,
+            "frequency_mhz": 1200,
+            "weight_precision_bits": 4,
+            "weight_cache": false,
+            "memory_type": "lpddr5",
+            "memory_bandwidth_gbps": 51.2,
+            "memory_capacity_gb": 4.0,
+            "sram_l2_kb": 1024,
+            "model": "qwen2.5-3b",
+            "prompt_tokens": 875,
+            "output_tokens": 214,
+            "concurrent_requests": 1,
+            "decode_batch_size": 1,
+            "cached_prefix_tokens": 30000,
+            "prefill_context_tokens": 30875,
+            "attention_bits": 16,
+            "causal_attention": true,
+            "attention_mode": "baseline",
+            "projection_engine": "tensor_core"
+          },
+          "metrics": {
+            "decode_tps": 14.59,
+            "aggregate_tps": 14.59,
+            "prefill_tps": 84.0,
+            "ttft_ms": 10485.769,
+            "itl_ms": 68.552,
+            "e2e_latency_ms": 25087.242,
+            "area_mm2": 64.8,
+            "power_w": 22.7,
+            "tops_int8": 78.64,
+            "bandwidth_util_pct": 81.89,
+            "memory_required_gb": 3.009,
+            "memory_available_gb": 3.6
+          },
+          "failed_reasons": [
+            "decode TPS 14.59 < required 20.00",
+            "TTFT 10485.77ms > limit 5000.00ms"
+          ],
+          "warnings": [
+            "power_w_max is not specified by the scenario",
+            "tensor_core is maturity M1: included in raw exploration but not in comparison-ready or product-qualified ranking"
+          ],
+          "evaluated_configs": 150,
+          "feasible_configs": 0
+        },
+        {
+          "rank": 9,
+          "engine": "input_stationary",
+          "maturity": "M1",
+          "eligibility_status": "EXPLORE",
+          "status": "FAIL",
+          "target_status": "MISS",
+          "config_label": "inpu 64x256 INT4 1200MHz B1 LPDDR5-64b",
+          "config": {
+            "scenario": "lpddr5_3b_agent_eff90",
+            "engine": "input_stationary",
+            "maturity": "M1",
+            "array_height": 64,
+            "array_width": 256,
+            "frequency_mhz": 1200,
+            "weight_precision_bits": 4,
+            "weight_cache": false,
+            "memory_type": "lpddr5",
+            "memory_bandwidth_gbps": 51.2,
+            "memory_capacity_gb": 4.0,
+            "sram_l2_kb": 1024,
+            "model": "qwen2.5-3b",
+            "prompt_tokens": 875,
+            "output_tokens": 214,
+            "concurrent_requests": 1,
+            "decode_batch_size": 1,
+            "cached_prefix_tokens": 30000,
+            "prefill_context_tokens": 30875,
+            "attention_bits": 16,
+            "causal_attention": true,
+            "attention_mode": "baseline",
+            "projection_engine": "input_stationary"
+          },
+          "metrics": {
+            "decode_tps": 0.76,
+            "aggregate_tps": 0.76,
+            "prefill_tps": 140.67,
+            "ttft_ms": 7540.552,
+            "itl_ms": 1320.244,
+            "e2e_latency_ms": 288752.459,
+            "area_mm2": 53.1,
+            "power_w": 15.6,
+            "tops_int8": 39.32,
+            "bandwidth_util_pct": 3.98,
+            "memory_required_gb": 3.009,
+            "memory_available_gb": 3.6
+          },
+          "failed_reasons": [
+            "decode TPS 0.76 < required 20.00",
+            "TTFT 7540.55ms > limit 5000.00ms"
+          ],
+          "warnings": [
+            "power_w_max is not specified by the scenario",
+            "input_stationary is maturity M1: included in raw exploration but not in comparison-ready or product-qualified ranking"
+          ],
+          "evaluated_configs": 150,
+          "feasible_configs": 0
+        },
+        {
+          "rank": 10,
+          "engine": "wmma",
+          "maturity": "M1",
+          "eligibility_status": "EXPLORE",
+          "status": "FAIL",
+          "target_status": "MISS",
+          "config_label": "wmma 32x32 INT4 1200MHz B1 LPDDR5-64b",
+          "config": {
+            "scenario": "lpddr5_3b_agent_eff90",
+            "engine": "wmma",
+            "maturity": "M1",
+            "array_height": 32,
+            "array_width": 32,
+            "frequency_mhz": 1200,
+            "weight_precision_bits": 4,
+            "weight_cache": false,
+            "memory_type": "lpddr5",
+            "memory_bandwidth_gbps": 51.2,
+            "memory_capacity_gb": 4.0,
+            "sram_l2_kb": 1024,
+            "model": "qwen2.5-3b",
+            "prompt_tokens": 875,
+            "output_tokens": 214,
+            "concurrent_requests": 1,
+            "decode_batch_size": 1,
+            "cached_prefix_tokens": 30000,
+            "prefill_context_tokens": 30875,
+            "attention_bits": 16,
+            "causal_attention": true,
+            "attention_mode": "baseline",
+            "projection_engine": "wmma"
+          },
+          "metrics": {
+            "decode_tps": 0.02,
+            "aggregate_tps": 0.02,
+            "prefill_tps": 0.46,
+            "ttft_ms": 1958110.525,
+            "itl_ms": 40986.966,
+            "e2e_latency_ms": 10688334.2,
+            "area_mm2": 42.4,
+            "power_w": 9.2,
+            "tops_int8": 2.46,
+            "bandwidth_util_pct": 0.13,
+            "memory_required_gb": 3.009,
+            "memory_available_gb": 3.6
+          },
+          "failed_reasons": [
+            "decode TPS 0.02 < required 20.00",
+            "TTFT 1958110.52ms > limit 5000.00ms"
+          ],
+          "warnings": [
+            "power_w_max is not specified by the scenario",
+            "wmma is maturity M1: included in raw exploration but not in comparison-ready or product-qualified ranking"
+          ],
+          "evaluated_configs": 150,
+          "feasible_configs": 0
+        }
+      ]
+    }
+  }
+}

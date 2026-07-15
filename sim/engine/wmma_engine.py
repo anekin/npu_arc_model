@@ -114,7 +114,7 @@ class WMMAEngine(MACEngine):
             total = int(first_cold)
 
         total_macs = M * K * N * ops_multiplier
-        ideal = math.ceil(total_macs / self.peak_macs_per_cycle)
+        ideal = math.ceil(total_macs / max(self.H * self.W, 1))
         util = ideal / total if total > 0 else 0.0
 
         compute_cycles = int(per_tile_compute * total_tiles)
@@ -125,7 +125,7 @@ class WMMAEngine(MACEngine):
             dma_cycles=dma_cycles,
             total_cycles=total,
             utilization=util,
-            ops=total_macs,
+            ops=total_macs * self.ops_per_mac,
             num_tiles=total_tiles,
             weight_bytes=int(total_tiles * (per_tile_weight_bytes + per_tile_act_bytes)),
             bottleneck="compute" if per_tile_compute > per_tile_dma else "dma",

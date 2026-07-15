@@ -86,9 +86,9 @@ class GMMAEngine(MACEngine):
         total_compute = per_tile_compute * total_tiles
         tma_dma = total_dma * (1 - self.TMA_OVERLAP)
 
-        total_cycles = max(total_compute, tma_dma)
+        total_cycles = max(total_compute, total_dma)
         total_macs = M * K * N
-        ideal = math.ceil(total_macs / self.peak_macs_per_cycle)
+        ideal = math.ceil(total_macs / max(self.H * self.W, 1))
         util = ideal / total_cycles if total_cycles > 0 else 0.0
 
         compute_cycles = int(total_compute)
@@ -101,7 +101,7 @@ class GMMAEngine(MACEngine):
             dma_cycles=dma_cycles,
             total_cycles=int(total_cycles),
             utilization=util,
-            ops=total_macs,
+            ops=total_macs * self.ops_per_mac,
             num_tiles=total_tiles,
             weight_bytes=int(total_weight_bytes),
             bottleneck="dma" if total_dma > total_compute else "compute",
@@ -147,18 +147,35 @@ class GMMAEngine(MACEngine):
 
         total_macs = M * K * N * 2
         total_weight_bytes = total_tiles * (dual_weight_bytes + tile_act_bytes)
-        ideal = math.ceil(total_macs / self.peak_macs_per_cycle)
+        ideal = math.ceil(total_macs / max(self.H * self.W, 1))
         util = ideal / total if total > 0 else 0.0
 
         compute_cycles = int(per_tile_compute * total_tiles)
         dma_cycles = int(total - compute_cycles)
+
+        single = self.estimate(M, K, N)
+        if total > 2 * single.total_cycles:
+            return EngineResult(
+                compute_cycles=2 * single.compute_cycles,
+                dma_cycles=2 * single.dma_cycles,
+                total_cycles=2 * single.total_cycles,
+                utilization=single.utilization,
+                ops=2 * single.ops,
+                num_tiles=2 * single.num_tiles,
+                weight_bytes=2 * single.weight_bytes,
+                bottleneck=single.bottleneck,
+                details={
+                    "scheduler_fallback": "two_independent_gemms",
+                    "reason": "weight_cache_pair_is_not_faster",
+                },
+            )
 
         return EngineResult(
             compute_cycles=compute_cycles,
             dma_cycles=dma_cycles,
             total_cycles=total,
             utilization=util,
-            ops=total_macs,
+            ops=total_macs * self.ops_per_mac,
             num_tiles=total_tiles,
             weight_bytes=total_weight_bytes,
             bottleneck="dma" if per_tile_dma > per_tile_compute else "compute",

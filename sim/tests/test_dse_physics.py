@@ -370,9 +370,12 @@ def test_fsa_is_reported_but_not_automatically_recommended():
     }
     point = evaluate_candidate(cfg, AreaModel(cfg), PowerModel(cfg), scenario)
     assert point.constraints_passed
+    assert point.maturity == "M1"
+    assert not point.comparison_eligible
+    assert not point.product_eligible
     assert not point.recommendation_eligible
     assert point.provenance["calibration_tier"] == "paper_extrapolation"
-    assert any("research candidate" in warning for warning in point.warnings)
+    assert any("raw exploration" in warning for warning in point.warnings)
 
 
 def test_fsa_search_respects_public_rtl_mapping():
@@ -489,6 +492,9 @@ def test_fused_attention_candidates_are_distinct_research_points():
     assert point.config["engine"] == "block_fused_attention"
     assert point.config["projection_engine"] == "block"
     assert point.config["attention_mode"] == "fused_array"
+    assert point.maturity == "M1"
+    assert not point.comparison_eligible
+    assert not point.product_eligible
     assert not point.recommendation_eligible
     assert point.provenance["calibration_tier"] == "fsa_inspired_analytical"
 

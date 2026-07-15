@@ -42,34 +42,20 @@ def build_engine_comparison(
     for engine in _engine_names(results):
         candidates = [p for p in results if p.config.get("engine") == engine]
         feasible = [p for p in candidates if p.constraints_passed]
-        eligible = [p for p in candidates if p.recommendation_eligible]
-        eligible_feasible = [p for p in eligible if p.constraints_passed]
-        if eligible_feasible:
-            selected = min(
-                eligible_feasible, key=lambda p: ranking_key(p, scenario),
-            )
-            status = "PASS"
-            selection = "scenario_objective"
-            distance = 0.0
-            sort_key = (0, *ranking_key(selected, scenario))
-        elif eligible:
-            selected = min(eligible, key=lambda p: violation_score(p, scenario))
-            status = "FAIL"
-            selection = "closest_to_constraints"
-            distance = violation_score(selected, scenario)
-            sort_key = (1, distance, -selected.decode_tps)
-        elif feasible:
+        comparison_count = sum(p.comparison_eligible for p in candidates)
+        product_count = sum(p.product_eligible for p in candidates)
+        if feasible:
             selected = min(feasible, key=lambda p: ranking_key(p, scenario))
             status = "PASS"
-            selection = "research_scenario_objective"
+            selection = "raw_scenario_objective"
             distance = 0.0
-            sort_key = (2, *ranking_key(selected, scenario))
+            sort_key = (0, *ranking_key(selected, scenario))
         else:
             selected = min(candidates, key=lambda p: violation_score(p, scenario))
             status = "FAIL"
-            selection = "research_closest_to_constraints"
+            selection = "raw_closest_to_constraints"
             distance = violation_score(selected, scenario)
-            sort_key = (3, distance, -selected.decode_tps)
+            sort_key = (1, distance, -selected.decode_tps)
 
         rows.append({
             "engine": engine,
@@ -77,10 +63,18 @@ def build_engine_comparison(
             "selection": selection,
             "evaluated_configs": len(candidates),
             "feasible_configs": len(feasible),
-            "recommendation_eligible_configs": len(eligible),
+            "recommendation_eligible_configs": comparison_count,
+            "comparison_eligible_configs": comparison_count,
+            "product_eligible_configs": product_count,
+            "maturity": selected.maturity,
+            "raw_exploration_eligible": selected.raw_exploration_eligible,
+            "comparison_eligible": selected.comparison_eligible,
+            "product_eligible": selected.product_eligible,
             "recommendation_eligible": selected.recommendation_eligible,
             "eligibility_status": (
-                "RECOMMEND" if selected.recommendation_eligible else "RESEARCH"
+                "PRODUCT" if selected.product_eligible
+                else "COMPARE" if selected.comparison_eligible
+                else "EXPLORE"
             ),
             "violation_score": distance,
             "target_status": (
@@ -123,25 +117,25 @@ def print_engine_comparison(
         return
     print("\n  Engine comparison (best feasible or closest failed point):")
     if cv_mode:
-        print(f"  {'#':>2} {'Engine':<18} {'Status':<6} {'Elig':<4} {'Config':<36} "
+        print(f"  {'#':>2} {'Engine':<18} {'Status':<6} {'Mat':<4} {'Config':<36} "
               f"{'FPS':>9} {'Area':>8} {'Power':>8}")
         print(f"  {'-'*92}")
         for row in rows:
             m = row["metrics"]
             print(f"  {row['rank']:>2} {row['engine']:<18} {row['status']:<6} "
-                  f"{('REC' if row['recommendation_eligible'] else 'R&D'):<4} "
+                  f"{row['maturity']:<4} "
                   f"{row['config_label'][:36]:<36} {m['decode_tps']:>9.2f} "
                   f"{m['area_mm2']:>7.1f} {m['power_w']:>7.1f}")
     else:
         print("  Units: TPS=tok/s, latency=ms, area=mm2, power=W")
-        print(f"  {'#':>2} {'Engine':<16} {'Stat':<4} {'Tgt':<4} {'Elig':<4} {'Config':<26} "
+        print(f"  {'#':>2} {'Engine':<16} {'Stat':<4} {'Tgt':<4} {'Mat':<4} {'Config':<26} "
               f"{'Dec':>7} {'Agg':>7} {'Pre':>8} {'TTFT':>7} {'ITL':>7} {'Area':>6} {'Pwr':>6}")
         print(f"  {'-'*113}")
         for row in rows:
             m = row["metrics"]
             print(f"  {row['rank']:>2} {row['engine']:<16} {row['status']:<4} "
                   f"{row['target_status']:<4} "
-                  f"{('REC' if row['recommendation_eligible'] else 'R&D'):<4} "
+                  f"{row['maturity']:<4} "
                   f"{row['config_label'][:26]:<26} {m['decode_tps']:>7.2f} "
                   f"{m['aggregate_tps']:>7.2f} {m['prefill_tps']:>8.1f} "
                   f"{m['ttft_ms']:>7.1f} {m['itl_ms']:>7.1f} "

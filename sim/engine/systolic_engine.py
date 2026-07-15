@@ -41,7 +41,7 @@ class SystolicEngine(MACEngine):
 
         total_weight_bytes = total_tiles * tile_weight_bytes + total_tiles * tile_act_bytes
         total_macs = M * K * N
-        ideal_cycles = math.ceil(total_macs / self.peak_macs_per_cycle)
+        ideal_cycles = math.ceil(total_macs / max(self.H * self.W, 1))
         utilization = ideal_cycles / total_compute_cycles if total_compute_cycles > 0 else 0.0
 
         total = int(total_compute_cycles)
@@ -53,7 +53,7 @@ class SystolicEngine(MACEngine):
             dma_cycles=dma_cycles,
             total_cycles=total,
             utilization=utilization,
-            ops=total_macs,
+            ops=total_macs * self.ops_per_mac,
             num_tiles=total_tiles,
             weight_bytes=total_weight_bytes,
             bottleneck="compute" if per_tile_compute > per_tile_dma else "dma",
@@ -96,7 +96,7 @@ class SystolicEngine(MACEngine):
 
         total_weight_bytes = total_tiles * tile_weight_bytes + total_tiles * M_tiles * per_m_tile_act_bytes
         total_macs = M * K * N
-        ideal_cycles = math.ceil(total_macs / self.peak_macs_per_cycle)
+        ideal_cycles = math.ceil(total_macs / max(self.H * self.W, 1))
         utilization = ideal_cycles / total_cycles if total_cycles > 0 else 0.0
 
         total = int(total_cycles)
@@ -108,7 +108,7 @@ class SystolicEngine(MACEngine):
             dma_cycles=dma_cycles,
             total_cycles=total,
             utilization=utilization,
-            ops=total_macs,
+            ops=total_macs * self.ops_per_mac,
             num_tiles=total_tiles,
             weight_bytes=total_weight_bytes,
             bottleneck="compute" if per_tile_compute > per_tile_dma else "dma",
@@ -162,7 +162,7 @@ class SystolicEngine(MACEngine):
 
         total_macs = M * K * N * 2
         total_weight_bytes = total_dual * (dual_weight_bytes + dual_act_bytes)
-        ideal = math.ceil(total_macs / self.peak_macs_per_cycle)
+        ideal = math.ceil(total_macs / max(self.H * self.W, 1))
         util = ideal / total if total > 0 else 0.0
 
         return EngineResult(
@@ -170,7 +170,7 @@ class SystolicEngine(MACEngine):
             dma_cycles=int(total - dual_compute * total_dual),
             total_cycles=total,
             utilization=util,
-            ops=total_macs,
+            ops=total_macs * self.ops_per_mac,
             num_tiles=total_dual,
             weight_bytes=total_weight_bytes,
             bottleneck="compute" if dual_compute > dual_dma else "dma",

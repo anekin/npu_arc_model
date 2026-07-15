@@ -1,0 +1,113 @@
+name: Arc Model bug
+description: Report a reproducible defect affecting model physics, an Engine, DSE, a scenario, or Signoff evidence.
+title: "[ARC-BUG-TBD] "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use the next ID from `docs/bug-tracker.md`. A GitHub Issue does not replace the versioned Signoff ledger; link and update both.
+  - type: input
+    id: bug_id
+    attributes:
+      label: Bug ID
+      description: Next unused ARC-BUG-NNN from docs/bug-tracker.md.
+      placeholder: ARC-BUG-NNN
+    validations:
+      required: true
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      options:
+        - P0 - physical/unit/false-pass/reproducibility violation
+        - P1 - major path/ranking/search/official-entry failure
+        - P2 - isolated non-critical model or reporting issue
+        - P3 - documentation/display/low-risk usability
+    validations:
+      required: true
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      multiple: true
+      options:
+        - Framework/schema
+        - Engine/performance
+        - Engine/PPA
+        - Memory/physics
+        - Workload/scenario
+        - DSE/search/ranking
+        - Reporting/provenance
+        - CLI/platform
+        - Tests/CI
+    validations:
+      required: true
+  - type: input
+    id: affected_versions
+    attributes:
+      label: Affected version or commit range
+      placeholder: v3.5 and earlier; first-bad unknown
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal deterministic reproduction
+      description: Include command, scenario/config, seed, platform, and the smallest shape that fails.
+      placeholder: |
+        Command:
+        Inputs:
+        Platform:
+        Failure evidence:
+    validations:
+      required: true
+  - type: textarea
+    id: expected_actual
+    attributes:
+      label: Expected contract and actual behavior
+      placeholder: |
+        Expected:
+        Actual:
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact and Signoff scope
+      description: Name affected Engines, metrics, scenarios, reports, and whether this can cause false PASS/FAIL.
+    validations:
+      required: true
+  - type: textarea
+    id: root_cause_fix
+    attributes:
+      label: Root cause and proposed fix
+      placeholder: |
+        Root cause: pending triage
+        Proposed fix:
+    validations:
+      required: true
+  - type: textarea
+    id: regression
+    attributes:
+      label: Regression and closing evidence
+      description: State the test that must fail before the fix and pass after it, plus reports that must be regenerated.
+    validations:
+      required: true
+  - type: input
+    id: owner
+    attributes:
+      label: Owner
+      placeholder: GitHub handle or team role
+    validations:
+      required: true
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Intake checklist
+      options:
+        - label: I checked that this is not only an already-declared manifest `known_gap`.
+          required: true
+        - label: I will update `docs/bug-tracker.md` with status and closing evidence.
+          required: true

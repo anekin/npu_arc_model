@@ -125,7 +125,12 @@ class DSEPoint:
     memory_margin_gb: float = 0.0
     memory_fits: bool = True
     constraints_passed: bool = True
-    recommendation_eligible: bool = True
+    maturity: str = "M1"
+    raw_exploration_eligible: bool = True
+    comparison_eligible: bool = False
+    product_eligible: bool = False
+    # Backward-compatible alias for comparison-ready architecture ranking.
+    recommendation_eligible: bool = False
     failed_reasons: List[str] = field(default_factory=list)
     warnings: List[str] = field(default_factory=list)
     breakdown: Dict[str, Any] = field(default_factory=dict)

@@ -14,6 +14,20 @@ from typing import Any, Dict, Optional, Tuple
 from dse.memory import effective_bandwidth_bytes_per_cycle
 
 
+ENGINE_TYPES = (
+    "systolic",
+    "os_systolic",
+    "block",
+    "block_fused_attention",
+    "os_systolic_fused_attention",
+    "tensor_core",
+    "wmma",
+    "gmma",
+    "input_stationary",
+    "fsa",
+)
+
+
 @dataclass
 class EngineResult:
     """统一引擎性能结果"""

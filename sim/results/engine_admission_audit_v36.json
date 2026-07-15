@@ -1,0 +1,795 @@
+{
+  "schema_version": 1,
+  "microbench_shapes": {
+    "decode": [
+      1,
+      256,
+      256
+    ],
+    "prefill": [
+      128,
+      256,
+      256
+    ],
+    "agent_append": [
+      875,
+      128,
+      256
+    ]
+  },
+  "engine_count": 10,
+  "passed_engines": 10,
+  "all_passed": true,
+  "engines": [
+    {
+      "engine": "systolic",
+      "maturity": "M2",
+      "calibration_tier": "rtl_module_calibrated",
+      "comparison_ready": true,
+      "product_qualified": false,
+      "uncertainty": {
+        "performance_pct": 20.0,
+        "area_pct": 30.0,
+        "power_pct": 35.0
+      },
+      "checks": {
+        "factory_identity": true,
+        "physical_decode": true,
+        "physical_prefill": true,
+        "physical_agent_append": true,
+        "bandwidth_non_regression": true,
+        "preload_non_regression": true,
+        "pair_scheduler_non_regression": true,
+        "ppa_positive": true,
+        "area_monotonic": true,
+        "dse_candidate_evaluates": true
+      },
+      "passed": true,
+      "samples": {
+        "decode": {
+          "shape": [
+            1,
+            256,
+            256
+          ],
+          "total_cycles": 3136,
+          "compute_cycles": 3088,
+          "dma_cycles": 48,
+          "utilization": 0.005101179647793552,
+          "ops": 131072,
+          "bottleneck": "compute"
+        },
+        "prefill": {
+          "shape": [
+            128,
+            256,
+            256
+          ],
+          "total_cycles": 8427,
+          "compute_cycles": 8192,
+          "dma_cycles": 235,
+          "utilization": 0.24301987938351574,
+          "ops": 16777216,
+          "bottleneck": "compute"
+        },
+        "agent_append": {
+          "shape": [
+            875,
+            128,
+            256
+          ],
+          "total_cycles": 30036,
+          "compute_cycles": 28672,
+          "dma_cycles": 1364,
+          "utilization": 0.23304819201604313,
+          "ops": 57344000,
+          "bottleneck": "compute"
+        }
+      },
+      "dse_smoke": {
+        "decode_tps": 6.83,
+        "prefill_tps": 346.42,
+        "ttft_ms": 515.846,
+        "area_mm2": 16.1,
+        "power_w": 6.5
+      },
+      "known_gaps": [
+        "Module RTL uses direct-feed inputs while DSE includes DMA and DRAM.",
+        "End-to-end workload timing is not RTL-calibrated."
+      ]
+    },
+    {
+      "engine": "os_systolic",
+      "maturity": "M2",
+      "calibration_tier": "dataflow_analytical",
+      "comparison_ready": true,
+      "product_qualified": false,
+      "uncertainty": {
+        "performance_pct": 25.0,
+        "area_pct": 30.0,
+        "power_pct": 35.0
+      },
+      "checks": {
+        "factory_identity": true,
+        "physical_decode": true,
+        "physical_prefill": true,
+        "physical_agent_append": true,
+        "bandwidth_non_regression": true,
+        "preload_non_regression": true,
+        "pair_scheduler_non_regression": true,
+        "ppa_positive": true,
+        "area_monotonic": true,
+        "dse_candidate_evaluates": true
+      },
+      "passed": true,
+      "samples": {
+        "decode": {
+          "shape": [
+            1,
+            256,
+            256
+          ],
+          "total_cycles": 1284,
+          "compute_cycles": 1284,
+          "dma_cycles": 759,
+          "utilization": 0.012461059190031152,
+          "ops": 131072,
+          "bottleneck": "compute"
+        },
+        "prefill": {
+          "shape": [
+            128,
+            256,
+            256
+          ],
+          "total_cycles": 3072,
+          "compute_cycles": 3072,
+          "dma_cycles": 1506,
+          "utilization": 0.6666666666666666,
+          "ops": 16777216,
+          "bottleneck": "compute"
+        },
+        "agent_append": {
+          "shape": [
+            875,
+            128,
+            256
+          ],
+          "total_cycles": 14252,
+          "compute_cycles": 14252,
+          "dma_cycles": 2950,
+          "utilization": 0.4911591355599214,
+          "ops": 57344000,
+          "bottleneck": "compute"
+        }
+      },
+      "dse_smoke": {
+        "decode_tps": 20.03,
+        "prefill_tps": 1249.76,
+        "ttft_ms": 152.339,
+        "area_mm2": 16.6,
+        "power_w": 6.8
+      },
+      "known_gaps": [
+        "Transposer backpressure and SRAM bank conflicts are not calibrated.",
+        "K-stream chunking, preload overlap and RTL timing are not calibrated."
+      ]
+    },
+    {
+      "engine": "block",
+      "maturity": "M2",
+      "calibration_tier": "architecture_analytical_crosscheck",
+      "comparison_ready": true,
+      "product_qualified": false,
+      "uncertainty": {
+        "performance_pct": 20.0,
+        "area_pct": 30.0,
+        "power_pct": 35.0
+      },
+      "checks": {
+        "factory_identity": true,
+        "physical_decode": true,
+        "physical_prefill": true,
+        "physical_agent_append": true,
+        "bandwidth_non_regression": true,
+        "preload_non_regression": true,
+        "pair_scheduler_non_regression": true,
+        "ppa_positive": true,
+        "area_monotonic": true,
+        "dse_candidate_evaluates": true
+      },
+      "passed": true,
+      "samples": {
+        "decode": {
+          "shape": [
+            1,
+            256,
+            256
+          ],
+          "total_cycles": 759,
+          "compute_cycles": 64,
+          "dma_cycles": 759,
+          "utilization": 0.02108527131782946,
+          "ops": 131072,
+          "bottleneck": "dma"
+        },
+        "prefill": {
+          "shape": [
+            128,
+            256,
+            256
+          ],
+          "total_cycles": 8192,
+          "compute_cycles": 8192,
+          "dma_cycles": 1506,
+          "utilization": 0.25,
+          "ops": 16777216,
+          "bottleneck": "compute"
+        },
+        "agent_append": {
+          "shape": [
+            875,
+            128,
+            256
+          ],
+          "total_cycles": 28000,
+          "compute_cycles": 28000,
+          "dma_cycles": 2950,
+          "utilization": 0.25,
+          "ops": 57344000,
+          "bottleneck": "compute"
+        }
+      },
+      "dse_smoke": {
+        "decode_tps": 28.06,
+        "prefill_tps": 357.2,
+        "ttft_ms": 393.99,
+        "area_mm2": 16.6,
+        "power_w": 6.8
+      },
+      "known_gaps": [
+        "Broadcast synchronization and reduction constants are analytical.",
+        "Crossbar and local accumulator PPA are not synthesized."
+      ]
+    },
+    {
+      "engine": "block_fused_attention",
+      "maturity": "M1",
+      "calibration_tier": "fsa_inspired_analytical",
+      "comparison_ready": false,
+      "product_qualified": false,
+      "uncertainty": {
+        "performance_pct": 30.0,
+        "area_pct": 35.0,
+        "power_pct": 40.0
+      },
+      "checks": {
+        "factory_identity": true,
+        "physical_decode": true,
+        "physical_prefill": true,
+        "physical_agent_append": true,
+        "bandwidth_non_regression": true,
+        "preload_non_regression": true,
+        "pair_scheduler_non_regression": true,
+        "ppa_positive": true,
+        "area_monotonic": true,
+        "dse_candidate_evaluates": true
+      },
+      "passed": true,
+      "samples": {
+        "decode": {
+          "shape": [
+            1,
+            256,
+            256
+          ],
+          "total_cycles": 759,
+          "compute_cycles": 64,
+          "dma_cycles": 759,
+          "utilization": 0.02108527131782946,
+          "ops": 131072,
+          "bottleneck": "dma"
+        },
+        "prefill": {
+          "shape": [
+            128,
+            256,
+            256
+          ],
+          "total_cycles": 8192,
+          "compute_cycles": 8192,
+          "dma_cycles": 1506,
+          "utilization": 0.25,
+          "ops": 16777216,
+          "bottleneck": "compute"
+        },
+        "agent_append": {
+          "shape": [
+            875,
+            128,
+            256
+          ],
+          "total_cycles": 28000,
+          "compute_cycles": 28000,
+          "dma_cycles": 2950,
+          "utilization": 0.25,
+          "ops": 57344000,
+          "bottleneck": "compute"
+        }
+      },
+      "dse_smoke": {
+        "decode_tps": 28.08,
+        "prefill_tps": 359.42,
+        "ttft_ms": 391.743,
+        "area_mm2": 16.7,
+        "power_w": 6.8
+      },
+      "known_gaps": [
+        "Fusion overlap and control cycles have no native RTL calibration.",
+        "Incremental PPA uses a paper-derived first-order proxy."
+      ]
+    },
+    {
+      "engine": "os_systolic_fused_attention",
+      "maturity": "M1",
+      "calibration_tier": "fsa_inspired_analytical",
+      "comparison_ready": false,
+      "product_qualified": false,
+      "uncertainty": {
+        "performance_pct": 35.0,
+        "area_pct": 35.0,
+        "power_pct": 40.0
+      },
+      "checks": {
+        "factory_identity": true,
+        "physical_decode": true,
+        "physical_prefill": true,
+        "physical_agent_append": true,
+        "bandwidth_non_regression": true,
+        "preload_non_regression": true,
+        "pair_scheduler_non_regression": true,
+        "ppa_positive": true,
+        "area_monotonic": true,
+        "dse_candidate_evaluates": true
+      },
+      "passed": true,
+      "samples": {
+        "decode": {
+          "shape": [
+            1,
+            256,
+            256
+          ],
+          "total_cycles": 1284,
+          "compute_cycles": 1284,
+          "dma_cycles": 759,
+          "utilization": 0.012461059190031152,
+          "ops": 131072,
+          "bottleneck": "compute"
+        },
+        "prefill": {
+          "shape": [
+            128,
+            256,
+            256
+          ],
+          "total_cycles": 3072,
+          "compute_cycles": 3072,
+          "dma_cycles": 1506,
+          "utilization": 0.6666666666666666,
+          "ops": 16777216,
+          "bottleneck": "compute"
+        },
+        "agent_append": {
+          "shape": [
+            875,
+            128,
+            256
+          ],
+          "total_cycles": 14252,
+          "compute_cycles": 14252,
+          "dma_cycles": 2950,
+          "utilization": 0.4911591355599214,
+          "ops": 57344000,
+          "bottleneck": "compute"
+        }
+      },
+      "dse_smoke": {
+        "decode_tps": 20.06,
+        "prefill_tps": 1274.45,
+        "ttft_ms": 150.282,
+        "area_mm2": 16.7,
+        "power_w": 6.8
+      },
+      "known_gaps": [
+        "Inherits uncalibrated OS transposer and SRAM behavior.",
+        "Fusion overlap, cached-prefix control and PPA have no native RTL."
+      ]
+    },
+    {
+      "engine": "tensor_core",
+      "maturity": "M1",
+      "calibration_tier": "architecture_analytical",
+      "comparison_ready": false,
+      "product_qualified": false,
+      "uncertainty": {
+        "performance_pct": 35.0,
+        "area_pct": 35.0,
+        "power_pct": 40.0
+      },
+      "checks": {
+        "factory_identity": true,
+        "physical_decode": true,
+        "physical_prefill": true,
+        "physical_agent_append": true,
+        "bandwidth_non_regression": true,
+        "preload_non_regression": true,
+        "pair_scheduler_non_regression": true,
+        "ppa_positive": true,
+        "area_monotonic": true,
+        "dse_candidate_evaluates": true
+      },
+      "passed": true,
+      "samples": {
+        "decode": {
+          "shape": [
+            1,
+            256,
+            256
+          ],
+          "total_cycles": 931,
+          "compute_cycles": 336,
+          "dma_cycles": 595,
+          "utilization": 0.017185821697099892,
+          "ops": 131072,
+          "bottleneck": "dma"
+        },
+        "prefill": {
+          "shape": [
+            128,
+            256,
+            256
+          ],
+          "total_cycles": 18154,
+          "compute_cycles": 2688,
+          "dma_cycles": 15466,
+          "utilization": 0.11281260328302302,
+          "ops": 16777216,
+          "bottleneck": "dma"
+        },
+        "agent_append": {
+          "shape": [
+            875,
+            128,
+            256
+          ],
+          "total_cycles": 62201,
+          "compute_cycles": 9240,
+          "dma_cycles": 52961,
+          "utilization": 0.11253838362727288,
+          "ops": 57344000,
+          "bottleneck": "dma"
+        }
+      },
+      "dse_smoke": {
+        "decode_tps": 24.95,
+        "prefill_tps": 165.02,
+        "ttft_ms": 815.727,
+        "area_mm2": 16.6,
+        "power_w": 6.8
+      },
+      "known_gaps": [
+        "Fragment dispatch and DMA startup are analytical proxies.",
+        "The model is inspired by GPU Tensor Cores, not a reproduced NPU RTL."
+      ]
+    },
+    {
+      "engine": "wmma",
+      "maturity": "M1",
+      "calibration_tier": "architecture_analytical",
+      "comparison_ready": false,
+      "product_qualified": false,
+      "uncertainty": {
+        "performance_pct": 40.0,
+        "area_pct": 40.0,
+        "power_pct": 45.0
+      },
+      "checks": {
+        "factory_identity": true,
+        "physical_decode": true,
+        "physical_prefill": true,
+        "physical_agent_append": true,
+        "bandwidth_non_regression": true,
+        "preload_non_regression": true,
+        "pair_scheduler_non_regression": true,
+        "ppa_positive": true,
+        "area_monotonic": true,
+        "dse_candidate_evaluates": true
+      },
+      "passed": true,
+      "samples": {
+        "decode": {
+          "shape": [
+            1,
+            256,
+            256
+          ],
+          "total_cycles": 422096,
+          "compute_cycles": 421888,
+          "dma_cycles": 208,
+          "utilization": 3.790606876160873e-05,
+          "ops": 131072,
+          "bottleneck": "compute"
+        },
+        "prefill": {
+          "shape": [
+            128,
+            256,
+            256
+          ],
+          "total_cycles": 3375979,
+          "compute_cycles": 3375104,
+          "dma_cycles": 875,
+          "utilization": 0.0006066388446136662,
+          "ops": 16777216,
+          "bottleneck": "compute"
+        },
+        "agent_append": {
+          "shape": [
+            875,
+            128,
+            256
+          ],
+          "total_cycles": 11445665,
+          "compute_cycles": 11443712,
+          "dma_cycles": 1953,
+          "utilization": 0.0006115852595720738,
+          "ops": 57344000,
+          "bottleneck": "compute"
+        }
+      },
+      "dse_smoke": {
+        "decode_tps": 0.05,
+        "prefill_tps": 0.88,
+        "ttft_ms": 165490.65,
+        "area_mm2": 17.1,
+        "power_w": 7.0
+      },
+      "known_gaps": [
+        "Warp serialization and DMA startup constants are not calibrated.",
+        "No native NPU scheduler or RTL implements the assumed WMMA path."
+      ]
+    },
+    {
+      "engine": "gmma",
+      "maturity": "M1",
+      "calibration_tier": "architecture_analytical",
+      "comparison_ready": false,
+      "product_qualified": false,
+      "uncertainty": {
+        "performance_pct": 35.0,
+        "area_pct": 40.0,
+        "power_pct": 45.0
+      },
+      "checks": {
+        "factory_identity": true,
+        "physical_decode": true,
+        "physical_prefill": true,
+        "physical_agent_append": true,
+        "bandwidth_non_regression": true,
+        "preload_non_regression": true,
+        "pair_scheduler_non_regression": true,
+        "ppa_positive": true,
+        "area_monotonic": true,
+        "dse_candidate_evaluates": true
+      },
+      "passed": true,
+      "samples": {
+        "decode": {
+          "shape": [
+            1,
+            256,
+            256
+          ],
+          "total_cycles": 2064,
+          "compute_cycles": 2064,
+          "dma_cycles": 758,
+          "utilization": 0.007751937984496124,
+          "ops": 131072,
+          "bottleneck": "compute"
+        },
+        "prefill": {
+          "shape": [
+            128,
+            256,
+            256
+          ],
+          "total_cycles": 4096,
+          "compute_cycles": 4096,
+          "dma_cycles": 1505,
+          "utilization": 0.5,
+          "ops": 16777216,
+          "bottleneck": "compute"
+        },
+        "agent_append": {
+          "shape": [
+            875,
+            128,
+            256
+          ],
+          "total_cycles": 8024,
+          "compute_cycles": 8024,
+          "dma_cycles": 2950,
+          "utilization": 0.872382851445663,
+          "ops": 57344000,
+          "bottleneck": "compute"
+        }
+      },
+      "dse_smoke": {
+        "decode_tps": 10.22,
+        "prefill_tps": 673.75,
+        "ttft_ms": 287.816,
+        "area_mm2": 17.3,
+        "power_w": 7.1
+      },
+      "known_gaps": [
+        "TMA descriptor and scheduling behavior are analytical.",
+        "TMA and shared-memory PPA are not separately synthesized."
+      ]
+    },
+    {
+      "engine": "input_stationary",
+      "maturity": "M1",
+      "calibration_tier": "dataflow_analytical",
+      "comparison_ready": false,
+      "product_qualified": false,
+      "uncertainty": {
+        "performance_pct": 35.0,
+        "area_pct": 35.0,
+        "power_pct": 40.0
+      },
+      "checks": {
+        "factory_identity": true,
+        "physical_decode": true,
+        "physical_prefill": true,
+        "physical_agent_append": true,
+        "bandwidth_non_regression": true,
+        "preload_non_regression": true,
+        "pair_scheduler_non_regression": true,
+        "ppa_positive": true,
+        "area_monotonic": true,
+        "dse_candidate_evaluates": true
+      },
+      "passed": true,
+      "samples": {
+        "decode": {
+          "shape": [
+            1,
+            256,
+            256
+          ],
+          "total_cycles": 33986,
+          "compute_cycles": 33792,
+          "dma_cycles": 194,
+          "utilization": 0.00047078208674159946,
+          "ops": 131072,
+          "bottleneck": "compute"
+        },
+        "prefill": {
+          "shape": [
+            128,
+            256,
+            256
+          ],
+          "total_cycles": 4649,
+          "compute_cycles": 1056,
+          "dma_cycles": 3593,
+          "utilization": 0.44052484405248443,
+          "ops": 16777216,
+          "bottleneck": "dma"
+        },
+        "agent_append": {
+          "shape": [
+            875,
+            128,
+            256
+          ],
+          "total_cycles": 15941,
+          "compute_cycles": 7280,
+          "dma_cycles": 8661,
+          "utilization": 0.43911925224264475,
+          "ops": 57344000,
+          "bottleneck": "dma"
+        }
+      },
+      "dse_smoke": {
+        "decode_tps": 4.55,
+        "prefill_tps": 576.09,
+        "ttft_ms": 441.833,
+        "area_mm2": 16.6,
+        "power_w": 6.8
+      },
+      "known_gaps": [
+        "Activation-reuse scaling is analytical and has no independent trace.",
+        "SRAM port and weight-stream conflicts are not modeled."
+      ]
+    },
+    {
+      "engine": "fsa",
+      "maturity": "M1",
+      "calibration_tier": "paper_extrapolation",
+      "comparison_ready": false,
+      "product_qualified": false,
+      "uncertainty": {
+        "performance_pct": 40.0,
+        "area_pct": 40.0,
+        "power_pct": 45.0
+      },
+      "checks": {
+        "factory_identity": true,
+        "physical_decode": true,
+        "physical_prefill": true,
+        "physical_agent_append": true,
+        "bandwidth_non_regression": true,
+        "preload_non_regression": true,
+        "pair_scheduler_non_regression": true,
+        "ppa_positive": true,
+        "area_monotonic": true,
+        "dse_candidate_evaluates": true
+      },
+      "passed": true,
+      "samples": {
+        "decode": {
+          "shape": [
+            1,
+            256,
+            256
+          ],
+          "total_cycles": 2064,
+          "compute_cycles": 2064,
+          "dma_cycles": 759,
+          "utilization": 0.007751937984496124,
+          "ops": 131072,
+          "bottleneck": "compute"
+        },
+        "prefill": {
+          "shape": [
+            128,
+            256,
+            256
+          ],
+          "total_cycles": 8192,
+          "compute_cycles": 8192,
+          "dma_cycles": 1506,
+          "utilization": 0.25,
+          "ops": 16777216,
+          "bottleneck": "compute"
+        },
+        "agent_append": {
+          "shape": [
+            875,
+            128,
+            256
+          ],
+          "total_cycles": 112336,
+          "compute_cycles": 112336,
+          "dma_cycles": 5617,
+          "utilization": 0.06231306081754736,
+          "ops": 57344000,
+          "bottleneck": "compute"
+        }
+      },
+      "dse_smoke": {
+        "decode_tps": 10.25,
+        "prefill_tps": 354.37,
+        "ttft_ms": 458.799,
+        "area_mm2": 16.2,
+        "power_w": 6.5
+      },
+      "known_gaps": [
+        "Public RTL attention is FP16/FP32 while scenario A projections use INT4/INT8.",
+        "GQA, cached-prefix attention, LPDDR TPS and whole-chip PPA are extrapolated."
+      ]
+    }
+  ]
+}

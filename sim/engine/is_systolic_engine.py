@@ -79,7 +79,7 @@ class InputStationaryEngine(MACEngine):
 
         total_macs = M * K * N
         total_weight_bytes = total_tiles * (tile_weight_bytes + tile_act_bytes)
-        ideal = math.ceil(total_macs / self.peak_macs_per_cycle)
+        ideal = math.ceil(total_macs / max(self.H * self.W, 1))
         util = ideal / total if total > 0 else 0.0
 
         return EngineResult(
@@ -87,7 +87,7 @@ class InputStationaryEngine(MACEngine):
             dma_cycles=int(total - per_tile_compute * total_tiles),
             total_cycles=total,
             utilization=util,
-            ops=total_macs,
+            ops=total_macs * self.ops_per_mac,
             num_tiles=total_tiles,
             weight_bytes=total_weight_bytes,
             bottleneck="compute" if per_tile_compute > per_tile_dma else "dma",
@@ -133,7 +133,7 @@ class InputStationaryEngine(MACEngine):
 
         total_macs = M * K * N * 2
         total_weight_bytes = total_tiles * (2 * tile_weight_bytes + tile_act_bytes)
-        ideal = math.ceil(total_macs / self.peak_macs_per_cycle)
+        ideal = math.ceil(total_macs / max(self.H * self.W, 1))
         util = ideal / total if total > 0 else 0.0
 
         # Activation-load savings vs two independent single estimates.
@@ -144,7 +144,7 @@ class InputStationaryEngine(MACEngine):
             dma_cycles=int(total - per_tile_compute_pair * total_tiles),
             total_cycles=total,
             utilization=util,
-            ops=total_macs,
+            ops=total_macs * self.ops_per_mac,
             num_tiles=total_tiles,
             weight_bytes=total_weight_bytes,
             bottleneck="compute" if per_tile_compute_pair > per_tile_dma else "dma",

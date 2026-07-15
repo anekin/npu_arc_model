@@ -85,7 +85,7 @@ class TensorCoreEngine(MACEngine):
 
         total_macs = M * K * N
         total_weight_bytes = total_invocations * (tile_weight_bytes + tile_act_bytes)
-        ideal = math.ceil(total_macs / self.peak_macs_per_cycle)
+        ideal = math.ceil(total_macs / max(self.H * self.W, 1))
         util = ideal / total if total > 0 else 0.0
 
         compute_cycles = waves * per_wave_compute
@@ -96,7 +96,7 @@ class TensorCoreEngine(MACEngine):
             dma_cycles=dma_cycles,
             total_cycles=total,
             utilization=util,
-            ops=total_macs,
+            ops=total_macs * self.ops_per_mac,
             num_tiles=total_invocations,
             weight_bytes=total_weight_bytes,
             bottleneck="compute" if per_wave_compute > per_wave_dma else "dma",
@@ -157,7 +157,7 @@ class TensorCoreEngine(MACEngine):
 
         total_macs = M * K * N * 2
         total_weight_bytes = total_invocations * (dual_weight_bytes + tile_act_bytes)
-        ideal = math.ceil(total_macs / self.peak_macs_per_cycle)
+        ideal = math.ceil(total_macs / max(self.H * self.W, 1))
         util = ideal / total if total > 0 else 0.0
 
         # Activation sharing savings vs. two separate estimates
@@ -171,7 +171,7 @@ class TensorCoreEngine(MACEngine):
             dma_cycles=dma_cycles,
             total_cycles=total,
             utilization=util,
-            ops=total_macs,
+            ops=total_macs * self.ops_per_mac,
             num_tiles=total_invocations,
             weight_bytes=total_weight_bytes,
             bottleneck="compute" if per_wave_compute > per_wave_dma else "dma",
