@@ -1,8 +1,8 @@
 # Arc Model Engine 整理、准入测试与 Signoff 报告
 
-日期：2026-07-15  
-Arc Model：v3.6-engine-evidence  
-分支：feat/scenario-driven-dse  
+日期：2026-07-15
+Arc Model：v3.7-weight-cache-variants
+分支：feat/scenario-driven-dse
 测试范围：10 个正式 DSE Engine、Framework 计算主路径、场景 A、场景 A Agent
 
 ## 1. 结论
@@ -17,7 +17,7 @@ Arc Model：v3.6-engine-evidence
 测试结论：
 
 - Engine admission audit：10/10 Engine 通过；
-- 自动化回归：118 passed；
+- 自动化回归：125 passed；
 - canonical 计算主路径：语句覆盖率 97%，分支覆盖率 85%；
 - 三次 quick DSE 输出 SHA-256 完全一致；
 - 场景 A：1965/1965 配置有效，存在 M2 comparison-ready 候选，但没有 M3 product-qualified 候选；
@@ -85,7 +85,7 @@ JSON 新增：
 | T4 Workload | 每个 Engine 完成 Qwen2.5-3B Decode/Prefill smoke | 10/10 PASS |
 | T5 DSE | 搜索集合、三层资格、raw ranking、provenance | PASS |
 | T6 Scenario | 场景 A、Agent 完整 DSE | 完成；结论见第 6、7 节 |
-| T7 Regression | 118 用例、覆盖率、三次 quick DSE hash | PASS/Conditional |
+| T7 Regression | 125 用例、覆盖率、三次 quick DSE hash | PASS/Conditional |
 
 Engine admission 的每个 Engine 均通过以下十项检查：factory identity、三组 physical microbench、bandwidth non-regression、preload non-regression、pair scheduler non-regression、PPA positive、area monotonic、DSE candidate evaluation。
 
@@ -94,7 +94,7 @@ Engine admission 的每个 Engine 均通过以下十项检查：factory identity
 全量测试结果：
 
 ```text
-118 passed
+125 passed
 ```
 
 canonical 计算主路径排除 compiler、ISA、multicore、timeline 和 CLI orchestration 后：
@@ -115,7 +115,7 @@ ce20ef44755cccfaeaa0771cd1d6e634f20b9640b552400737b3a4569d58e81d
 
 ## 6. 场景 A 完整 DSE
 
-搜索：1965 配置，1965 valid，invalid_configs=0。  
+搜索：1965 配置，1965 valid，invalid_configs=0。
 约束：771 raw feasible，343 comparison-ready feasible，0 product-qualified。
 
 | Engine | M | Status | Decode TPS | Prefill TPS | TTFT | Area | Power |
@@ -142,7 +142,7 @@ Block 64×64 @800MHz 仍应与 OS 32×64 @1.2GHz 一起保留到下一轮 calibr
 
 ## 7. 场景 A Agent 完整 DSE
 
-搜索：1980 配置，1980 valid，invalid_configs=0。  
+搜索：1980 配置，1980 valid，invalid_configs=0。
 约束：0 raw feasible，0 comparison-ready，0 product-qualified。
 
 | Engine | M | Decode TPS | Prefill TPS | TTFT | 主要失败 |

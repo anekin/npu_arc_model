@@ -32,6 +32,22 @@ class AreaModel:
         self.fsa_pe_baseline         = float(am.get("fsa_pe_area_mm2", 2.24)) * self.node_scale        # paper: +12% array only
         self.block_fused_pe_baseline = float(am.get("block_fused_attention_pe_area_mm2", 4.24)) * self.node_scale
         self.os_fused_pe_baseline    = float(am.get("os_fused_attention_pe_area_mm2", 4.24)) * self.node_scale
+        # Weight Cache is a hardware variant, not a free performance switch.
+        # These PE-array multipliers stay configurable until layout calibration.
+        self.weight_cache_pe_overhead = {
+            "systolic": float(am.get(
+                "systolic_weight_cache_pe_overhead_pct", 0.15,
+            )),
+            "block": float(am.get(
+                "block_weight_cache_pe_overhead_pct", 0.10,
+            )),
+            "block_fused_attention": float(am.get(
+                "block_fused_attention_weight_cache_pe_overhead_pct", 0.10,
+            )),
+            "gmma": float(am.get(
+                "gmma_weight_cache_pe_overhead_pct", 0.05,
+            )),
+        }
         self.sfu = float(am.get("sfu_area_mm2", 1.5)) * self.node_scale
         self.l1_per_kb = float(am.get("l1_sram_per_kb_mm2", 0.002)) * self.node_scale
         self.l2_per_kb = float(am.get("l2_sram_per_kb_mm2", 0.0015)) * self.node_scale
@@ -50,14 +66,12 @@ class AreaModel:
         self.pool2d = float(am.get("pool2d_mm2", 0.05))                   # fixed cost
         self.conv_sfu = float(am.get("conv_sfu_mm2", 0.10))               # fixed cost
 
-    def estimate(self, config: Dict[str, Any], engine_type: str) -> float:
-        """估算总面积"""
+    def pe_area(self, config: Dict[str, Any], engine_type: str):
+        """Return adjusted PE area and the explicit Weight Cache increment."""
         mac = config.get("mac_engine", {})
-        H = int(mac.get("array_height", 128))
-        W = int(mac.get("array_width", 128))
-        scale = (H * W) / (128 * 128)
-
-        # PE array
+        height = int(mac.get("array_height", 128))
+        width = int(mac.get("array_width", 128))
+        scale = (height * width) / (128 * 128)
         engine_area_map = {
             "systolic": self.systolic_pe_baseline,
             "os_systolic": self.os_pe_baseline,
@@ -70,8 +84,28 @@ class AreaModel:
             "input_stationary": self.input_stationary_pe_baseline,
             "fsa": self.fsa_pe_baseline,
         }
-        pe_base = engine_area_map.get(engine_type, self.block_pe_baseline)
-        pe_area = pe_base * scale
+        base_area = engine_area_map.get(engine_type, self.block_pe_baseline) * scale
+        enabled = bool(
+            config.get("optimizations", {}).get("weight_cache", False)
+        )
+        overhead_pct = (
+            self.weight_cache_pe_overhead.get(engine_type, 0.0)
+            if enabled else 0.0
+        )
+        weight_cache_area = base_area * overhead_pct
+        return base_area + weight_cache_area, weight_cache_area, overhead_pct
+
+    def estimate(self, config: Dict[str, Any], engine_type: str) -> float:
+        """估算总面积"""
+        mac = config.get("mac_engine", {})
+        H = int(mac.get("array_height", 128))
+        W = int(mac.get("array_width", 128))
+        scale = (H * W) / (128 * 128)
+
+        # PE array, including an explicit Weight Cache hardware increment.
+        pe_area, weight_cache_area, weight_cache_overhead_pct = self.pe_area(
+            config, engine_type,
+        )
 
         # SRAM
         sram = config.get("sram", {})
@@ -123,6 +157,11 @@ class AreaModel:
             "logic_die_mm2": logic_die_mm2,
             "memory_stack_mm2": round(stack_area_mm2, 1),
             "package_footprint_mm2": round(package_footprint_mm2, 1),
+            "pe_array_mm2": round(pe_area, 4),
+            "weight_cache_area_mm2": round(weight_cache_area, 4),
+            "weight_cache_pe_overhead_pct": round(
+                weight_cache_overhead_pct * 100.0, 2,
+            ),
             "im2col_feeder_mm2": im2col_feeder_area,
             "pool2d_mm2": pool2d_area,
             "conv_sfu_mm2": conv_sfu_area,
@@ -147,21 +186,9 @@ class PowerModel:
         scale = (H * W) / (128 * 128)
         freq_scale = float(mac.get("frequency_mhz", 1000)) / 1000
 
-        # Logic power
-        engine_area_map = {
-            "systolic": area_model.systolic_pe_baseline,
-            "os_systolic": area_model.os_pe_baseline,
-            "block": area_model.block_pe_baseline,
-            "block_fused_attention": area_model.block_fused_pe_baseline,
-            "os_systolic_fused_attention": area_model.os_fused_pe_baseline,
-            "tensor_core": area_model.tensor_core_pe_baseline,
-            "wmma": area_model.wmma_pe_baseline,
-            "gmma": area_model.gmma_pe_baseline,
-            "input_stationary": area_model.input_stationary_pe_baseline,
-            "fsa": area_model.fsa_pe_baseline,
-        }
-        pe_base = engine_area_map.get(engine_type, area_model.block_pe_baseline)
-        logic_mm2 = pe_base * scale + area_model.sfu
+        # Logic power uses the same WC-adjusted PE area as the area model.
+        pe_area, _, _ = area_model.pe_area(config, engine_type)
+        logic_mm2 = pe_area + area_model.sfu
 
         logic_power = logic_mm2 * self.logic_power_density * freq_scale
 
@@ -189,4 +216,4 @@ class PowerModel:
 
         total = (logic_power + sram_power + memory_power + 2.0  # +2W misc
                  + im2col_power + pool2d_power + conv_sfu_power)
-        return round(total, 1)
+        return round(total, 2)

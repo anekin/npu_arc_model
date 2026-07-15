@@ -165,6 +165,23 @@ class SystolicEngine(MACEngine):
         ideal = math.ceil(total_macs / max(self.H * self.W, 1))
         util = ideal / total if total > 0 else 0.0
 
+        # Weight Cache is optional. Preserve two independent GEMMs as a
+        # legal scheduler fallback so enabling the hardware can never
+        # regress a workload shape.
+        single = self.estimate(M, K, N)
+        if total >= 2 * single.total_cycles:
+            return EngineResult(
+                compute_cycles=2 * single.compute_cycles,
+                dma_cycles=2 * single.dma_cycles,
+                total_cycles=2 * single.total_cycles,
+                utilization=single.utilization,
+                ops=2 * single.ops,
+                num_tiles=2 * single.num_tiles,
+                weight_bytes=2 * single.weight_bytes,
+                bottleneck=single.bottleneck,
+                details={"scheduler_fallback": "two_independent_gemms"},
+            )
+
         return EngineResult(
             compute_cycles=int(dual_compute * total_dual),
             dma_cycles=int(total - dual_compute * total_dual),

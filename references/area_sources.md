@@ -138,3 +138,22 @@ TSV（Through-Silicon Via）物理尺寸：~5µm 直径 + ~10µm keep-out zone �
 ---
 
 *最后更新: 2026-07*
+
+
+## 8. Weight Cache hardware variant proxy
+
+`weight_cache` is modeled as a hardware implementation choice, not as a free
+software optimization. WC ON adds local weight storage/registers and selection
+control to the PE array; DSE therefore reports WC ON and WC OFF separately.
+
+| Engine | WC PE-area overhead | Evidence status |
+|---|---:|---|
+| WS systolic | 15% | Historical Arc v1 architecture estimate for dual PE weight registers |
+| Block / Block fused-attention | 10% | Analytical local-storage/control proxy |
+| GMMA | 5% | Analytical shared-storage/control proxy |
+
+The percentages apply to PE-array area, not whole-chip area. Power uses the
+same adjusted PE logic area. These values are suitable for architecture-stage
+trade-off ranking only; SRAM/register implementation, clocking activity,
+physical layout and leakage require independent calibration before M3/product
+signoff.

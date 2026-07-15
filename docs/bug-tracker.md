@@ -167,6 +167,46 @@ NEW -> TRIAGED -> IN_PROGRESS -> FIXED -> VERIFIED -> CLOSED
 | Commit / GitHub Issue | `2897dffa0004d1dfa9626f4bcd1bea8e49ff3530` / not created |
 | Signoff disposition | 已关闭；后续补跨平台 subprocess CLI gate |
 
+### ARC-BUG-005 — Weight Cache hardware cost omitted and variants collapsed
+
+| Field | Content |
+|---|---|
+| Severity / Status | P1 / VERIFIED |
+| Detected / Verified | 2026-07-15 / 2026-07-15 |
+| Component / Owner | `sim/engine/ppa_model.py`, DSE reporting / Arc Model maintainer |
+| Affected versions | v3.6 and earlier |
+| Detected by | Review of WC ON/OFF architecture implementation cost |
+| Reproduction | Evaluate the same WC-capable engine/configuration with `weight_cache=false/true` and inspect PPA plus `engine_comparison` |
+| Expected | WC ON has explicit nonzero area/power cost and is reported separately from WC OFF |
+| Actual | WC ON gained FFN performance at identical area/power; engine-level reporting collapsed both variants |
+| Root cause | PPA ignored `optimizations.weight_cache`; reporting grouped only by engine name |
+| Impact | Underestimated WC hardware cost and hid implementation alternatives in DSE reports |
+| Fix | Configurable per-engine WC PE-area proxy, shared area/power accounting, structured hardware identity, and `engine_variant_comparison` |
+| Regression | `test_weight_cache_hardware_variant_has_nonzero_ppa_cost`; `test_weight_cache_variants_are_not_collapsed` |
+| Evidence | Updated LPDDR5 scenario A and Agent DSE artifacts; 125-test full regression |
+| Commit / GitHub Issue | pending / not created |
+| Signoff disposition | Fix verified locally; keep report PPA marked architecture-stage until independent calibration |
+
+### ARC-BUG-006 — Systolic WC pair could regress selected FFN shapes
+
+| Field | Content |
+|---|---|
+| Severity / Status | P1 / VERIFIED |
+| Detected / Verified | 2026-07-15 / 2026-07-15 |
+| Component / Owner | `sim/engine/systolic_engine.py` / Arc Model maintainer |
+| Affected versions | v3.6 and v3.7 pre-fix working tree |
+| Detected by | WC ON/OFF Agent report review |
+| Reproduction | Compare WC pair with two independent GEMMs for `(M,K,N)=(1,2048,11008)` on the selected large Systolic array |
+| Expected | Optional WC scheduling never takes more cycles than the legal two-GEMM fallback |
+| Actual | WC ON produced 7.60 TPS while WC OFF produced 7.61 TPS at the selected Agent point |
+| Root cause | Systolic dual-weight schedule lacked the fallback already present in Block/GMMA |
+| Impact | Small decode regression and misleading WC comparison for some shapes |
+| Fix | Return two independent GEMMs when the combined WC schedule is not faster |
+| Regression | `test_weight_cache_pair_is_monotonic_for_decode_and_agent_ffn_shapes` |
+| Evidence | Updated scenario A/Agent WC variant DSE artifacts; 125-test full regression |
+| Commit / GitHub Issue | pending / not created |
+| Signoff disposition | Fix verified locally; close after commit |
+
 ## 6. 新 Bug 登记模板
 
 复制以下内容到本文件末尾，同时创建 GitHub Issue：
@@ -208,3 +248,5 @@ NEW -> TRIAGED -> IN_PROGRESS -> FIXED -> VERIFIED -> CLOSED
 |---|---|---|
 | 1.0 | 2026-07-15 | 建立正式流程并登记 ARC-BUG-001～004 |
 | 1.1 | 2026-07-15 | `2897dff` 合入修复，ARC-BUG-001～004 更新为 CLOSED |
+| 1.2 | 2026-07-15 | 登记并验证 ARC-BUG-005；WC ON/OFF 独立建模与报告 |
+| 1.3 | 2026-07-15 | 登记并验证 ARC-BUG-006；Systolic WC 调度增加单调 fallback |

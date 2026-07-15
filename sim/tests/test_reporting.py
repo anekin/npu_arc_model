@@ -1,9 +1,16 @@
 from dse.evaluator import ranking_key
-from dse.reporting import build_engine_comparison, print_engine_comparison
+from dse.reporting import (
+    build_engine_comparison,
+    build_engine_variant_comparison,
+    print_engine_comparison,
+    print_engine_variant_comparison,
+)
 from dse.types import DSEPoint
 
 
-def _point(engine, tps, ttft, area, passed=True, maturity="M2"):
+def _point(
+    engine, tps, ttft, area, passed=True, maturity="M2", weight_cache=False,
+):
     return DSEPoint(
         tok_s=tps,
         decode_tps=tps,
@@ -14,7 +21,7 @@ def _point(engine, tps, ttft, area, passed=True, maturity="M2"):
         area_mm2=area,
         power_w=10,
         config_label=f"{engine} test",
-        config={"engine": engine},
+        config={"engine": engine, "weight_cache": weight_cache},
         constraints_passed=passed,
         maturity=maturity,
         raw_exploration_eligible=True,
@@ -52,6 +59,36 @@ def test_engine_comparison_includes_passed_and_failed_engines(capsys):
     assert "Failed engine details" in output
 
 
+def test_weight_cache_variants_are_not_collapsed(capsys):
+    scenario = {"objectives": ["area_mm2", "-decode_tps"]}
+    off = _point("block", 20, 500, 40, weight_cache=False)
+    on = _point("block", 25, 450, 41, weight_cache=True)
+
+    engine_rows = build_engine_comparison([off, on], scenario)
+    variant_rows = build_engine_variant_comparison([off, on], scenario)
+
+    assert len(engine_rows) == 1
+    assert len(variant_rows) == 2
+    assert {row["hardware_variant"] for row in variant_rows} == {
+        "WC OFF", "WC ON",
+    }
+    assert {row["metrics"]["area_mm2"] for row in variant_rows} == {40, 41}
+
+    print_engine_variant_comparison(variant_rows)
+    output = capsys.readouterr().out
+    assert "WC ON/OFF kept separate" in output
+    assert "WC OFF" in output
+    assert "WC ON" in output
+
+
+def test_non_weight_cache_engine_uses_not_applicable_variant():
+    rows = build_engine_variant_comparison(
+        [_point("os_systolic", 20, 500, 40)],
+        {"objectives": ["area_mm2"]},
+    )
+    assert rows[0]["hardware_variant"] == "N/A"
+
+
 def test_design_target_precedes_cost_but_not_hard_feasibility():
     scenario = {
         "targets": {"ttft_ms_max": 500},
@@ -75,6 +112,7 @@ def test_engine_preference_only_breaks_numeric_ties():
 
     cheaper_os = _point("os_systolic", 25, 400, 39)
     assert ranking_key(cheaper_os, scenario) < ranking_key(block, scenario)
+
 
 def test_raw_engine_ranking_does_not_penalize_lower_maturity():
     scenario = {"objectives": ["area_mm2", "-decode_tps"]}

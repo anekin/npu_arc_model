@@ -114,9 +114,9 @@ DSE 先执行硬约束过滤，再优先选择满足 `targets` 的候选，最�
   与 Signoff 标准、执行阶段和首轮 backlog。
 - `docs/bug-tracker.md`：正式缺陷编号、严重级别、状态流转、Signoff 阻断规则
   和关闭证据；GitHub Bug Issue 必须与该台账互相链接。
-- `reports/engine-admission-and-signoff-test-2026-07-15.md`：v3.6 Engine
+- `reports/engine-admission-and-signoff-test-2026-07-15.md`：v3.7 Engine
   inventory、准入测试、覆盖率和场景 Signoff 结果。
-- `reports/lpddr5-latest-dse-2026-07-15.md`：当前 v3.6 模型的 LPDDR5
+- `reports/lpddr5-latest-dse-2026-07-15.md`：当前 v3.7 模型的 LPDDR5
   场景 A、Agent 子场景及 75%/85%/90% 带宽效率角完整 DSE 报告。
 - `references/`：面积等模型参数的来源。
 - `reports/`：历史搜索报告；历史数值不等于当前版本的可复现结论。
@@ -127,6 +127,7 @@ DSE 先执行硬约束过滤，再优先选择满足 `targets` 的候选，最�
 
 - 物理带宽统一以 GB/s 输入，并按候选频率换算为 bytes/cycle。
 - Decode 与 Prefill 分开建模。
+- Weight Cache 作为独立硬件变体搜索和报告；支持的 Engine 分别输出 WC ON/OFF 性能、面积与功耗，不支持的 Engine 标为 N/A。
 - Attention 显式计入 QK、Softmax、PV 和 KV 流量，并区分 append 长度、cached prefix、容量上限与 attention 精度。
 - OS Systolic 使用独立的 M×N 空间映射、K 时间累加 wavefront 模型；不再复用 Block 周期，分析结果会标记尚未校准的 transposer、SRAM bank conflict 与 RTL timing。
 - 原始 FSA 使用上游 RTL 调度作论文参考外推；整机当前为 M1，进入 Raw Exploration。

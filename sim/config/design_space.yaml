@@ -98,6 +98,12 @@ area_model:
   fsa_pe_area_mm2: 2.24         # 12% array-only overhead from FSA paper; not whole-chip
   block_fused_attention_pe_area_mm2: 4.24  # Block + 12% of systolic-array baseline
   os_fused_attention_pe_area_mm2: 4.24     # OS + same fused-attention datapath increment
+  # Weight Cache adds local weight storage and control to the PE array.
+  # These are architecture-stage proxies; calibrate independently before M3.
+  systolic_weight_cache_pe_overhead_pct: 0.15
+  block_weight_cache_pe_overhead_pct: 0.10
+  block_fused_attention_weight_cache_pe_overhead_pct: 0.10
+  gmma_weight_cache_pe_overhead_pct: 0.05
   sfu_area_mm2: 1.5
   l1_sram_per_kb_mm2: 0.002
   l2_sram_per_kb_mm2: 0.0015

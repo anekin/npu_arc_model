@@ -136,6 +136,42 @@ def test_fused_attention_ppa_is_not_free():
         assert fused_power >= baseline_power
 
 
+@pytest.mark.parametrize(
+    "engine_name",
+    ["systolic", "block", "block_fused_attention", "gmma"],
+)
+def test_weight_cache_hardware_variant_has_nonzero_ppa_cost(engine_name):
+    off = _config(engine_name)
+    off.setdefault("optimizations", {})["weight_cache"] = False
+    on = copy.deepcopy(off)
+    on["optimizations"]["weight_cache"] = True
+
+    off_area_model = AreaModel(off)
+    on_area_model = AreaModel(on)
+    off_area = off_area_model.estimate(off, engine_name)
+    on_area = on_area_model.estimate(on, engine_name)
+    off_power = PowerModel(off).estimate(off_area_model, off, engine_name)
+    on_power = PowerModel(on).estimate(on_area_model, on, engine_name)
+
+    assert off_area["weight_cache_area_mm2"] == 0
+    assert on_area["weight_cache_area_mm2"] > 0
+    assert on_area["weight_cache_pe_overhead_pct"] > 0
+    assert on_area["total_mm2"] > off_area["total_mm2"]
+    assert on_power > off_power
+
+
+def test_weight_cache_pair_is_monotonic_for_decode_and_agent_ffn_shapes():
+    shapes = ((1, 2048, 11008), (875, 2048, 11008))
+    for engine_name in (
+        "systolic", "block", "block_fused_attention", "gmma",
+    ):
+        engine = create_engine(_config(engine_name))
+        for shape in shapes:
+            single = engine.estimate(*shape)
+            pair = engine.estimate_weight_cache_pair(*shape)
+            assert pair.total_cycles <= 2 * single.total_cycles
+
+
 def test_repeatable_engine_audit_passes_all_admission_checks():
     first = run_audit()
     second = run_audit()

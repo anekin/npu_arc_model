@@ -16,7 +16,12 @@ from engine.ppa_model import AreaModel, PowerModel, PPA
 from engine.mac_engine import ENGINE_TYPES, create_engine
 from model_specs import get_spec, all_aliases
 from dse.evaluator import ARC_VERSION, evaluate_candidate, ranking_key, violation_score
-from dse.reporting import build_engine_comparison, print_engine_comparison
+from dse.reporting import (
+    build_engine_comparison,
+    build_engine_variant_comparison,
+    print_engine_comparison,
+    print_engine_variant_comparison,
+)
 
 import yaml
 
@@ -343,7 +348,8 @@ def generate_configs(quick: bool = False, scenario_name: str | None = None,
                 for w_bits in precisions:
                     for freq in freqs:
                         for l2_kb in sram_l2_sizes:
-                            # weight_cache only for systolic
+                            # WC ON/OFF are distinct hardware variants for
+                            # engines with an implemented pair schedule.
                             wc_options = [False]
                             if engine_type in (
                                 "systolic", "block", "block_fused_attention",
@@ -805,6 +811,9 @@ def main():
         key=lambda p: violation_score(p, active_scenario),
     )
     engine_comparison = build_engine_comparison(results, active_scenario)
+    engine_variant_comparison = build_engine_variant_comparison(
+        results, active_scenario,
+    )
     print(f"  Constraints: {len(application_feasible)} passed, {len(rejected)} rejected")
     print(f"  Maturity: {len(raw_reasonable)} raw-feasible, "
           f"{len(reasonable)} comparison-ready, "
@@ -865,6 +874,9 @@ def main():
 
     # ── Complete per-engine comparison, including closest failed points ──
     print_engine_comparison(engine_comparison, bool(_CV_MODEL))
+    print_engine_variant_comparison(
+        engine_variant_comparison, bool(_CV_MODEL),
+    )
 
     # ── Sensitivity Analysis (always run after sweep) ──
     sa = analyze_sensitivity(results)
@@ -951,6 +963,7 @@ def main():
                     p.to_dict() for p in product_reasonable[:args.top]
                 ],
                 "engine_comparison": engine_comparison,
+                "engine_variant_comparison": engine_variant_comparison,
                 "raw_recommended": (
                     raw_reasonable[0].to_dict() if raw_reasonable else None
                 ),

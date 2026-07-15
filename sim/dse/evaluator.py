@@ -22,7 +22,7 @@ from engine.manifest import get_engine_manifest
 from models.sfu import SFUModel
 from models.vector import VectorModel
 
-ARC_VERSION = "v3.6-engine-evidence"
+ARC_VERSION = "v3.7-weight-cache-variants"
 
 
 def _hash(value: Any) -> str:
@@ -299,6 +299,15 @@ def evaluate_candidate(config, area_model, power_model, scenario=None) -> DSEPoi
     }
     constraint_result = evaluate_constraints(metrics, scenario_payload)
     result_warnings = list(constraint_result.warnings)
+    weight_cache_enabled = bool(
+        cfg.get("optimizations", {}).get("weight_cache", False)
+    )
+    if weight_cache_enabled:
+        result_warnings.append(
+            "Weight Cache is a distinct hardware variant; its PPA uses an "
+            "architecture-stage PE-area proxy and requires independent "
+            "layout/power calibration before product signoff"
+        )
     constraints_cfg = scenario_payload.get("constraints", {}) or {}
     tps_min = float(constraints_cfg.get("tps_min", 0.0))
     if (
@@ -387,7 +396,13 @@ def evaluate_candidate(config, area_model, power_model, scenario=None) -> DSEPoi
         "array_width": int(mac["array_width"]),
         "frequency_mhz": freq_mhz,
         "weight_precision_bits": int(mac["weight_precision_bits"]),
-        "weight_cache": bool(cfg.get("optimizations", {}).get("weight_cache", False)),
+        "weight_cache": weight_cache_enabled,
+        "hardware_variant": (
+            "WC_ON" if weight_cache_enabled else "WC_OFF"
+        ),
+        "weight_cache_cost_model": (
+            "analytical_pe_area_proxy" if weight_cache_enabled else "none"
+        ),
         "memory_type": cfg.get("memory", {}).get("type", ""),
         "memory_bandwidth_gbps": round(float(cfg.get("memory", {}).get("bandwidth_gbps", 0)), 2),
         "memory_capacity_gb": footprint.installed_gb,
@@ -450,6 +465,15 @@ def evaluate_candidate(config, area_model, power_model, scenario=None) -> DSEPoi
             "decode_total_cycles": decode_total_cycles,
             "prefill_total_cycles": prefill_total_cycles,
             "decode_weight_floor_cycles": decode_weight_floor,
+            "ppa": {
+                "area": area_result,
+                "power_w": power,
+                "weight_cache_enabled": weight_cache_enabled,
+                "weight_cache_cost_model": (
+                    "analytical_pe_area_proxy"
+                    if weight_cache_enabled else "none"
+                ),
+            },
         },
         provenance={
             "arc_version": ARC_VERSION,
@@ -459,6 +483,13 @@ def evaluate_candidate(config, area_model, power_model, scenario=None) -> DSEPoi
             "calibration_tier": manifest.calibration_tier,
             "engine_maturity": manifest.maturity,
             "engine_manifest_hash": _hash(manifest.to_dict()),
+            "hardware_variant": (
+                "WC_ON" if weight_cache_enabled else "WC_OFF"
+            ),
+            "weight_cache_cost_model": (
+                "analytical_pe_area_proxy"
+                if weight_cache_enabled else "none"
+            ),
             "raw_exploration_eligible": raw_exploration_eligible,
             "comparison_eligible": comparison_eligible,
             "product_eligible": product_eligible,
