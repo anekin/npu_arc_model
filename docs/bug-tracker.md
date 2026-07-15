@@ -77,14 +77,13 @@ NEW -> TRIAGED -> IN_PROGRESS -> FIXED -> VERIFIED -> CLOSED
 
 | ID | 严重级别 | 状态 | 组件 | 标题 | Signoff 处置 |
 |---|---|---|---|---|---|
-| ARC-BUG-001 | P0 | VERIFIED | GMMA/DMA | TMA overlap 突破物理 DMA ceiling | 工作树已验证；合入前不可关闭 |
-| ARC-BUG-002 | P1 | VERIFIED | GMMA scheduler | Weight-cache pair 可能产生性能倒退 | 工作树已验证；合入前不可关闭 |
-| ARC-BUG-003 | P0 | VERIFIED | EngineResult/metrics | Engine `ops` 单位不一致 | 工作树已验证；历史指标需按范围处置 |
-| ARC-BUG-004 | P1 | VERIFIED | Windows CLI | GBK stdout 导致 DSE 输出前崩溃 | Windows 完整 DSE 已验证；合入前不可关闭 |
+| ARC-BUG-001 | P0 | CLOSED | GMMA/DMA | TMA overlap 突破物理 DMA ceiling | 已在 `2897dff` 合入并关闭 |
+| ARC-BUG-002 | P1 | CLOSED | GMMA scheduler | Weight-cache pair 可能产生性能倒退 | 已在 `2897dff` 合入并关闭 |
+| ARC-BUG-003 | P0 | CLOSED | EngineResult/metrics | Engine `ops` 单位不一致 | 已在 `2897dff` 合入；历史指标按范围处置 |
+| ARC-BUG-004 | P1 | CLOSED | Windows CLI | GBK stdout 导致 DSE 输出前崩溃 | 已在 `2897dff` 合入并关闭 |
 
-当前没有 `NEW`、`TRIAGED`、`IN_PROGRESS` 或 `REOPENED` 的 P0/P1；四项修复尚在
-当前工作树中，修复提交为 pending，因此发布/分支级 Signoff 必须等其合入后再将
-状态从 `VERIFIED` 更新为 `CLOSED`。
+当前没有 `NEW`、`TRIAGED`、`IN_PROGRESS` 或 `REOPENED` 的 P0/P1；四项修复及
+回归测试已由提交 `2897dff` 合入目标功能分支，状态均为 `CLOSED`。
 
 ## 5. 缺陷记录
 
@@ -92,7 +91,7 @@ NEW -> TRIAGED -> IN_PROGRESS -> FIXED -> VERIFIED -> CLOSED
 
 | 字段 | 内容 |
 |---|---|
-| Severity / Status | P0 / VERIFIED |
+| Severity / Status | P0 / CLOSED |
 | Detected / Verified | 2026-07-15 / 2026-07-15 |
 | Component / Owner | `sim/engine/gmma_engine.py` / Arc Model maintainer |
 | Affected versions | v3.5 及以前；first-bad version 待历史二分 |
@@ -105,14 +104,14 @@ NEW -> TRIAGED -> IN_PROGRESS -> FIXED -> VERIFIED -> CLOSED
 | Fix | 使用 `max(total_compute, total_dma)`；overlap 不再缩短物理传输下限 |
 | Regression | `test_every_engine_microbench_is_finite_and_physically_bounded`；全量 118 tests |
 | Evidence | `sim/tests/test_engine_admission.py`、`sim/results/engine_admission_audit_v36.json` |
-| Commit / GitHub Issue | pending / not created |
-| Signoff disposition | 修复合入后关闭；涉及 GMMA 的历史报告必须重跑或标记 superseded |
+| Commit / GitHub Issue | `2897dffa0004d1dfa9626f4bcd1bea8e49ff3530` / not created |
+| Signoff disposition | 已关闭；涉及 GMMA 的历史报告必须重跑或标记 superseded |
 
 ### ARC-BUG-002 — GMMA weight-cache pair 可能产生性能倒退
 
 | 字段 | 内容 |
 |---|---|
-| Severity / Status | P1 / VERIFIED |
+| Severity / Status | P1 / CLOSED |
 | Detected / Verified | 2026-07-15 / 2026-07-15 |
 | Component / Owner | `sim/engine/gmma_engine.py` / Arc Model maintainer |
 | Affected versions | v3.5 及以前；first-bad version 待历史二分 |
@@ -125,14 +124,14 @@ NEW -> TRIAGED -> IN_PROGRESS -> FIXED -> VERIFIED -> CLOSED
 | Fix | pair 较慢时返回两个独立 GEMM，并记录 `scheduler_fallback` 原因 |
 | Regression | `test_every_engine_bandwidth_preload_pair_and_ppa_properties`；全量 118 tests |
 | Evidence | `sim/tests/test_engine_admission.py`、Engine admission audit |
-| Commit / GitHub Issue | pending / not created |
-| Signoff disposition | 修复合入后关闭；GMMA 仍保持 M1，不因本 Bug 修复自动升级 maturity |
+| Commit / GitHub Issue | `2897dffa0004d1dfa9626f4bcd1bea8e49ff3530` / not created |
+| Signoff disposition | 已关闭；GMMA 仍保持 M1，不因本 Bug 修复自动升级 maturity |
 
 ### ARC-BUG-003 — EngineResult.ops 单位不一致
 
 | 字段 | 内容 |
 |---|---|
-| Severity / Status | P0 / VERIFIED |
+| Severity / Status | P0 / CLOSED |
 | Detected / Verified | 2026-07-15 / 2026-07-15 |
 | Component / Owner | Systolic、Tensor Core、WMMA、GMMA、Input Stationary / Arc Model maintainer |
 | Affected versions | v3.5 及以前；first-bad version 待历史二分 |
@@ -145,14 +144,14 @@ NEW -> TRIAGED -> IN_PROGRESS -> FIXED -> VERIFIED -> CLOSED
 | Fix | 五个 Engine 统一乘 `ops_per_mac`，并同步修正 ideal-cycle 分母以保持利用率物理含义 |
 | Regression | `test_every_engine_microbench_is_finite_and_physically_bounded` 中的统一 ops 断言 |
 | Evidence | `sim/tests/test_engine_admission.py`、全量 118 tests |
-| Commit / GitHub Issue | pending / not created |
-| Signoff disposition | 修复合入后关闭；引用旧 `ops`/TOPS 字段的报告需重算，纯周期/TPS 结果无需仅因本项重跑 |
+| Commit / GitHub Issue | `2897dffa0004d1dfa9626f4bcd1bea8e49ff3530` / not created |
+| Signoff disposition | 已关闭；引用旧 `ops`/TOPS 字段的报告需重算，纯周期/TPS 结果无需仅因本项重跑 |
 
 ### ARC-BUG-004 — Windows GBK stdout 导致 CLI 崩溃
 
 | 字段 | 内容 |
 |---|---|
-| Severity / Status | P1 / VERIFIED |
+| Severity / Status | P1 / CLOSED |
 | Detected / Verified | 2026-07-15 / 2026-07-15 |
 | Component / Owner | `sim/design_space_explorer.py` CLI / Arc Model maintainer |
 | Affected versions | v3.5 及以前的 Windows GBK/redirected stdout 路径 |
@@ -165,8 +164,8 @@ NEW -> TRIAGED -> IN_PROGRESS -> FIXED -> VERIFIED -> CLOSED
 | Fix | `main()` 启动时将 stdout reconfigure 为 UTF-8，错误策略为 replacement |
 | Regression | Windows 下完成场景 A 与 Agent 全量 DSE；全量 118 tests |
 | Evidence | `sim/results/scenario_a_lpddr5_v36_engine_evidence.json`、Agent DSE JSON |
-| Commit / GitHub Issue | pending / not created |
-| Signoff disposition | 修复合入后关闭；后续补跨平台 subprocess CLI gate |
+| Commit / GitHub Issue | `2897dffa0004d1dfa9626f4bcd1bea8e49ff3530` / not created |
+| Signoff disposition | 已关闭；后续补跨平台 subprocess CLI gate |
 
 ## 6. 新 Bug 登记模板
 
@@ -208,3 +207,4 @@ NEW -> TRIAGED -> IN_PROGRESS -> FIXED -> VERIFIED -> CLOSED
 | Revision | Date | Change |
 |---|---|---|
 | 1.0 | 2026-07-15 | 建立正式流程并登记 ARC-BUG-001～004 |
+| 1.1 | 2026-07-15 | `2897dff` 合入修复，ARC-BUG-001～004 更新为 CLOSED |

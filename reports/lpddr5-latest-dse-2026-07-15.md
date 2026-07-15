@@ -142,9 +142,9 @@ Block 128×256@1.2GHz：14.75 TPS、TTFT 6232.2 ms，TPS 和 TTFT 均失败。
 | Agent 架构探索 | INFEASIBLE | 三个效率角均为 0 raw/M2 feasible |
 | PPA 产品使用 | NOT SIGNED | 面积和功耗仍是架构阶段分析估算 |
 
-v3.6 测试阶段修复的四个缺陷已在 `docs/bug-tracker.md` 标记为 `VERIFIED`；
-由于改动尚未提交，分支发布层面还不能更新为 `CLOSED`。本轮六次 DSE 没有发现
-新的 invalid config 或物理 ceiling 失败。
+v3.6 测试阶段修复的四个缺陷及其回归测试已由提交 `2897dff` 合入，
+并在 `docs/bug-tracker.md` 更新为 `CLOSED`。本轮六次 DSE 没有发现新的
+invalid config 或物理 ceiling 失败。
 
 ## 10. 结果文件和复现
 
