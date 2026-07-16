@@ -1,11 +1,11 @@
 # NPU Arc Model 工作交接
 
-更新时间：2026-07-15
+更新时间：2026-07-16
 仓库：`git@github.com:anekin/npu_arc_model.git`
 本地路径：`C:\Data\Codex\npu_arc_model`
 工作分支：`feat/scenario-driven-dse`
-当前功能基线：`2ddcccf feat: model weight cache hardware variants`
-Arc Model 版本：`v3.7-weight-cache-variants`
+当前功能基线：`38409d8 fix: cap on-chip DSE bandwidth`
+Arc Model 版本：`v3.8-onchip-bandwidth-cap`
 
 > 本文是接手工作的首要入口。开始前先执行 `git status -sb` 和
 > `git log -3 --oneline`，确认实际 HEAD 与远端分支状态；本文随仓库继续更新。
@@ -116,16 +116,20 @@ Agent workload 假设及市场定位分析见
 
 ### 5.3 场景 B：`onchip_7b`
 
-- 面向具身智能/VLM/VLA；
-- 高带宽 on-chip/3D memory；
-- TTFT ≤200 ms 的实时约束优先于低成本。
+- 面向具身智能/VLM/VLA；Qwen2.5-7B，1024-token prompt、128-token output；
+- 5GB on-chip 3D DRAM，4.5GB 可用，额定带宽 500GB/s；
+- Decode TPS≥100、TTFT≤200ms、area≤150mm²；当前未定义 power hard limit；
+- 搜索 INT4/INT2 和 32×1536～128×1536 宽阵列；
+- raw exploration 有 42 个 M1 OFSA 可行点，M2 comparison-ready 仍不可行。
 
 场景 A 和 B 的目标函数不同，不能复用同一推荐排序结论。
 
 ## 6. 最新 DSE 结论
 
 权威报告：
-[`reports/lpddr5-latest-dse-2026-07-15.md`](reports/lpddr5-latest-dse-2026-07-15.md)。
+
+- [`reports/lpddr5-latest-dse-2026-07-15.md`](reports/lpddr5-latest-dse-2026-07-15.md)
+- [`reports/scenario-b-onchip-7b-dse-2026-07-16.md`](reports/scenario-b-onchip-7b-dse-2026-07-16.md)
 
 ### 6.1 场景 A，85% 名义角
 
@@ -158,11 +162,25 @@ Systolic 128×128@1.2GHz、L2=1MB 的 WC 差异较明显：
 - 下一步应研究带宽/通道、Prefix/KV 策略、工作负载约束或经校准的新 Engine，
   不能依赖 WC 单点优化解决。
 
+### 6.3 场景 B
+
+- 1710/1710 配置 valid，0 invalid；
+- 42 raw feasible，全部属于 M1 `os_systolic_fused_attention`；
+- 0 M2 comparison-ready feasible，0 M3/M4 product-qualified；
+- DSE raw best：OFSA 48×1536 INT2@1.2GHz、L2=1MB，139.53 TPS、
+  TTFT 175.15ms、100.0mm²、46.69W；INT2 精度未验证；
+- 工程研究基线：同配置 INT4，116.60 TPS、TTFT 176.69ms、100.0mm²、46.69W；
+- M2 最近点：OS Systolic 96×1536 INT2@1.2GHz，132.17 TPS、
+  TTFT 251.80ms、145.7mm²、76.53W，因 TTFT 超限而 FAIL；
+- ARC-BUG-007 已将面积耦合带宽封顶到额定 500GB/s；首次无封顶运行无效。
+
 完整结果：
 
 - `sim/results/lpddr5_3b_latest_2026-07-15.json`
 - `sim/results/lpddr5_3b_agent_latest_2026-07-15.json`
 - `sim/results/lpddr5_latest_dse_summary_2026-07-15.json`
+- `sim/results/onchip_7b_latest_2026-07-16.json`
+- `sim/results/onchip_7b_dse_summary_2026-07-16.json`
 
 ## 7. 测试与 Signoff 基线
 
@@ -172,15 +190,18 @@ Systolic 128×128@1.2GHz、L2=1MB 的 WC 差异较明显：
 
 当前基线：
 
-- 125 tests passed；
+- 126 tests passed；
 - Engine admission audit：10/10 Engine 通过；
 - canonical 计算主路径 statement coverage 97%、branch coverage 85%；
-- 场景 A 和 Agent 全量搜索 invalid config 均为 0；
+- 场景 A、Agent 和场景 B 全量搜索 invalid config 均为 0；
 - Framework computational core：PASS；
 - Full Framework：CONDITIONAL PASS；
 - 场景 A architecture exploration：PASS；
 - 场景 A product：NOT SIGNED；
 - Agent：INFEASIBLE；
+- 场景 B raw exploration：PASS；
+- 场景 B comparison-ready：INFEASIBLE；
+- 场景 B product：NOT SIGNED；
 - 当前没有 M3/M4 Engine。
 
 正式变更至少执行：
@@ -206,6 +227,7 @@ git diff --check
 | ARC-BUG-004 | CLOSED | Windows GBK stdout 导致 CLI 崩溃 | `2897dff` |
 | ARC-BUG-005 | CLOSED | WC PPA 成本缺失、报告合并 ON/OFF | `2ddcccf` |
 | ARC-BUG-006 | CLOSED | Systolic WC pair 缺少单调 fallback | `2ddcccf` |
+| ARC-BUG-007 | CLOSED | On-chip memory 面积耦合突破额定 500GB/s | `38409d8` |
 
 新增缺陷必须先登记编号、复现、影响、修复和 regression。P0/P1 在目标分支发布前必须
 `CLOSED`；模型精度缺口和软件 Bug 不要混用同一状态。
@@ -279,7 +301,7 @@ Agent 名义全量搜索：
    工作负载约束，不要先扩大 MAC array；
 5. **FSA 系列证据升级**：保留 paper-faithful reference 与 FSA-inspired Engine 的
    区别；完成独立周期/PPA/RTL 证据后再申请 M2；
-6. **场景 B 正式报告**：按具身智能低时延契约独立 DSE 和 Signoff；
+6. **场景 B 收敛**：校准 OFSA fused-attention、验证 INT2 精度、补功耗上限和 guardband；
 7. **报告流水线**：将六角运行和 summary/Markdown 生成固化为稳定脚本，减少手工
    报告漂移和十几 MB JSON 的脆弱快照；
 8. **跨平台与覆盖率**：补 Linux、CLI orchestration、requirements/preflight、CV

@@ -1,7 +1,7 @@
 # Arc Model Bug Tracker
 
-> Tracker revision: 1.4
-> Last updated: 2026-07-15
+> Tracker revision: 1.5
+> Last updated: 2026-07-16
 > Scope: Arc Model framework、NPU Engine、DSE、场景配置、报告与可复现性
 
 本文档是与代码一起版本化的 **Signoff 缺陷台账**。GitHub Issue 用于讨论、
@@ -83,9 +83,10 @@ NEW -> TRIAGED -> IN_PROGRESS -> FIXED -> VERIFIED -> CLOSED
 | ARC-BUG-004 | P1 | CLOSED | Windows CLI | GBK stdout 导致 DSE 输出前崩溃 | 已在 `2897dff` 合入并关闭 |
 | ARC-BUG-005 | P1 | CLOSED | WC PPA/reporting | WC 成本缺失且 ON/OFF 被合并 | 已在 `2ddcccf` 合入并关闭 |
 | ARC-BUG-006 | P1 | CLOSED | Systolic WC scheduler | WC pair 缺少单调 fallback | 已在 `2ddcccf` 合入并关闭 |
+| ARC-BUG-007 | P0 | CLOSED | On-chip memory | 面积耦合带宽超过额定 500 GB/s | 已在 `38409d8` 合入并关闭 |
 
-当前没有 `NEW`、`TRIAGED`、`IN_PROGRESS` 或 `REOPENED` 的 P0/P1；六项修复及
-回归测试已由提交 `2897dff` 和 `2ddcccf` 合入目标功能分支，状态均为 `CLOSED`。
+当前没有 `NEW`、`TRIAGED`、`IN_PROGRESS` 或 `REOPENED` 的 P0/P1；七项修复及
+回归测试已由提交 `2897dff`、`2ddcccf` 和 `38409d8` 合入目标功能分支，状态均为 `CLOSED`。
 
 ## 5. 缺陷记录
 
@@ -209,6 +210,26 @@ NEW -> TRIAGED -> IN_PROGRESS -> FIXED -> VERIFIED -> CLOSED
 | Commit / GitHub Issue | `2ddcccf` / not created |
 | Signoff disposition | Closed in target branch; monotonic fallback is a permanent regression gate |
 
+### ARC-BUG-007 — On-chip area coupling exceeded rated memory bandwidth
+
+| Field | Content |
+|---|---|
+| Severity / Status | P0 / CLOSED |
+| Detected / Verified | 2026-07-16 / 2026-07-16 |
+| Component / Owner | `sim/dse/memory.py`, Scenario B / Arc Model maintainer |
+| Affected versions | v3.7 and earlier area-coupled on-chip-memory results |
+| Detected by | Scenario B DSE physical-ceiling review |
+| Reproduction | Run `onchip_7b`; candidates whose logic area exceeds 66.67 mm² report bandwidth above the configured 500 GB/s |
+| Expected | Effective bandwidth is `min(logic area × 7.5 GB/s/mm², rated 500 GB/s)` |
+| Actual | Coupling replaced the rated value with `logic area × 7.5`, producing 682.5–1383.75 GB/s |
+| Root cause | `couple_on_chip_bandwidth()` modeled the area floor but omitted the configured interface ceiling |
+| Impact | Inflated Decode TPS, reduced TTFT, changed Scenario B ranking, and invalidated the first 2026-07-16 run |
+| Fix | Preserve `rated_bandwidth_gbps` and cap area-derived bandwidth before evaluation and power accounting |
+| Regression | `test_onchip_area_coupling_does_not_exceed_rated_bandwidth`; corrected full Scenario B DSE; 126-test regression |
+| Evidence | `sim/results/onchip_7b_latest_2026-07-16.json`, `reports/scenario-b-onchip-7b-dse-2026-07-16.md` |
+| Commit / GitHub Issue | `38409d8` / not created |
+| Signoff disposition | Closed; invalid first run was overwritten and is not an authoritative artifact |
+
 ## 6. 新 Bug 登记模板
 
 复制以下内容到本文件末尾，同时创建 GitHub Issue：
@@ -253,3 +274,4 @@ NEW -> TRIAGED -> IN_PROGRESS -> FIXED -> VERIFIED -> CLOSED
 | 1.2 | 2026-07-15 | 登记并验证 ARC-BUG-005；WC ON/OFF 独立建模与报告 |
 | 1.3 | 2026-07-15 | 登记并验证 ARC-BUG-006；Systolic WC 调度增加单调 fallback |
 | 1.4 | 2026-07-15 | `2ddcccf` 合入 WC 修复，ARC-BUG-005/006 更新为 CLOSED |
+| 1.5 | 2026-07-16 | `38409d8` 合入带宽封顶修复，ARC-BUG-007 更新为 CLOSED |

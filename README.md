@@ -49,8 +49,10 @@ Linux/macOS 请将 `.venv\Scripts\python` 换成 `.venv/bin/python`。
   875-token 增量 append、214-token 输出和 32K 最大上下文；保持 batch=1，
   4GB LPDDR 容量必须容纳 INT4 权重、FP16 KV 和运行时预留。TTFT≤2s 与
   Prefill TPS≥500 是待本地产品 trace 校准的设计目标，TTFT≤5s 是暂定硬上限。
-- **场景 B：具身智能**（`onchip_7b`）。高带宽内存和更长上下文，保留明确的
-  TTFT ≤200ms 实时约束；性能和时延达标优先于低成本。
+- **场景 B：具身智能**（`onchip_7b`）。Qwen2.5-7B、1024-token prompt、
+  5GB on-chip 3D DRAM，额定带宽 500GB/s；Decode TPS≥100、TTFT≤200ms、
+  area≤150mm²。当前 raw exploration 由 M1 `os_systolic_fused_attention`
+  达标，M2 comparison-ready 仍不可行，详见场景 B 正式报告。
 
 场景 A 与场景 B 使用不同的约束契约，不应直接复用同一套推荐排序结论。
 
@@ -117,8 +119,10 @@ DSE 先执行硬约束过滤，再优先选择满足 `targets` 的候选，最�
   和关闭证据；GitHub Bug Issue 必须与该台账互相链接。
 - `reports/engine-admission-and-signoff-test-2026-07-15.md`：v3.7 Engine
   inventory、准入测试、覆盖率和场景 Signoff 结果。
-- `reports/lpddr5-latest-dse-2026-07-15.md`：当前 v3.7 模型的 LPDDR5
-  场景 A、Agent 子场景及 75%/85%/90% 带宽效率角完整 DSE 报告。
+- `reports/lpddr5-latest-dse-2026-07-15.md`：v3.7 LPDDR5 场景 A、Agent
+  子场景及 75%/85%/90% 带宽效率角完整 DSE 报告。
+- `reports/scenario-b-onchip-7b-dse-2026-07-16.md`：v3.8 场景 B 全量 DSE、
+  物理上限复核、Engine/WC 变体对比及研究基线。
 - `references/`：面积等模型参数的来源。
 - `reports/`：历史搜索报告；历史数值不等于当前版本的可复现结论。
 
@@ -133,7 +137,7 @@ DSE 先执行硬约束过滤，再优先选择满足 `targets` 的候选，最�
 - OS Systolic 使用独立的 M×N 空间映射、K 时间累加 wavefront 模型；不再复用 Block 周期，分析结果会标记尚未校准的 transposer、SRAM bank conflict 与 RTL timing。
 - 原始 FSA 使用上游 RTL 调度作论文参考外推；整机当前为 M1，进入 Raw Exploration。
 - `block_fused_attention` 与 `os_systolic_fused_attention` 在现有 Block/OS 上引入 FSA 启发的融合 Attention；Projection/FFN 复用各自基线，融合周期和增量 PPA 在 RTL 校准前保持 M1，只进入 Raw Exploration。
-- On-chip memory 带宽与逻辑 die 面积耦合。
+- On-chip memory 带宽与逻辑 die 面积耦合，并以场景配置的额定接口带宽封顶。
 - 输出记录场景、配置、模型版本哈希和分项周期，便于复核。
 - PPA 仍是分析估算；在获得 Func/RTL/综合/硅后数据后应通过版本化校准数据更新，而不是复制实现代码。
 
