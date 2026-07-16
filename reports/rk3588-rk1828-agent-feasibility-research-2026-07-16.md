@@ -2,6 +2,7 @@
 
 日期：2026-07-16
 状态：公开资料研究与模型推算，尚未完成实板 Signoff
+版本：v1.1（补充双芯片算力分工、Prefix hit/miss 与 DSE 建模缺口）
 
 ## 1. 结论
 
@@ -11,10 +12,10 @@ RK3588 + RK1828 的系统分工与场景 B 很接近：RK3588 负责 Linux、Age
 
 | 验收对象 | 当前合同 | 调研结论 |
 |---|---|---|
-| `lpddr5_3b_agent` | Qwen2.5-3B、30K cached prefix + 875 append、32K context、Decode TPS ≥20、TTFT 硬上限 5s/目标 2s | **有条件可行，值得实板验证**。容量明确可行；按公开短上下文实测校准，Decode 约 42–60 TPS，TTFT 中心估计约 1.39s，但公开资料没有 30K+875 实测，不能直接 Signoff。 |
+| `lpddr5_3b_agent` | Qwen2.5-3B、30K cached prefix + 875 append、32K context、Decode TPS ≥20、TTFT 硬上限 5s/目标 2s | **仅在暖 Session、30K Prefix 已命中时有条件可行**。容量明确可行；按公开短上下文实测校准，Decode 约 42–60 TPS，增量 Prefill TTFT 中心估计约 1.39s。若 Prefix miss 后重算完整 30K，估计需 16.6–34.8s，不能满足合同。 |
 | `onchip_7b` 场景 B | Qwen2.5-7B、1024 prompt、Decode TPS ≥100、TTFT ≤200ms | **不满足当前硬约束**。公开数据只有 128-token 输入：70.26 TPS 已低于 100；158.06ms TTFT 不能外推为 1024-token 达标，按同一实测点校准约为 1.28s。 |
 
-因此，这套双芯片方案可以作为 Arc Model 的重要外部产品校准点，但不能写成“场景 B 已经被商用方案证明可行”。更准确的结论是：**它很可能满足 3B 长上下文 Agent 的硬约束，但不能满足当前 7B/1024/100TPS/200ms 的场景 B 合同。**
+因此，这套双芯片方案可以作为 Arc Model 的重要外部产品校准点，但不能写成“场景 B 已经被商用方案证明可行”。更准确的结论是：**它可能满足 3B 长上下文 Agent 的暖缓存路径；整体 Agent 是否满足取决于 Prefix Cache 的可靠持久化和 miss 处置；当前 7B/1024/100TPS/200ms 的场景 B 合同则不能满足。**
 
 ## 2. 调研边界与证据等级
 
@@ -41,7 +42,21 @@ RK1828 数据手册给出 20 TOPS、INT4/INT8/INT16/FP8/FP16/BF16 混合计算�
 - RK3588 主内存与 RK1828 5GB 内存不是统一内存；
 - 把冷 KV 溢出到 RK3588 LPDDR 需要显式的软件支持，会引入 PCIe 流量和延迟；当前公开 RKNN3 资料没有给出这种分层 KV 的性能保证。
 
-### 3.2 Agent 软件能力
+### 3.2 RK3588 的 6 TOPS 能否参与 LLM Prefill
+
+RK3588 官方规格为 6 TOPS NPU，RK1828 为最高 20 TOPS INT8。Forlinx 的公开系统架构把 RK3588 定义为 Host：承担 CPU 调度、轻量 AI、外设和视频；RK182X Device 承担 NPU 模型推理和高计算量操作。LLM Session API 还明确把 embedding callback 标为 Host Execute，但没有说明它会调用 RK3588 NPU。
+
+因此应把“Agent 系统”和“LLM 计算图”分开理解：
+
+- 整个 Agent 系统运行在两颗芯片上；RK3588 负责编排、工具、I/O、感知和前后处理；
+- Qwen2.5-3B/7B 的 Projection、FFN、Attention、Prefill 和 Decode 按公开软件路径完整运行在 RK1828；
+- RK3588 的 6 TOPS 可以并行执行 YOLO、深度估计、姿态、音频或独立视觉编码器，间接释放 RK1828，但不会自动缩短同一个 LLM 的 TTFT；
+- 没有公开证据表明 RKNN3 支持把一个 LLM 自动切分到 RK3588 与 RK1828 上进行 tensor/pipeline parallel；RKNN3 Toolkit 还明确与 RK3588 使用的 RKNN Toolkit2 不兼容；
+- 即使手工拆分计算图，两侧独立内存和 PCIe 2.1 x1 传输也会引入同步与中间激活开销，不能把峰值算力简单相加为 26 TOPS。
+
+结论：本报告的 LLM Prefill/Decode 可行性必须按 RK1828 单独承担评估。RK3588 的 NPU 是系统级并行算力，不是当前公开 LLM 路径中的算力池成员。
+
+### 3.3 Agent 软件能力
 
 RKNN3 V1.0.0 官方说明已经支持 mRoPE、Function Call、数据传输与推理并行；公开 Session API 包含同步/异步运行、Chat Template 和清理 KV Cache。最新版公开 RKNN3 Toolkit V1.0.4 又增加了 Session pause/resume、KV Cache import/export、多 Session 并行和 streaming weight loading。
 
@@ -87,19 +102,38 @@ Arc Model 中 Qwen2.5-3B 使用 3.09B 参数、INT4 权重、36 层、2 个 KV h
 
 保持同等效率时中心估计为 `158 / 2.651 ≈ 59.6 TPS`；再施加 30% 长上下文效率折损约为 41.7 TPS，仍高于 20 TPS 硬门槛。该推导假设权重/KV 主要流量与短上下文实测具有可比性；由于厂商没有公布实际 DRAM 带宽、缓存命中和 30K kernel 效率，这只能判为“高概率满足”，不能判为实测 PASS。
 
-### 5.3 Prefill/TTFT
+### 5.3 Prefix hit：增量 Prefill/TTFT
 
 以 128-token TTFT=83.44ms 校准，短 prompt 对应的近似有效计算吞吐约 9.51TOP/s。30K cached prefix + 875 append 的粗略计算量为：
 
 - 投影/FFN：`2 × 3.09B × 875 ≈ 5.41TOP`；
 - 对 30K prefix 的 QK/PV attention：约 7.85TOP；
-- 合计约 13.26TOP，对应中心估计 **1.39s**。
+- 合计约 13.26TOP。
 
-这相当于约 629 prefill token/s，名义上同时满足 TTFT≤2s 和 Prefill≥500 token/s 设计目标；但 20%–30% 的长序列 kernel、PCIe、调度和系统 guardband 就会把结果推到 1.7–2.0s 附近。因此：
+| 口径 | 有效吞吐/假设 | TTFT |
+|---|---:|---:|
+| 20 TOPS INT8 峰值理论下限 | 20 TOP/s | 0.66s |
+| 公开 128-token 实测校准中心值 | 9.51 TOP/s | **1.39s** |
+| 2s 设计目标最低要求 | 6.63 TOP/s | 2.00s |
+| 5s 硬上限最低要求 | 2.65 TOP/s | 5.00s |
 
-- TTFT≤5s 硬上限：高概率满足；
-- TTFT≤2s 与 Prefill≥500：边界可行，必须测 P95；
-- 如果 30K prefix 不能复用而需要每步重新 prefill，则方案不满足当前 Agent 合同。
+20 TOPS 是 INT8 峰值，不是 W4A16 长 Attention 的持续性能。2s 目标要求长上下文有效吞吐至少保持短 prompt 校准值的约 70%，只容许约 30% 效率下降；5s 硬约束只需保持约 28%，余量更大。因此，暖缓存路径可判为“5s 高概率满足、2s 边界可行”，但必须以 30K+875 的 P95 实板数据确认。
+
+### 5.4 Prefix miss：完整 30K 重算
+
+如果 30K Prefix 没有命中，需要 Prefill 30,875 tokens。按同一模型规格估算：
+
+- Projection/FFN 与 causal Attention 合计约 **331.37 TOP**；
+- 即使按 20 TOPS 峰值，理论下限也约 **16.57s**；
+- 按 9.51 TOP/s 的公开短 prompt 校准值，中心估计约 **34.84s**。
+
+所以 Prefix miss 路径明确不能满足 2s/5s。当前场景声明 `prefix_cache_hit_rate: 0.90` 和 16 个代表 Agent steps，意味着期望约 1.6 个 miss；若 miss 都重算完整 30K，则 P95 会落入 miss 路径，不能同时声称“90% 命中率”和“端到端 P95 TTFT≤5s”。必须采取以下一种合同：
+
+1. 将 TTFT 明确为 warm-session、Prefix-hit 条件指标，另报 cold/miss latency；
+2. 把可导致完整重算的 miss 率降到低于 P95 尾部，并留出统计裕量；
+3. 通过持久化 KV、预热、KV import/export 或其他机制，使 miss 不等于完整 30K 重算。
+
+代码复核发现，当前 `prefix_cache_hit_rate` 只存在于场景配置和测试断言，没有进入 `WorkloadSpec` 或 DSE evaluator；当前 Agent DSE 实际固定计算 30K Prefix 已缓存的 hit 路径。该问题已登记为 `ARC-BUG-008`，在修复前所有 Agent TTFT/Prefill 结论必须标为 **warm-cache conditional**，不得作为整体 Agent P95 Signoff。
 
 ## 6. 当前场景 B（7B/1024）评估
 
@@ -123,10 +157,11 @@ Arc Model 中 Qwen2.5-3B 使用 3.09B 参数、INT4 权重、36 层、2 个 KV h
 
 1. 公开性能只有 128-token 输入，缺少 30K/32K 曲线；
 2. Prefix/KV import/export 的功能存在，但 90% 命中率、导入时延和跨 Session 复用未测；
-3. 长 attention 的实际 kernel 效率和内置 DRAM 有效带宽未公开；
-4. VLM 公开数据没有覆盖持续视频、多摄像头、控制回路和 LLM 并发；
-5. 功耗、温升、降频、BOM 与芯片面积缺少公开可审计数据；
-6. W4A16 的 GSM8K 精度不能代表 Agent Function Call 和长上下文精度。
+3. `prefix_cache_hit_rate` 当前未进入 DSE 性能聚合，已登记为 `ARC-BUG-008`；
+4. 长 attention 的实际 kernel 效率和内置 DRAM 有效带宽未公开；
+5. VLM 公开数据没有覆盖持续视频、多摄像头、控制回路和 LLM 并发；
+6. 功耗、温升、降频、BOM 与芯片面积缺少公开可审计数据；
+7. W4A16 的 GSM8K 精度不能代表 Agent Function Call 和长上下文精度。
 
 ## 8. 实板验证与 Signoff 建议
 
@@ -153,11 +188,13 @@ Arc Model 中 Qwen2.5-3B 使用 3.09B 参数、INT4 权重、36 层、2 个 KV h
 | 项目 | Signoff 标准 |
 |---|---|
 | 容量 | 32K context 无 OOM，峰值保留明确安全余量 |
-| Prefix | 16-step trace 的有效缓存命中率 ≥90%，且无错误复用 |
-| Decode | P95 ≥20 TPS |
-| TTFT 硬约束 | P95 ≤5s |
-| TTFT 目标 | P95 ≤2s；否则只判硬约束 PASS、目标 MISS |
-| Prefill 目标 | P95 ≥500 token/s |
+| Prefix hit/miss | 分别报告 hit rate、warm TTFT、cold/miss TTFT 和 KV import/export 时延；不得只报加权平均 |
+| Prefix 可靠性 | 若整体 P95 要覆盖全部请求，完整重算型 miss 必须落在 P95 尾部之外并留统计裕量；90% 命中不足以支持该口径 |
+| Decode | Warm-session P95 ≥20 TPS |
+| Warm TTFT 硬约束 | Prefix-hit 条件下 P95 ≤5s |
+| Warm TTFT 目标 | Prefix-hit 条件下 P95 ≤2s；否则只判硬约束 PASS、目标 MISS |
+| Warm Prefill 目标 | Prefix-hit 条件下 P95 ≥500 token/s |
+| Cold/miss TTFT | 独立报告并由应用定义上限；修复 `ARC-BUG-008` 前不参与整体 Signoff |
 | 稳态 | 30 分钟内无崩溃，热降频后的 TPS/TTFT 仍通过硬约束 |
 | 精度 | Function Call、长上下文和代表 Agent 任务通过独立精度门槛 |
 | 成本/功耗 | 在场景 B 明确系统 BOM 和功耗上限后补签，当前不可省略为“默认通过” |
@@ -167,11 +204,13 @@ Arc Model 中 Qwen2.5-3B 使用 3.09B 参数、INT4 权重、36 层、2 个 KV h
 1. 把 RK3588 + RK1828 作为“外部产品校准点”，不是 Arc Engine 候选本身；Arc DSE 应对标其 5GB 容量、短上下文实测 TPS/TTFT 和双芯片互联代价。
 2. 外部 benchmark 必须携带模型、量化、input/new token、SDK、连接方式和性能模式；不能继续用 `tps_7b: [59, 180]` 这类缺少 workload 元数据的宽范围判断达标。
 3. 为 `onchip_7b` 增加 128/1024/长 context 校准曲线；在拿到 RK1828 实板数据前，70.26 TPS@128 只能用于短上下文交叉检查。
-4. 给 Agent 模型增加 prefix-cache policy、KV import/export/迁移开销和 inter-chip traffic 字段；当前 DSE 默认模型/KV 在同一 memory domain，不能直接代表双芯片系统。
-5. 场景 B 的 100TPS/200ms 合同保持不变，除非有应用需求证据，而不是为了让 RK1828 基线“看起来达标”而放宽。
+4. 修复 `ARC-BUG-008`：增加 Prefix hit/miss 双路径、warm/cold 指标、分布与 P95 判定；在此之前 Agent 结果只表示 warm-cache conditional。
+5. 给 Agent 模型增加 prefix-cache policy、KV import/export/迁移开销和 inter-chip traffic 字段；当前 DSE 默认模型/KV 在同一 memory domain，不能直接代表双芯片系统。
+6. 场景 B 的 100TPS/200ms 合同保持不变，除非有应用需求证据，而不是为了让 RK1828 基线“看起来达标”而放宽。
 
 ## 10. 主要来源
 
+- [Rockchip RK3588 产品规格（6 TOPS NPU）](https://www.rock-chips.com/a/en/products/RK35_Series/2022/0926/1660.html)
 - [Rockchip RK1820/RK1828 Datasheet Rev 1.5](https://rockchip.fr/RK182X%20datasheet%20V1.5.pdf)
 - [Rockchip：RKNN3 SDK V1.0.0 发布说明](https://www.rock-chips.com/a/cn/news/rockchip/2026/0309/2163.html)
 - [airockchip/rknn3-toolkit（V1.0.4 能力与变更）](https://github.com/airockchip/rknn3-toolkit)

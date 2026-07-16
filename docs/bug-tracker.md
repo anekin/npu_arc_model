@@ -1,6 +1,6 @@
 # Arc Model Bug Tracker
 
-> Tracker revision: 1.5
+> Tracker revision: 1.6
 > Last updated: 2026-07-16
 > Scope: Arc Model framework、NPU Engine、DSE、场景配置、报告与可复现性
 
@@ -84,9 +84,9 @@ NEW -> TRIAGED -> IN_PROGRESS -> FIXED -> VERIFIED -> CLOSED
 | ARC-BUG-005 | P1 | CLOSED | WC PPA/reporting | WC 成本缺失且 ON/OFF 被合并 | 已在 `2ddcccf` 合入并关闭 |
 | ARC-BUG-006 | P1 | CLOSED | Systolic WC scheduler | WC pair 缺少单调 fallback | 已在 `2ddcccf` 合入并关闭 |
 | ARC-BUG-007 | P0 | CLOSED | On-chip memory | 面积耦合带宽超过额定 500 GB/s | 已在 `38409d8` 合入并关闭 |
+| ARC-BUG-008 | P1 | TRIAGED | Agent workload/evaluator | Prefix cache hit rate 未进入 DSE 性能判定 | 阻止 Agent 端到端 Scenario Signoff；warm-path 研究须显式标注 |
 
-当前没有 `NEW`、`TRIAGED`、`IN_PROGRESS` 或 `REOPENED` 的 P0/P1；七项修复及
-回归测试已由提交 `2897dff`、`2ddcccf` 和 `38409d8` 合入目标功能分支，状态均为 `CLOSED`。
+当前有一项开放 P1：`ARC-BUG-008`。它不影响场景 A、场景 B 或 Engine admission，但阻止 Agent 端到端 Scenario Signoff。此前七项修复及回归测试已由提交 `2897dff`、`2ddcccf` 和 `38409d8` 合入目标功能分支，状态均为 `CLOSED`。
 
 ## 5. 缺陷记录
 
@@ -229,6 +229,26 @@ NEW -> TRIAGED -> IN_PROGRESS -> FIXED -> VERIFIED -> CLOSED
 | Evidence | `sim/results/onchip_7b_latest_2026-07-16.json`, `reports/scenario-b-onchip-7b-dse-2026-07-16.md` |
 | Commit / GitHub Issue | `38409d8` / not created |
 | Signoff disposition | Closed; invalid first run was overwritten and is not an authoritative artifact |
+
+### ARC-BUG-008 — Prefix cache hit rate 未进入 DSE 性能判定
+
+| 字段 | 内容 |
+|---|---|
+| Severity / Status | P1 / TRIAGED |
+| Detected / Verified | 2026-07-16 / — |
+| Component / Owner | `sim/config/scenarios.yaml`, `sim/dse/workload.py`, `sim/dse/evaluator.py` / Arc Model maintainer |
+| Affected versions | v3.7/v3.8 Agent 结果及截至 `47f56d3` 的当前分支 |
+| Detected by | RK3588 + RK1828 大量 Prefill 可行性复核 |
+| Reproduction | 搜索 `prefix_cache_hit_rate` 的运行时使用；该字段只出现在场景配置和测试断言，DSE 始终以 `cached_prefix_tokens=30000` 计算 hit 路径 |
+| Expected | Agent DSE 分别评估 Prefix hit 与 miss，并输出 warm/cold、分布和 P95；或明确声明只评估 warm path |
+| Actual | 0.90 命中率未进入 WorkloadSpec/evaluator，TTFT/Prefill 结果只代表 30K Prefix 已命中的条件路径 |
+| Root cause | `agent_workload` 元数据没有转换成 canonical workload 概率/状态，也没有进入场景约束与报告语义 |
+| Impact | 可能把 warm-path TTFT 误当作整体 Agent P95；90% 命中且 miss 重算 30K 时，P95 必然落入 16.6–34.8s miss 路径。当前 LPDDR Agent 即使 hit 也不可行，因此原 INFEASIBLE 不变；外部 RK1828 可行性和未来 Agent Signoff 受阻 |
+| Fix | 待实现：hit/miss 双路径、KV 持久化/import-export 开销、warm/cold 指标、概率和 percentile 判定 |
+| Regression | 待新增：hit_rate=0/1 边界、0.9 分布、P95 落点、报告字段和 Signoff gate 测试 |
+| Evidence | `reports/rk3588-rk1828-agent-feasibility-research-2026-07-16.md`、`sim/config/scenarios.yaml`、`sim/dse/evaluator.py` |
+| Commit / GitHub Issue | pending / not created |
+| Signoff disposition | 阻止 Agent 端到端 Scenario Signoff；显式标为 warm-cache conditional 的架构研究可以继续 |
 
 ## 6. 新 Bug 登记模板
 

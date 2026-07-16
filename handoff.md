@@ -184,7 +184,13 @@ Systolic 128×128@1.2GHz、L2=1MB 的 WC 差异较明显：
 - 当前 7B/1024 场景 B 不通过：70.26 TPS 低于 100，1024 prompt TTFT 推算约
   1.28s，高于 200ms；
 - RKNN3 V1.0.4 有 KV Cache import/export、session pause/resume 和多 session 支持，
-  但 30K 长上下文、90% prefix hit、功耗和稳态温升没有公开 Signoff 数据。
+  但 30K 长上下文、90% prefix hit、功耗和稳态温升没有公开 Signoff 数据；
+- Agent 系统跨两芯片运行，但公开路径中的 LLM Prefill/Decode 由 RK1828 承担；RK3588
+  6 TOPS 用于调度和独立轻量 AI，不能与 RK1828 自动合并为单模型 26 TOPS；
+- Prefix hit 的 30K+875 Prefill 约 13.26 TOP、中心估计 1.39s；完整 30K miss 约
+  331.37 TOP、估计 16.6–34.8s；
+- `prefix_cache_hit_rate=0.90` 当前没有进入 DSE evaluator，已登记 `ARC-BUG-008`；
+  修复前 Agent TTFT/Prefill 只表示 warm-cache conditional。
 
 完整结果：
 
@@ -240,6 +246,7 @@ git diff --check
 | ARC-BUG-005 | CLOSED | WC PPA 成本缺失、报告合并 ON/OFF | `2ddcccf` |
 | ARC-BUG-006 | CLOSED | Systolic WC pair 缺少单调 fallback | `2ddcccf` |
 | ARC-BUG-007 | CLOSED | On-chip memory 面积耦合突破额定 500GB/s | `38409d8` |
+| ARC-BUG-008 | TRIAGED | Agent Prefix cache hit rate 未进入 DSE 性能判定 | pending |
 
 新增缺陷必须先登记编号、复现、影响、修复和 regression。P0/P1 在目标分支发布前必须
 `CLOSED`；模型精度缺口和软件 Bug 不要混用同一状态。
@@ -309,8 +316,8 @@ Agent 名义全量搜索：
    `product_eligible`，避免名义 0.15% 裕量成为产品推荐；
 3. **WC PPA 校准**：明确 dual register/SRAM、读写端口、时钟和 leakage，替换
    +15%/+10%/+5% proxy；
-4. **Agent 可行性研究**：按 RK3588 + RK1828 调研报告的 30K+875、16-step trace
-   实板验证；把 Prefix/KV policy、跨芯片流量和 cache import/export 开销纳入模型；
+4. **Agent 可行性研究**：先修复 `ARC-BUG-008`，建立 Prefix hit/miss 双路径与
+   warm/cold/P95 语义；再按 RK3588 + RK1828 报告的 30K+875、16-step trace 实板验证；
 5. **FSA 系列证据升级**：保留 paper-faithful reference 与 FSA-inspired Engine 的
    区别；完成独立周期/PPA/RTL 证据后再申请 M2；
 6. **场景 B 收敛**：校准 OFSA fused-attention、验证 INT2 精度、补功耗上限和 guardband；
