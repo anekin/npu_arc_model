@@ -174,6 +174,18 @@ Systolic 128×128@1.2GHz、L2=1MB 的 WC 差异较明显：
   TTFT 251.80ms、145.7mm²、76.53W，因 TTFT 超限而 FAIL；
 - ARC-BUG-007 已将面积耦合带宽封顶到额定 500GB/s；首次无封顶运行无效。
 
+### 6.4 RK3588 + RK1828 外部产品校准
+
+- 调研报告：`reports/rk3588-rk1828-agent-feasibility-research-2026-07-16.md`；
+- 公开短上下文实测：Qwen2.5-3B 102.01 TPS/83.44ms TTFT，Qwen2.5-7B
+  70.26 TPS/158.06ms TTFT，测试输入和输出均为 128 tokens；
+- 3B/30K prefix +875 append/32K Agent 容量约 3.009GB，可放入 RK1828 5GB；
+  校准推算 Decode 约 42–60 TPS、TTFT 中心约 1.39s，结论为“有条件可行、待实板”；
+- 当前 7B/1024 场景 B 不通过：70.26 TPS 低于 100，1024 prompt TTFT 推算约
+  1.28s，高于 200ms；
+- RKNN3 V1.0.4 有 KV Cache import/export、session pause/resume 和多 session 支持，
+  但 30K 长上下文、90% prefix hit、功耗和稳态温升没有公开 Signoff 数据。
+
 完整结果：
 
 - `sim/results/lpddr5_3b_latest_2026-07-15.json`
@@ -297,8 +309,8 @@ Agent 名义全量搜索：
    `product_eligible`，避免名义 0.15% 裕量成为产品推荐；
 3. **WC PPA 校准**：明确 dual register/SRAM、读写端口、时钟和 leakage，替换
    +15%/+10%/+5% proxy；
-4. **Agent 可行性研究**：优先分析 memory channels/bandwidth、Prefix/KV policy、
-   工作负载约束，不要先扩大 MAC array；
+4. **Agent 可行性研究**：按 RK3588 + RK1828 调研报告的 30K+875、16-step trace
+   实板验证；把 Prefix/KV policy、跨芯片流量和 cache import/export 开销纳入模型；
 5. **FSA 系列证据升级**：保留 paper-faithful reference 与 FSA-inspired Engine 的
    区别；完成独立周期/PPA/RTL 证据后再申请 M2；
 6. **场景 B 收敛**：校准 OFSA fused-attention、验证 INT2 精度、补功耗上限和 guardband；

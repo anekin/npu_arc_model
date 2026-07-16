@@ -123,6 +123,8 @@ DSE 先执行硬约束过滤，再优先选择满足 `targets` 的候选，最�
   子场景及 75%/85%/90% 带宽效率角完整 DSE 报告。
 - `reports/scenario-b-onchip-7b-dse-2026-07-16.md`：v3.8 场景 B 全量 DSE、
   物理上限复核、Engine/WC 变体对比及研究基线。
+- `reports/rk3588-rk1828-agent-feasibility-research-2026-07-16.md`：RK3588 + RK1828
+  双芯片对 3B Agent 与当前 7B 场景 B 合同的公开数据校准、差距分析和实板 Signoff 方案。
 - `references/`：面积等模型参数的来源。
 - `reports/`：历史搜索报告；历史数值不等于当前版本的可复现结论。
 
