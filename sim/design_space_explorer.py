@@ -130,6 +130,7 @@ def _apply_scenario(base: Dict[str, Any], scenario_name: str | None) -> Dict[str
             cfg["on_chip_memory"] = {
                 "capacity_gb": float(memory["capacity_gb"]),
                 "bandwidth_gbps": float(memory.get("bandwidth_gbps", 0.0)),
+                "rated_bandwidth_gbps": float(memory.get("bandwidth_gbps", 0.0)),
                 "bw_per_mm2_gbps": float(memory.get("bw_per_mm2_gbps", 0.0)),
                 "stack_area_mm2": float(memory.get("stack_area_mm2", 0.0)),
                 "stack_power_per_gbps_w": float(memory.get("stack_power_per_gbps_w", 0.015)),

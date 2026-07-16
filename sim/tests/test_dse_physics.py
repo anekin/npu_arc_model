@@ -3,7 +3,11 @@ import math
 
 from dse.constraints import evaluate_constraints
 from dse.evaluator import evaluate_candidate, estimate_layer
-from dse.memory import bandwidth_bytes_per_cycle, estimate_memory_footprint
+from dse.memory import (
+    bandwidth_bytes_per_cycle,
+    couple_on_chip_bandwidth,
+    estimate_memory_footprint,
+)
 from dse.workload import load_workload
 from engine.mac_engine import create_engine
 from engine.ppa_model import AreaModel, PowerModel
@@ -69,6 +73,22 @@ def test_onchip_bandwidth_is_area_coupled():
     large_cfg["mac_engine"]["array_width"] = 256
     large = evaluate_candidate(large_cfg, AreaModel(large_cfg), PowerModel(large_cfg), None)
     assert large.bandwidth_gbps > small.bandwidth_gbps
+
+
+def test_onchip_area_coupling_does_not_exceed_rated_bandwidth():
+    cfg = {
+        "memory": {"bandwidth_gbps": 500, "dram_efficiency": 1.0},
+        "on_chip_memory": {
+            "capacity_gb": 5,
+            "bandwidth_gbps": 500,
+            "bw_per_mm2_gbps": 7.5,
+        },
+    }
+
+    assert couple_on_chip_bandwidth(cfg, logic_area_mm2=40) == 300
+    assert couple_on_chip_bandwidth(cfg, logic_area_mm2=100) == 500
+    assert cfg["memory"]["bandwidth_gbps"] == 500
+    assert cfg["on_chip_memory"]["rated_bandwidth_gbps"] == 500
 
 
 def test_all_searchable_engines_complete_candidate_evaluation():

@@ -100,7 +100,7 @@ scenarios:
   onchip_7b:
     description: "On-chip 3D DRAM + 7B 高端端侧 (VLM/VLA)"
     model: "qwen2.5-7b"
-    model_params_gb: 3.5
+    model_params_gb: 3.81     # Qwen2.5-7B 7.62B parameters at INT4
     seq_len: 1024            # VLM/VLA 长上下文
     ttft_ms_max: 200
     tps_min: 100
@@ -114,11 +114,25 @@ scenarios:
       stack_power_per_gbps_w: 0.015
       dram_efficiency: 1.0
       effective_bw_gbps: 500
+    workload:
+      prompt_tokens: 1024
+      output_tokens: 128
+      concurrent_requests: 1
+      decode_batch_size: 1
+      activation_bits: 8
+      attention_bits: 16
+      kv_bits: 16
+      causal_attention: true
     constraints:
       ttft_ms_max: 200
       tps_min: 100
       area_mm2_max: 150      # 放宽：seq_len=1024 需要大阵列
     objectives: [area_mm2, power_w, -tok_s]
+    search_space:
+      arrays: [[32, 1536], [48, 1536], [64, 1536], [80, 1536], [96, 1536], [128, 1536]]
+      weight_precision_bits: [4, 2]
+      frequencies_mhz: [800, 1000, 1200]
+      sram_l2_kb: [1024, 2048, 4096, 6144, 8192]
     components:
       required: [pcie, tsv]
       excluded: [dram_phy]

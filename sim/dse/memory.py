@@ -79,16 +79,24 @@ def estimate_memory_footprint(
 def couple_on_chip_bandwidth(
     config: Dict[str, Any], logic_area_mm2: Optional[float],
 ) -> Optional[float]:
-    """Apply the scenario's bandwidth/area coupling and return GB/s."""
+    """Apply bandwidth/area coupling without exceeding the rated interface."""
     onchip = config.get("on_chip_memory", {})
     if not onchip or float(onchip.get("capacity_gb", 0.0)) <= 0:
         return None
 
+    rated_bandwidth = float(onchip.get(
+        "rated_bandwidth_gbps", onchip.get("bandwidth_gbps", 0.0),
+    ))
+    onchip["rated_bandwidth_gbps"] = rated_bandwidth
     bw_per_mm2 = float(onchip.get("bw_per_mm2_gbps", 0.0))
     if bw_per_mm2 > 0 and logic_area_mm2 is not None:
-        bandwidth_gbps = float(logic_area_mm2) * bw_per_mm2
+        area_limited_bandwidth = float(logic_area_mm2) * bw_per_mm2
+        bandwidth_gbps = (
+            min(area_limited_bandwidth, rated_bandwidth)
+            if rated_bandwidth > 0 else area_limited_bandwidth
+        )
     else:
-        bandwidth_gbps = float(onchip.get("bandwidth_gbps", 0.0))
+        bandwidth_gbps = rated_bandwidth
 
     onchip["bandwidth_gbps"] = bandwidth_gbps
     memory = config.setdefault("memory", {})

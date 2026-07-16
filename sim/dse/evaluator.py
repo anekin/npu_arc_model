@@ -22,7 +22,7 @@ from engine.manifest import get_engine_manifest
 from models.sfu import SFUModel
 from models.vector import VectorModel
 
-ARC_VERSION = "v3.7-weight-cache-variants"
+ARC_VERSION = "v3.8-onchip-bandwidth-cap"
 
 
 def _hash(value: Any) -> str:
