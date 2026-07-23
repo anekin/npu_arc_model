@@ -1,0 +1,284 @@
+schema_version: embodied-physical-ai-requirements/v1-proposal
+executable_by_current_dse: false
+note: >
+  Requirements baseline for a CPU-hosted NPU coprocessor. Current main and
+  origin/feat/scenario-driven-dse do not yet execute this graph/temporal schema.
+
+system_boundary:
+  host_owned:
+    - sensor_interfaces
+    - isp_and_sensor_synchronization
+    - calibration_and_roi_policy
+    - graph_lifecycle_and_admission
+    - result_validation
+    - final_actuator_gating
+  npu_owned:
+    - registered_buffer_dma
+    - compiled_tensor_graph_execution
+    - bounded_async_queues
+    - priority_deadline_scheduling
+    - completion_and_fault_reporting
+  safety_controller_owned:
+    - watchdog_supervision
+    - current_position_and_foc_loops
+    - emergency_stop
+    - minimum_risk_behavior
+
+metric_rules:
+  compute_peak_required_tags:
+    - precision
+    - sparsity
+    - scope
+    - mac_or_op_counting
+  value_classes:
+    - market_source
+    - engineering_slo
+    - profile_required
+    - target_measurement
+    - unknown
+  candidate_pass_conditions:
+    - complete_compiled_graph
+    - no_unaccounted_cpu_fallback
+    - full_memory_footprint_fits
+    - quality_gate_passes
+    - mixed_load_p99_passes
+    - power_and_thermal_pass
+    - observable_fault_completion
+
+profiles:
+  embodied_compact_vla:
+    description: SmolVLA-class compact asynchronous action-chunk policy
+    provenance:
+      market_source:
+        - https://huggingface.co/blog/smolvla
+        - https://github.com/huggingface/lerobot/tree/73dbb6f43a5088583706c91fb73c6957bca5f806/src/lerobot/policies/smolvla
+        - https://huggingface.co/docs/lerobot/async
+      engineering_assumptions:
+        - compute_and_power_ranges_are_dse_search_points
+        - effective_policy_rate_depends_on_queue_low_watermark
+    graph:
+      stages:
+        - id: vision_language_backbone
+          params_b: 0.35
+          precision_sweep: [int4_int8, int8_int8]
+          input:
+            image_shape: [3, 512, 512]
+            image_count: profile_required
+            visual_tokens_per_image: 64
+        - id: flow_action_expert
+          params_b: 0.10
+          action_horizon: 50
+          action_dim: 32
+          flow_steps: 10
+      persistent_weights: true
+    temporal:
+      host_tensor_arrival_hz_sweep: [20, 30, 50]
+      policy_trigger: queue_low_watermark
+      effective_policy_hz_sweep: [1, 2, 5, 10]
+      action_execution_hz_sweep: [20, 30, 50]
+      p99_rule: 0.75_times_refill_window
+      hard_timeout_rule: before_action_queue_empty
+    transfer:
+      host_link: pcie
+      async_bidirectional_dma: required
+      bytes_h2d_per_job: profile_required
+      bytes_d2h_per_job: profile_required
+      queue_policy: mailbox_latest
+    scheduling:
+      service_classes_min: 2
+      flow_iteration_preemption: required
+      max_nonpreemptible_ms: target_measurement
+    memory:
+      physical_capacity_gb_sweep: [4, 8]
+      reference_runtime_memory_gb: 2
+      npu_reservable_gb: target_measurement
+      reserve_fraction_min: 0.20
+    architecture_search:
+      dense_int8_tops: [10, 20]
+      npu_power_w: [3, 5, 8]
+    quality:
+      task_success_min: profile_required
+      quantization_regression_max: profile_required
+
+  embodied_continuous_vla:
+    description: Pi0-class continuous-action generalist VLA
+    provenance:
+      market_source:
+        - https://www.physicalintelligence.company/download/pi0.pdf
+        - https://huggingface.co/docs/lerobot/async
+      engineering_assumptions:
+        - 5_and_10_hz_are_aggressive_replan_stress_points
+        - 250_ms_p99_is_a_project_slo_for_the_2_hz_baseline
+    graph:
+      stages:
+        - id: paligemma_vlm
+          params_b: 3.0
+          input:
+            image_count: [2, 3]
+            image_shape: profile_required
+            language_tokens: profile_required
+            proprioception_dim: profile_required
+        - id: flow_action_expert
+          params_b: 0.30
+          action_horizon: 50
+          action_dim: profile_required
+          flow_steps: 10
+      prefix_kv_cache: required
+      persistent_weights: true
+    temporal:
+      source_policy_hz:
+        at_20hz_action: 1.25
+        at_50hz_action: 2
+      policy_hz_stress_sweep: [5, 10]
+      action_execution_hz_sweep: [20, 50]
+      executed_actions_before_refill:
+        at_20hz_action: 16
+        at_50hz_action: 25
+      engineering_p99_ms_max: 250
+      hard_timeout_ms_max: 500
+    transfer:
+      host_link: pcie
+      model_weight_streaming_per_job: forbidden
+      async_bidirectional_dma: required
+      bytes_h2d_per_job: profile_required
+      bytes_d2h_per_job: profile_required
+    scheduling:
+      contexts_min: 2
+      flow_iteration_preemption: required
+      high_priority_safety_job: required
+    memory:
+      physical_capacity_gb_sweep: [8, 16, 24]
+      reference_runtime_memory_gb: 14
+      npu_reservable_gb: target_measurement
+      reserve_fraction_min: 0.20
+    architecture_search:
+      dense_int8_tops: [50, 100]
+      npu_power_w: [8, 15, 20]
+    quality:
+      task_success_min: profile_required
+      action_error_max: profile_required
+      quantization_regression_max: profile_required
+
+  embodied_dual_rate_humanoid:
+    description: Helix-class slow semantic model plus fast reactive policy
+    provenance:
+      market_source:
+        - https://www.figure.ai/news/helix
+        - https://www.figure.ai/news/helix-logistics
+        - https://www.figure.ai/news/helix-02
+      engineering_assumptions:
+        - 5_ms_is_an_action_output_period_not_proven_full_network_deadline
+        - fast_path_p99_applies_only_if_full_s1_runs_each_tick
+    graph:
+      stages:
+        - id: semantic_s2
+          params_b: 7.0
+          source_rate_hz: [7, 9]
+          priority: background
+        - id: reactive_s1
+          params_b: 0.08
+          source_output_hz: 200
+          action_chunk_horizon: unknown
+          priority: critical
+        - id: learned_s0_optional
+          params_b: 0.01
+          source_output_hz: 1000
+          placement: npu_only_after_1ms_wcet_proof
+      communication:
+        s2_to_s1: timestamped_latest_value_mailbox
+      persistent_weights: true
+    temporal:
+      s2_period_ms: [111.111, 142.857]
+      s2_engineering_p99_ms_max: 100
+      s1_action_output_period_ms: 5
+      s1_full_inference_rate_hz: profile_required
+      s1_p99_ms_max_if_full_inference_each_tick: 4
+      s1_hard_ms_max_if_full_inference_each_tick: 5
+    transfer:
+      host_link: pcie
+      bytes_h2d_per_job: profile_required
+      bytes_d2h_per_job: profile_required
+      semantic_queue_policy: mailbox_latest
+    scheduling:
+      partition_sweep: [shared_preemptive, dual_partition, dual_engine]
+      fast_path_priority: strict
+      max_nonpreemptible_ms: 1
+      response_time_analysis: required
+    memory:
+      physical_capacity_gb_sweep: [8, 16, 24, 32]
+      aggressive_int4_feasibility_capacity_gb: 5
+      npu_reservable_gb: target_measurement
+      reserve_fraction_min: 0.20
+    architecture_search:
+      dense_int8_tops: [100, 150, 200]
+      npu_power_w: [15, 30, 40]
+    quality:
+      task_success_min: profile_required
+      fast_policy_stability_gate: profile_required
+      stale_latent_tolerance_ms: profile_required
+
+  physical_ai_multijob:
+    description: AMR, industrial, and vehicle continuous-perception tensor DAG
+    provenance:
+      market_source:
+        - https://www.ti.com/lit/wp/spradb4/spradb4.pdf
+        - https://www.ti.com/product/AM69A
+        - https://docs.qualcomm.com/doc/87-83840-1/87-83840-1_REV_G_Qualcomm_Dragonwing_IQ9_Series_Platform_Product_Brief.pdf
+        - https://www.renesas.com/en/products/r-car-v4h
+      engineering_assumptions:
+        - p99_targets_are_project_acceptance_slos
+        - camera_interfaces_remain_on_host
+    graph:
+      resident_models_sweep: [4, 8]
+      model_dag: profile_required
+      per_stage_precision: profile_required
+      per_stage_trace: profile_required
+    temporal:
+      job_classes:
+        - id: critical_perception
+          period_ms: 33.333
+          engineering_p99_ms_max: 25
+          hard_timeout_ms_max: 33.333
+          queue_policy: mailbox_latest
+        - id: localization_fusion
+          period_ms: 50
+          engineering_p99_ms_max: 37.5
+          queue_policy: mailbox_latest
+        - id: inspection_auxiliary
+          period_ms_sweep: [83.333, 100]
+          engineering_p99_ms_max_sweep: [62.5, 75]
+          queue_policy: fifo_or_mailbox_by_statefulness
+    transfer:
+      host_link: pcie
+      post_cpu_tensor_trace: required
+      bytes_h2d_per_job: profile_required
+      bytes_d2h_per_job: profile_required
+      copies_per_job: profile_required
+      max_inflight_min: 16
+    scheduling:
+      service_classes_min: 3
+      max_nonpreemptible_ms: [1, 2]
+      deadline_aware_admission: required
+      stale_frame_replacement: required
+      bandwidth_qos: required
+    memory:
+      physical_capacity_gb_sweep: [4, 8, 16]
+      npu_reservable_gb: target_measurement
+      per_model_static_dynamic_scratch: profile_required
+      reserve_fraction_min: 0.20
+    bandwidth:
+      admission_fraction_of_measured_sustained_max: 0.75
+      use_peak_bytes_not_average: true
+    reliability:
+      ecc_or_parity: required
+      iommu_domain_isolation: required
+      context_watchdog: required
+      recovery_scopes: [context, core, device]
+      terminal_fault_status: required
+      fault_injection: target_measurement
+    architecture_search:
+      dense_int8_tops: [20, 32, 50, 100]
+      npu_power_w: [8, 15, 25]
+    quality:
+      per_model_accuracy_gate: profile_required
+      deadline_miss_rate_max: target_measurement
