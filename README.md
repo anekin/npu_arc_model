@@ -250,6 +250,9 @@ PYTHONPATH=. python3 sim/arc_model.py \
 # 2. DSE 扫描（快速模式：3 引擎 × 关键配置）
 python3 sim/design_space_explorer.py --quick
 
+# 2a. All-engine smoke test（验证 DSE 引擎覆盖）
+python3 -m pytest sim/tests/test_dse_coverage.py sim/tests/test_engine_instantiate.py -v
+
 # 3. 全量 DSE（8 引擎 × 全维度扫描）
 python3 sim/design_space_explorer.py
 
