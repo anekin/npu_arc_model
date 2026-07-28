@@ -10,7 +10,8 @@ class SystolicEngine(MACEngine):
     """Weight-stationary systolic array — 时空映射.
 
     权重对角加载到 PE 阵列，激活流式穿过。
-    每 tile 有 pipeline fill(H+W) + drain(M+H) 开销。
+    Decode per-tile compute follows MXUModel v2 interleaving: H*(M+1)+W.
+    Prefill drain is conditional on partial vs full M-tiles.
     """
 
     @property
@@ -18,7 +19,7 @@ class SystolicEngine(MACEngine):
         return "systolic"
 
     def _estimate_decode(self, M: int, K: int, N: int) -> EngineResult:
-        """Decode mode (M≤2): byte-identical to MXUModel._estimate_decode."""
+        """Decode mode (M≤2): matches MXUModel._estimate_decode compute formula."""
         K_tiles = math.ceil(K / self.H)
         N_tiles = math.ceil(N / self.W)
         total_tiles = K_tiles * N_tiles
@@ -26,9 +27,11 @@ class SystolicEngine(MACEngine):
         tile_weight_bytes = math.ceil(self.H * self.W * self.w_bits / 8)
         tile_act_bytes = math.ceil(M * self.H * self.a_bits / 8)
 
+        # V2 interleaving: fill (H+W) + H + (M-1)*H for M streamed tokens
+        # Equivalently: H*(M+1) + W
+        per_tile_compute = self.H * (M + 1) + self.W
         pipeline_fill = self.H + self.W
-        pipeline_drain = M + self.H
-        per_tile_compute = pipeline_fill + pipeline_drain
+        pipeline_drain = per_tile_compute - pipeline_fill
         per_tile_dma = (tile_weight_bytes + tile_act_bytes) / self.eff_bw
 
         bottleneck_per_tile = max(per_tile_compute, per_tile_dma)
@@ -67,7 +70,7 @@ class SystolicEngine(MACEngine):
         )
 
     def _estimate_prefill(self, M: int, K: int, N: int) -> EngineResult:
-        """Prefill mode (M>2): byte-identical to MXUModel._estimate_prefill."""
+        """Prefill mode (M>2): matches MXUModel._estimate_prefill drain logic."""
         K_tiles = math.ceil(K / self.H)
         N_tiles = math.ceil(N / self.W)
         total_tiles = K_tiles * N_tiles
@@ -80,9 +83,15 @@ class SystolicEngine(MACEngine):
         M_tiles = math.ceil(M / self.H)
 
         pipeline_fill = self.H + self.W
-        pipeline_drain = self.H + self.H
-        per_m_tile_compute = pipeline_fill + pipeline_drain
-        per_tile_compute = M_tiles * per_m_tile_compute
+        if M_tiles == 1 and M < self.H:
+            # Partial tile: only M rows active, drain = M
+            pipeline_drain = M
+            per_tile_compute = pipeline_fill + pipeline_drain
+        else:
+            # Full tile(s): each M-tile drains H rows
+            pipeline_drain = self.H
+            per_m_tile_compute = pipeline_fill + pipeline_drain
+            per_tile_compute = M_tiles * per_m_tile_compute
 
         per_tile_dma = (tile_weight_bytes + M_tiles * per_m_tile_act_bytes) / self.eff_bw
 
@@ -129,6 +138,8 @@ class SystolicEngine(MACEngine):
         For M=1 or M=2: _estimate_decode (weight-stationary tiled streaming).
         For M>2: _estimate_prefill (compute-bound, M-tiled).
         """
+        if M <= 0:
+            raise ValueError(f"SystolicEngine.estimate requires M > 0, got {M}")
         if M <= 2:
             return self._estimate_decode(M, K, N)
         else:

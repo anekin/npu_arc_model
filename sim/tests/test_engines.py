@@ -361,7 +361,7 @@ def test_gmma_tma_overlap():
 
 
 def test_systolic_npu_sim_baseline():
-    """npu_sim.py --engine systolic --json produces decode tok/s near 20.0."""
+    """npu_sim.py --engine systolic --json produces decode tok/s near 10.15."""
     sim_dir = Path(__file__).resolve().parent.parent
     result = subprocess.run(
         ["python", "npu_sim.py", "--engine", "systolic", "--json"],
@@ -374,13 +374,14 @@ def test_systolic_npu_sim_baseline():
     output = json.loads(result.stdout)
     tok_per_s = output["decode"]["tok_per_s"]
 
-    assert tok_per_s == pytest.approx(11.17, rel=0.01), (
-        f"Systolic decode tok/s={tok_per_s} not within ±1% of 11.17"
+    # Baseline recalibrated post-Wave-1 SystolicEngine timing fix (was 11.17).
+    assert tok_per_s == pytest.approx(10.15, rel=0.01), (
+        f"Systolic decode tok/s={tok_per_s} not within ±1% of 10.15"
     )
 
 
 def test_block_npu_sim_baseline():
-    """npu_sim.py default (block 64×64) produces decode tok/s near 29.6 (1 GHz, LPDDR5-6400)."""
+    """npu_sim.py default (block 64×64) produces decode tok/s near 21.59 (1 GHz, LPDDR5-6400)."""
     sim_dir = Path(__file__).resolve().parent.parent
     result = subprocess.run(
         ["python", "npu_sim.py", "--json"],
@@ -393,4 +394,5 @@ def test_block_npu_sim_baseline():
     assert output["decode"]["array_height"] == 64
     assert output["decode"]["array_width"] == 64
     tok_per_s = output["decode"]["tok_per_s"]
-    assert tok_per_s == pytest.approx(29.6, rel=0.01)  # 1% tolerance
+    # Baseline recalibrated post-Wave-1 engine fixes (was 29.6).
+    assert tok_per_s == pytest.approx(21.59, rel=0.01)  # 1% tolerance
