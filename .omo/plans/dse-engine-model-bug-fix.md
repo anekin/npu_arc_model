@@ -738,23 +738,23 @@ Final wave (after ALL todos, parallel review)
 
 > Runs in parallel. ALL must APPROVE. Surface results and wait for user's explicit okay.
 
-- [ ] F1. Plan compliance audit
+- [x] F1. Plan compliance audit
   - 验证 11 个 todo 和 8 个 BUG-DSE 条目都有具体证据
   - 拒绝缺失命令、自述成功、未执行的 full DSE、未绑定 commit 的 post-fix 值
   - 证据：`.omo/evidence/final-f1-plan-compliance.md`
 
-- [ ] F2. Code quality review
+- [x] F2. Code quality review
   - 检查公式所有权（SystolicEngine 无共享依赖）、rounding、result schema、配置校验、错误路径
   - 运行 Python compile check + 聚焦测试
   - 拒绝：重复公式、未使用的校准常量、静默异常、魔术调参
   - 证据：`.omo/evidence/final-f2-code-quality.md`
 
-- [ ] F3. Real manual QA
+- [x] F3. Real manual QA
   - 实际执行 7-engine FFN_down 矩阵、Block/Systolic `npu_sim --json`、strict quick DSE、strict full DSE
   - 解析输出，验证带宽单调性、物理 DMA floor、预期排名、DSE errors=0
   - 证据：`.omo/evidence/final-f3-manual-qa.json`
 
-- [ ] F4. Scope fidelity
+- [x] F4. Scope fidelity
   - 对比 final diff 与 scope allowlist（8 个文件改动）
   - 验证 `.omo/ultraresearch/20260723-vla-models/sources/` 未触碰
   - 验证原始用户报告 sha256 = `61fe73e163f4dc61c1c746ea3a115b176c4d745bf387c7b2a4350a195d88ccd3`
