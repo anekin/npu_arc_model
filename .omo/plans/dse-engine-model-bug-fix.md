@@ -390,7 +390,7 @@ Final wave (after ALL todos, parallel review)
 
 ---
 
-- [ ] 6. 修正 OS-Systolic K-reduction + Block-equivalent DMA 核算
+- [x] 6. 修正 OS-Systolic K-reduction + Block-equivalent DMA 核算
 
   **What to do**:
   1. 修改 `sim/engine/os_systolic_engine.py:57`：
@@ -448,7 +448,7 @@ Final wave (after ALL todos, parallel review)
 
 ---
 
-- [ ] 7. TensorCore descriptor fragmentation 建模
+- [x] 7. TensorCore descriptor fragmentation 建模
 
   **What to do**:
   1. 在 `sim/engine/tensor_core_engine.py` 的 `__init__` 中解析 `DMA_DESCRIPTOR_CYCLES`（从 config 的 `dma.descriptor_overhead_cycles` 读取，默认 5）：
@@ -502,7 +502,7 @@ Final wave (after ALL todos, parallel review)
 
 ---
 
-- [ ] 8. 恢复 GMMA pipeline scale + raw-DMA floor
+- [x] 8. 恢复 GMMA pipeline scale + raw-DMA floor
 
   **What to do**:
   1. 修改 `sim/engine/gmma_engine.py:59-61`：
@@ -564,7 +564,7 @@ Final wave (after ALL todos, parallel review)
 
 ---
 
-- [ ] 9. 独立仓库验证入口（pytest.ini 终版 + all-engine DSE smoke）
+- [x] 9. 独立仓库验证入口（pytest.ini 终版 + all-engine DSE smoke）
 
   **What to do**:
   1. 确认 `pytest.ini`（Todo 1 创建）正确配置，使根目录 `python -m pytest` 发现所有测试。
