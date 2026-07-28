@@ -542,6 +542,8 @@ def main():
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("--quick", action="store_true")
+    parser.add_argument("--allow-partial", action="store_true",
+                        help="Keep valid results when some configurations fail")
     parser.add_argument("--output", default=None)
     parser.add_argument("--top", type=int, default=20,
                         help="Show top N results")
@@ -600,16 +602,61 @@ def main():
     print(f"  Sweeping...", end=" ", flush=True)
 
     results: List[PPA] = []
+    generated = len(configs)
+    evaluated = 0
+    filtered_by_area = 0
+    errors = 0
+    error_details: List[Dict[str, Any]] = []
+
     for cfg in configs:
+        evaluated += 1
         try:
             ppa = evaluate_config(cfg, area_model, power_model)
-            # Filter: unreasonable area
-            if ppa.area_mm2 <= 200:
-                results.append(ppa)
-        except Exception as e:
-            pass
+        except Exception as exc:
+            errors += 1
+            engine_type = cfg.get("mac_engine", {}).get("type", "unknown")
+            dims = (
+                f"{cfg.get('mac_engine', {}).get('array_height', '?')}×"
+                f"{cfg.get('mac_engine', {}).get('array_width', '?')}"
+            )
+            mem_mode = cfg.get("_dram_label", "unknown")
+            error_details.append({
+                "engine_type": engine_type,
+                "dims": dims,
+                "memory_mode": mem_mode,
+                "error": str(exc),
+            })
+            print(
+                f"ERROR evaluating {engine_type} {dims} {mem_mode}: {exc}",
+                file=sys.stderr,
+            )
+            continue
 
-    print(f"{len(results)} valid")
+        # Filter: unreasonable area
+        if ppa.area_mm2 <= 200:
+            results.append(ppa)
+        else:
+            filtered_by_area += 1
+
+    print(
+        f"{len(results)} valid "
+        f"(generated {generated}, evaluated {evaluated}, "
+        f"filtered_by_area {filtered_by_area}, errors {errors})"
+    )
+
+    if evaluated == 0:
+        print("No configurations evaluated; aborting.", file=sys.stderr)
+        sys.exit(1)
+    if errors and not args.allow_partial:
+        print(
+            f"{errors} configuration(s) failed evaluation. "
+            "Use --allow-partial to keep valid results.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    if not results:
+        print("No valid results after filtering; aborting.", file=sys.stderr)
+        sys.exit(1)
 
     # Pareto frontier
     pareto = find_pareto(results)
@@ -704,15 +751,29 @@ def main():
                 d["pareto"] = on_pareto
             return d
 
+        counts = {
+            "generated": generated,
+            "evaluated": evaluated,
+            "filtered_by_area": filtered_by_area,
+            "errors": errors,
+            "error_details": error_details,
+        }
         if _CV_MODEL:
-            # CV mode: flat list of Pareto + top results so downstream tools
+            # CV mode: Pareto + top results with metadata so downstream tools
             # can verify engine diversity while keeping Pareto points primary.
             points = [_result_dict(p, True) for p in pareto]
             seen = {p.config_label for p in pareto}
             for p in reasonable[:args.top]:
                 if p.config_label not in seen:
                     points.append(_result_dict(p, False))
-            output = points
+            output = {
+                "metadata": {
+                    "cv_model": _CV_MODEL,
+                    "valid_results": len(results),
+                    **counts,
+                },
+                "points": points,
+            }
         else:
             output = {
                 "cv_model": _CV_MODEL,
@@ -720,6 +781,7 @@ def main():
                 "batch_m": batch_m,
                 "total_configs": len(configs),
                 "valid_results": len(results),
+                **counts,
                 "pareto_frontier": [_result_dict(p, True) for p in pareto],
                 "top_results": [_result_dict(p, False) for p in reasonable[:args.top]],
             }
@@ -728,6 +790,8 @@ def main():
         with open(out_path, "w") as f:
             json.dump(output, f, indent=2)
         print(f"\n  Saved to {args.output}")
+
+    sys.exit(0)
 
 
 if __name__ == "__main__":
