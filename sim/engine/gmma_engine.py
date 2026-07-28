@@ -52,6 +52,24 @@ class GMMAEngine(MACEngine):
     TMA_AREA_MM2 = 2.0
     SHMEM_KB = 4096    # 4MB shared memory for weights
 
+    def _parse_config(self, config: Dict[str, Any]) -> None:
+        """Parse common config plus GMMA-specific calibration parameters."""
+        super()._parse_config(config)
+        scale = config.get("gmma", {}).get(
+            "pipeline_scale", self.GMMA_PIPELINE_SCALE
+        )
+        try:
+            scale = float(scale)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(
+                f"gmma.pipeline_scale must be a number, got {scale!r}"
+            ) from exc
+        if not (0 < scale <= 1):
+            raise ValueError(
+                f"gmma.pipeline_scale must be in (0, 1], got {scale}"
+            )
+        self.pipeline_scale = scale
+
     @property
     def engine_type(self) -> str:
         return "gmma"

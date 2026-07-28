@@ -82,6 +82,9 @@ interconnect:
   pipeline_stages: 3
   port_bandwidth_gbps: 500    # legacy
 
+gmma:
+  pipeline_scale: 0.05
+
 # ── 面积模型参数 ──
 area_model:
   process_node: 7         # nm (default, override per scenario)

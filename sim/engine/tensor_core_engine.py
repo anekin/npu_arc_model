@@ -33,6 +33,23 @@ class TensorCoreEngine(MACEngine):
     SUBTILE_N = 16   # output columns per sub-tile
     SUBTILE_PIPELINE_FILL = 80  # 64 (K) + 16 (N) systolic fill/drain
     SUBTILE_OVERHEAD_CYCLES = 4  # small sync/startup overhead
+    DEFAULT_DESCRIPTOR_OVERHEAD_CYCLES = 5
+
+    def _parse_config(self, config: Dict[str, Any]) -> None:
+        """Parse common config plus Tensor Core descriptor overhead cycles."""
+        super()._parse_config(config)
+        overhead = config.get("dma", {}).get(
+            "descriptor_overhead_cycles", self.DEFAULT_DESCRIPTOR_OVERHEAD_CYCLES
+        )
+        if not isinstance(overhead, int) or isinstance(overhead, bool):
+            raise ValueError(
+                f"dma.descriptor_overhead_cycles must be an integer, got {overhead!r}"
+            )
+        if overhead < 0:
+            raise ValueError(
+                f"dma.descriptor_overhead_cycles must be >= 0, got {overhead}"
+            )
+        self.descriptor_overhead_cycles = overhead
 
     @property
     def engine_type(self) -> str:
