@@ -42,49 +42,69 @@ class OutputStationaryEngine(MACEngine):
 
         Compute 模型：
           - 无 diagonal pipeline fill/drain
-          - 但每 tile 支付 broadcast_sync + accumulate/reduction 周期
+          - 但每 tile 支付 K-reduction depth (H) + broadcast_sync + accumulate/reduction 周期
+          - 使用 BlockEngine 等效的外部 DRAM 聚合逻辑
         """
         K_tiles = math.ceil(K / self.H)
         N_tiles = math.ceil(N / self.W)
         total_tiles = K_tiles * N_tiles
 
-        # Per-tile data movement (identical DMA model to BlockEngine)
-        tile_weight_bytes = math.ceil(self.H * self.W * self.w_bits / 8)
-        tile_act_bytes = math.ceil(M * self.H * self.a_bits / 8)
-        per_tile_dma = (tile_weight_bytes + tile_act_bytes) / self.eff_bw
-
-        # Per-tile compute: realistic broadcast-sync + accumulate latency
-        per_tile_compute = BROADCAST_SYNC_CYCLES + \
-            _accumulate_cycles(self.w_bits, self.a_bits)
-
-        # Double-buffering between DMA and compute
-        bottleneck = max(per_tile_compute, per_tile_dma)
-        first_cold = per_tile_dma + per_tile_compute
-
-        if total_tiles > 1:
-            total = int(first_cold + (total_tiles - 1) * bottleneck)
+        # ── Aggregated external-DRAM accounting (matching BlockEngine:99-136) ──
+        total_weight_bytes = K * N * self.w_bits // 8
+        weight_dram_eff = self._dram_eff_for_bytes(total_weight_bytes)
+        if weight_dram_eff <= 0:
+            weight_dma_cycles = 0
         else:
-            total = int(first_cold)
+            weight_dma_cycles = total_weight_bytes / (self.eff_bw * weight_dram_eff)
 
+        act_bytes = M * K * self.a_bits // 8
+        act_dma_cycles = act_bytes / self.eff_bw
+        total_dma_cycles = weight_dma_cycles + act_dma_cycles
+        raw_dma_cycles = int(total_dma_cycles)
+
+        # Per-tile compute with K-reduction depth (self.H)
+        per_tile_compute = self.H + BROADCAST_SYNC_CYCLES + \
+            _accumulate_cycles(self.w_bits, self.a_bits)
+        total_compute_cycles = per_tile_compute * total_tiles
+        k_reduction_cycles = self.H * total_tiles
+
+        # Timing: max-model (no double-buffering approximation, matches BlockEngine)
+        total_cycles = max(int(total_compute_cycles), raw_dma_cycles)
         total_macs = M * K * N
-        total_weight_bytes = total_tiles * (tile_weight_bytes + tile_act_bytes)
+
         ideal = math.ceil(total_macs / self.peak_macs_per_cycle)
-        util = ideal / total if total > 0 else 0.0
+        util = ideal / total_cycles if total_cycles > 0 else 0.0
+
+        if total_dma_cycles > total_compute_cycles:
+            bottleneck = "dma"
+            bottleneck_reason = (
+                f"DMA ({raw_dma_cycles} cycles) dominates "
+                f"compute ({total_compute_cycles} cycles)"
+            )
+        else:
+            bottleneck = "compute"
+            bottleneck_reason = (
+                f"Compute ({total_compute_cycles} cycles) dominates "
+                f"DMA ({raw_dma_cycles} cycles)"
+            )
 
         return EngineResult(
-            compute_cycles=int(per_tile_compute * total_tiles),
-            dma_cycles=int(total - per_tile_compute * total_tiles),
-            total_cycles=total,
+            compute_cycles=int(total_compute_cycles),
+            dma_cycles=raw_dma_cycles,
+            total_cycles=total_cycles,
             utilization=util,
             ops=total_macs,
             num_tiles=total_tiles,
-            weight_bytes=total_weight_bytes,
-            bottleneck="dma" if per_tile_dma > per_tile_compute else "compute",
+            weight_bytes=int(total_weight_bytes),
+            bottleneck=bottleneck,
             details={
                 "K_tiles": K_tiles, "N_tiles": N_tiles,
-                "per_tile_dma": round(per_tile_dma, 1),
                 "per_tile_compute": per_tile_compute,
                 "broadcast_sync": BROADCAST_SYNC_CYCLES,
+                "k_reduction_cycles": k_reduction_cycles,
+                "raw_dma_cycles": raw_dma_cycles,
+                "total_compute_cycles": int(total_compute_cycles),
+                "bottleneck_reason": bottleneck_reason,
                 "dataflow": "output_stationary",
             },
         )
@@ -104,45 +124,65 @@ class OutputStationaryEngine(MACEngine):
         N_tiles = math.ceil(N / self.W)
         total_tiles = K_tiles * N_tiles
 
-        tile_weight_bytes = math.ceil(self.H * self.W * self.w_bits / 8)
-        tile_act_bytes = math.ceil(M * self.H * self.a_bits / 8)
-
-        # Both gate and up weights, but one activation tile.
-        dual_weight_bytes = 2 * tile_weight_bytes
-        per_tile_dma = (dual_weight_bytes + tile_act_bytes) / self.eff_bw
-
-        # Two accumulations per tile.
-        per_tile_compute = 2 * (BROADCAST_SYNC_CYCLES +
-                                _accumulate_cycles(self.w_bits, self.a_bits))
-
-        bottleneck = max(per_tile_compute, per_tile_dma)
-        first_cold = per_tile_dma + per_tile_compute
-
-        if total_tiles > 1:
-            total = int(first_cold + (total_tiles - 1) * bottleneck)
+        # Aggregated external-DRAM accounting (matching BlockEngine external DRAM)
+        total_weight_bytes = 2 * K * N * self.w_bits // 8  # gate+up
+        weight_dram_eff = self._dram_eff_for_bytes(total_weight_bytes)
+        if weight_dram_eff <= 0:
+            weight_dma_cycles = 0
         else:
-            total = int(first_cold)
+            weight_dma_cycles = total_weight_bytes / (self.eff_bw * weight_dram_eff)
 
+        act_bytes = M * K * self.a_bits // 8
+        act_dma_cycles = act_bytes / self.eff_bw
+        total_dma_cycles = weight_dma_cycles + act_dma_cycles
+        raw_dma_cycles = int(total_dma_cycles)
+
+        # Two accumulations per tile (gate + up), each with K-reduction depth
+        per_tile_compute = 2 * (self.H + BROADCAST_SYNC_CYCLES +
+                                _accumulate_cycles(self.w_bits, self.a_bits))
+        total_compute_cycles = per_tile_compute * total_tiles
+        k_reduction_cycles = 2 * self.H * total_tiles
+
+        # Timing: max-model (matches BlockEngine external DRAM)
+        total_cycles = max(int(total_compute_cycles), raw_dma_cycles)
         total_macs = M * K * N * 2
-        total_weight_bytes = total_tiles * (dual_weight_bytes + tile_act_bytes)
-        ideal = math.ceil(total_macs / self.peak_macs_per_cycle)
-        util = ideal / total if total > 0 else 0.0
 
-        activation_savings = total_tiles * tile_act_bytes / self.eff_bw
+        ideal = math.ceil(total_macs / self.peak_macs_per_cycle)
+        util = ideal / total_cycles if total_cycles > 0 else 0.0
+
+        # Activation savings: one activation load shared between gate+up per tile
+        activation_savings = M * K * self.a_bits // 8 / self.eff_bw
+
+        if total_dma_cycles > total_compute_cycles:
+            bottleneck = "dma"
+            bottleneck_reason = (
+                f"DMA ({raw_dma_cycles} cycles) dominates "
+                f"compute ({total_compute_cycles} cycles)"
+            )
+        else:
+            bottleneck = "compute"
+            bottleneck_reason = (
+                f"Compute ({total_compute_cycles} cycles) dominates "
+                f"DMA ({raw_dma_cycles} cycles)"
+            )
 
         return EngineResult(
-            compute_cycles=int(per_tile_compute * total_tiles),
-            dma_cycles=int(total - per_tile_compute * total_tiles),
-            total_cycles=total,
+            compute_cycles=int(total_compute_cycles),
+            dma_cycles=raw_dma_cycles,
+            total_cycles=total_cycles,
             utilization=util,
             ops=total_macs,
             num_tiles=total_tiles,
-            weight_bytes=total_weight_bytes,
-            bottleneck="dma" if per_tile_dma > per_tile_compute else "compute",
+            weight_bytes=int(total_weight_bytes),
+            bottleneck=bottleneck,
             details={
                 "K_tiles": K_tiles, "N_tiles": N_tiles,
-                "per_tile_dma": round(per_tile_dma, 1),
                 "per_tile_compute": per_tile_compute,
+                "broadcast_sync": BROADCAST_SYNC_CYCLES,
+                "k_reduction_cycles": k_reduction_cycles,
+                "raw_dma_cycles": raw_dma_cycles,
+                "total_compute_cycles": int(total_compute_cycles),
+                "bottleneck_reason": bottleneck_reason,
                 "activation_reuse_savings": int(activation_savings),
                 "dataflow": "output_stationary",
             },
