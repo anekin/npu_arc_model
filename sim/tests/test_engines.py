@@ -187,6 +187,11 @@ def _qwen3b_geometries(M: int):
       - FFN_up: (M, hidden, intermediate)
       - FFN_down: (M, intermediate, hidden)
     """
+    return [(name, M, K, N) for name, M, K, N in _qwen3b_geometry_pairs(M)]
+
+
+def _qwen3b_geometry_pairs(M: int):
+    """Return the sequence of (op_name, M, K, N) pairs for Qwen2.5-3B."""
     spec = get_spec("qwen2.5-3b")
     H = spec.hidden
     I = spec.intermediate
@@ -211,10 +216,10 @@ def _make_engines():
 
 
 def test_os_systolic_decode():
-    """OS-Systolic decode tok/s should not exceed BlockEngine for the same array.
+    """OS-Systolic 64×64 decode contract.
 
     OS avoids WS pipeline fill/drain, but its PEs are wider (accumulator +
-    output register) so the same die area buys fewer MACs. For an equal 128×128
+    output register) so the same die area buys fewer MACs. For the 64×64
     array it should land in the same DMA-bound ballpark as BlockEngine, not
     above it.
     """
@@ -271,19 +276,30 @@ def test_input_stationary_prefill():
     )
 
 
-def test_systolic_vs_mxumodel_decode():
-    """SystolicEngine decode (M=1, M=2) total_cycles match MXUModel byte-for-byte."""
+def _qwen3b_op_names():
+    """Return the ordered list of Qwen2.5-3B GEMM op names."""
+    return [name for name, _, _, _ in _qwen3b_geometry_pairs(1)]
+
+
+@pytest.mark.parametrize(
+    "M, op_name",
+    [(M, name) for M in (1, 2) for name in _qwen3b_op_names()],
+)
+def test_systolic_vs_mxumodel_decode(M, op_name):
+    """SystolicEngine decode total_cycles match MXUModel byte-for-byte."""
     systolic, mxumodel = _make_engines()
 
-    for M in (1, 2):
-        for name, M_used, K, N in _qwen3b_geometries(M):
-            r_sys = systolic.estimate(M_used, K, N)
-            r_mxu = mxumodel.estimate(M_used, K, N)
+    _, M_used, K, N = next(
+        item for item in _qwen3b_geometries(M) if item[0] == op_name
+    )
 
-            assert r_sys.total_cycles == r_mxu.total_cycles, (
-                f"[{name} M={M}] SystolicEngine total_cycles={r_sys.total_cycles} "
-                f"≠ MXUModel total_cycles={r_mxu.total_cycles}"
-            )
+    r_sys = systolic.estimate(M_used, K, N)
+    r_mxu = mxumodel.estimate(M_used, K, N)
+
+    assert r_sys.total_cycles == r_mxu.total_cycles, (
+        f"[{op_name} M={M}] SystolicEngine total_cycles={r_sys.total_cycles} "
+        f"≠ MXUModel total_cycles={r_mxu.total_cycles}"
+    )
 
 
 def test_systolic_vs_mxumodel_prefill():
