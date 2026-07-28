@@ -75,8 +75,8 @@ class GMMAEngine(MACEngine):
         return "gmma"
 
     def _per_tile_compute(self, M: int) -> int:
-        """Systolic pipeline depth per K-tile: H (weight load) + M (act stream) + W (drain)."""
-        return self.H + M + self.W
+        """Systolic pipeline depth per K-tile, scaled by GMMA's async pipeline."""
+        return max(1, math.ceil((self.H + M + self.W) * self.pipeline_scale))
 
     def estimate(self, M: int, K: int, N: int,
                  weight_preloaded: bool = False) -> EngineResult:
@@ -99,20 +99,22 @@ class GMMAEngine(MACEngine):
         act_dma_cycles = act_bytes / self.eff_bw
         total_dma = weight_dma_cycles + act_dma_cycles
 
-        # TMA overlap only when compute-bound
+        # TMA overlap — only for diagnostics; total_cycles uses raw DMA floor
         per_tile_compute = self._per_tile_compute(M)
         total_compute = per_tile_compute * total_tiles
-        tma_dma = total_dma * (1 - self.TMA_OVERLAP)
+        per_tile_dma_val = total_dma / total_tiles if total_tiles > 0 else 0.0
+        tma_exposed_dma_val = per_tile_dma_val * (1 - self.TMA_OVERLAP)
+        tma_hidden_dma_val = per_tile_dma_val * self.TMA_OVERLAP
 
-        total_cycles = max(total_compute, tma_dma)
+        # Enforce physical raw-DMA floor: TMA overlap cannot make total
+        # cycles smaller than the raw byte-transfer time.
+        total_cycles = max(total_compute, total_dma)
         total_macs = M * K * N
         ideal = math.ceil(total_macs / self.peak_macs_per_cycle)
         util = ideal / total_cycles if total_cycles > 0 else 0.0
 
         compute_cycles = int(total_compute)
         dma_cycles = int(total_dma)
-        dma_hidden_pct = (1 - dma_cycles / max(dma_cycles, 1)) * 0 if total_dma <= 0 else \
-            (1 - min(total_cycles, total_dma) / max(total_dma, 1)) * 100
 
         return EngineResult(
             compute_cycles=compute_cycles,
@@ -126,6 +128,11 @@ class GMMAEngine(MACEngine):
             details={
                 "K_tiles": K_tiles, "N_tiles": N_tiles,
                 "per_tile_compute": per_tile_compute,
+                "per_tile_dma": round(per_tile_dma_val, 1),
+                "raw_dma_cycles": int(total_dma),
+                "tma_hidden_dma": round(tma_hidden_dma_val, 1),
+                "tma_exposed_dma": round(tma_exposed_dma_val, 1),
+                "pipeline_scale": self.pipeline_scale,
                 "tma_overlap": self.TMA_OVERLAP,
                 "weight_dram_eff": round(weight_dram_eff, 3),
             },
@@ -148,15 +155,17 @@ class GMMAEngine(MACEngine):
 
         # Dual weights (gate + up) but shared activations.
         dual_weight_bytes = 2 * tile_weight_bytes
-        per_tile_dma = (dual_weight_bytes + tile_act_bytes) / self.eff_bw
-        tma_exposed_dma = per_tile_dma * (1 - self.TMA_OVERLAP)
+        per_tile_dma_raw = (dual_weight_bytes + tile_act_bytes) / self.eff_bw
+        tma_exposed_dma = per_tile_dma_raw * (1 - self.TMA_OVERLAP)
+        tma_hidden_dma = per_tile_dma_raw * self.TMA_OVERLAP
 
-        # Two matmuls per tile on the same GMMA unit.
+        # Two matmuls per tile on the same GMMA unit, with pipeline scaling.
         single_compute = self._per_tile_compute(M)
         per_tile_compute = 2 * single_compute
 
-        bottleneck = max(per_tile_compute, per_tile_dma)
-        first_tile = per_tile_dma + per_tile_compute
+        # Enforce raw-DMA floor: bottleneck is max of compute and raw DMA.
+        bottleneck = max(per_tile_compute, per_tile_dma_raw)
+        first_tile = per_tile_dma_raw + per_tile_compute
 
         if total_tiles > 1:
             total = int(first_tile + (total_tiles - 1) * bottleneck)
@@ -179,13 +188,16 @@ class GMMAEngine(MACEngine):
             ops=total_macs,
             num_tiles=total_tiles,
             weight_bytes=total_weight_bytes,
-            bottleneck="dma" if per_tile_dma > per_tile_compute else "compute",
+            bottleneck="dma" if per_tile_dma_raw > per_tile_compute else "compute",
             details={
                 "K_tiles": K_tiles,
                 "N_tiles": N_tiles,
-                "per_tile_dma": round(per_tile_dma, 1),
-                "tma_exposed_dma": round(tma_exposed_dma, 1),
+                "per_tile_dma": round(per_tile_dma_raw, 1),
                 "per_tile_compute": per_tile_compute,
+                "raw_dma_cycles": int(per_tile_dma_raw * total_tiles),
+                "tma_hidden_dma": round(tma_hidden_dma, 1),
+                "tma_exposed_dma": round(tma_exposed_dma, 1),
+                "pipeline_scale": self.pipeline_scale,
                 "tma_overlap": self.TMA_OVERLAP,
                 "weight_cache": True,
             },
