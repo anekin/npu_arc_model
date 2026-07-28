@@ -1,0 +1,70 @@
+{
+  "M": 1,
+  "K": 11008,
+  "N": 2048,
+  "results": [
+    {
+      "engine_type": "systolic",
+      "total_cycles": 1056816,
+      "compute_cycles": 1056768,
+      "dma_cycles": 48,
+      "bottleneck": "compute",
+      "tok_per_s": 946.2385,
+      "raw_dma_cycles": null
+    },
+    {
+      "engine_type": "os_systolic",
+      "total_cycles": 393634,
+      "compute_cycles": 374272,
+      "dma_cycles": 393634,
+      "bottleneck": "dma",
+      "tok_per_s": 2540.431,
+      "raw_dma_cycles": 393634
+    },
+    {
+      "engine_type": "block",
+      "total_cycles": 393634,
+      "compute_cycles": 374272,
+      "dma_cycles": 393634,
+      "bottleneck": "dma",
+      "tok_per_s": 2540.431,
+      "raw_dma_cycles": null
+    },
+    {
+      "engine_type": "tensor_core",
+      "total_cycles": 401552,
+      "compute_cycles": 115584,
+      "dma_cycles": 285968,
+      "bottleneck": "dma",
+      "tok_per_s": 2490.3375,
+      "raw_dma_cycles": null
+    },
+    {
+      "engine_type": "wmma",
+      "total_cycles": 145129680,
+      "compute_cycles": 145129472,
+      "dma_cycles": 208,
+      "bottleneck": "compute",
+      "tok_per_s": 6.8904,
+      "raw_dma_cycles": null
+    },
+    {
+      "engine_type": "gmma",
+      "total_cycles": 393634,
+      "compute_cycles": 38528,
+      "dma_cycles": 393634,
+      "bottleneck": "dma",
+      "tok_per_s": 2540.431,
+      "raw_dma_cycles": 393634
+    },
+    {
+      "engine_type": "fsa",
+      "total_cycles": 710016,
+      "compute_cycles": 710016,
+      "dma_cycles": 393766,
+      "bottleneck": "compute",
+      "tok_per_s": 1408.419,
+      "raw_dma_cycles": null
+    }
+  ]
+}

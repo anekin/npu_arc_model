@@ -310,7 +310,73 @@ Config: 场景/参数定义               Firmware: RISC-V 微码
 
 ---
 
-## 八、贡献
+## 八、DSE 引擎模型 Bug 修复复现
+
+本仓库包含 2026-07-28 完成的 DSE 引擎模型 bug 修复完整证据链。在任何机器上 clone 后可直接复现。
+
+### 8.1 环境要求
+
+```bash
+python3 --version  # >= 3.10
+python3 -m pip install pytest  # 其他依赖均为标准库
+```
+
+### 8.2 Clone 与复现
+
+```bash
+git clone git@github.com:anekin/npu_arc_model.git
+cd npu_arc_model
+
+# 1. 一键运行全部回归测试（仓库根目录，无需手动 PYTHONPATH）
+python3 -m pytest -q
+# 期望: 63 passed, 0 failed
+
+# 2. 快速 DSE 回归（36 configs）
+python3 sim/design_space_explorer.py --quick --output /tmp/dse_quick.json
+# 期望: exit 0, errors=0
+
+# 3. 全量 DSE 回归（13,440 configs）
+python3 sim/design_space_explorer.py --output /tmp/dse_full.json
+# 期望: exit 0, errors=0
+
+# 4. 端到端 CLI 基准
+python3 sim/npu_sim.py --engine systolic --json | python3 -c "import sys,json; print(json.load(sys.stdin)['decode']['tok_per_s'])"
+# 期望: ~10.15 tok/s
+python3 sim/npu_sim.py --json | python3 -c "import sys,json; print(json.load(sys.stdin)['decode']['tok_per_s'])"
+# 期望: ~21.59 tok/s
+```
+
+### 8.3 复现证据链
+
+| 资产 | 路径 | 内容 |
+|------|------|------|
+| 可执行修复计划 | `.omo/plans/dse-engine-model-bug-fix.md` | 11 条 todo + F1-F4 终审 |
+| Boulder 工作记录 | `.omo/boulder.json` | 子 Agent 任务会话与耗时 |
+| 过程学习/问题 | `.omo/notepads/dse-engine-model-bug-fix/*.md` | learnings, issues, problems, decisions |
+| 验证证据 | `.omo/evidence/task-*.txt/json` | 每条 todo 与终审的实测输出 |
+| 原始 dated 报告 | `reports/dse-engine-model-bugs-2026-07-27.md` | **只读**，SHA256 未变 |
+| 修复后报告 | `reports/dse-engine-model-bugs-postfix-2026-07-27.md` | before/after 对照表 |
+
+### 8.4 关键验证命令
+
+```bash
+# 原始报告 SHA256 校验（必须与计划一致）
+sha256sum reports/dse-engine-model-bugs-2026-07-27.md
+# 61fe73e163f4dc61c1c746ea3a115b176c4d745bf387c7b2a4350a195d88ccd3
+
+# 7-engine FFN_down 基准（与修复后报告一致）
+python3 -c "
+import json
+with open('.omo/evidence/task-10-engine-ffn-down.json') as f:
+    d = json.load(f)
+for r in d['results']:
+    print(f\"{r['engine_type']:12s} {r['tok_per_s']:8.1f} tok/s  {r['bottleneck']}\")
+"
+```
+
+---
+
+## 九、贡献
 
 Arc Model 维护与 CaduceusCore 同步：
 - `sim/golden_executor.py` — 量化方案变更时同步

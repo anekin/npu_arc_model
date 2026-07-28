@@ -1,0 +1,5 @@
+POST-FIX REPORT CONSISTENCY: PASS
+Unique BUG-DSE IDs: 8 — ['BUG-DSE-001', 'BUG-DSE-002', 'BUG-DSE-003', 'BUG-DSE-004', 'BUG-DSE-005', 'BUG-DSE-006', 'BUG-DSE-007', 'BUG-DSE-008']
+FIXED status present: YES
+Uncalibrated parameter declared: YES
+EXIT: 0

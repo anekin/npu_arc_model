@@ -1,0 +1,40 @@
+...FF.................FFFF.                                              [100%]
+=================================== FAILURES ===================================
+E   AssertionError: TensorCore total_cycles (291472) should exceed BlockEngine (393634) due to sub-tile fragmentation
+    assert 291472 > 393634
+     +  where 291472 = Engine(total=291472c, compute=115584c, dma=175888c, util=0.9%, tiles=22016, bottleneck=dma, stall_dram=0, stall_sram=0).total_cycles
+     +  and   393634 = Engine(total=393634c, compute=374272c, dma=393634c, util=0.7%, tiles=5504, bottleneck=dma, stall_dram=0, stall_sram=0).total_cycles
+/home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engines.py:144: AssertionError: TensorCore total_cycles (291472) should exceed BlockEngine (393634) due to sub-tile fragmentation
+E   AssertionError: OS-Systolic tok/s (3743.8) should not exceed BlockEngine tok/s (2540.4)
+    assert 3743.789988356813 <= 2540.430958707835
+/home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engines.py:240: AssertionError: OS-Systolic tok/s (3743.8) should not exceed BlockEngine tok/s (2540.4)
+E   AssertionError: Expected DMA-bound GMMA decode, got compute
+    assert 'compute' == 'dma'
+      
+      - dma
+      + compute
+/home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engines.py:330: AssertionError: Expected DMA-bound GMMA decode, got compute
+E   AssertionError: HBM2e tok/s (1408) not significantly higher than LPDDR5 (1408); TMA overlap did not scale with BW
+    assert 1408.4189652064179 > (2 * 1408.4189652064179)
+/home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engines.py:357: AssertionError: HBM2e tok/s (1408) not significantly higher than LPDDR5 (1408); TMA overlap did not scale with BW
+E   AssertionError: Systolic decode tok/s=10.1515 not within ±1% of 11.17
+    assert 10.1515 == 11.17 ± 0.1117
+      
+      comparison failed
+      Obtained: 10.1515
+      Expected: 11.17 ± 0.1117
+/home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engines.py:377: AssertionError: Systolic decode tok/s=10.1515 not within ±1% of 11.17
+E   assert 21.586 == 29.6 ± 0.296
+      
+      comparison failed
+      Obtained: 21.586
+      Expected: 29.6 ± 0.296
+/home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engines.py:396: assert 21.586 == 29.6 ± 0.296
+=========================== short test summary info ============================
+FAILED sim/tests/test_engines.py::test_tensor_core_decode - AssertionError: T...
+FAILED sim/tests/test_engines.py::test_os_systolic_decode - AssertionError: O...
+FAILED sim/tests/test_engines.py::test_gmma_decode - AssertionError: Expected...
+FAILED sim/tests/test_engines.py::test_gmma_tma_overlap - AssertionError: HBM...
+FAILED sim/tests/test_engines.py::test_systolic_npu_sim_baseline - AssertionE...
+FAILED sim/tests/test_engines.py::test_block_npu_sim_baseline - assert 21.586...
+EXIT: 1

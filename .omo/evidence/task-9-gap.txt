@@ -1,0 +1,13 @@
+Task 9 — Gap Analysis: Standalone verification entrypoint tests
+Date: 2026-07-28
+
+All 11 tests pass (3 DSE coverage + 8 standalone assets). No gaps found within
+task scope.
+
+Pre-existing test failures outside task 9 scope:
+- test_engine_result_contract.py: 3 failures (os_systolic, tensor_core, gmma
+  diagnostic fields missing) — tracked as Todo 6/7/8
+- test_engines.py: 6 failures (BUG-DSE-001, 004-008) — pre-existing
+
+These are orthogonal to the coverage/asset tests added here and will be
+addressed in their respective tasks.

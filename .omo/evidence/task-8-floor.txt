@@ -1,0 +1,23 @@
+Task 8 — Raw-DMA floor verification
+====================================
+Date: 2026-07-28
+
+Raw-DMA floor enforcement means total_cycles >= total_dma (raw byte-transfer time),
+and TMA overlap cannot reduce total below this physical floor.
+
+Verification across bandwidth sweep (M=1, K=11008, N=2048, 64×64 GMMA):
+
+ BW (GB/s) | tok/s   | total_cycles | raw_dma_cycles | bottleneck | total >= raw_dma?
+-----------+---------+-------------+---------------+-----------+------------------
+    51.2   |  2540.4 |      393634 |        393634 | dma       | YES (393634=393634)
+   100.0   |  4961.8 |      201541 |        201541 | dma       | YES (201541=201541)
+   200.0   |  9923.6 |      100770 |        100770 | dma       | YES (100770=100770)
+   300.0   | 14885.4 |       67180 |         67180 | dma       | YES (67180=67180)
+   460.0   | 22824.3 |       43813 |         43813 | dma       | YES (43813=43813)
+
+  → total_cycles == raw_dma_cycles for all BW points (DMA-bound on all)
+  → tok/s increases monotonically with BW (2540 → 22824)
+  → LPDDR5→HBM2e ratio: 8.98× (> 2× ✓)
+  
+Contract assertion: result.total_cycles >= result.details["raw_dma_cycles"]
+  → PASS for all engine types including GMMA

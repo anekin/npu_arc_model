@@ -1,0 +1,21 @@
+sim/tests/test_engine_instantiate.py: 1
+sim/tests/test_engines.py: 26
+
+EXIT: 0
+sim/tests/test_engines.py::test_systolic_vs_mxumodel_decode[1-Q_proj]
+sim/tests/test_engines.py::test_systolic_vs_mxumodel_decode[1-K_proj]
+sim/tests/test_engines.py::test_systolic_vs_mxumodel_decode[1-V_proj]
+sim/tests/test_engines.py::test_systolic_vs_mxumodel_decode[1-O_proj]
+sim/tests/test_engines.py::test_systolic_vs_mxumodel_decode[1-FFN_gate]
+sim/tests/test_engines.py::test_systolic_vs_mxumodel_decode[1-FFN_up]
+sim/tests/test_engines.py::test_systolic_vs_mxumodel_decode[1-FFN_down]
+sim/tests/test_engines.py::test_systolic_vs_mxumodel_decode[2-Q_proj]
+sim/tests/test_engines.py::test_systolic_vs_mxumodel_decode[2-K_proj]
+sim/tests/test_engines.py::test_systolic_vs_mxumodel_decode[2-V_proj]
+sim/tests/test_engines.py::test_systolic_vs_mxumodel_decode[2-O_proj]
+sim/tests/test_engines.py::test_systolic_vs_mxumodel_decode[2-FFN_gate]
+sim/tests/test_engines.py::test_systolic_vs_mxumodel_decode[2-FFN_up]
+sim/tests/test_engines.py::test_systolic_vs_mxumodel_decode[2-FFN_down]
+
+14 tests collected in 0.02s
+---NODE_IDS_ABOVE---

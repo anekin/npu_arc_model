@@ -1,0 +1,37 @@
+============================= test session starts ==============================
+platform linux -- Python 3.10.12, pytest-9.0.3, pluggy-1.6.0
+rootdir: /home/prj/zhengs/caduceuscore/npu_arc_model
+configfile: pytest.ini
+plugins: anyio-4.13.0
+collected 26 items / 25 deselected / 1 selected
+
+sim/tests/test_engines.py .                                              [100%]
+
+======================= 1 passed, 25 deselected in 0.03s =======================
+============================= test session starts ==============================
+platform linux -- Python 3.10.12, pytest-9.0.3, pluggy-1.6.0
+rootdir: /home/prj/zhengs/caduceuscore/npu_arc_model
+configfile: pytest.ini
+plugins: anyio-4.13.0
+collected 10 items / 9 deselected / 1 selected
+
+sim/tests/test_engine_result_contract.py .                               [100%]
+
+======================= 1 passed, 9 deselected in 0.03s ========================
+---
+============================= test session starts ==============================
+platform linux -- Python 3.10.12, pytest-9.0.3, pluggy-1.6.0
+rootdir: /home/prj/zhengs/caduceuscore/npu_arc_model
+configfile: pytest.ini
+plugins: anyio-4.13.0
+collected 13 items
+
+sim/tests/test_calibration_config.py .............                       [100%]
+
+============================== 13 passed in 0.07s ==============================
+---
+descriptor_overhead_cycles=0 payload-only verification:
+Overhead=0: total_cycles=291472, dma_cycles=175888
+total_descriptor_cycles=0
+per_wave_dma=211.8 == per_wave_payload_cycles=211.8
+Payload-only restored: True

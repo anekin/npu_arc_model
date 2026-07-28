@@ -1,0 +1,13 @@
+=== Test 1: Negative descriptor_overhead_cycles ===
+Correctly rejected: dma.descriptor_overhead_cycles must be >= 0, got -1
+
+=== Test 2: Float descriptor_overhead_cycles ===
+Correctly rejected: dma.descriptor_overhead_cycles must be an integer, got 5.5
+
+=== Test 3: String descriptor_overhead_cycles ===
+Correctly rejected: dma.descriptor_overhead_cycles must be an integer, got '5'
+
+=== Test 4: Boolean descriptor_overhead_cycles ===
+Correctly rejected: dma.descriptor_overhead_cycles must be an integer, got True
+
+All invalid cases correctly rejected.

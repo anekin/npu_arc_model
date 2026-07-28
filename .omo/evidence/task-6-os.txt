@@ -1,0 +1,47 @@
+Task 6 — OS-Systolic Engine Fix Evidence
+==========================================
+Date: 2026-07-28
+File: sim/engine/os_systolic_engine.py
+
+Fixes Applied:
+  1. per_tile_compute = self.H + BROADCAST_SYNC_CYCLES + _accumulate_cycles(...)
+     (previously missing self.H — K-reduction depth)
+  2. DMA switched from per-tile naive formula to aggregated external-DRAM
+     accounting matching BlockEngine lines 99-136:
+     - total_weight_bytes = K * N * w_bits // 8
+     - weight_dram_eff = _dram_eff_for_bytes(total_weight_bytes)
+     - weight_dma = total_weight_bytes / (eff_bw * weight_dram_eff)
+     - act_dma = M * K * a_bits // 8 / eff_bw
+     - total_dma_cycles = weight_dma + act_dma
+  3. Timing model: max(total_compute, total_dma) replaces double-buffering
+  4. Diagnostic detail keys added: k_reduction_cycles, raw_dma_cycles,
+     total_compute_cycles, bottleneck_reason
+  5. estimate_weight_cache_pair() applies same compute and DMA fixes
+
+Test Results (engine):
+  - test_os_systolic_decode: PASS
+  - Full test_engines.py: 26/26 passed
+  - Full test_engine_result_contract.py: 10/10 passed (no skips)
+
+Numerical Verification (M=1, K=11008, N=2048, 64x64 INT4):
+  OS-Systolic:
+    total_cycles=393634, compute=374272, dma=393634
+    per_tile_compute=68, bottleneck=dma
+    k_reduction_cycles=352256, raw_dma_cycles=393634
+    total_compute_cycles=374272
+    tok/s=2540.43
+  Block (reference):
+    total_cycles=393634, compute=374272, dma=393634
+    per_tile_compute=68, bottleneck=dma
+    tok/s=2540.43
+  Deviation: 0.00% (<=10% ✓)
+  os_tok_s (test formula: f_mhz*1e6/total_cycles) = 2540.43
+  block_tok_s = 2540.43
+  os_tok_s <= block_tok_s: True ✓
+  bottleneck == dma: True ✓
+
+Diagnostic Keys Present:
+  - k_reduction_cycles: 352256
+  - raw_dma_cycles: 393634
+  - total_compute_cycles: 374272
+  - bottleneck_reason: "DMA (393634 cycles) dominates compute (374272 cycles)"

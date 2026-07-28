@@ -1,0 +1,36 @@
+Task 8 — GMMA pipeline scaling + raw-DMA floor
+===============================================
+Date: 2026-07-28
+
+Changes applied to sim/engine/gmma_engine.py:
+
+1. _per_tile_compute(M):
+   old: return self.H + M + self.W
+   new: return max(1, math.ceil((self.H + M + self.W) * self.pipeline_scale))
+   → With H=64, W=64, pipeline_scale=0.05, M=1: 7 instead of 129
+
+2. estimate() total_cycles:
+   old: total_cycles = max(total_compute, tma_dma)
+   new: total_cycles = max(total_compute, total_dma)
+   → Enforces physical raw-DMA floor; TMA overlap is diagnostic-only
+
+3. estimate() details now includes:
+   - per_tile_dma, raw_dma_cycles, tma_hidden_dma, tma_exposed_dma, pipeline_scale
+
+4. estimate_weight_cache_pair() same treatment:
+   - per_tile_compute uses scaled _per_tile_compute(M)
+   - bottleneck uses raw per_tile_dma_raw (not TMA-discounted)
+   - details: raw_dma_cycles, tma_hidden_dma, pipeline_scale added
+
+Test results:
+- sim/tests/test_engines.py -k gmma: 2/2 passed (test_gmma_decode, test_gmma_tma_overlap)
+- sim/tests/test_engine_result_contract.py -k gmma: 1/1 passed (no longer skips)
+  - total_cycles >= raw_dma_cycles assertion satisfied
+- Full engine suite: 26/26 passed
+- Full contract suite: 10/10 passed
+
+Verification:
+- GMMA decode bottleneck=dma ✓ (was compute before fix)
+- test_gmma_decode asserts r.details["tma_exposed_dma"] < r.details["per_tile_dma"] ✓
+- test_gmma_tma_overlap: HBM2e tok/s > 2× LPDDR5 ✓ (8.98×)
+- Contract: total_cycles >= raw_dma_cycles for all detail keys ✓

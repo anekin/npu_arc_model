@@ -1,0 +1,27 @@
+{
+  "PYTEST_EXIT": 0,
+  "QUICK_DSE_EXIT": 0,
+  "FULL_DSE_EXIT": 0,
+  "BLOCK_CLI_EXIT": 0,
+  "SYSTOLIC_CLI_EXIT": 0,
+  "block_tok_per_s": 21.586,
+  "systolic_tok_per_s": 10.1515,
+  "block_baseline": 21.59,
+  "systolic_baseline": 10.15,
+  "block_deviation_pct": 0.02,
+  "systolic_deviation_pct": 0.015,
+  "baselines_updated": false,
+  "baselines_valid": true,
+  "quick_dse": {
+    "generated": 36,
+    "evaluated": 36,
+    "filtered_by_area": 0,
+    "errors": 0
+  },
+  "full_dse": {
+    "generated": 13440,
+    "evaluated": 13440,
+    "filtered_by_area": 0,
+    "errors": 0
+  }
+}

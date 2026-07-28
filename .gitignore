@@ -1,0 +1,24 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# OMO ephemeral session metadata (not needed for reproduction)
+.omo/run-continuation/
+.omo/drafts/
+
+# IDE / editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary outputs
+*.tmp
+/tmp/

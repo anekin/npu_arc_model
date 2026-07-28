@@ -1,0 +1,171 @@
+{
+  "schema_version": 2,
+  "active_work_id": "dse-engine-model-bug-fix-f2613fba",
+  "works": {
+    "dse-engine-model-bug-fix-f2613fba": {
+      "work_id": "dse-engine-model-bug-fix-f2613fba",
+      "active_plan": "/home/prj/zhengs/caduceuscore/npu_arc_model/.omo/plans/dse-engine-model-bug-fix.md",
+      "plan_name": "dse-engine-model-bug-fix",
+      "status": "completed",
+      "started_at": "2026-07-28T01:09:11.446Z",
+      "updated_at": "2026-07-28T01:58:35.071Z",
+      "session_ids": [
+        "opencode:ses_05ce31e95ffeWG9cY0WPn3YoRJ"
+      ],
+      "session_origins": {
+        "opencode:ses_05ce31e95ffeWG9cY0WPn3YoRJ": "direct"
+      },
+      "agent": "atlas",
+      "task_sessions": {
+        "todo:1": {
+          "task_key": "todo:1",
+          "task_label": "1",
+          "task_title": "建立测试基础设施（pytest.ini + conftest + 修正矛盾断言）",
+          "session_id": "opencode:ses_059a7cfc4ffebL3W5cImo5E1s7",
+          "agent": "Sisyphus-Junior",
+          "category": "quick",
+          "started_at": "2026-07-28T01:21:45.848Z",
+          "status": "completed",
+          "updated_at": "2026-07-28T01:33:49.561Z",
+          "ended_at": "2026-07-28T01:33:49.561Z",
+          "elapsed_ms": 723713
+        },
+        "todo:6": {
+          "task_key": "todo:6",
+          "task_label": "6",
+          "task_title": "修正 OS-Systolic K-reduction + Block-equivalent DMA 核算",
+          "session_id": "opencode:ses_059a247e3ffew57AZDen0QU0SI",
+          "agent": "Sisyphus-Junior",
+          "category": "quick",
+          "updated_at": "2026-07-28T01:42:00.714Z",
+          "started_at": "2026-07-28T01:40:46.660Z",
+          "status": "completed",
+          "ended_at": "2026-07-28T01:42:00.714Z",
+          "elapsed_ms": 74054
+        },
+        "todo:10": {
+          "task_key": "todo:10",
+          "task_label": "10",
+          "task_title": "端到端 CLI 基准重测 + 完整回归",
+          "session_id": "opencode:ses_0599c0116ffevLwmqL6MnpF3fI",
+          "agent": "Sisyphus-Junior",
+          "category": "unspecified-high",
+          "updated_at": "2026-07-28T01:46:14.769Z",
+          "started_at": "2026-07-28T01:45:35.795Z",
+          "status": "completed",
+          "ended_at": "2026-07-28T01:46:14.769Z",
+          "elapsed_ms": 38974
+        },
+        "todo:11": {
+          "task_key": "todo:11",
+          "task_label": "11",
+          "task_title": "发布 post-fix 证据 + 更新架构文档",
+          "session_id": "opencode:ses_0599880c5ffeKFR9mOd6UaSqso",
+          "agent": "Sisyphus-Junior",
+          "category": "writing",
+          "updated_at": "2026-07-28T01:52:24.053Z",
+          "started_at": "2026-07-28T01:51:50.507Z",
+          "status": "completed",
+          "ended_at": "2026-07-28T01:52:24.053Z",
+          "elapsed_ms": 33546
+        },
+        "final-wave:f1": {
+          "task_key": "final-wave:f1",
+          "task_label": "F1",
+          "task_title": "Plan compliance audit",
+          "session_id": "opencode:ses_05992ac4effe4ROea415ZV0BPi",
+          "agent": "Sisyphus-Junior",
+          "category": "unspecified-high",
+          "updated_at": "2026-07-28T01:57:26.751Z",
+          "started_at": "2026-07-28T01:56:23.091Z",
+          "status": "completed",
+          "ended_at": "2026-07-28T01:57:26.751Z",
+          "elapsed_ms": 63660
+        }
+      },
+      "ended_at": "2026-07-28T01:58:35.071Z",
+      "elapsed_ms": 2963625
+    }
+  },
+  "active_plan": "/home/prj/zhengs/caduceuscore/npu_arc_model/.omo/plans/dse-engine-model-bug-fix.md",
+  "started_at": "2026-07-28T01:09:11.446Z",
+  "status": "completed",
+  "updated_at": "2026-07-28T01:58:35.071Z",
+  "session_ids": [
+    "opencode:ses_05ce31e95ffeWG9cY0WPn3YoRJ"
+  ],
+  "session_origins": {
+    "opencode:ses_05ce31e95ffeWG9cY0WPn3YoRJ": "direct"
+  },
+  "plan_name": "dse-engine-model-bug-fix",
+  "task_sessions": {
+    "todo:1": {
+      "task_key": "todo:1",
+      "task_label": "1",
+      "task_title": "建立测试基础设施（pytest.ini + conftest + 修正矛盾断言）",
+      "session_id": "opencode:ses_059a7cfc4ffebL3W5cImo5E1s7",
+      "agent": "Sisyphus-Junior",
+      "category": "quick",
+      "started_at": "2026-07-28T01:21:45.848Z",
+      "status": "completed",
+      "updated_at": "2026-07-28T01:33:49.561Z",
+      "ended_at": "2026-07-28T01:33:49.561Z",
+      "elapsed_ms": 723713
+    },
+    "todo:6": {
+      "task_key": "todo:6",
+      "task_label": "6",
+      "task_title": "修正 OS-Systolic K-reduction + Block-equivalent DMA 核算",
+      "session_id": "opencode:ses_059a247e3ffew57AZDen0QU0SI",
+      "agent": "Sisyphus-Junior",
+      "category": "quick",
+      "updated_at": "2026-07-28T01:42:00.714Z",
+      "started_at": "2026-07-28T01:40:46.660Z",
+      "status": "completed",
+      "ended_at": "2026-07-28T01:42:00.714Z",
+      "elapsed_ms": 74054
+    },
+    "todo:10": {
+      "task_key": "todo:10",
+      "task_label": "10",
+      "task_title": "端到端 CLI 基准重测 + 完整回归",
+      "session_id": "opencode:ses_0599c0116ffevLwmqL6MnpF3fI",
+      "agent": "Sisyphus-Junior",
+      "category": "unspecified-high",
+      "updated_at": "2026-07-28T01:46:14.769Z",
+      "started_at": "2026-07-28T01:45:35.795Z",
+      "status": "completed",
+      "ended_at": "2026-07-28T01:46:14.769Z",
+      "elapsed_ms": 38974
+    },
+    "todo:11": {
+      "task_key": "todo:11",
+      "task_label": "11",
+      "task_title": "发布 post-fix 证据 + 更新架构文档",
+      "session_id": "opencode:ses_0599880c5ffeKFR9mOd6UaSqso",
+      "agent": "Sisyphus-Junior",
+      "category": "writing",
+      "updated_at": "2026-07-28T01:52:24.053Z",
+      "started_at": "2026-07-28T01:51:50.507Z",
+      "status": "completed",
+      "ended_at": "2026-07-28T01:52:24.053Z",
+      "elapsed_ms": 33546
+    },
+    "final-wave:f1": {
+      "task_key": "final-wave:f1",
+      "task_label": "F1",
+      "task_title": "Plan compliance audit",
+      "session_id": "opencode:ses_05992ac4effe4ROea415ZV0BPi",
+      "agent": "Sisyphus-Junior",
+      "category": "unspecified-high",
+      "updated_at": "2026-07-28T01:57:26.751Z",
+      "started_at": "2026-07-28T01:56:23.091Z",
+      "status": "completed",
+      "ended_at": "2026-07-28T01:57:26.751Z",
+      "elapsed_ms": 63660
+    }
+  },
+  "agent": "atlas",
+  "ended_at": "2026-07-28T01:58:35.071Z",
+  "elapsed_ms": 2963625
+}

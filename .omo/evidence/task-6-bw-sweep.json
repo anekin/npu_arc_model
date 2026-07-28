@@ -1,0 +1,67 @@
+{
+  "metadata": {
+    "task": "task-6-os-systolic-fix",
+    "date": "2026-07-28",
+    "description": "BW sweep verifying OS-Systolic vs BlockEngine total_cycles, bottleneck, and diagnostic keys"
+  },
+  "config": {
+    "array": "64x64",
+    "frequency_mhz": 1000,
+    "precision": "INT4/INT8",
+    "M": 1, "K": 11008, "N": 2048
+  },
+  "sweep": [
+    {
+      "bw_gbps": 25.6,
+      "os_total": 787269,
+      "os_bottleneck": "dma",
+      "os_per_tile_compute": 68,
+      "os_k_reduction_cycles": 352256,
+      "os_raw_dma_cycles": 787269,
+      "block_total": 787269,
+      "block_bottleneck": "dma",
+      "os_tok_s": 1270.21,
+      "block_tok_s": 1270.21,
+      "deviation_pct": 0.0
+    },
+    {
+      "bw_gbps": 51.2,
+      "os_total": 393634,
+      "os_bottleneck": "dma",
+      "os_per_tile_compute": 68,
+      "os_k_reduction_cycles": 352256,
+      "os_raw_dma_cycles": 393634,
+      "block_total": 393634,
+      "block_bottleneck": "dma",
+      "os_tok_s": 2540.43,
+      "block_tok_s": 2540.43,
+      "deviation_pct": 0.0
+    },
+    {
+      "bw_gbps": 102.4,
+      "os_total": 374272,
+      "os_bottleneck": "compute",
+      "os_per_tile_compute": 68,
+      "os_k_reduction_cycles": 352256,
+      "os_raw_dma_cycles": 196817,
+      "block_total": 374272,
+      "block_bottleneck": "compute",
+      "os_tok_s": 2671.85,
+      "block_tok_s": 2671.85,
+      "deviation_pct": 0.0
+    },
+    {
+      "bw_gbps": 409.6,
+      "os_total": 374272,
+      "os_bottleneck": "compute",
+      "os_per_tile_compute": 68,
+      "os_k_reduction_cycles": 352256,
+      "os_raw_dma_cycles": 49204,
+      "block_total": 374272,
+      "block_bottleneck": "compute",
+      "os_tok_s": 2671.85,
+      "block_tok_s": 2671.85,
+      "deviation_pct": 0.0
+    }
+  ]
+}
