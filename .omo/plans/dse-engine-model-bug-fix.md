@@ -610,7 +610,7 @@ Final wave (after ALL todos, parallel review)
 
 ---
 
-- [ ] 10. 端到端 CLI 基准重测 + 完整回归
+- [x] 10. 端到端 CLI 基准重测 + 完整回归
 
   **What to do**:
   1. 运行 `npu_sim.py --json`（Block 引擎）和 `--engine systolic --json`（Systolic 引擎），记录新的 `tok_per_s` 值。
