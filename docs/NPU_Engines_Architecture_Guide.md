@@ -1,8 +1,9 @@
 # NPU 矩阵乘法引擎架构全景
 
 > 7 种引擎 × 6 级 DRAM，一图看懂架构差异、适用场景与选型逻辑。
-> 所有性能数据来自自研 Python simulator，3B LLM decode (M=1)，INT4 精度。
-> 本文基于修正后的 Arc Model DSE v2；GMMA TMA 模型和 Systolic Prefill 模型均已修正，确保不违反 DRAM 带宽上限。
+> 所有性能数据来自自研 Python simulator，3B LLM FFN_down GEMM (M=1, K=11008, N=2048)，INT4 精度。
+> 性能数据 commit: `02683a9f49bc2df299d31f4af8c1446d99101fce`。
+> 本文基于修正后的 Arc Model DSE v2；引擎模型修复后所有 63 个回归测试通过。
 
 ---
 
@@ -11,26 +12,27 @@
 ```
                      DMA 碎片 ←──────────────────────────→ 面积
 
-  WMMA (0.05)     TensorCore (27.7)    GMMA (30.0)     Block (29.6) ✅
+  WMMA (6.9)     TensorCore (2,490)    GMMA (2,540)     Block (2,540) ✅
   16×16           64×16×16             64×64+TMA        64×64 广播
        │                │                   │                │
        ▼                ▼                   ▼                ▼
-  ┌──────────────────────────────────────────────────────────────────┐
-  │                     面积-性能 Pareto 前沿                        │
-  │                                                                  │
-  │  22mm² ── Systolic 64×64               (11.2 tok/s)             │
-  │  44mm² ── Input-Stationary 64×64       (6.4 tok/s)              │
-  │  28mm² ── Block 64×64+WC               (29.6 tok/s) ← ✅ 推荐  │
-  │  28mm² ── OS-Systolic 64×64            (29.6 tok/s)             │
-  │  30mm² ── GMMA 64×64+TMA               (30.0 tok/s)             │
-  │  52mm² ── Tensor Core 64×16×16         (27.7 tok/s)             │
-  │  57mm² ── WMMA 16×16                   (0.05 tok/s)  ← ☠️      │
-  │                                                                  │
-  │  * Block/OS-Systolic/GMMA 均为 DRAM 瓶颈值（~30 tok/s 上限）     │
-  │  ═══════ DRAM 51.2 GB/s × 85%效率 = 43.5 GB/s 天花板 ═══════     │
-  └──────────────────────────────────────────────────────────────────┘
+  ┌─────────────────────────────────────────────────────────────────────┐
+  │                     单 GEMM 性能 (FFN_down, M=1)                    │
+  │                                                                     │
+  │  22mm² ── Systolic 64×64               (946 tok/s)                 │
+  │  44mm² ── Input-Stationary 64×64       (6.4 tok/s)                 │
+  │  28mm² ── Block 64×64+WC               (2,540 tok/s) ← ✅ 推荐     │
+  │  28mm² ── OS-Systolic 64×64            (2,540 tok/s)               │
+  │  30mm² ── GMMA 64×64+TMA               (2,540 tok/s)               │
+  │  52mm² ── Tensor Core 64×16×16         (2,490 tok/s)               │
+  │  ~30mm² ── FSA 64×64                   (1,408 tok/s)               │
+  │  57mm² ── WMMA 16×16                   (6.9 tok/s)  ← ☠️          │
+  │                                                                     │
+  │  * DRAM-bound 三引擎（Block/OS-Systolic/GMMA）性能一致              │
+  │  ═══════ DRAM 51.2 GB/s × 85%效率 = 43.5 GB/s 天花板 ═══════       │
+  └─────────────────────────────────────────────────────────────────────┘
 
-**核心洞察：** LPDDR5-6400 实际带宽上限约 43.5 GB/s，Block/OS-Systolic/GMMA 均处于 DRAM 瓶颈区（~30 tok/s），三者性能等价。Block 64×64 用最低面积（28.2 mm²）实现该上限性能，且通过全并行广播架构避免了 Systolic 的 pipeline 开销和 Tensor Core 的碎片问题。GMMA 的 TMA 无法突破 DRAM 带宽上限——它只能隐藏 DMA latency，不能减少需要读取的总字节数。引擎选择本质上是 **广播效率 vs 面积** 的 trade-off——Block 用 crossbar 面积换取了零流水线开销和最低的 DMA 碎片。
+**核心洞察：** LPDDR5-6400 实际带宽上限约 43.5 GB/s，Block/OS-Systolic/GMMA 均处于 DRAM 瓶颈区（~2,540 tok/s），三者性能等价。Block 64×64 用最低面积（28.2 mm²）实现该上限性能，且通过全并行广播架构避免了 Systolic 的 pipeline 开销和 Tensor Core 的碎片问题。GMMA 的 TMA 无法突破 DRAM 带宽上限——它只能隐藏 DMA latency，不能减少需要读取的总字节数。引擎选择本质上是 **广播效率 vs 面积** 的 trade-off——Block 用 crossbar 面积换取了零流水线开销和最低的 DMA 碎片。Systolic 的 pipeline fill/drain 开销使其降至 946 tok/s，FSA 因 inline Softmax 开销成为 compute-bound。TensorCore 修复了 descriptor 碎片化开销后正确慢于 Block（2,490 vs 2,540 tok/s）。
 
 ---
 
@@ -53,20 +55,20 @@
        ↓ partial sums accumulate downward
 
    每周期: 1 个数据流入，1 个 MAC 运算
-   关键瓶颈: M=1 时每个 tile 要等 193 cycles pipeline fill/drain
+    关键瓶颈: M=1 时每个 tile 要等 192 cycles pipeline fill/drain（修复后公式：per_tile_compute = H×(M+1)+W）
 ```
 
 | 特性 | 值 |
 |------|-----|
 | 数据流 | 权重静态（预加载在 PE 内），激活数据从左向右流 |
 | 面积/PE | 极小 — 一个 MAC + 一个寄存器 |
-| Pipeline overhead | **193 cycles/tile**（127 fill + 65 drain + 1 compute）|
+| Pipeline overhead | **192 cycles/tile**（H×(M+1)+W = 64×2+64，修复后公式与 MXUModel byte-for-byte 一致）|
 | 适合场景 | CNN 推理（大 batch）、prefill（M=128）— pipeline overhead 被摊销 |
 | 不适合场景 | LLM decode (M=1) — overhead 占 ~99.9% 时间 |
 | DRAM 需求 | 低 — 权重加载可双缓冲，激活量极小 |
 | 关键优化 | 加宽阵列（64→128）、Weight Cache（PE 双寄存器存 gate+up）|
 
-**一句话：** 面积效率最高（22.2 mm² @ 64×64），但在 M=1 decode 场景被 pipeline 物理开销严重拖累，仅 11.2 tok/s。
+**一句话：** 面积效率最高（22.2 mm² @ 64×64），但在 M=1 decode 场景被 pipeline 物理开销严重拖累，单 GEMM 仅 946 tok/s（28 层完整模型约 10.15 tok/s）。
 
 ---
 
@@ -89,14 +91,14 @@
 | 特性 | 值 |
 |------|-----|
 | 数据流 | 输出静态（部分和驻留 PE），权重和激活流入 |
-| Pipeline overhead | **0 cycles** — 输出已经在 PE 里，不需要排空 |
-| 面积/PE | 大 — 需要 accumulator + 双缓冲（~4× systolic）|
-| 适合场景 | LLM decode — 零流水线开销，每 tile 1 cycle |
-| 不适合场景 | 面积敏感场景 — 28.2 mm²，与 Block 相同但实现更复杂 |
+| Pipeline overhead | **H cycles K-reduction**（OS 需要 H 次 K 维度累加，修复后公式：self.H + BROADCAST_SYNC + accumulate）|
+| 面积/PE | 大 — 需要 accumulator + 双缓冲（~4× systolic，约 2× Block PE area）|
+| 适合场景 | LLM decode — K-reduction 在 DMA bound 下不影响瓶颈 |
+| 不适合场景 | 面积敏感场景 — PE area ~2× Block PE，相同面积时有效阵列更小 |
 | DRAM 需求 | 同 systolic — 输出驻留不占 DRAM 带宽 |
 | 参考 | UC Berkeley Gemmini (Chisel generator) |
 
-**一句话：** 零 pipeline 开销，性能（29.6 tok/s）与 Block 相同，但面积代价高于 Systolic。实现复杂度高于 Block，故非首选。
+**一句话：** 修复 K-reduction 深度后（per_tile_compute 加入 self.H=64），OS-Systolic 正确进入 DMA-bound（2,540 tok/s），与 Block 性能一致但 PE area 约 2×。实现复杂度高于 Block，故非首选。
 
 ---
 
@@ -121,12 +123,12 @@
 | 数据流 | 纯空间并行 — 权重+激活广播到所有 MAC |
 | 每 tile 时间 | **1 cycle compute + DMA time** |
 | 面积 | **28.2 mm² @ 64×64**（含 Weight Cache、im2col、SFU）|
-| 瓶颈 | **DRAM** — 算得再快，数据从 DRAM 搬不过来（~30 tok/s 上限）|
-| 适合场景 | LPDDR5-6400 端侧 LLM decode — 29.6 tok/s，DRAM 完全占满 |
+| 瓶颈 | **DRAM** — 算得再快，数据从 DRAM 搬不过来（~2,540 tok/s 单 GEMM 上限）|
+| 适合场景 | LPDDR5-6400 端侧 LLM decode — 2,540 tok/s（单 GEMM），DRAM 完全占满 |
 | CV 性能 | MobileNetV3-Small **677.9 FPS**（64×64 INT4）|
 | 功耗 | **~9.6 W** |
 
-**一句话：** ✅ **推荐引擎。** Block 64×64 在 28.2 mm² 实现 DRAM 瓶颈下的最高性能（29.6 tok/s），全并行广播架构消除了 pipeline 开销和 DMA 碎片问题，且 LLM/CV 双栈验证通过。广播效率是核心优势，DRAM 带宽是唯一瓶颈。带宽翻倍性能即可翻倍。
+**一句话：** ✅ **推荐引擎。** Block 64×64 在 28.2 mm² 实现 DRAM 瓶颈下的最高性能（2,540 tok/s 单 GEMM / 21.586 tok/s npu_sim 完整模型），全并行广播架构消除了 pipeline 开销和 DMA 碎片问题，且 LLM/CV 双栈验证通过。广播效率是核心优势，DRAM 带宽是唯一瓶颈。带宽翻倍性能即可翻倍。
 
 ---
 
@@ -151,11 +153,11 @@
 | 数据流 | 64 个独立 16×16 TC 并行，各自 DMA |
 | 碎片度 | **高** — 比 Block 多 64× 的 DMA 事务 |
 | 面积 | 52mm²（~32mm² PE + 30% orchestration）|
-| 性能 @ 51.2 GB/s | 27.7 tok/s（略低于 Block 的 29.6）|
+| 性能 @ 51.2 GB/s | 2,490 tok/s（修复 descriptor 开销后正确慢于 Block 的 2,540）|
 | 适合场景 | 需要小块灵活性时（非规则矩阵、稀疏）|
 | NVIDIA 差异 | GPU 有 warp scheduler 隐藏 DMA 延迟，单 die NPU 没有 |
 
-**一句话：** Block Engine 的小块版本。灵活性换来了碎片开销，单 die NPU 下不如直接上 Block。在 LPDDR5-6400 下因碎片问题性能反而低于 Block。
+**一句话：** Block Engine 的小块版本。灵活性换来了碎片开销，单 die NPU 下不如直接上 Block。在 LPDDR5-6400 下因每个 sub-tile 的 descriptor 开销（5 cycles/TC/wave），TensorCore 的 DMA cycles 增加 37.8%，正确慢于 Block（2,490 vs 2,540 tok/s）。
 
 ---
 
@@ -179,12 +181,12 @@
 
 | 特性 | 值 |
 |------|-----|
-| 性能 @ 50GB/s | **0.05 tok/s** — 比 Block 慢 600× |
+| 性能 @ 50GB/s | **6.9 tok/s** — 比 Block 慢 370× |
 | 根因 | DMA 启动开销爆炸（每次启动 10 cycles × 10 万次 = 100 万 cycles 纯等）|
 | GPU 怎么解决的 | **数千个 warp 同时跑** — 一个 warp 等 DMA 时，scheduler 切到另一个 warp |
 | 单 die NPU 为何不行 | 只有 1 个指令流 — 等 DMA 时 CPU 完全 idle |
 
-**一句话：WMMA 是 GPU 专属架构。单 die NPU 上不能用——这是本报告最重要的发现之一。**
+**一句话：WMMA 是 GPU 专属架构。单 die NPU 上不能用（6.9 tok/s，比 Block 低 370×）——这是本报告最重要的发现之一。**
 
 ---
 
@@ -214,12 +216,15 @@
 | 数据流 | 同 Block + TMA 异步 DMA 引擎 |
 | 异步重叠 | DMA 和 compute **可重叠** — 但 DRAM 读取总量不变 |
 | 面积 | 30.2 mm²（Block 28.2 + TMA 1 + SharedMem 1）|
-| 性能 @ 51.2 GB/s | **30.0 tok/s** — 与 Block 等价，因 DRAM 是瓶颈 |
-| 性能 @ 100 GB/s | ~58 tok/s（与 Block 等价，均在 DRAM 上限）|
-| 性能 @ 200 GB/s | ~117 tok/s（与 Block 等价，均在 DRAM 上限）|
+| pipeline_scale | **0.05**（未校准 — H100 GMMA 架构假设，可在 YAML 配置中调整）|
+| per_tile_compute (M=1) | **7 cycles**（max(1, ceil((H+M+W) × 0.05))，修复后启用缩放）|
+| 性能 @ 51.2 GB/s | **2,540 tok/s** — 与 Block 等价，因 DRAM 是瓶颈 |
+| 性能 @ 100 GB/s | ~4,950 tok/s（与 Block 等价，均在 DRAM 上限）|
+| 性能 @ 460 GB/s (HBM2e) | ~22,824 tok/s（带宽单调性已恢复）|
+| total_cycles 下限 | **raw-DMA floor** — TMA overlap 不降低物理字节传输时间 |
 | TMA 真正价值 | **在 compute-bound 场景（如 HBM）下隐藏 exposed DMA latency** |
 
-**一句话：TMA 只能隐藏 latency，不能突破 DRAM 带宽上限。在 LPDDR5-6400 下 GMMA 与 Block 性能相同（~30 tok/s），但面积和功耗更大（30.2 mm² vs 28.2 mm²），因此不推荐。**
+**一句话：TMA 只能隐藏 latency，不能突破 DRAM 带宽上限。GMMA 修复了 pipeline_scale 缩放（per_tile_compute=7）和 raw-DMA floor 后，在 LPDDR5-6400 下与 Block 性能相同（2,540 tok/s），但面积和功耗更大（30.2 mm² vs 28.2 mm²），因此不推荐。带宽单调性已验证：LPDDR5→HBM2e 吞吐提升 9.0×。**
 
 ---
 
@@ -242,11 +247,11 @@
 |------|-----|
 | 数据流 | 输入静态（激活值驻留），权重广播 |
 | 适合场景 | 大 batch prefill、CNN — 激活值可复用 |
-| M=1 decode | 6.4 tok/s — 阵列利用率极低 |
+| M=1 decode | ~6.4 tok/s — 阵列利用率极低 |
 | 面积 | 44mm² |
 | 参考 | MIT Eyeriss (2016) |
 
-**一句话：** 为 CNN 和 prefill 设计的引擎，decode 场景不适配。在 LPDDR5-6400 下仅 6.4 tok/s，远低于 20 tok/s 目标。
+**一句话：** 为 CNN 和 prefill 设计的引擎，decode 场景不适配。在 LPDDR5-6400 下单引擎仅 ~6.4 tok/s。
 
 ---
 
@@ -254,13 +259,12 @@
 
 | 场景 | 推荐引擎 | 阵列 | DRAM | tok/s | 面积 |
 |------|---------|------|------|:---:|:---:|
-| **✅ 推荐配置** | **Block 64×64 + WC** | **64×64** | **LPDDR5-6400 64b** | **29.6** | **28.2 mm²** |
-| 备选 — 同性能 | OS-Systolic | 64×64 | LPDDR5-6400 64b | 29.6 | 28.2 mm² |
-| 备选 — TMA 测试 | GMMA | 64×64 | LPDDR5-6400 64b | 30.0 | 30.2 mm² |
-| 面积最小（性能不足） | Systolic | 64×64 | LPDDR5-6400 64b | 11.2 | 22.2 mm² |
-| 中等带宽（～100 GB/s） | Block | 64×64 | LPDDR5X-8533 64b | ~58 | 28.2 mm² |
-| 高端（～200 GB/s） | Block | 64×64 | LPDDR5T-9600 64b | ~75 | 28.2 mm² |
-| **绝对不要用** | WMMA | 16×16 | 任意 | 0.05 | 57mm² |
+| **✅ 推荐配置** | **Block 64×64 + WC** | **64×64** | **LPDDR5-6400 64b** | **2,540** | **28.2 mm²** |
+| 备选 — 同性能 | OS-Systolic | 64×64 | LPDDR5-6400 64b | 2,540 | 28.2 mm² |
+| 备选 — TMA 测试 | GMMA | 64×64 | LPDDR5-6400 64b | 2,540 | 30.2 mm² |
+| 面积最小（性能不足） | Systolic | 64×64 | LPDDR5-6400 64b | 946 | 22.2 mm² |
+| TensorCore（含 descriptor 开销） | TensorCore | 64×64 | LPDDR5-6400 64b | 2,490 | 52 mm² |
+| **绝对不要用** | WMMA | 16×16 | 任意 | 6.9 | 57mm² |
 
 ---
 
@@ -276,11 +280,11 @@
             └──┬────────┬──┘      └──┬────────┬──┘
            YES │        │ NO     YES │        │ NO
                ▼        ▼           ▼        ▼
-           Block     Systolic    Block      Block
-           64×64+WC  64×64       64×64      64×64
-           29.6 tok/s 11.2 tok/s INT2       INT4
-           28.2mm²    22.2mm²    ~58 tok/s  ~75 tok/s*
-                                 28.2mm²    28.2mm²
+            Block     Systolic    Block      Block
+            64×64+WC  64×64       64×64      64×64
+            2,540 tok/s 946 tok/s  INT2       INT4
+            28.2mm²    22.2mm²     ~4,950     ~2,540*
+                                  28.2mm²    28.2mm²
 ```
 
 ---

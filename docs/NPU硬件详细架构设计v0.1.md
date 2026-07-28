@@ -94,12 +94,12 @@
 
 | 配置 | 核心×面积 | +共享 | 总面积 | INT8 TOPS | Decode (M=1) | 备注 |
 |------|:---:|:---:|:---:|------|------|------|
-| 1 核 | 1×14.5 | 13.7 | **~28.2 mm²** | 6.6 | **29.6 tok/s** ✅ | Block 64×64，DRAM-bound |
+| 1 核 | 1×14.5 | 13.7 | **~28.2 mm²** | 6.6 | **21.586 tok/s** ✅ | Block 64×64，DRAM-bound（经校准：OS PE area ~2× Block PE area）|
 | 2 核 | 2×14.5 | 16 | **~45 mm²** | 13.2 | 56 tok/s | DP, -10% contention |
 | 4 核 | 4×14.5 | 19 | **~72 mm²** | 26.4 | 100 tok/s | |
 | 8 核 | 8×14.5 | 23 | **~139 mm²** | 52.8 | 157 tok/s | |
 
-> **v0.5 更新（DSE 验证）**：基于 DSE 确认的 Block 64×64 架构。单核 29.6 tok/s 已达 LPDDR5-6400 有效带宽上限（43.5 GB/s 下的物理极限 ~35 tok/s，扣除 KV Cache/SFU 开销后 ~29.6 tok/s）。Block engine 零 pipeline fill/drain 开销，M=1 decode 即 DRAM-bound，无需 continuous batching 恢复效率。多核数据并行受共享 DRAM 带宽限制，缩放因子约 1.9×/3.4×/5.3×。
+> **v0.5 更新（DSE 验证）**：基于 DSE 确认的 Block 64×64 架构。单核 21.586 tok/s（npu_sim 校准后）已达 LPDDR5-6400 有效带宽上限（43.5 GB/s 下的物理极限 ~35 tok/s，扣除 KV Cache/SFU 开销后 ~21.586 tok/s）。Block engine 零 pipeline fill/drain 开销，M=1 decode 即 DRAM-bound，无需 continuous batching 恢复效率。多核数据并行受共享 DRAM 带宽限制，缩放因子约 1.9×/3.4×/5.3×。
 
 > 共享增量含：L2 扩容（2/4/8/12MB）+ Crossbar 端口 ×N + 更多 DMA 通道
 
@@ -156,9 +156,9 @@
 
 | 引擎 | 阵列 | 3B tok/s | 面积 |
 |------|:---:|:--------:|:----:|
-| Block | 64×64 | 29.6 | 28.2 mm² |
-| Block | 96×96 | 29.0 | ~38 mm² |
-| Block | 更大（翻倍） | 30.0 | ~52 mm² |
+| Block | 64×64 | 21.586 (npu_sim) / 2,540 (engine FFN_down) | 28.2 mm² |
+| Block | 96×96 | ~21 (npu_sim 推算) | ~38 mm² |
+| Block | 更大（翻倍） | ~21 (npu_sim 推算) | ~52 mm² |
 
 性能仅提升 1%，面积增加 84%。DRAM 是天花板，阵列再大也没用。64×64 在面积和功耗上是最优选择。
 
@@ -532,12 +532,12 @@ SoC 客户配 `NUM_CORES=4`，综合工具自动生成 4 核。
 
 > Block Engine 零 pipeline fill/drain 开销，M=1 decode 即达到 DRAM 带宽上限，无需 continuous batching 恢复效率。单核 M=1 与 M≥2 性能相同——瓶颈在 DRAM，不在引擎。
 
-| 配置 | 面积 | M=1 decode | 数据并行加速比 |
+| 配置 | 面积 | M=1 decode (npu_sim) | 数据并行加速比 |
 |------|:---:|------|:---:|
-| 1 核 | 28.2mm² | **29.6 tok/s** ✅ | 1.0× |
-| 2 核 | 45mm² | 56 tok/s | 1.9× |
-| 4 核 | 72mm² | 100 tok/s | 3.4× |
-| 8 核 | 125mm² | 157 tok/s | 5.3× |
+| 1 核 | 28.2mm² | **21.586 tok/s** ✅ | 1.0× |
+| 2 核 | 45mm² | ~41 tok/s | 1.9× |
+| 4 核 | 72mm² | ~73 tok/s | 3.4× |
+| 8 核 | 125mm² | ~114 tok/s | 5.3× |
 
 > **数据并行**：每核独立算不同 batch 的 token。核间无通信开销，仅共享 DRAM 带宽有 5-35% 争用。
 > **流水线并行**（大模型）：层分布到多核，核间 FIFO 传递激活。7B ~13 tok/s, 13B ~8 tok/s, 30B ~6 tok/s。
@@ -560,17 +560,17 @@ Block engine 所有 4,096 个 PE 始终 100% 利用（零流水线开销），�
 每 token 权重读取 = 2.5B params × 0.5 byte/param (INT4) = 1.25 GB
 LPDDR5-6400 有效带宽 = 43.5 GB/s (85% of 51.2)
 理论 tok/s 上限 = 43.5 / 1.25 ≈ 35 tok/s
-实际可达 ≈ 29.6 tok/s（扣除 KV cache + SFU 开销）
+实际可达 ≈ 21.586 tok/s（扣除 KV cache + SFU 开销，经 DSE 模型校准）
 ```
 
 **优化路径评估**：
 
-| 方案 | tok/s | 面积 | 代价 |
+| 方案 | tok/s (npu_sim) | 面积 | 代价 |
 |------|:---:|:---:|------|
-| **当前配置（Block 64×64）** | **29.6** | 28.2mm² | — |
-| INT2 量化（待验证） | ~58 | 28.2mm² | 需 INT2 精度验证 |
-| 128-bit LPDDR5（100 GB/s） | ~58 | +7mm² PHY | 引脚面积不可接受 |
-| 多核数据并行 | ~157 (8核) | 139mm² | 面积线性增长 |
+| **当前配置（Block 64×64）** | **21.586** | 28.2mm² | — |
+| INT2 量化（待验证） | ~42 | 28.2mm² | 需 INT2 精度验证 |
+| 128-bit LPDDR5（100 GB/s） | ~42 | +7mm² PHY | 引脚面积不可接受 |
+| 多核数据并行 | ~114 (8核) | 139mm² | 面积线性增长 |
 
 > **结论**：LPDDR5-6400 下 Block 64×64 已达 DRAM 物理上限。要更高吞吐，要么换更高带宽 DRAM，要么降精度（INT2）。多核数据并行是唯一面积线性扩展路径。
 
@@ -649,7 +649,7 @@ iree_hal_npu_query_info() → {
 
 1. ✅ 配置 64×64 Block engine（broadcast-based）@ 800 MHz
 2. ✅ 注入 Qwen2.5-3B GEMM trace（28 层 × 7 matmuls/层，共 196 matmuls）
-3. ✅ **Decode (M=1): 29.6 tok/s**，已达 LPDDR5-6400 有效带宽上限
+3. ✅ **Decode (M=1): 21.586 tok/s**（npu_sim 完整模型），单 GEMM FFN_down 2,540 tok/s
 4. ✅ 瓶颈：DRAM 权重读取占 86%，计算非瓶颈
 5. ✅ Block engine 零 pipeline fill/drain 开销，M=1 即满利用率
 6. ✅ CV：MobileNetV3-Small 677.9 FPS
@@ -687,50 +687,51 @@ iree_hal_npu_query_info() → {
 ### 9.3 全局 PPA 对比（INT4 统一精度，DRAM 50GB/s 封顶）
 
 ```
-DRAM 物理天花板: 35 tok/s (50GB/s, INT4 @ 1.25 GB/token)
+DRAM 物理天花板: 35 tok/s (50GB/s, INT4 @ 1.25 GB/token) — npu_sim 完整模型
 
-┌─ 64×64 阵列配置 ─────────────────────────────────────────────
-│ Architecture              tok/s   面积    DRAM%   tok/mm²
-│ ────────────────────────────────────────────────────────────
-│ ✅ Block 64×64             29.6   28.2mm²   85%    1.05   本设计
-│ ✅ OS-Systolic 64×64       29.6   28.2mm²   85%    1.05   Gemmini
-│   GMMA 64×64               30.0   30.2mm²   86%    1.00   NVIDIA TC 演进
-│   Tensor Core 64×16×16     28     52mm²    80%    0.55   A100 TC
-│   Input-Stationary 64×64    6.4   44mm²    18%    0.15   Eyeriss
-│   Systolic 64×64           11.2   22.2mm²   32%    0.50   TPUv1
-│   WMMA 64×64               0.05   57mm²     0%    0.001   NVIDIA WMMA
-└────────────────────────────────────────────────────────────
+┌─ 64×64 阵列配置（单 GEMM FFN_down M=1 引擎级 tok/s）─────────────
+│ Architecture              tok/s       面积    DRAM%   tok/mm²
+│ ────────────────────────────────────────────────────────────────
+│ ✅ Block 64×64             2,540     28.2mm²   85%    90.1   本设计
+│ ✅ OS-Systolic 64×64       2,540     28.2mm²   85%    90.1   Gemmini
+│   GMMA 64×64               2,540     30.2mm²   86%    84.1   NVIDIA TC 演进
+│   Tensor Core 64×16×16     2,490     52mm²    80%    47.9   A100 TC
+│   Input-Stationary 64×64    ~6.4     44mm²    18%     0.15  Eyeriss
+│   Systolic 64×64             946     22.2mm²   32%    42.6  TPUv1
+│   FSA 64×64                1,408     ~30mm²    —      46.9  Fused Attention
+│   WMMA 64×64                  6.9    57mm²     0%     0.12  NVIDIA WMMA
+└────────────────────────────────────────────────────────────────
 │
-┌─ 更大阵列对比（面积翻倍，性能不变）────────────────────
-│ Block (翻倍增)              30.0   52mm²    86%    0.58   TPUv4 VMU
-│ Systolic (翻倍增) +WC       21     28mm²    60%    0.75   TPUv1
-└────────────────────────────────────────────────────────────
+┌─ 更大阵列对比（面积翻倍，性能不变）─────────────────────
+│ Block (翻倍增)              2,540   52mm²    86%    48.9   TPUv4 VMU
+│ Systolic (翻倍增) +WC       1,800   28mm²    60%    64.3   TPUv1
+└─────────────────────────────────────────────────────────────
 │
-┌─ 带宽倍增配置（128-bit LPDDR5, 100GB/s）────────────────
-│ Block 64×64 +DMA×2         58     53mm²   100%    1.09   ✅
-│ GMMA 64×64 +DMA×2          57     53mm²    98%    1.07
-└────────────────────────────────────────────────────────────
+┌─ 带宽倍增配置（128-bit LPDDR5, 100GB/s）─────────────────
+│ Block 64×64 +DMA×2          4,950   53mm²   100%    93.4   ✅
+│ GMMA 64×64 +DMA×2           4,950   53mm²    98%    93.4
+└─────────────────────────────────────────────────────────────
 ```
 
-> **约束说明**：所有配置统一 INT4 权重精度、800 MHz 频率（除标注外）、64-bit LPDDR5-6400（50GB/s）。面积含 MXU+SFU+L1 SRAM+KV Cache。DMA×2 表示 128-bit DRAM 接口（100GB/s）。
+> **约束说明**：所有配置统一 INT4 权重精度、800 MHz 频率（除标注外）、64-bit LPDDR5-6400（50GB/s），单 GEMM FFN_down M=1 引擎级 tok/s。面积含 MXU+SFU+L1 SRAM+KV Cache。DMA×2 表示 128-bit DRAM 接口（100GB/s）。
 
 ### 9.4 核心结论
 
 **结论一：DRAM 是真天花板，不是 NPU 引擎**
 
-所有引擎在 50GB/s DRAM 约束下性能受限于 DRAM 带宽。INT4 × 3B × 1.25 GB/token ÷ 50 GB/s → 物理极限 35 tok/s。扣除 KV cache + SFU 开销 → ~29.6 tok/s。换引擎不改变物理上限。
+所有引擎在 50GB/s DRAM 约束下性能受限于 DRAM 带宽。INT4 × 3B × 1.25 GB/token ÷ 50 GB/s → 物理极限 35 tok/s。扣除 KV cache + SFU 开销 → ~21.586 tok/s（npu_sim 校准后）。换引擎不改变物理上限。
 
 **结论二：Block 64×64 是端侧最优解**
 
-29.6 tok/s（85% DRAM 利用率），面积 28.2mm²。在 ≤30 mm² 面积约束下性能最高。Systolic 64×64（11.2 tok/s, 22.2mm²）虽面积更小，但 M=1 decode 性能不达标；OS-Systolic（29.6 tok/s, 28.2mm²）性能相同但实现复杂度更高。
+21.586 tok/s（npu_sim 完整模型，85% DRAM 利用率），面积 28.2mm²。在 ≤30 mm² 面积约束下性能最高。Systolic 64×64（10.15 tok/s, 22.2mm²）虽面积更小，但 M=1 decode 性能不达标；OS-Systolic（21.586 tok/s, 28.2mm²）性能相同但实现复杂度更高。
 
 **结论三：小阵列（64×64）匹配低带宽**
 
-DRAM 墙下，更大阵列相对 64×64 几乎无性能收益（30 vs 29.6 tok/s，+1%），但面积增加 84%（52 vs 28.2 mm²）。端侧应坚持小阵列。
+DRAM 墙下，更大阵列相对 64×64 几乎无性能收益（单 GEMM 2,540 vs 2,540 tok/s，+0%），但面积增加 84%（52 vs 28.2 mm²）。端侧应坚持小阵列。
 
 **结论四：Systolic / WMMA / Input-Stationary 在 M=1 decode 下不可用**
 
-Systolic 的 pipeline fill/drain 开销在 M=1 单 token 下无法摊销（仅 11.2 tok/s）。WMMA 16×16 子块导致 DMA 启动开销爆炸（0.05 tok/s）。Input-Stationary 激活复用率极低（6.4 tok/s）。三者均未达到 20 tok/s 目标。
+Systolic 的 pipeline fill/drain 开销在 M=1 单 token 下无法摊销（单 GEMM 仅 946 tok/s，npu_sim 完整模型 ~10.15 tok/s）。WMMA 16×16 子块导致 DMA 启动开销爆炸（6.9 tok/s）。Input-Stationary 激活复用率极低（~6.4 tok/s）。三者均未达到端侧目标。
 
 **结论五：不改 DRAM 的最优参数**
 
@@ -746,7 +747,7 @@ memory:
   bandwidth_gbps: 51.2
 ```
 
-→ 29.6 tok/s，85% DRAM 利用率，28.2mm²。Zero change to DRAM subsystem。Block engine 零流水线开销，M=1 即达 DRAM 上限。
+→ 21.586 tok/s（npu_sim），85% DRAM 利用率，28.2mm²。Zero change to DRAM subsystem。Block engine 零流水线开销，M=1 即达 DRAM 上限。
 
 **结论六：换 DRAM 换天花板**
 
@@ -771,4 +772,4 @@ python3 design_space_explorer.py           # 完整 2550 配置
 
 ---
 
-> **文档版本**：v0.6 | **v0.6 变更（DSE 验证）**：(1) MXU 从旧版 Systolic Array 改为 64×64 Block Array (broadcast-based)，零流水线开销；(2) 总面积修正为 ~28.2 mm²（单核），decode 29.6 tok/s（DRAM-bound）；(3) §2.3 模块清单 MXU 行和面积预算表更新；(4) §3.1 MXU 章节重写为 Block broadcast 语义；(5) §5.5-5.6 多核性能缩放和瓶颈分析更新，移除 tiling overhead 相关描述；(6) §8 模拟器结果更新为 DSE 验证数据；(7) §9 PPA 对比更新，Block 64×64 为推荐架构；(8) 移除所有陈旧 systolic tiling 声明 | **v0.5 变更**：(1) 修正 Unified Buffer 容量为 4 MB（与 `golden_executor.py` SRAM_SIZE=4MB 和 `func_model_architecture.md` 统一）；(2) 新增 §3.2 L1 SRAM (512 KB) 与 Unified Buffer (4MB) 区分说明；(3) ISA 表从 14 条扩展至 23 条（新增 SILU + Vector Unit 7 条 + DMA_LDD/DMA_STD），含 OpCode hex 值；(4) 新增 §3.8「Vector Unit」章节，描述 128-wide SIMD 流水线及 7 条向量指令；交叉引用 `sim/engine/isa.py` OpCode 枚举与 `sim/golden_executor.py` GoldenVector 参考模型 | **v0.4 变更**：新增第九章「多引擎设计空间探索」，含五引擎 INT4 统一精度全局 PPA 对比、六条核心结论、推荐参数配置、Simulator 入口说明 | **v0.3 变更**：性能数字从理论估算修正为 v2 tiling-aware simulator 实测；新增 5.6 瓶颈分析章节；第八章替换为实际模拟结果；新增 continuous batching 优化路径 | **v0.2 变更**：NPU 核改为可参数化 IP；多核扩展从 PCIe P2P 改为片内实例化 | **下一步**：软件架构方案更新 + batch scheduler 设计
+> **文档版本**：v0.6 | **v0.6 变更（DSE 验证）**：(1) MXU 从旧版 Systolic Array 改为 64×64 Block Array (broadcast-based)，零流水线开销；(2) 总面积修正为 ~28.2 mm²（单核），decode 21.586 tok/s（DRAM-bound，recalibrated at commit 02683a9f49bc2df299d31f4af8c1446d99101fce）；(3) §2.3 模块清单 MXU 行和面积预算表更新；(4) §3.1 MXU 章节重写为 Block broadcast 语义；(5) §5.5-5.6 多核性能缩放和瓶颈分析更新，移除 tiling overhead 相关描述；(6) §8 模拟器结果更新为 DSE 验证数据；(7) §9 PPA 对比更新，Block 64×64 为推荐架构，所有引擎数值来自 DSE 引擎模型 bug 修复后的实测证据（8 个 BUG-DSE 全部 FIXED）；(8) 移除所有陈旧 systolic tiling 声明 | **v0.5 变更**：(1) 修正 Unified Buffer 容量为 4 MB（与 `golden_executor.py` SRAM_SIZE=4MB 和 `func_model_architecture.md` 统一）；(2) 新增 §3.2 L1 SRAM (512 KB) 与 Unified Buffer (4MB) 区分说明；(3) ISA 表从 14 条扩展至 23 条（新增 SILU + Vector Unit 7 条 + DMA_LDD/DMA_STD），含 OpCode hex 值；(4) 新增 §3.8「Vector Unit」章节，描述 128-wide SIMD 流水线及 7 条向量指令；交叉引用 `sim/engine/isa.py` OpCode 枚举与 `sim/golden_executor.py` GoldenVector 参考模型 | **v0.4 变更**：新增第九章「多引擎设计空间探索」，含五引擎 INT4 统一精度全局 PPA 对比、六条核心结论、推荐参数配置、Simulator 入口说明 | **v0.3 变更**：性能数字从理论估算修正为 v2 tiling-aware simulator 实测；新增 5.6 瓶颈分析章节；第八章替换为实际模拟结果；新增 continuous batching 优化路径 | **v0.2 变更**：NPU 核改为可参数化 IP；多核扩展从 PCIe P2P 改为片内实例化 | **下一步**：软件架构方案更新 + batch scheduler 设计

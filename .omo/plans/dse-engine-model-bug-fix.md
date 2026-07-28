@@ -674,7 +674,7 @@ Final wave (after ALL todos, parallel review)
 
 ---
 
-- [ ] 11. 发布 post-fix 证据 + 更新架构文档
+- [x] 11. 发布 post-fix 证据 + 更新架构文档
 
   **What to do**:
   1. 创建 `reports/dse-engine-model-bugs-postfix-2026-07-27.md`，包含：
