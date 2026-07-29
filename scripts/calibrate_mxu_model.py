@@ -2,28 +2,39 @@
 """
 MXU Model Calibration: RTL measured cycles vs MXUModel.estimate().
 
-Reads evidence from .omo/evidence/mxu-perf/ for P0-P3 cases (MX-P01..MX-P14),
-instantiates MXUModel with 64x64 array config, calls estimate() for each unique
-(M,N,K) configuration, and produces a Markdown comparison table.
+Reads evidence from references/calibration/raw/ as train/held-out CSV fixtures,
+validates SHA256SUMS, checks for duplicate case IDs, fits a per-shape correction
+factor on the training set, and reports deterministic metrics on the held-out
+set.
+
+Fail-closed behavior:
+    - Missing raw fixture files or SHA256SUMS -> CalibrationError, exit 2
+    - Duplicate case_id across train/held-out -> CalibrationError, exit 2
+    - Checksum mismatch -> CalibrationError, exit 2
+    - No analytic fallback when raw RTL is absent
 
 Usage:
-    python3 CaduceusCore/scripts/calibrate_mxu_model.py
+    PYTHONPATH=sim python3 scripts/calibrate_mxu_model.py
 """
 
 from __future__ import annotations
 
-import re
+import csv
+import hashlib
+import json
 import sys
 from pathlib import Path
+from typing import Any, Dict, List, Tuple
 
-REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-SIM_DIR = Path(__file__).resolve().parent.parent / "sim"
-EVIDENCE_DIR = REPO_ROOT / ".omo" / "evidence" / "mxu-perf"
-OUTPUT_FILE = EVIDENCE_DIR / "MX-P15_calibration.md"
+REPO_ROOT = Path(__file__).resolve().parent.parent
+SIM_DIR = REPO_ROOT / "sim"
+RAW_DIR = REPO_ROOT / "references" / "calibration" / "raw"
+OUTPUT_FILE = REPO_ROOT / ".omo" / "evidence" / "mxu-calibration.json"
 
-# Add sim to path for MXUModel import
+# Add sim to path for MXUModel and calibration modules.
 sys.path.insert(0, str(SIM_DIR))
 
+from calibration.schema import CalibrationError
 from models.mxu import MXUModel
 
 
@@ -46,197 +57,222 @@ MODEL_CONFIG = {
     },
 }
 
-PERF_PATTERN = re.compile(
-    r"\[MX-P\d+\]\s+shape=(?P<M>\d+),(?P<N>\d+),(?P<K>\d+)\s+"
-    r"expected=\d+\s+measured=(?P<measured>\d+)"
-)
 
-# MX-P01..MX-P18 configurations: 15 plan points + 3 extras for completeness.
-SHAPES: list[tuple[int, int, int]] = [
-    (64, 64, 64),
-    (64, 64, 128),
-    (64, 64, 256),
-    (64, 64, 512),
-    (64, 64, 1024),
-    (64, 128, 64),
-    (64, 256, 64),
-    (64, 512, 64),
-    (1, 64, 64),
-    (4, 64, 64),
-    (16, 64, 64),
-    (32, 64, 64),
-    (128, 64, 64),
-    (64, 64, 80),
-    (1, 1, 1),
-    (64, 1, 64),
-    (64, 128, 128),
-    (64, 33, 64),
-]
-
-RATIO_CLOSE = 1.5
-RATIO_MODERATE = 3.0
-RATIO_LARGE = 5.0
+def _sha256_file(path: Path) -> str:
+    """Return SHA-256 hex digest of a file."""
+    h = hashlib.sha256()
+    with path.open("rb") as f:
+        for chunk in iter(lambda: f.read(8192), b""):
+            h.update(chunk)
+    return h.hexdigest()
 
 
-def collect_rtl_cycles() -> dict[tuple[int, int, int], int]:
-    """Parse all MX-P evidence files and return dict of (M,N,K) -> measured cycles."""
-    results: dict[tuple[int, int, int], int] = {}
+def _verify_checksums(raw_dir: Path) -> None:
+    """Validate SHA256SUMS against actual files; fail closed on mismatch."""
+    sums_path = raw_dir / "SHA256SUMS"
+    if not sums_path.exists():
+        raise CalibrationError(
+            f"checksum manifest not found: {sums_path}",
+            reason="missing_checksum_manifest",
+            details={"path": str(sums_path)},
+        )
 
-    if not EVIDENCE_DIR.exists():
-        print(f"WARNING: evidence dir not found: {EVIDENCE_DIR}", file=sys.stderr)
-        return results
+    expected: Dict[str, str] = {}
+    for line in sums_path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        parts = line.split(None, 1)
+        if len(parts) != 2:
+            raise CalibrationError(
+                f"invalid SHA256SUMS line: {line!r}",
+                reason="malformed_checksum_manifest",
+            )
+        expected[Path(parts[1]).name] = parts[0]
 
-    for fpath in sorted(EVIDENCE_DIR.glob("MX-P*.txt")):
-        text = fpath.read_text(encoding="utf-8", errors="replace")
-        for m in PERF_PATTERN.finditer(text):
-            M, N, K = int(m.group("M")), int(m.group("N")), int(m.group("K"))
-            measured = int(m.group("measured"))
-            key = (M, N, K)
-            if key not in results:
-                results[key] = measured
-
-    return results
-
-
-def compute_expected_cycles() -> dict[tuple[int, int, int], int]:
-    """Return dict of (M,N,K) -> expected cycles computed from the per-tile formula."""
-    from analyze_perf import expected_cycles
-
-    return {(M, N, K): expected_cycles(M, K, N) for M, N, K in SHAPES}
-
-
-def analyze(row: dict[str, object]) -> str:
-    """Return analysis text for a comparison row."""
-    rtl = int(str(row["RTL_cyc"]))
-    model = int(str(row["Model_cyc"]))
-    M = int(str(row["M"]))
-    N = int(str(row["N"]))
-    K = int(str(row["K"]))
-
-    if rtl == 0 or model == 0:
-        return "N/A"
-
-    delta_pct = abs(rtl - model) / max(rtl, 1) * 100
-
-    max_ratio = max(rtl / max(model, 1), model / max(rtl, 1))
-    if max_ratio <= RATIO_CLOSE:
-        category = "close match"
-    elif max_ratio <= RATIO_MODERATE:
-        category = "moderate deviation"
-    elif max_ratio <= RATIO_LARGE:
-        category = "large deviation"
-    else:
-        category = "extreme deviation"
-
-    if M <= 8:
-        mode = "decode"
-    else:
-        mode = "prefill"
-
-    return f"{category} ({delta_pct:.0f}%); model uses {mode} path with DMA/BW overhead"
+    for name, expected_hash in expected.items():
+        fpath = raw_dir / name
+        if not fpath.exists():
+            raise CalibrationError(
+                f"raw file listed in SHA256SUMS is missing: {name}",
+                reason="missing_raw_file",
+                details={"file": name},
+            )
+        actual = _sha256_file(fpath)
+        if actual != expected_hash:
+            raise CalibrationError(
+                f"checksum mismatch for {name}: expected {expected_hash}, got {actual}",
+                reason="checksum_mismatch",
+                details={"file": name, "expected": expected_hash, "actual": actual},
+            )
 
 
-def main() -> int:
-    rtl_cycles = collect_rtl_cycles()
-    expected_cycles = compute_expected_cycles()
+def _load_csv(path: Path) -> List[dict[str, Any]]:
+    """Load a calibration CSV file."""
+    rows: List[dict[str, Any]] = []
+    with path.open("r", encoding="utf-8", newline="") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            rows.append({
+                "case_id": row["case_id"].strip(),
+                "M": int(row["M"]),
+                "N": int(row["N"]),
+                "K": int(row["K"]),
+                "measured_cycles": int(row["measured_cycles"]),
+            })
+    return rows
+
+
+def _load_raw_fixtures(raw_dir: Path) -> Tuple[List[dict[str, Any]], List[dict[str, Any]]]:
+    """Return (train_rows, heldout_rows) after checksum and duplicate checks."""
+    _verify_checksums(raw_dir)
+
+    train_path = raw_dir / "mxu_train.csv"
+    heldout_path = raw_dir / "mxu_heldout.csv"
+
+    if not train_path.exists():
+        raise CalibrationError(
+            f"training fixture not found: {train_path}",
+            reason="missing_train_fixture",
+            details={"path": str(train_path)},
+        )
+    if not heldout_path.exists():
+        raise CalibrationError(
+            f"held-out fixture not found: {heldout_path}",
+            reason="missing_heldout_fixture",
+            details={"path": str(heldout_path)},
+        )
+
+    train_rows = _load_csv(train_path)
+    heldout_rows = _load_csv(heldout_path)
+
+    seen: Dict[str, str] = {}
+    for row in train_rows:
+        cid = row["case_id"]
+        if cid in seen:
+            raise CalibrationError(
+                f"duplicate case_id in training fixture: {cid!r}",
+                reason="duplicate_case_id",
+                details={"case_id": cid, "partition": "train"},
+            )
+        seen[cid] = "train"
+    for row in heldout_rows:
+        cid = row["case_id"]
+        if cid in seen:
+            raise CalibrationError(
+                f"duplicate case_id across train/held-out: {cid!r} "
+                f"(already in {seen[cid]})",
+                reason="duplicate_case_id",
+                details={"case_id": cid, "partition": "heldout", "existing_partition": seen[cid]},
+            )
+        seen[cid] = "heldout"
+
+    return train_rows, heldout_rows
+
+
+def _model_cycles(model: MXUModel, M: int, K: int, N: int) -> int:
+    """Return MXUModel total cycles for (M,K,N)."""
+    return model.estimate(M, K, N).total_cycles
+
+
+def _fit_correction(train_rows: List[dict[str, Any]]) -> float:
+    """Fit a single multiplicative correction factor on training data.
+
+    Held-out rows must not participate in fitting.
+    """
     model = MXUModel(MODEL_CONFIG)
+    ratios: List[float] = []
+    for row in train_rows:
+        measured = int(row["measured_cycles"])
+        predicted = _model_cycles(model, row["M"], row["K"], row["N"])
+        if predicted > 0 and measured > 0:
+            ratios.append(measured / predicted)
+    if not ratios:
+        raise CalibrationError(
+            "no valid training rows to fit correction",
+            reason="empty_training_set",
+        )
+    # Deterministic mean.
+    return sum(ratios) / len(ratios)
 
-    print(f"Collected {len(rtl_cycles)} unique RTL measurements from evidence files")
 
-    rows: list[dict[str, object]] = []
+def _evaluate(
+    rows: List[dict[str, Any]],
+    model: MXUModel,
+    correction: float,
+) -> dict[str, Any]:
+    """Compute deterministic calibration metrics for a set of cases."""
+    abs_errors: List[float] = []
+    rel_errors: List[float] = []
+    entries: List[dict[str, Any]] = []
 
-    for M, N, K in SHAPES:
-        key = (M, N, K)
-        rtl_cyc = rtl_cycles.get(key, expected_cycles.get(key, "N/A"))
-
-        model_result = model.estimate(M, K, N)
-        model_cyc = model_result.total_cycles
-
-        rtl_val = int(rtl_cyc) if isinstance(rtl_cyc, int) else rtl_cyc
-        model_val = int(model_cyc)
-        delta = ""
-        pct = ""
-        if isinstance(rtl_val, int) and model_val > 0:
-            delta = str(rtl_val - model_val)
-            pct = f"{abs(rtl_val - model_val) / max(rtl_val, 1) * 100:.1f}%"
-
-        rows.append({
+    for row in rows:
+        M, K, N = row["M"], row["K"], row["N"]
+        measured = int(row["measured_cycles"])
+        predicted = int(round(_model_cycles(model, M, K, N) * correction))
+        abs_err = abs(measured - predicted)
+        rel_err = abs_err / max(measured, 1)
+        abs_errors.append(abs_err)
+        rel_errors.append(rel_err)
+        entries.append({
+            "case_id": row["case_id"],
             "M": M,
             "N": N,
             "K": K,
-            "RTL_cyc": rtl_val,
-            "Model_cyc": model_val,
-            "Delta": delta,
-            "DeltaPct": pct,
-            "Analysis": "",
+            "measured_cycles": measured,
+            "predicted_cycles": predicted,
+            "absolute_error": abs_err,
+            "relative_error": round(rel_err, 6),
         })
 
-    for row in rows:
-        row["Analysis"] = analyze(row)
+    return {
+        "count": len(rows),
+        "correction_factor": round(correction, 6),
+        "mean_absolute_error": round(sum(abs_errors) / len(abs_errors), 3) if abs_errors else 0.0,
+        "max_absolute_error": max(abs_errors) if abs_errors else 0,
+        "mean_relative_error": round(sum(rel_errors) / len(rel_errors), 6) if rel_errors else 0.0,
+        "max_relative_error": round(max(rel_errors), 6) if rel_errors else 0.0,
+        "cases": entries,
+    }
 
-    lines: list[str] = []
-    lines.append("# MX-P15: MXUModel (64x64) vs RTL Calibration")
-    lines.append("")
-    lines.append(f"> Generated by `CaduceusCore/scripts/calibrate_mxu_model.py`")
-    lines.append(f"> Model: MXUModel(H=64, W=64, f=1000MHz, INT4, double_buffer=True)")
-    lines.append(f"> RTL: 64x64 broadcast MAC array (module-level, no DMA/NoC overhead)")
-    lines.append(f"> Tolerance: |RTL - Model| / max(RTL, 1) <= 200% (wide — model includes BW-aware DMA stalls)")
-    lines.append("")
-    lines.append(f"| # | M | N | K | RTL (cyc) | Model (cyc) | Delta | Delta% | Analysis |")
-    lines.append(f"|---|--:|--:|--:|:--:|:--:|:--:|:--:|----------|")
 
-    for i, row in enumerate(rows, 1):
-        lines.append(
-            f"| {i} | {row['M']} | {row['N']} | {row['K']} "
-            f"| {row['RTL_cyc']} | {row['Model_cyc']} "
-            f"| {row['Delta']} | {row['DeltaPct']} | {row['Analysis']} |"
+def main() -> int:
+    train_rows, heldout_rows = _load_raw_fixtures(RAW_DIR)
+
+    if not train_rows:
+        raise CalibrationError(
+            "training fixture is empty",
+            reason="empty_training_set",
         )
 
-    lines.append("")
-    lines.append("## Summary")
-    lines.append("")
-    rtl_values = []
-    model_values = []
-    for row in rows:
-        if isinstance(row['RTL_cyc'], int) and isinstance(row['Model_cyc'], int):
-            rtl_values.append(row['RTL_cyc'])
-            model_values.append(row['Model_cyc'])
+    correction = _fit_correction(train_rows)
+    model = MXUModel(MODEL_CONFIG)
 
-    if rtl_values:
-        deltas = [abs(r - m) / max(r, 1) * 100 for r, m in zip(rtl_values, model_values)]
-        lines.append(f"- Rows compared: {len(rtl_values)}")
-        lines.append(f"- RTL total cycles (sum): {sum(rtl_values)}")
-        lines.append(f"- Model total cycles (sum): {sum(model_values)}")
-        lines.append(f"- Mean |delta%|: {sum(deltas) / len(deltas):.1f}%")
-        lines.append(f"- Max |delta%|: {max(deltas):.1f}%")
-        lines.append(f"- Min |delta%|: {min(deltas):.1f}%")
+    train_metrics = _evaluate(train_rows, model, correction)
+    heldout_metrics = _evaluate(heldout_rows, model, correction)
 
-    lines.append("")
-    lines.append("## Interpretation")
-    lines.append("")
-    lines.append(
-        "The MXUModel includes DMA and DRAM bandwidth overhead (tile weight/activation "
-        "streaming) that the module-level RTL does not have. At the module level, "
-        "weights and activations are loaded in a single cycle via direct bus drive. "
-        "The model's DMA overhead dominates for small tiles (M=1, K=1), producing "
-        "large deltas. For compute-bound prefill configurations (M≥64), the model "
-        "approaches the RTL cycle counts more closely."
-    )
-    lines.append("")
-    lines.append(
-        "For accurate calibration, use the per-tile cycle formula in "
-        "`analyze_perf.py` (which matches RTL exactly) rather than the DMA-aware "
-        "MXUModel for module-level cycle prediction."
-    )
+    output = {
+        "model_config": MODEL_CONFIG,
+        "raw_dir": str(RAW_DIR),
+        "train_case_ids": [r["case_id"] for r in train_rows],
+        "heldout_case_ids": [r["case_id"] for r in heldout_rows],
+        "train": train_metrics,
+        "heldout": heldout_metrics,
+    }
 
-    output = "\n".join(lines) + "\n"
     OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
-    OUTPUT_FILE.write_text(output, encoding="utf-8")
+    OUTPUT_FILE.write_text(json.dumps(output, indent=2, sort_keys=True), encoding="utf-8")
 
-    print(f"Calibration table written to {OUTPUT_FILE}")
-    print(f"  {len(rows)} rows, {len(rtl_values)} with RTL measurements")
+    print(f"MXU calibration complete: {len(train_rows)} train, {len(heldout_rows)} held-out")
+    print(f"  correction_factor={correction:.4f}")
+    print(f"  held-out MAE={heldout_metrics['mean_absolute_error']}")
+    print(f"  output written to {OUTPUT_FILE}")
     return 0
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    try:
+        sys.exit(main())
+    except CalibrationError as exc:
+        print(f"Calibration failed: {exc}", file=sys.stderr)
+        sys.exit(2)

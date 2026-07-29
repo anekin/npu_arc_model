@@ -440,3 +440,39 @@
 - Default Pareto objective `completed_throughput_hz` did not exist on `EngineMetrics`. Added it as an optional field so the default objective set can be populated by future scenario runners; missing values are treated as worst-case during dominance.
 - `Scenario` schema lacked a `metadata` field, which is needed for fixture tracking and per-scenario objective overrides. Added it as `Dict[str, Any]` with default `{}`.
 - Legacy `evaluate_config` relies on module-level globals (`_CV_MODEL`, `_LLM_TRACE`, `_NUM_LAYERS`). `ScenarioDseRunner` now sets these to a deterministic qwen2.5-3b proxy trace before each PPA call so scenario runs are independent of CLI global state.
+
+## 2026-07-30 – Todo 17 implementation
+
+- Created `references/calibration/parameters.yaml` with exactly the 10 decision-driving parameters listed in the plan, each carrying `calibration_id`, `value`, `unit`, `source_uri`, `source_hash` (null where no raw file applies), `trust_level`, `calibration_range`, `range_min`/`range_max`, `status`, and `description`.
+- Added tiny deterministic raw fixtures under `references/calibration/raw/`:
+  - `mxu_train.csv` (8 cases), `mxu_heldout.csv` (2 cases), `README.md`, `SHA256SUMS`.
+  - Held-out IDs are disjoint from train IDs and do not participate in fitting.
+- Implemented `sim/calibration/schema.py`, `registry.py`, and `evaluate.py`:
+  - `CalibrationEntry` uses `contracts.hardware.TrustLevel` (T0/T1/T2/T3) and adds a programmatic `is_in_range()` helper.
+  - `CalibrationRegistry` loads from YAML, rejects duplicate IDs, and exposes canonical `to_dict()` for hashing.
+  - `TrustGate.check(calibration_ids, hw_config=...)` returns `(ok, max_trust, violations)`; out-of-range values are capped at T1.
+  - `calibration_ids_for_design_point()` maps engine type and memory tier to the subset of the 10 parameters actually consumed.
+- Rewrote `scripts/calibrate_mxu_model.py` to fail closed:
+  - Missing SHA256SUMS, missing raw file, checksum mismatch, duplicate case_id, or empty training set raises typed `CalibrationError` and exits 2.
+  - Removed the previous analytic expected-value fallback when raw RTL evidence is absent.
+  - Produces deterministic `mxu-calibration.json` with train/held-out metrics.
+- Integrated trust gate into `sim/dse/runner.py` and `sim/design_space_explorer.py`:
+  - Added `--trust-mode {exploratory,decision-grade}` CLI flag (default `exploratory`).
+  - Exploratory mode allows T0/T1 and marks affected complete points as `exploratory`.
+  - Decision-grade mode requires every Pareto-driving parameter to be T2+ and in range; violations raise `ConfigError` listing calibration IDs.
+  - `DesignSpaceResultV2.calibration_digest` now reflects the real registry contents.
+- Wrote `sim/tests/test_calibration_registry.py` and `sim/tests/test_calibration_evaluate.py` covering:
+  - Registry completeness for all 10 parameters and lookup by ID.
+  - Checksum mismatch, missing raw, duplicate case_id failure paths.
+  - Held-out exclusion from fitting and deterministic metrics.
+  - Digest change on registry change and on result inputs.
+  - T0 under decision-grade failure, exploratory success with T0, out-of-range/extrapolation detection.
+  - End-to-end `ScenarioDseRunner` behavior in both trust modes.
+- Captured evidence to `.omo/evidence/task-17-calibration.json` and `.omo/evidence/task-17-calibration-negative.txt`.
+- Full pytest suite passes (100%) after changes.
+
+### Key findings
+- All 10 decision-driving parameters are queryable by `calibration_id` with `source_uri` and `trust_level`.
+- Current configured values place most ranking-driving parameters at T0/T1, so decision-grade mode fails as designed until additional measured evidence is provided.
+- `power_density_12nm` is configured at 0.5 W/mm² while the published proxy range is ~0.05–0.30 W/mm²; this honest mismatch keeps all points exploratory until the power model is recalibrated.
+- Scenario-driven DSE tests must set small `measurement_count`/`warmup_count` on the scenario; defaults (50/5) create ~65 arrivals per class and slow CI by two orders of magnitude.

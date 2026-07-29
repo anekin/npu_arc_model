@@ -303,3 +303,35 @@
 4. **Replay bundle determinism**: Canonical payload (`inputs.json` + `result.json` + `coverage.json`) is byte-identical for the same commit/input/seed. `metadata.json` holds only non-deterministic info. Bundle directories refuse to overwrite existing payload files.
 5. **PPA proxy for scenario DSE**: When evaluating design points for non-LLM workloads, use a fixed qwen2.5-3b decode trace as the PPA proxy. Scenario temporal metrics come from `ScenarioRunner`; PPA values provide area/power/throughput context only.
 6. **Deterministic axis ordering**: `DesignSpace` sorts axes and defaults by name so that JSON round-tripping cannot change point enumeration order.
+
+## 2026-07-30 – Todo 17 decisions
+
+1. **Calibration parameters are the single source of truth for ranking-driving constants**
+   - Context: Engine formulas and PPA models consume many uncalibrated constants; decision-grade ranking needs to know which ones are trustworthy.
+   - Decision: Centralize the 10 decision-driving parameters in `references/calibration/parameters.yaml` and look them up via `CalibrationRegistry` instead of scattering trust annotations across engine files.
+   - Consequences: Adding or upgrading a parameter only requires editing the YAML; the trust gate, digest, and DSE runner consume it automatically.
+
+2. **TrustGate returns violations as structured data, not just a boolean**
+   - Context: Decision-grade mode must report which calibration IDs caused failure.
+   - Decision: `TrustGate.check()` returns `(ok, max_trust, violations)` where each violation carries `calibration_id`, `reason`, and context.
+   - Consequences: CLI and tests can assert exact failure reasons; downstream tooling can aggregate violation counts without parsing strings.
+
+3. **Out-of-range values cap trust at T1 even for otherwise T2+ entries**
+   - Context: A parameter may be well sourced but the design point may lie outside the calibrated envelope.
+   - Decision: `TrustGate` detects `out_of_calibration_range` and sets `max_trust = min(current, T1)`.
+   - Consequences: Extrapolated winners can never be authoritative, matching the plan requirement.
+
+4. **Trust level of a design point is the minimum trust level among its consumed parameters**
+   - Context: A point may mix T2 area data with T0 pipeline assumptions.
+   - Decision: `max_trust` for the point is the minimum across all consumed calibration IDs.
+   - Consequences: One T0 assumption is enough to keep the whole point exploratory.
+
+5. **Raw calibration fixtures are synthetic but offline and checksum-bound**
+   - Context: Real RTL evidence is not available in this repo, but the pipeline must be testable offline.
+   - Decision: Provide tiny deterministic CSV fixtures in `references/calibration/raw/` with SHA256SUMS and explicit README stating they are T0 synthetic.
+   - Consequences: Tests exercise checksum validation, held-out separation, and fail-closed behavior without depending on real RTL.
+
+6. **Legacy MXUModel calibration script loses its analytic fallback**
+   - Context: The previous script fell back to an analytic expected value when raw RTL evidence was missing.
+   - Decision: `calibrate_mxu_model.py` now raises `CalibrationError` and exits non-zero on missing/duplicate/corrupted raw data.
+   - Consequences: Calibration conclusions can no longer be silently derived from the same model they are supposed to validate.

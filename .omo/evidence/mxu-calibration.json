@@ -1,0 +1,155 @@
+{
+  "heldout": {
+    "cases": [
+      {
+        "K": 64,
+        "M": 64,
+        "N": 256,
+        "absolute_error": 41,
+        "case_id": "MX-H01",
+        "measured_cycles": 1024,
+        "predicted_cycles": 1065,
+        "relative_error": 0.040039
+      },
+      {
+        "K": 512,
+        "M": 64,
+        "N": 64,
+        "absolute_error": 339,
+        "case_id": "MX-H02",
+        "measured_cycles": 2304,
+        "predicted_cycles": 1965,
+        "relative_error": 0.147135
+      }
+    ],
+    "correction_factor": 1.171816,
+    "count": 2,
+    "max_absolute_error": 339,
+    "max_relative_error": 0.147135,
+    "mean_absolute_error": 190.0,
+    "mean_relative_error": 0.093587
+  },
+  "heldout_case_ids": [
+    "MX-H01",
+    "MX-H02"
+  ],
+  "model_config": {
+    "memory": {
+      "bandwidth_bytes_per_cycle": 51.2,
+      "dram_efficiency": 0.85
+    },
+    "mxu": {
+      "activation_precision_bits": 8,
+      "array_height": 64,
+      "array_width": 64,
+      "double_buffer": true,
+      "frequency_mhz": 1000,
+      "ops_per_mac": 2,
+      "weight_precision_bits": 4
+    },
+    "optimizations": {
+      "dma_bw_multiplier": 1.0
+    }
+  },
+  "raw_dir": "/home/prj/zhengs/caduceuscore/npu_arc_model/references/calibration/raw",
+  "train": {
+    "cases": [
+      {
+        "K": 64,
+        "M": 64,
+        "N": 64,
+        "absolute_error": 122,
+        "case_id": "MX-T01",
+        "measured_cycles": 512,
+        "predicted_cycles": 390,
+        "relative_error": 0.238281
+      },
+      {
+        "K": 128,
+        "M": 64,
+        "N": 64,
+        "absolute_error": 153,
+        "case_id": "MX-T02",
+        "measured_cycles": 768,
+        "predicted_cycles": 615,
+        "relative_error": 0.199219
+      },
+      {
+        "K": 256,
+        "M": 64,
+        "N": 64,
+        "absolute_error": 215,
+        "case_id": "MX-T03",
+        "measured_cycles": 1280,
+        "predicted_cycles": 1065,
+        "relative_error": 0.167969
+      },
+      {
+        "K": 64,
+        "M": 64,
+        "N": 128,
+        "absolute_error": 25,
+        "case_id": "MX-T04",
+        "measured_cycles": 640,
+        "predicted_cycles": 615,
+        "relative_error": 0.039062
+      },
+      {
+        "K": 64,
+        "M": 128,
+        "N": 64,
+        "absolute_error": 43,
+        "case_id": "MX-T05",
+        "measured_cycles": 768,
+        "predicted_cycles": 725,
+        "relative_error": 0.05599
+      },
+      {
+        "K": 64,
+        "M": 1,
+        "N": 64,
+        "absolute_error": 111,
+        "case_id": "MX-T06",
+        "measured_cycles": 96,
+        "predicted_cycles": 207,
+        "relative_error": 1.15625
+      },
+      {
+        "K": 64,
+        "M": 16,
+        "N": 64,
+        "absolute_error": 59,
+        "case_id": "MX-T07",
+        "measured_cycles": 192,
+        "predicted_cycles": 251,
+        "relative_error": 0.307292
+      },
+      {
+        "K": 80,
+        "M": 64,
+        "N": 64,
+        "absolute_error": 55,
+        "case_id": "MX-T08",
+        "measured_cycles": 560,
+        "predicted_cycles": 615,
+        "relative_error": 0.098214
+      }
+    ],
+    "correction_factor": 1.171816,
+    "count": 8,
+    "max_absolute_error": 215,
+    "max_relative_error": 1.15625,
+    "mean_absolute_error": 97.875,
+    "mean_relative_error": 0.282785
+  },
+  "train_case_ids": [
+    "MX-T01",
+    "MX-T02",
+    "MX-T03",
+    "MX-T04",
+    "MX-T05",
+    "MX-T06",
+    "MX-T07",
+    "MX-T08"
+  ]
+}

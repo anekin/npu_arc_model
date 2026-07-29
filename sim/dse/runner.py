@@ -15,6 +15,8 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import yaml
 
+from calibration.evaluate import TrustGate, calibration_digest, calibration_ids_for_design_point
+from calibration.registry import CalibrationRegistry
 from contracts.errors import ConfigError, NonAuthoritativeRunError
 from contracts.identity import canonical_json_bytes, digest_sha256
 from contracts.result import (
@@ -54,6 +56,7 @@ class DseRunConfig:
     # How many releases per class are measured.  Smaller = faster CI.
     measurement_count: int = 50
     warmup_count: int = 5
+    trust_mode: str = "exploratory"
 
 
 @dataclass
@@ -65,6 +68,7 @@ class EvaluatedPoint:
     metrics: Optional[ScenarioMetrics] = None
     ppa: Optional[Any] = None
     error: Optional[ErrorRecord] = None
+    calibration_violations: list[dict[str, Any]] = field(default_factory=list)
 
 
 class ScenarioDseRunner:
@@ -75,11 +79,12 @@ class ScenarioDseRunner:
         self.scenario = run_config.scenario
         self.design_space = run_config.design_space
         self.pareto = MultiObjectivePareto.from_scenario(run_config.scenario)
-        # Override thermal limit and quality gate from run config if provided.
         if run_config.thermal_limit_w is not None:
             self.pareto.thermal_limit_w = run_config.thermal_limit_w
         self.pareto.quality_gate_required = run_config.quality_gate_required
         self._fixtures: Optional[Dict[str, WorkloadFixture]] = None
+        self._registry = CalibrationRegistry.from_yaml()
+        self._trust_gate = TrustGate(self._registry)
 
     def _fixtures_map(self) -> Dict[str, WorkloadFixture]:
         if self._fixtures is None:
@@ -279,19 +284,44 @@ class ScenarioDseRunner:
             energy_joules=energy,
         )
 
+        calibration_ids = calibration_ids_for_design_point(point.hardware_config)
+        gate_ok, gate_trust, violations = self._trust_gate.check(
+            calibration_ids,
+            hw_config=point.hardware_config,
+        )
+
+        if self.run_config.trust_mode == "decision_grade" and (not gate_ok or gate_trust.value in {"T0", "T1"}):
+            point_trust = RunTrustLevel.non_authoritative
+        elif gate_trust.value == "T0":
+            point_trust = RunTrustLevel.exploratory
+        elif gate_trust.value == "T1":
+            point_trust = RunTrustLevel.exploratory
+        elif gate_trust.value == "T2":
+            point_trust = RunTrustLevel.calibrated_estimate
+        else:
+            point_trust = RunTrustLevel.authoritative
+
         result = DesignPointResult(
             design_point_id=point.design_point_id,
             status=RunStatus.complete,
             hardware_digest=digest_sha256(point.hardware_config),
             scenario_ref=point.scenario_ref,
             workload_ref=point.workload_ref or "",
-            calibration=CalibrationRef(),
+            calibration=CalibrationRef(
+                process_node_nm=12.0,
+                node_scale=2.70,
+                dram_efficiency=point.hardware_config.get("memory", {}).get("dram_efficiency", 0.85),
+                pe_area_ratio_block_systolic=2.0,
+                trust_level=point_trust,
+            ),
             config_label=ppa.config_label,
             engine_type=point.hardware_config.get("mac_engine", {}).get("type", "unknown"),
-            trust_level=RunTrustLevel.authoritative,
+            trust_level=point_trust,
             metrics=engine_metrics,
         )
-        return EvaluatedPoint(point=point, result=result, metrics=metrics, ppa=ppa)
+        ep = EvaluatedPoint(point=point, result=result, metrics=metrics, ppa=ppa)
+        ep.calibration_violations = violations
+        return ep
 
     def run(
         self,
@@ -369,8 +399,7 @@ class ScenarioDseRunner:
         if fixture is not None:
             workload_digest = fixture.footprint_digest
 
-        calibration_source = CalibrationRef().model_dump(mode="json")
-        calibration_digest = digest_sha256(calibration_source)
+        result_cal_digest = calibration_digest(self._registry)
 
         result_set = DesignSpaceResultV2(
             trust_level=set_trust,
@@ -379,11 +408,25 @@ class ScenarioDseRunner:
             errors=errors,
             input_digest=input_digest,
             workload_digest=workload_digest,
-            calibration_digest=calibration_digest,
+            calibration_digest=result_cal_digest,
         )
 
         frontier = self.pareto.compute_frontier(v2_results)
         result_set.frontier_design_point_ids = [p.result.design_point_id for p in frontier]
+
+        if self.run_config.trust_mode == "decision_grade":
+            violating_ids = sorted({
+                v["calibration_id"]
+                for ep in evaluated
+                for v in ep.calibration_violations
+            })
+            if violating_ids:
+                raise ConfigError(
+                    f"decision-grade trust gate failed for calibration IDs: {', '.join(violating_ids)}",
+                    field_path="trust_mode",
+                    value=violating_ids,
+                )
+
         return result_set, manifest, frontier
 
     def recommendation(self, result_set: DesignSpaceResultV2) -> List[DesignPointResult]:
@@ -398,6 +441,7 @@ def run_scenario_dse(
     seed: int = 0,
     allow_partial: bool = False,
     thermal_limit_w: float = 150.0,
+    trust_mode: str = "exploratory",
 ) -> Tuple[DesignSpaceResultV2, CoverageManifest, List[ParetoPoint]]:
     """Convenience wrapper to run scenario-driven DSE."""
     config = DseRunConfig(
@@ -406,6 +450,7 @@ def run_scenario_dse(
         seed=seed,
         allow_partial=allow_partial,
         thermal_limit_w=thermal_limit_w,
+        trust_mode=trust_mode,
     )
     return ScenarioDseRunner(config).run()
 

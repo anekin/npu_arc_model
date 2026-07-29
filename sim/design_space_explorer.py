@@ -723,6 +723,7 @@ def _run_scenario_dse(args) -> int:
         design_space=design_space,
         seed=args.seed,
         allow_partial=args.allow_partial,
+        trust_mode=args.trust_mode,
     )
     runner = ScenarioDseRunner(run_config)
     result_set, manifest, frontier = runner.run(generation_result)
@@ -890,6 +891,9 @@ def main():
                         help="Deterministic seed for scenario-driven DSE")
     parser.add_argument("--replay", default=None,
                         help="Replay a bundle directory and verify digest")
+    parser.add_argument("--trust-mode", choices=["exploratory", "decision-grade"],
+                        default="exploratory",
+                        help="Calibration trust mode (default: exploratory)")
     args = parser.parse_args()
 
     if args.replay:

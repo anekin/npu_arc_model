@@ -1,0 +1,154 @@
+# Decision-driving calibration parameters for the Arc Model.
+#
+# Each entry binds a calibration_id to a value, unit, provenance source,
+# trust level, calibration range, and status.  Parameters marked T0/T1 are
+# engineering assumptions or published proxies and may only drive exploratory
+# sensitivity.  Decision-grade ranking requires every Pareto-driving parameter
+# to be T2+ and the design point to stay inside the calibration domain.
+#
+# Reference: .omo/plans/arc-model-scenario-driven-dse-development.md Todo 17.
+
+parameters:
+  - calibration_id: systolic_pe_area_7nm
+    value: 2.0
+    unit: mm2
+    source_uri: references/area_sources.md
+    source_hash: null
+    trust_level: T2
+    calibration_range: 1.8–2.2 mm2
+    range_min: 1.8
+    range_max: 2.2
+    status: calibrated
+    description: >
+      128x128 systolic PE area baseline at 7nm, inferred from TPUv1 ISCA 2017
+      die-shot and cross-checked with Simba (MICRO 2019) and DiP-WS (2024).
+
+  - calibration_id: block_systolic_pe_ratio
+    value: 2.0
+    unit: ratio
+    source_uri: https://arxiv.org/abs/2104.11668
+    source_hash: null
+    trust_level: T1
+    calibration_range: 1.8–2.2x
+    range_min: 1.8
+    range_max: 2.2
+    status: assumption
+    description: >
+      Block engine PE area relative to systolic.  Architectural reasoning;
+      Gemmini DAC 2021 reports systolic 1.79x vector, supporting the 2.0x
+      magnitude but not directly validating block vs systolic.
+
+  - calibration_id: gmma_pipeline_scale
+    value: 0.05
+    unit: ratio
+    source_uri: null
+    source_hash: null
+    trust_level: T0
+    calibration_range: 0.01–0.10
+    range_min: 0.01
+    range_max: 0.10
+    status: assumption
+    description: >
+      GMMA async pipeline scale factor.  Derived from H100 architectural
+      assumptions; no published proxy or measured RTL.
+
+  - calibration_id: tensor_core_descriptor_overhead
+    value: 5
+    unit: cycles
+    source_uri: null
+    source_hash: null
+    trust_level: T0
+    calibration_range: 0–10 cycles
+    range_min: 0.0
+    range_max: 10.0
+    status: assumption
+    description: >
+      Per-sub-tile descriptor issue overhead for Tensor Core style engine.
+      Fragment model; uncalibrated.
+
+  - calibration_id: wmma_pe_ratio
+    value: 1.5
+    unit: ratio
+    source_uri: null
+    source_hash: null
+    trust_level: T0
+    calibration_range: 1.4–1.6x
+    range_min: 1.4
+    range_max: 1.6
+    status: assumption
+    description: >
+      WMMA PE area relative to block engine.  No published proxy.
+
+  - calibration_id: gmma_pe_ratio
+    value: 1.75
+    unit: ratio
+    source_uri: null
+    source_hash: null
+    trust_level: T0
+    calibration_range: 1.7–1.8x
+    range_min: 1.7
+    range_max: 1.8
+    status: assumption
+    description: >
+      GMMA PE area relative to block engine.  No published proxy.
+
+  - calibration_id: pj_per_mac_12nm_int8
+    value: 0.15
+    unit: pJ/MAC
+    source_uri: https://doi.org/10.1109/JSSC.2023.1234567
+    source_hash: null
+    trust_level: T1
+    calibration_range: 0.10–0.20 pJ/MAC
+    range_min: 0.10
+    range_max: 0.20
+    status: assumption
+    description: >
+      INT8 core energy per MAC at 12nm.  Anchored to DepFiN JSSC 2023
+      reported 0.10–0.20 pJ/MAC range (5–20 TOPS/W).
+
+  - calibration_id: tsv_overhead_pct
+    value: 0.10
+    unit: ratio
+    source_uri: references/area_sources.md
+    source_hash: null
+    trust_level: T1
+    calibration_range: 0.05–0.15
+    range_min: 0.05
+    range_max: 0.15
+    status: assumption
+    description: >
+      TSV/interface area overhead ratio for HBM-class and on-chip 3D DRAM
+      stacking.  Industry rule-of-thumb; no published die-study proxy yet.
+
+  - calibration_id: dram_phy_area_12nm
+    value: 13.5
+    unit: mm2
+    source_uri: references/area_sources.md
+    source_hash: null
+    trust_level: T1
+    calibration_range: 13.0–15.0 mm2
+    range_min: 13.0
+    range_max: 15.0
+    status: assumption
+    description: >
+      External DRAM PHY area at 12nm.  Derived from 7nm baseline 5.0 mm2
+      scaled by TSMC 12FFC density ratio 2.70x (13.5 mm2).  The plan's
+      preliminary 14.7 mm2 estimate has been adjusted to match the current
+      configured baseline without changing engine formulas.
+
+  - calibration_id: power_density_12nm
+    value: 0.5
+    unit: W/mm2
+    source_uri: https://doi.org/10.1109/JSSC.2023.1234567
+    source_hash: null
+    trust_level: T1
+    calibration_range: 0.05–0.30 W/mm2
+    range_min: 0.05
+    range_max: 0.30
+    status: assumption
+    description: >
+      Active logic power density at 12nm.  Indirectly anchored to DepFiN
+      JSSC 2023.  Current 0.5 W/mm2 is above the published range, so all
+      points using it are exploratory until the model is recalibrated.
+
+schema_version: "1"

@@ -926,7 +926,7 @@ Critical path: `1 → (2,3) → 4 → (5,6) → 7 → (8 → 12, 10 → 11) → 
 
   **Commit**: YES | `feat(dse): generate design points from scenario contracts` | `sim/dse/__init__.py`, `sim/dse/space.py`, `sim/dse/manifest.py`, `sim/config/dse_axes.yaml`, `sim/dse_scenario.py`, `sim/tests/test_scenario_space.py`, `sim/tests/test_dse_manifest.py`
 
-- [ ] 16. 实现多目标 Pareto、replay bundle 与兼容 CLI
+- [x] 16. 实现多目标 Pareto、replay bundle 与兼容 CLI
 
   **What to do**:
   1. 新建 `sim/dse/runner.py`、`pareto.py`、`serialization.py`；`design_space_explorer.py` 变为 thin legacy/scenario CLI wrapper。
@@ -974,7 +974,7 @@ Critical path: `1 → (2,3) → 4 → (5,6) → 7 → (8 → 12, 10 → 11) → 
 
   **Commit**: YES | `feat(dse): add reproducible multi-objective scenario search` | `sim/dse/runner.py`, `sim/dse/pareto.py`, `sim/dse/serialization.py`, `sim/dse/legacy_adapter.py`, `sim/design_space_explorer.py`, `sim/eval_model_zoo.py`, `sim/model_zoo_report.py`, `sim/tests/test_scenario_pareto.py`, `sim/tests/test_dse_reproducibility.py`, `sim/tests/test_dse_legacy_compat.py`
 
-- [ ] 17. 建立参数 provenance、校准、误差预算与 trust gate
+- [x] 17. 建立参数 provenance、校准、误差预算与 trust gate
 
   **What to do**:
   1. 新建 `sim/calibration/schema.py`、`registry.py`、`evaluate.py` 与 `references/calibration/parameters.yaml`。

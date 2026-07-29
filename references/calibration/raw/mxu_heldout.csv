@@ -1,0 +1,3 @@
+case_id,M,N,K,measured_cycles
+MX-H01,64,256,64,1024
+MX-H02,64,64,512,2304
