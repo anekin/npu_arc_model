@@ -1,0 +1,55 @@
+name: pi0-class
+version: "1"
+provenance:
+  source: model_spec:pi0-class
+  trust_level: T1
+  reference_uri: https://arxiv.org/html/2410.24164v1
+trace_builder: workloads.catalog:build_pi0_graph
+trace_builder_kwargs:
+  image_count: 3
+  vision_hidden: 1152
+  vl_hidden: 2048
+  action_dim: 32
+  action_horizon: 50
+  flow_steps: 10
+dimensions:
+  image_count: 4
+  request_batch: 8
+  action_horizon: 10
+  flow_steps: 8
+scenario:
+  type: vla_continuous
+  family: pi0
+  precision: int8_int8
+source_facts:
+  - param: multi_image_input
+    value: true
+    unit: bool
+    category: market_source
+    reference_uri: https://arxiv.org/html/2410.24164v1
+  - param: action_horizon
+    value: 50
+    unit: steps
+    category: market_source
+    reference_uri: https://arxiv.org/html/2410.24164v1
+  - param: flow_steps
+    value: 10
+    unit: steps
+    category: market_source
+    reference_uri: https://arxiv.org/html/2410.24164v1
+engineering_assumptions:
+  - param: vision_hidden
+    value: 1152
+    unit: elements
+    note: representative Paligemma-class vision encoder hidden size
+    category: engineering_assumption
+  - param: vl_hidden
+    value: 2048
+    unit: elements
+    note: representative VLM backbone hidden size
+    category: engineering_assumption
+  - param: proprioception_dim
+    value: 32
+    unit: elements
+    note: representative proprioception vector dimension
+    category: engineering_assumption

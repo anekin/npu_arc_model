@@ -151,3 +151,25 @@
 **What**: `apply_legacy_batch_m` raises `ConfigError` when `--batch-m` conflicts with an explicit `active_sequences`/`token_block` binding.
 **Why**: The conflict is a configuration semantic error, not a CLI parsing error. DSE/main code can map it to exit code 2 if needed without coupling the adapter to argparse.
 **Alternatives**: Could have raised `argparse.ArgumentError` inside the adapter, but that would couple core workload logic to CLI machinery.
+
+## Todo 12: Workload Fixture Catalog (2026-07-30)
+
+### Decision 29: Bind dimensions for coverage even when the graph does not consume them
+**What**: Select fixtures bind canonical dimensions (e.g., `inflight_jobs`, `resident_models`, `request_batch`) that are not referenced by the fixture's graph symbols.
+**Why**: The coverage manifest reports active values per axis. Without binding these dimensions in some fixtures, axes like `inflight_jobs` would appear unrepresented even though the physical-AI scenario requires them. Binding unused dimensions does not alter graph validation or shapes because `validate_dimensions` only checks symbols actually referenced by tensors.
+**Alternatives**: Could have created additional fixtures solely to cover each axis, but the plan explicitly caps the catalog at 10 fixtures.
+
+### Decision 30: Coverage manifest declares full edge-value targets separately from active values
+**What**: `build_coverage_manifest` emits both `active_values` (what fixtures bind) and `edge_values` (the required DSE edge set from the plan). It also reports `missing_required_edges` and a `complete` flag.
+**Why**: The acceptance criteria require the manifest to include standard/stress batch edges, token blocks, image counts, horizons, flow steps, and resident/inflight edges. With a single LLM fixture, not all token-block or active-sequence edges can be simultaneously active. Declaring them as edge values while reporting active values honestly captures the coverage state.
+**Alternatives**: Could have silently omitted axes with partial coverage, but explicit gap reporting is more useful for DSE scenario planning.
+
+### Decision 31: Fixture graphs remain compact and topology-faithful
+**What**: VLA fixtures use a small number of decoder layers (e.g., 2) and representative hidden sizes rather than exact production configurations.
+**Why**: The catalog's purpose is workload footprint and scenario enumeration, not bit-exact model reproduction. Compact graphs keep test runtime low while preserving the operator mix (GEMM, softmax, layernorm, vision projection, action head) that DSE must evaluate.
+**Alternatives**: Could have used exact layer counts from papers, but that would produce large graphs with no DSE benefit at this stage.
+
+### Decision 32: Provenance facts are strictly separated and auditable
+**What**: Every `market_source` fact must carry a `reference_uri`; `engineering_assumption` facts are allowed without one. Each fixture exposes `provenance_summary()` for quick audit.
+**Why**: The plan requires separating source facts from engineering assumptions. Rejecting source-less market facts enforces this separation and prevents silent sourcing drift.
+**Alternatives**: Could have allowed market facts without URIs, but that would undermine traceability.

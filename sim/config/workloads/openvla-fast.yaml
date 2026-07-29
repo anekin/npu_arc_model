@@ -1,0 +1,44 @@
+name: openvla-fast
+version: "1"
+provenance:
+  source: model_spec:openvla-fast
+  trust_level: T1
+  reference_uri: https://arxiv.org/abs/2404.00644
+trace_builder: workloads.catalog:build_openvla_graph
+trace_builder_kwargs:
+  variant: fast
+  vision_hidden: 1024
+  vl_hidden: 4096
+  action_dim: 32
+  action_horizon: 25
+  flow_steps: 10
+dimensions:
+  image_count: 2
+  request_batch: 4
+  action_horizon: 25
+  flow_steps: 8
+scenario:
+  type: vla_openvla
+  variant: fast
+  precision: int8_int8
+source_facts:
+  - param: method
+    value: FAST
+    category: market_source
+    reference_uri: https://arxiv.org/abs/2404.00644
+  - param: token_compression
+    value: true
+    unit: bool
+    category: market_source
+    reference_uri: https://arxiv.org/abs/2404.00644
+engineering_assumptions:
+  - param: compressed_token_dim
+    value: 256
+    unit: elements
+    note: representative compressed visual-token dimension
+    category: engineering_assumption
+  - param: head_hidden
+    value: 1024
+    unit: elements
+    note: representative action-head hidden size for FAST variant
+    category: engineering_assumption

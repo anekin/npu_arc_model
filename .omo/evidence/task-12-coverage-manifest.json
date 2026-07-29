@@ -1,0 +1,214 @@
+{
+  "axis_coverage": {
+    "action_horizon": {
+      "active_values": [
+        8,
+        10,
+        25,
+        50
+      ],
+      "covered_all_edges": true,
+      "edge_values": [
+        8,
+        10,
+        25,
+        50
+      ]
+    },
+    "active_sequences": {
+      "active_values": [
+        1
+      ],
+      "covered_all_edges": false,
+      "edge_values": [
+        1,
+        2,
+        4,
+        8,
+        16
+      ]
+    },
+    "batch": {
+      "active_values": [
+        1,
+        2,
+        4,
+        8,
+        16
+      ],
+      "covered_all_edges": true,
+      "edge_values": [
+        1,
+        2,
+        4,
+        8,
+        16
+      ]
+    },
+    "flow_steps": {
+      "active_values": [
+        4,
+        8,
+        10
+      ],
+      "covered_all_edges": true,
+      "edge_values": [
+        4,
+        8,
+        10
+      ]
+    },
+    "image_count": {
+      "active_values": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "covered_all_edges": true,
+      "edge_values": [
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    "inflight_jobs": {
+      "active_values": [
+        4,
+        8,
+        16
+      ],
+      "covered_all_edges": true,
+      "edge_values": [
+        4,
+        8,
+        16
+      ]
+    },
+    "resident_models": {
+      "active_values": [
+        4,
+        8
+      ],
+      "covered_all_edges": true,
+      "edge_values": [
+        4,
+        8
+      ]
+    },
+    "token_block": {
+      "active_values": [
+        16
+      ],
+      "covered_all_edges": false,
+      "edge_values": [
+        16,
+        32,
+        64,
+        128,
+        256,
+        512,
+        1024
+      ]
+    }
+  },
+  "complete": false,
+  "fixture_axes": {
+    "cv-vit-b16": [
+      "image_count"
+    ],
+    "cv-yolov8n": [
+      "batch",
+      "image_count"
+    ],
+    "helix-multirate": [
+      "batch",
+      "image_count",
+      "inflight_jobs",
+      "resident_models"
+    ],
+    "llm-qwen25-3b": [
+      "active_sequences",
+      "batch",
+      "inflight_jobs",
+      "token_block"
+    ],
+    "openvla-baseline": [
+      "action_horizon",
+      "batch",
+      "flow_steps",
+      "image_count"
+    ],
+    "openvla-fast": [
+      "action_horizon",
+      "batch",
+      "flow_steps",
+      "image_count"
+    ],
+    "openvla-oft": [
+      "action_horizon",
+      "batch",
+      "flow_steps",
+      "image_count"
+    ],
+    "physical-ai-multijob": [
+      "image_count",
+      "inflight_jobs",
+      "resident_models"
+    ],
+    "pi0-class": [
+      "action_horizon",
+      "batch",
+      "flow_steps",
+      "image_count"
+    ],
+    "smolvla-class": [
+      "action_horizon",
+      "batch",
+      "flow_steps",
+      "image_count"
+    ]
+  },
+  "fixture_count": 10,
+  "fixture_names": [
+    "cv-vit-b16",
+    "cv-yolov8n",
+    "helix-multirate",
+    "llm-qwen25-3b",
+    "openvla-baseline",
+    "openvla-fast",
+    "openvla-oft",
+    "physical-ai-multijob",
+    "pi0-class",
+    "smolvla-class"
+  ],
+  "missing_required_edges": {
+    "active_sequences": [
+      2,
+      4,
+      8,
+      16
+    ],
+    "token_block": [
+      32,
+      64,
+      128,
+      256,
+      512,
+      1024
+    ]
+  },
+  "provenance_uris": [
+    "https://arxiv.org/abs/2010.11929",
+    "https://arxiv.org/abs/2404.00644",
+    "https://arxiv.org/abs/2406.09246",
+    "https://arxiv.org/html/2410.24164v1",
+    "https://arxiv.org/html/2502.19645v1",
+    "https://arxiv.org/html/2506.01844v1",
+    "https://github.com/ultralytics/ultralytics",
+    "https://huggingface.co/Qwen/Qwen2.5-3B-Instruct",
+    "https://www.figure.ai/news/helix",
+    "https://www.ti.com/lit/wp/spradb4/spradb4.pdf"
+  ]
+}

@@ -1,0 +1,57 @@
+name: cv-vit-b16
+version: "1"
+provenance:
+  source: model_spec:vit-b16
+  trust_level: T1
+  reference_uri: https://arxiv.org/abs/2010.11929
+trace_builder: workloads.catalog:build_vit_b16_graph
+trace_builder_kwargs:
+  image_size: 224
+  patch_size: 16
+  in_channels: 3
+  hidden: 768
+  mlp_hidden: 3072
+  num_heads: 12
+  num_layers: 12
+  num_classes: 1000
+dimensions:
+  image_count: 2
+scenario:
+  type: image_classification
+  family: vit
+  precision: int8
+source_facts:
+  - param: image_size
+    value: 224
+    unit: pixels
+    category: market_source
+    reference_uri: https://arxiv.org/abs/2010.11929
+  - param: patch_size
+    value: 16
+    unit: pixels
+    category: market_source
+    reference_uri: https://arxiv.org/abs/2010.11929
+  - param: hidden_dim
+    value: 768
+    unit: elements
+    category: market_source
+    reference_uri: https://arxiv.org/abs/2010.11929
+  - param: num_layers
+    value: 12
+    unit: count
+    category: market_source
+    reference_uri: https://arxiv.org/abs/2010.11929
+  - param: num_heads
+    value: 12
+    unit: count
+    category: market_source
+    reference_uri: https://arxiv.org/abs/2010.11929
+engineering_assumptions:
+  - param: classifier_head
+    value: single_gemm
+    note: final classifier represented as a single GEMM for workload footprint
+    category: engineering_assumption
+  - param: activation_bytes
+    value: not_yet_computed
+    note: bytes field is zero until Todo 10 memory residency pass
+    category: engineering_assumption

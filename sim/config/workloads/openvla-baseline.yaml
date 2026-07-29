@@ -1,0 +1,44 @@
+name: openvla-baseline
+version: "1"
+provenance:
+  source: model_spec:openvla-baseline
+  trust_level: T1
+  reference_uri: https://arxiv.org/abs/2406.09246
+trace_builder: workloads.catalog:build_openvla_graph
+trace_builder_kwargs:
+  variant: baseline
+  vision_hidden: 1024
+  vl_hidden: 4096
+  action_dim: 32
+  action_horizon: 25
+  flow_steps: 10
+dimensions:
+  image_count: 1
+  request_batch: 16
+  action_horizon: 25
+  flow_steps: 10
+scenario:
+  type: vla_openvla
+  variant: baseline
+  precision: int8_int8
+source_facts:
+  - param: architecture
+    value: openvla
+    category: market_source
+    reference_uri: https://arxiv.org/abs/2406.09246
+  - param: action_horizon
+    value: 25
+    unit: steps
+    category: market_source
+    reference_uri: https://arxiv.org/abs/2406.09246
+engineering_assumptions:
+  - param: head_hidden
+    value: 512
+    unit: elements
+    note: representative action-head hidden size for baseline variant
+    category: engineering_assumption
+  - param: vl_layers
+    value: 2
+    unit: count
+    note: representative decoder layers for workload graph compactness
+    category: engineering_assumption

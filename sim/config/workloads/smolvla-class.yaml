@@ -1,0 +1,50 @@
+name: smolvla-class
+version: "1"
+provenance:
+  source: model_spec:smolvla-class
+  trust_level: T1
+  reference_uri: https://arxiv.org/html/2506.01844v1
+trace_builder: workloads.catalog:build_smolvla_graph
+trace_builder_kwargs:
+  vision_hidden: 384
+  vision_layers: 6
+  vl_hidden: 768
+  vl_layers: 12
+  action_dim: 32
+  action_horizon: 8
+  flow_steps: 10
+dimensions:
+  image_count: 3
+  request_batch: 4
+  action_horizon: 8
+  flow_steps: 4
+scenario:
+  type: vla_async
+  family: smolvla
+  precision: int4_int8
+source_facts:
+  - param: params
+    value: 0.5
+    unit: billion
+    category: market_source
+    reference_uri: https://arxiv.org/html/2506.01844v1
+  - param: async_chunk
+    value: true
+    unit: bool
+    category: market_source
+    reference_uri: https://arxiv.org/html/2506.01844v1
+engineering_assumptions:
+  - param: component_split
+    value: vision_0.35b_vlm_0.10b
+    note: exact component split is not directly sourced; used for workload sizing
+    category: engineering_assumption
+  - param: vision_hidden
+    value: 384
+    unit: elements
+    note: compact ViT hidden size chosen for arc-model fixture
+    category: engineering_assumption
+  - param: action_dim
+    value: 32
+    unit: elements
+    note: representative robot action dimension
+    category: engineering_assumption

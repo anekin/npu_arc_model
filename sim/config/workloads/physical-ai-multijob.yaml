@@ -1,0 +1,54 @@
+name: physical-ai-multijob
+version: "1"
+provenance:
+  source: scenario:physical-ai-multijob
+  trust_level: T1
+  reference_uri: https://www.ti.com/lit/wp/spradb4/spradb4.pdf
+trace_builder: workloads.catalog:build_physical_ai_multijob_graph
+trace_builder_kwargs:
+  resident_models: 8
+dimensions:
+  image_count: 3
+  resident_models: 8
+  inflight_jobs: 16
+scenario:
+  type: physical_ai_multijob
+  job_classes:
+    - id: critical_perception
+      period_ms: 33.333
+    - id: localization_fusion
+      period_ms: 50
+    - id: inspection_auxiliary
+      period_ms: 83.333
+source_facts:
+  - param: critical_perception_period
+    value: 33.333
+    unit: ms
+    category: market_source
+    reference_uri: https://www.ti.com/lit/wp/spradb4/spradb4.pdf
+  - param: localization_fusion_period
+    value: 50
+    unit: ms
+    category: market_source
+    reference_uri: https://www.ti.com/lit/wp/spradb4/spradb4.pdf
+  - param: inspection_auxiliary_period
+    value: 83.333
+    unit: ms
+    category: market_source
+    reference_uri: https://www.ti.com/lit/wp/spradb4/spradb4.pdf
+engineering_assumptions:
+  - param: resident_models
+    value: 4
+    unit: count
+    note: representative resident model pool size
+    category: engineering_assumption
+  - param: inflight_jobs
+    value: 4
+    unit: count
+    note: representative concurrent job count for workload footprint
+    category: engineering_assumption
+  - param: per_job_camera_frames
+    value: 1
+    unit: count
+    note: simplified to one frame per job class for graph compactness
+    category: engineering_assumption

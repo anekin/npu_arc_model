@@ -1,0 +1,66 @@
+name: llm-qwen25-3b
+version: "1"
+provenance:
+  source: model_spec:qwen2.5-3b
+  trust_level: T1
+  reference_uri: https://huggingface.co/Qwen/Qwen2.5-3B-Instruct
+trace_builder: workloads.catalog:build_qwen25_3b_graph
+trace_builder_kwargs:
+  num_layers: 36
+  hidden: 2048
+  intermediate: 11008
+  num_heads: 16
+  head_dim: 128
+  vocab_size: 151936
+dimensions:
+  request_batch: 1
+  active_sequences: 1
+  token_block: 16
+  inflight_jobs: 4
+  extra:
+    seq_len: 128
+scenario:
+  type: llm_decode
+  family: qwen2.5
+  precision: int4
+  quantization: per_block_g128
+source_facts:
+  - param: hidden_dim
+    value: 2048
+    unit: elements
+    category: market_source
+    reference_uri: https://huggingface.co/Qwen/Qwen2.5-3B-Instruct
+  - param: intermediate_dim
+    value: 11008
+    unit: elements
+    category: market_source
+    reference_uri: https://huggingface.co/Qwen/Qwen2.5-3B-Instruct
+  - param: num_layers
+    value: 36
+    unit: count
+    category: market_source
+    reference_uri: https://huggingface.co/Qwen/Qwen2.5-3B-Instruct
+  - param: num_heads
+    value: 16
+    unit: count
+    category: market_source
+    reference_uri: https://huggingface.co/Qwen/Qwen2.5-3B-Instruct
+  - param: head_dim
+    value: 128
+    unit: elements
+    category: market_source
+    reference_uri: https://huggingface.co/Qwen/Qwen2.5-3B-Instruct
+  - param: vocab_size
+    value: 151936
+    unit: count
+    category: market_source
+    reference_uri: https://huggingface.co/Qwen/Qwen2.5-3B-Instruct
+engineering_assumptions:
+  - param: attention_graph
+    value: simplified
+    note: QxK softmax and V multiply folded into one softmax node for compact workload graph
+    category: engineering_assumption
+  - param: kv_cache_footprint
+    value: not_yet_computed
+    note: bytes field is zero until Todo 10 memory residency pass
+    category: engineering_assumption

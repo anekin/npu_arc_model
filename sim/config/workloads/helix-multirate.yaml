@@ -1,0 +1,59 @@
+name: helix-multirate
+version: "1"
+provenance:
+  source: model_spec:helix-multirate
+  trust_level: T1
+  reference_uri: https://www.figure.ai/news/helix
+trace_builder: workloads.catalog:build_helix_graph
+trace_builder_kwargs:
+  s2_hidden: 3584
+  s1_hidden: 768
+  s0_hidden: 256
+dimensions:
+  image_count: 4
+  request_batch: 8
+  resident_models: 4
+  inflight_jobs: 8
+scenario:
+  type: multirate_humanoid
+  family: helix
+  rates_hz:
+    s2: [7, 9]
+    s1: 200
+    s0: 1000
+source_facts:
+  - param: s2_rate
+    value: [7, 9]
+    unit: hz
+    category: market_source
+    reference_uri: https://www.figure.ai/news/helix
+  - param: s1_output_rate
+    value: 200
+    unit: hz
+    category: market_source
+    reference_uri: https://www.figure.ai/news/helix
+engineering_assumptions:
+  - param: s0_rate
+    value: 1000
+    unit: hz
+    note: optional learned fast path; placement requires 1ms WCET proof
+    category: engineering_assumption
+  - param: s2_hidden
+    value: 3584
+    unit: elements
+    note: representative semantic model hidden size
+    category: engineering_assumption
+  - param: s1_hidden
+    value: 768
+    unit: elements
+    note: representative reactive policy hidden size
+    category: engineering_assumption
+  - param: s0_hidden
+    value: 256
+    unit: elements
+    note: representative optional fast-path hidden size
+    category: engineering_assumption
+  - param: action_horizon
+    value: null
+    note: unknown action horizon is explicitly optional; not filled with a fake value
+    category: engineering_assumption

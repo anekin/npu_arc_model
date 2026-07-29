@@ -1,0 +1,42 @@
+name: cv-yolov8n
+version: "1"
+provenance:
+  source: model_spec:yolov8n
+  trust_level: T1
+  reference_uri: https://github.com/ultralytics/ultralytics
+trace_builder: workloads.catalog:build_yolov8n_graph
+trace_builder_kwargs:
+  image_size: 640
+  num_classes: 80
+dimensions:
+  image_count: 1
+  request_batch: 8
+scenario:
+  type: object_detection
+  family: yolov8n
+  precision: int8
+source_facts:
+  - param: image_size
+    value: 640
+    unit: pixels
+    category: market_source
+    reference_uri: https://github.com/ultralytics/ultralytics
+  - param: num_classes
+    value: 80
+    unit: count
+    category: market_source
+    reference_uri: https://github.com/ultralytics/ultralytics
+  - param: approx_macs
+    value: 8700000000
+    unit: mac
+    category: market_source
+    reference_uri: https://github.com/ultralytics/ultralytics
+engineering_assumptions:
+  - param: upsample_op
+    value: reshape
+    note: nearest-neighbor upsampling is not in the modeled operator registry; modeled as free reshape
+    category: engineering_assumption
+  - param: activation_bytes
+    value: not_yet_computed
+    note: bytes field is zero until Todo 10 memory residency pass
+    category: engineering_assumption

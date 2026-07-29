@@ -297,3 +297,34 @@
 - `apply_bindings()` returns a new `WorkloadGraphV1` with symbolic dims substituted and leaves the original graph unchanged (pure function).
 - ONNX adapter defaults tensor precision to FP16 and layout to NCHW; bytes remain 0 until a dedicated footprint pass is implemented.
 - CV files use `DEFAULT_REGISTRY` directly rather than a hardcoded whitelist, making new modeled/free/fused ops available automatically.
+
+## Todo 12: Embodied and Physical-AI Workload Fixture Catalog (2026-07-30)
+
+### What was done
+- Created `sim/workloads/catalog.py` with `WorkloadFixture`, YAML loader, trace-builder dispatch, deterministic footprint digest (`graph_digest`), and coverage manifest builder.
+- Created 10 executable workload fixtures in `sim/config/workloads/`:
+  - `llm-qwen25-3b` — decode/prefill LLM graph
+  - `cv-yolov8n` — object-detection backbone + head
+  - `cv-vit-b16` — image-classification ViT
+  - `smolvla-class` — compact async VLA
+  - `pi0-class` — continuous-flow VLA
+  - `openvla-baseline`, `openvla-oft`, `openvla-fast` — OpenVLA variant triple
+  - `helix-multirate` — multi-rate humanoid control graph
+  - `physical-ai-multijob` — resident-model / inflight-job multijob footprint
+- Created `sim/tests/test_workload_catalog.py` — 62 tests covering discovery, schema validity, dimension coverage, provenance, and negative paths.
+- Generated `sim/tests/golden/workload_catalog.json` with deterministic node/tensor/symbol counts and footprint digests.
+- Added migration-doc header to `sim/config/embodied-physical-ai-requirements.example.yaml`.
+- Evidence captured to `.omo/evidence/task-12-workload-catalog-verify.txt` and `.omo/evidence/task-12-coverage-manifest.json`.
+
+### Key findings
+- All 10 fixtures load into `WorkloadGraphV1` + `DimensionBindings` and pass `validate_all`.
+- Dimension bindings can be set on fixtures even when the symbolic axis is not used in the graph, allowing the coverage manifest to report active values across the full DSE edge set without changing graph semantics.
+- With 10 fixtures, request-batch {1,2,4,8,16}, image_count {1,2,3,4}, action_horizon {8,10,25,50}, flow_steps {4,8,10}, resident_models {4,8}, and inflight_jobs {4,8,16} are all actively covered.
+- Only one LLM fixture exists, so `active_sequences` and `token_block` each have a single active value; the manifest still declares the full edge-value targets and reports the gap via `missing_required_edges`.
+- Graph digests are deterministic and stable across reloads.
+- Full repository pytest suite passes after the new tests are added.
+
+### Technical decisions
+- Fixtures use compact layer counts (e.g., 2 VLM decoder layers) so the catalog loads and validates in seconds while preserving representative topology.
+- Unused canonical dimensions are bound in select fixtures purely for coverage enumeration; graphs remain symbolic-only for the dimensions they actually consume.
+- Negative tests verify `DimensionBindingError` for unbound dimensions and `ConfigError` for source-less market facts, bad trace builders, and duplicate workload names.

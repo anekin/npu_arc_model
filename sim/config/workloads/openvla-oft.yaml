@@ -1,0 +1,44 @@
+name: openvla-oft
+version: "1"
+provenance:
+  source: model_spec:openvla-oft
+  trust_level: T1
+  reference_uri: https://arxiv.org/html/2502.19645v1
+trace_builder: workloads.catalog:build_openvla_graph
+trace_builder_kwargs:
+  variant: oft
+  vision_hidden: 1024
+  vl_hidden: 4096
+  action_dim: 32
+  action_horizon: 25
+  flow_steps: 10
+dimensions:
+  image_count: 1
+  request_batch: 2
+  action_horizon: 50
+  flow_steps: 4
+scenario:
+  type: vla_openvla
+  variant: oft
+  precision: int8_int8
+source_facts:
+  - param: method
+    value: OFT
+    category: market_source
+    reference_uri: https://arxiv.org/html/2502.19645v1
+  - param: chunk_sizes
+    value: [8, 25]
+    unit: steps
+    category: market_source
+    reference_uri: https://arxiv.org/html/2502.19645v1
+engineering_assumptions:
+  - param: representative_chunk
+    value: 25
+    unit: steps
+    note: chunk size used for this fixture; OFT sweeps multiple chunk sizes
+    category: engineering_assumption
+  - param: head_hidden
+    value: 1024
+    unit: elements
+    note: representative action-head hidden size for OFT variant
+    category: engineering_assumption

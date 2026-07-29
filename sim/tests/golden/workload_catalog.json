@@ -1,0 +1,162 @@
+{
+  "cv-vit-b16": {
+    "footprint_digest": "f278689dc2fa36c0ea33b885f4465175e0795cd6de2c63ca76d735cbd33ee958",
+    "node_count": 159,
+    "provenance_summary": {
+      "engineering_assumption_count": 2,
+      "engineering_refs": [],
+      "reference_uri": "https://arxiv.org/abs/2010.11929",
+      "source": "model_spec:vit-b16",
+      "source_fact_count": 5,
+      "source_fact_refs": [
+        "https://arxiv.org/abs/2010.11929"
+      ]
+    },
+    "symbol_count": 1,
+    "tensor_count": 234
+  },
+  "cv-yolov8n": {
+    "footprint_digest": "c43a22ce8a16a580a0ecdef67592a171b4e6bac03ecff93e5b57416a646486b5",
+    "node_count": 72,
+    "provenance_summary": {
+      "engineering_assumption_count": 2,
+      "engineering_refs": [],
+      "reference_uri": "https://github.com/ultralytics/ultralytics",
+      "source": "model_spec:yolov8n",
+      "source_fact_count": 3,
+      "source_fact_refs": [
+        "https://github.com/ultralytics/ultralytics"
+      ]
+    },
+    "symbol_count": 1,
+    "tensor_count": 107
+  },
+  "helix-multirate": {
+    "footprint_digest": "3ae789d29e2b73fa1bdc5c3547f058606313ce2b6eecdf5c4de15a8cdcbf8955",
+    "node_count": 13,
+    "provenance_summary": {
+      "engineering_assumption_count": 5,
+      "engineering_refs": [],
+      "reference_uri": "https://www.figure.ai/news/helix",
+      "source": "model_spec:helix-multirate",
+      "source_fact_count": 2,
+      "source_fact_refs": [
+        "https://www.figure.ai/news/helix"
+      ]
+    },
+    "symbol_count": 2,
+    "tensor_count": 23
+  },
+  "llm-qwen25-3b": {
+    "footprint_digest": "5d42fa6860d0c0d40813d6d1650b8560673bb7a32b37a37d313a3dd8f805ba31",
+    "node_count": 471,
+    "provenance_summary": {
+      "engineering_assumption_count": 2,
+      "engineering_refs": [],
+      "reference_uri": "https://huggingface.co/Qwen/Qwen2.5-3B-Instruct",
+      "source": "model_spec:qwen2.5-3b",
+      "source_fact_count": 6,
+      "source_fact_refs": [
+        "https://huggingface.co/Qwen/Qwen2.5-3B-Instruct"
+      ]
+    },
+    "symbol_count": 2,
+    "tensor_count": 726
+  },
+  "openvla-baseline": {
+    "footprint_digest": "3b589d2f8f5f82b6f520e16ea83432961db6852e3ed28bcd9f01817fd46aa4b0",
+    "node_count": 41,
+    "provenance_summary": {
+      "engineering_assumption_count": 2,
+      "engineering_refs": [],
+      "reference_uri": "https://arxiv.org/abs/2406.09246",
+      "source": "model_spec:openvla-baseline",
+      "source_fact_count": 2,
+      "source_fact_refs": [
+        "https://arxiv.org/abs/2406.09246"
+      ]
+    },
+    "symbol_count": 2,
+    "tensor_count": 68
+  },
+  "openvla-fast": {
+    "footprint_digest": "cdef3f3739bb057d0101e35ca4fbc11f9a09ce34c12857b64d0ea5346d852c07",
+    "node_count": 43,
+    "provenance_summary": {
+      "engineering_assumption_count": 2,
+      "engineering_refs": [],
+      "reference_uri": "https://arxiv.org/abs/2404.00644",
+      "source": "model_spec:openvla-fast",
+      "source_fact_count": 2,
+      "source_fact_refs": [
+        "https://arxiv.org/abs/2404.00644"
+      ]
+    },
+    "symbol_count": 2,
+    "tensor_count": 71
+  },
+  "openvla-oft": {
+    "footprint_digest": "9cf5468a32e68783e3c78ec113bd6550bfa280e825baf458595d523c4c606b09",
+    "node_count": 41,
+    "provenance_summary": {
+      "engineering_assumption_count": 2,
+      "engineering_refs": [],
+      "reference_uri": "https://arxiv.org/html/2502.19645v1",
+      "source": "model_spec:openvla-oft",
+      "source_fact_count": 2,
+      "source_fact_refs": [
+        "https://arxiv.org/html/2502.19645v1"
+      ]
+    },
+    "symbol_count": 2,
+    "tensor_count": 68
+  },
+  "physical-ai-multijob": {
+    "footprint_digest": "951c76a32574fc79373f332fc5ff47cbedf12c523687c8e005f1787f6a9d97b2",
+    "node_count": 7,
+    "provenance_summary": {
+      "engineering_assumption_count": 3,
+      "engineering_refs": [],
+      "reference_uri": "https://www.ti.com/lit/wp/spradb4/spradb4.pdf",
+      "source": "scenario:physical-ai-multijob",
+      "source_fact_count": 3,
+      "source_fact_refs": [
+        "https://www.ti.com/lit/wp/spradb4/spradb4.pdf"
+      ]
+    },
+    "symbol_count": 2,
+    "tensor_count": 13
+  },
+  "pi0-class": {
+    "footprint_digest": "6685516df31ba1abcb6d5c918abfbfecc72652013a4ff43b7ea016ed25de13e4",
+    "node_count": 49,
+    "provenance_summary": {
+      "engineering_assumption_count": 3,
+      "engineering_refs": [],
+      "reference_uri": "https://arxiv.org/html/2410.24164v1",
+      "source": "model_spec:pi0-class",
+      "source_fact_count": 3,
+      "source_fact_refs": [
+        "https://arxiv.org/html/2410.24164v1"
+      ]
+    },
+    "symbol_count": 2,
+    "tensor_count": 82
+  },
+  "smolvla-class": {
+    "footprint_digest": "29eb5af5d658d15fc9d24168b302e1e961bf7a9c4d31caee0117028644099dca",
+    "node_count": 99,
+    "provenance_summary": {
+      "engineering_assumption_count": 3,
+      "engineering_refs": [],
+      "reference_uri": "https://arxiv.org/html/2506.01844v1",
+      "source": "model_spec:smolvla-class",
+      "source_fact_count": 2,
+      "source_fact_refs": [
+        "https://arxiv.org/html/2506.01844v1"
+      ]
+    },
+    "symbol_count": 2,
+    "tensor_count": 171
+  }
+}

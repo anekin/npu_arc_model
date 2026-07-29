@@ -1,0 +1,11 @@
+============================= test session starts ==============================
+platform linux -- Python 3.10.12, pytest-9.0.3, pluggy-1.6.0
+rootdir: /home/prj/zhengs/caduceuscore/npu_arc_model
+configfile: pytest.ini (WARNING: ignoring pytest config in pyproject.toml!)
+plugins: anyio-4.13.0
+collected 62 items
+
+sim/tests/test_workload_catalog.py ..................................... [ 59%]
+.........................                                                [100%]
+
+============================== 62 passed in 7.97s ==============================
