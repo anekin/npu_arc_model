@@ -1,0 +1,16 @@
+# Todo 18 — Decision-grade release gate (expected failure)
+
+Command:
+  uv run python scripts/release_gate.py --profile decision-grade --scenario lpddr5_3b --space ci-all-axes --output reports/release-gate-decision-grade.json
+
+Output:
+  RELEASE_GATE_FAIL: decision-grade requires authoritative trust level, got exploratory
+  RELEASE_GATE_FAIL: decision-grade found 66 non-authoritative point(s)
+
+Report: reports/release-gate-decision-grade.json
+
+Interpretation: The gate honestly fails because the current calibration registry
+keeps decision-driving parameters at T0/T1, so no run can be authoritative.
+This is the intended behavior for Todo 18.
+
+EXIT: 0

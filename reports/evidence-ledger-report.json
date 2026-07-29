@@ -935,9 +935,17 @@
           "is_json": false,
           "test_counts": {},
           "exit_code": 0
+        },
+        {
+          "path": ".omo/evidence/task-18-decision-grade.txt",
+          "digest": "56555a0898b7895ed14f2967bf68a6e4bc0b92f30ff1efc4d7122a6c203d37fb",
+          "size_bytes": 656,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0
         }
       ],
-      "evidence_count": 1
+      "evidence_count": 2
     },
     {
       "id": "F1",

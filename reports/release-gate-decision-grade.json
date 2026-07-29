@@ -1,0 +1,10 @@
+{
+  "profile": "decision-grade",
+  "scenario": "lpddr5_3b",
+  "space": "ci-all-axes",
+  "verdict": "FAIL",
+  "errors": [
+    "decision-grade requires authoritative trust level, got exploratory",
+    "decision-grade found 66 non-authoritative point(s)"
+  ]
+}
