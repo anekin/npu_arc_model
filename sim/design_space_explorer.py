@@ -543,6 +543,102 @@ def print_sensitivity_report(sa: Dict[str, Any]):
             print(f"      {val:<20s} → {metrics['tok_s']:6.1f} tok/s, {metrics['area_mm2']:6.1f} mm²")
 
 
+def _build_v2_output(
+    *,
+    results: List[PPA],
+    result_configs: List[Dict[str, Any]],
+    pareto: List[PPA],
+    reasonable: List[PPA],
+    top_n: int,
+    generated: int,
+    evaluated: int,
+    filtered_by_area: int,
+    errors: int,
+    error_details: List[Dict[str, Any]],
+    model_spec: str,
+    batch_m: int,
+    cv_model: str,
+    allow_partial: bool,
+    base_cfg: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Build a DesignSpaceResultV2 output dictionary."""
+    from contracts.identity import digest_sha256
+    from contracts.result import (
+        CalibrationRef,
+        DesignPointResult,
+        DesignSpaceResultV2,
+        EngineMetrics,
+        ErrorRecord,
+        ResultSummary,
+        RunStatus,
+        RunTrustLevel,
+    )
+
+    is_partial = bool(errors) and allow_partial
+    set_trust = RunTrustLevel.non_authoritative if is_partial else RunTrustLevel.exploratory
+
+    # Build per-result v2 records
+    pareto_labels = {p.config_label for p in pareto}
+    v2_results: list[DesignPointResult] = []
+
+    for ppa, cfg in zip(results, result_configs):
+        dp_id = digest_sha256(cfg)
+        metrics = EngineMetrics(
+            tok_per_s=ppa.tok_s,
+            area_mm2=ppa.area_mm2,
+            power_w=ppa.power_w,
+            efficiency_tok_per_watt=ppa.efficiency_tok_per_watt,
+            efficiency_tok_per_mm2=ppa.efficiency_tok_per_mm2,
+            sram_spill_mb=ppa.sram_spill_mb if ppa.sram_spill_mb else None,
+            depthwise_util_pct=ppa.depthwise_util_pct if ppa.depthwise_util_pct else None,
+        )
+        status = RunStatus.partial if is_partial else RunStatus.complete
+        v2_results.append(DesignPointResult(
+            design_point_id=dp_id,
+            status=status,
+            hardware_digest=dp_id,
+            config_label=ppa.config_label,
+            engine_type=cfg.get("mac_engine", {}).get("type", "unknown"),
+            trust_level=set_trust,
+            metrics=metrics,
+        ))
+
+    # Error records with stable IDs
+    v2_errors: list[ErrorRecord] = []
+    for err in error_details:
+        v2_errors.append(ErrorRecord(
+            design_point_id=err.get("design_point_id", ""),
+            code="RuntimeError",
+            message=err.get("error", "")[:200],
+            details={
+                "engine_type": err.get("engine_type", "unknown"),
+                "dims": err.get("dims", "?"),
+                "memory_mode": err.get("memory_mode", "unknown"),
+            },
+        ))
+
+    summary = ResultSummary(
+        generated=generated,
+        evaluated=evaluated,
+        pruned=0,
+        failed=errors,
+        filtered=filtered_by_area,
+        complete=len(results) if not is_partial else 0,
+        partial=len(results) if is_partial else 0,
+    )
+
+    input_digest = digest_sha256(base_cfg)
+
+    dsr = DesignSpaceResultV2(
+        trust_level=set_trust,
+        summary=summary,
+        results=v2_results,
+        errors=v2_errors,
+        input_digest=input_digest,
+    )
+    return dsr.model_dump()
+
+
 def main():
     import argparse
     parser = argparse.ArgumentParser()
@@ -561,6 +657,8 @@ def main():
                         help="LLM model spec alias for DSE")
     parser.add_argument("--batch-m", type=int, choices=[1, 2], default=None,
                         help="Batch M dimension for attention ops (1 or 2)")
+    parser.add_argument("--result-schema", choices=["v1", "v2"], default="v1",
+                        help="Output schema version (default: v1 legacy)")
     args = parser.parse_args()
 
     if args.cv_model and (args.model_spec is not None or args.batch_m is not None):
@@ -609,11 +707,15 @@ def main():
     print(f"  Sweeping...", end=" ", flush=True)
 
     results: List[PPA] = []
+    result_configs: List[Dict[str, Any]] = []  # paired configs for stable ID generation
     generated = len(configs)
     evaluated = 0
     filtered_by_area = 0
     errors = 0
     error_details: List[Dict[str, Any]] = []
+
+    # Pre-compute IDs for v2 output (avoids duplicate hashing)
+    _v2_mode = args.result_schema == "v2"
 
     for cfg in configs:
         evaluated += 1
@@ -627,12 +729,16 @@ def main():
                 f"{cfg.get('mac_engine', {}).get('array_width', '?')}"
             )
             mem_mode = cfg.get("_dram_label", "unknown")
-            error_details.append({
+            err_entry: Dict[str, Any] = {
                 "engine_type": engine_type,
                 "dims": dims,
                 "memory_mode": mem_mode,
                 "error": str(exc),
-            })
+            }
+            if _v2_mode:
+                from contracts.identity import digest_sha256
+                err_entry["design_point_id"] = digest_sha256(cfg)
+            error_details.append(err_entry)
             print(
                 f"ERROR evaluating {engine_type} {dims} {mem_mode}: {exc}",
                 file=sys.stderr,
@@ -642,6 +748,7 @@ def main():
         # Filter: unreasonable area
         if ppa.area_mm2 <= 200:
             results.append(ppa)
+            result_configs.append(cfg)
         else:
             filtered_by_area += 1
 
@@ -748,65 +855,82 @@ def main():
 
     # ── Save ──
     if args.output:
-        def _result_dict(p, on_pareto=False):
-            d = {"label": p.config_label, "tok_s": p.tok_s,
-                 "area_mm2": p.area_mm2, "power_w": p.power_w}
-            if _CV_MODEL:
-                d["sram_spill_mb"] = p.sram_spill_mb
-                d["depthwise_util_pct"] = p.depthwise_util_pct
-                prefix = (p.config_label or "").split()[0]
-                engine_map = {
-                    "syst": "systolic",
-                    "os_s": "os_systolic",
-                    "bloc": "block",
-                    "tens": "tensor_core",
-                    "wmma": "wmma",
-                    "gmma": "gmma",
-                    "inpu": "input_stationary",
-                    "fsa ": "fsa",
-                }
-                d["engine_type"] = engine_map.get(prefix, prefix)
-                d["pareto"] = on_pareto
-            return d
+        if _v2_mode:
+            output = _build_v2_output(
+                results=results,
+                result_configs=result_configs,
+                pareto=pareto,
+                reasonable=reasonable,
+                top_n=args.top,
+                generated=generated,
+                evaluated=evaluated,
+                filtered_by_area=filtered_by_area,
+                errors=errors,
+                error_details=error_details,
+                model_spec=model_spec,
+                batch_m=batch_m,
+                cv_model=_CV_MODEL,
+                allow_partial=args.allow_partial,
+                base_cfg=base_cfg,
+            )
+        else:
+            def _result_dict(p, on_pareto=False):
+                d = {"label": p.config_label, "tok_s": p.tok_s,
+                     "area_mm2": p.area_mm2, "power_w": p.power_w}
+                if _CV_MODEL:
+                    d["sram_spill_mb"] = p.sram_spill_mb
+                    d["depthwise_util_pct"] = p.depthwise_util_pct
+                    prefix = (p.config_label or "").split()[0]
+                    engine_map = {
+                        "syst": "systolic",
+                        "os_s": "os_systolic",
+                        "bloc": "block",
+                        "tens": "tensor_core",
+                        "wmma": "wmma",
+                        "gmma": "gmma",
+                        "inpu": "input_stationary",
+                        "fsa ": "fsa",
+                    }
+                    d["engine_type"] = engine_map.get(prefix, prefix)
+                    d["pareto"] = on_pareto
+                return d
 
-        counts = {
-            "generated": generated,
-            "evaluated": evaluated,
-            "filtered_by_area": filtered_by_area,
-            "errors": errors,
-            "error_details": error_details,
-        }
-        if _CV_MODEL:
-            # CV mode: Pareto + top results with metadata so downstream tools
-            # can verify engine diversity while keeping Pareto points primary.
-            points = [_result_dict(p, True) for p in pareto]
-            seen = {p.config_label for p in pareto}
-            for p in reasonable[:args.top]:
-                if p.config_label not in seen:
-                    points.append(_result_dict(p, False))
-            output = {
-                "metadata": {
+            counts = {
+                "generated": generated,
+                "evaluated": evaluated,
+                "filtered_by_area": filtered_by_area,
+                "errors": errors,
+                "error_details": error_details,
+            }
+            if _CV_MODEL:
+                points = [_result_dict(p, True) for p in pareto]
+                seen = {p.config_label for p in pareto}
+                for p in reasonable[:args.top]:
+                    if p.config_label not in seen:
+                        points.append(_result_dict(p, False))
+                output = {
+                    "metadata": {
+                        "cv_model": _CV_MODEL,
+                        "valid_results": len(results),
+                        **counts,
+                    },
+                    "points": points,
+                }
+            else:
+                output = {
                     "cv_model": _CV_MODEL,
+                    "model_spec": model_spec,
+                    "batch_m": batch_m,
+                    "total_configs": len(configs),
                     "valid_results": len(results),
                     **counts,
-                },
-                "points": points,
-            }
-        else:
-            output = {
-                "cv_model": _CV_MODEL,
-                "model_spec": model_spec,
-                "batch_m": batch_m,
-                "total_configs": len(configs),
-                "valid_results": len(results),
-                **counts,
-                "pareto_frontier": [_result_dict(p, True) for p in pareto],
-                "top_results": [_result_dict(p, False) for p in reasonable[:args.top]],
-            }
+                    "pareto_frontier": [_result_dict(p, True) for p in pareto],
+                    "top_results": [_result_dict(p, False) for p in reasonable[:args.top]],
+                }
         out_path = SIM_DIR / args.output if not args.output.startswith("/") else Path(args.output)
         out_path.parent.mkdir(parents=True, exist_ok=True)
         with open(out_path, "w") as f:
-            json.dump(output, f, indent=2)
+            json.dump(output, f, indent=2, default=str)
         print(f"\n  Saved to {args.output}")
 
     sys.exit(0)

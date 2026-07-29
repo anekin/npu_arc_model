@@ -207,3 +207,44 @@
 
 - TensorCore `subtile_size` diagnostic inadvertently changed from Unicode "×" (U+00D7) to ASCII "x" during Todo 5 refactor.
 - Restored to `f"{SUBTILE_K}×{SUBTILE_M}×{SUBTILE_N}"` to match `test_tensor_core_decode` expectation.
+
+## Todo 9: Result Schema v2 and Stable Identities (2026-07-30)
+
+### What was done
+- Created `sim/contracts/identity.py` — deterministic design-point ID generation via canonical normalized JSON SHA-256. Keys are sorted at every nesting level; floats use `repr()`; enums use `.value`; booleans/ints pass through unchanged. No timestamps, absolute paths, or iteration order artefacts.
+- Created `sim/contracts/result.py` — full v2 result schema with:
+  - `RunStatus` enum: complete, partial, failed, filtered
+  - `RunTrustLevel` enum: authoritative, calibrated_estimate, exploratory, non_authoritative
+  - `ErrorRecord` — typed error with code + bounded message (≤ 200 chars) + structured details
+  - `EngineMetrics` — tok_per_s, area, power, efficiency, plus optional latency (P50/P99/max), deadline miss/drop, memory footprint
+  - `CalibrationRef` — process_node_nm, node_scale, dram_efficiency, pe_area_ratio
+  - `DesignPointResult` — stable design_point_id, status, trust_level, full metrics or error
+  - `ResultSummary` — generated/evaluated/pruned/failed/filtered/complete/partial
+  - `DesignSpaceResultV2` — top-level container with input/workload/calibration digests
+  - `release_recommendation()` — rejects non-authoritative result sets with `NonAuthoritativeRunError`
+  - `result_standalone_from_ppa()` — bridge from legacy PPA objects
+- Created `sim/contracts/legacy_result.py` — projects v2 → legacy LLM/CV JSON preserving Todo 1 fields; `LegacyLossReport` marks dropped v2-only data
+- Updated `sim/contracts/__init__.py` — exports all new modules
+- Updated `sim/design_space_explorer.py`:
+  - Added `--result-schema {v1,v2}` flag (default: v1 legacy)
+  - `_build_v2_output()` helper assembles `DesignSpaceResultV2` with stable IDs
+  - `--allow-partial` forces `partial` status and `non_authoritative` trust_level
+  - Error records carry `design_point_id` via stable hash, not positional index
+- Created `sim/tests/test_result_identity.py` (26 tests) — deterministic serialization, dict key-order independence, float stability, cross-axis change detection, uniqueness
+- Created `sim/tests/test_result_schema.py` (32 tests) — RunStatus/TrustLevel values, ErrorRecord truncation, DesignPointResult construction, release_recommendation gate (authoritative passes, non-authoritative/exploratory raises), legacy LLM/CV projection preserving Todo 1 fields, LossReport, DSE CLI v2 output validation, error-by-ID association
+
+### Key findings
+- Same normalized input → same deterministic SHA-256 digest across runs (verified with 36-result DSE run).
+- Any axis change (engine type, array dims, frequency, bandwidth, SRAM, precision) produces a different ID — all 9 combinations of (H,W) ∈ {32,64,128}×{64,128,256} produce 9 unique IDs.
+- Legacy v1 output is completely unchanged when `--result-schema` is not specified (default v1).
+- The `_build_v2_output` function is integrated into the DSE main loop; v1 path uses the same legacy `_result_dict` and `counts` dict as before.
+- The `pydantic` `field_validator` must be imported before the class body; the bottom-of-file re-import was removed in favor of a clean top-level import.
+
+### Technical decisions
+- Canonical JSON uses `separators=(",", ":")` for compactness; sorted keys via `sort_keys=True`.
+- Float serialization uses `repr()` (e.g. `3.141592653589793`, `1000.0`) — stable across Python versions.
+- `result_standalone_from_ppa()` uses `digest_sha256(config)` as both `design_point_id` and `hardware_digest` (config is the hardware config in legacy flow).
+- `LegacyLossReport` mirrors `contracts.migrations.LossReport` pattern but for result-level projection rather than config-level migration.
+- `_build_v2_output` is a module-level helper (not a method) to keep DSE main() readable.
+- Trust propagation: `--allow-partial` → top-level `trust_level=non_authoritative` + per-result `trust_level=non_authoritative`.
+- Evidence captured to `.omo/evidence/task-9-result-determinism.json` and `.omo/evidence/task-9-result-negative.json`.

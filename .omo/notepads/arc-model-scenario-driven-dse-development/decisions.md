@@ -85,3 +85,20 @@
 **What**: The `TestBandwidthSaturation` class now separates monotonicity (universal) from saturation (engine-specific). `test_bandwidth_monotonic` checks BW↑ → cycles not increase for all shapes (M=4/64/256). `test_saturation_at_compute_bound` per-engine with realistic per-engine tolerances for M=256 only.
 **Why**: The oracle's `compute_lower_bound = ceil(macs / peak_macs)` is a theoretical minimum, but real engines have per-tile overhead (fill/drain, token multiplex, pipeline sync) proportional to the number of tiles, not MAC count. For M=256, block engine has 64 tiles with ~136× overhead — demanding 5% tolerance was physically impossible. The saturation check now uses per-engine tolerances based on measured overhead ratios at M=256.
 **Tolerances**: gmma 5% (ratio 1.0×), input_stationary 5% (1.0×), os_systolic 115% (2.1×), tensor_core 265% (3.6×), systolic 510% (6.0×), fsa 1100% (12×), block 13600% (136×). wmma excluded (per-fragment overhead too extreme).
+
+## Todo 9: Result Schema v2 and Stable Identities (2026-07-30)
+
+### Decision 17: Design-point IDs via canonical JSON SHA-256
+**What**: `design_point_id = SHA-256(canonical_json_bytes(normalised_config))` where normalised config has sorted keys, `repr(float)` for stability, and enums serialised as `.value`.
+**Why**: The plan requires IDs free of timestamps, absolute paths, and iteration order. SHA-256 over deterministic JSON is the simplest solution — no external dependencies, no entropy source needed, and the output is trivially verifiable.
+**Alternatives**: Could have used UUID5 with a namespace, but SHA-256 directly avoids the namespace management problem. Could have used `json.dumps(sort_keys=True)` without float normalisation, but `str(1.0)` → `"1.0"` while `repr(1.0)` → `"1.0"` — both work but `repr` is more explicit about intent.
+
+### Decision 18: RunTrustLevel separate from hardware TrustLevel
+**What**: `RunTrustLevel` (authoritative, calibrated_estimate, exploratory, non_authoritative) is a result-level enum distinct from `contracts.hardware.TrustLevel` (T0-T3).
+**Why**: Hardware trust is about parameter provenance (engineering assumption vs. signoff); run trust is about coverage completeness and failure state. A T3-calibrated model can produce non_authoritative results if the run was partial or had errors.
+**Alternatives**: Could have used a single combined enum, but the two concerns are orthogonal and forcing them together would lose information.
+
+### Decision 19: Legacy output is default; v2 is opt-in
+**What**: `--result-schema v1` (default) produces the existing legacy JSON untouched. `--result-schema v2` produces the new schema. No breaking change for existing consumers.
+**Why**: The plan explicitly requires legacy CLI default output to remain unchanged (Must NOT touch Todo 1 snapshots). This is the safest migration path.
+**Alternatives**: Could have made v2 the default with a `--legacy` flag, but that would break every existing test and downstream consumer immediately.
