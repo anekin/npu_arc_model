@@ -36,8 +36,10 @@ if _sim_dir not in _sys.path:
     _sys.path.insert(0, _sim_dir)
 # --------------------------------------------------------------------------------
 
+from contracts.errors import UnsupportedOperatorError
 from cv.conv_mapper import map_conv_to_gemm
 from cv.onnx_importer import import_mobilenetv3
+from workloads.operators import DEFAULT_REGISTRY
 
 # ---------------------------------------------------------------------------
 # Constants (aligned with sim/config/npu_config.yaml)
@@ -249,17 +251,12 @@ def generate_mobilenetv3_trace(onnx_path: str) -> list[dict[str, Any]]:
             })
 
         else:
-            # Fallback: lowercased type (should not be reached for
-            # MobileNetV3-Small, but keeps the generator robust).
-            trace.append({
-                "type": op_type.lower(),
-                "name": name,
-                "M": 0,
-                "K": 0,
-                "N": 0,
-                "im2col_overhead_cycles": 0,
-                "sfu_cycles": 0,
-            })
+            # Fail-closed: unknown operators are not silently mapped to 0-cycle metadata.
+            raise UnsupportedOperatorError(
+                f"CV trace layer {name!r} uses unsupported operator {op_type!r}",
+                op_type=op_type,
+                node_id=name,
+            )
 
     # ---- Validation -------------------------------------------------------
     total_macs = sum(entry["M"] * entry["K"] * entry["N"] for entry in trace)

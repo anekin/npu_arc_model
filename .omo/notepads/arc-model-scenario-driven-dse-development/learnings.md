@@ -272,3 +272,28 @@
 - `DimensionBindings` is a frozen dataclass (immutable), not a Pydantic model — dimensions are simple key-value pairs, not a validated schema.
 - Free/fused ops MUST record `fused_into` (enforced at `OperatorEntry.__post_init__`).
 - Unregistered ops default to `UNSUPPORTED` — no `profile_required` or `unknown` escape hatch.
+
+## Todo 8: JSON/ONNX Adapters and Legacy Trace Lowering (2026-07-30)
+
+### What was done
+- Created `sim/workloads/json_adapter.py` — canonical JSON serialization (`graph_to_json`/`graph_to_bytes`/`graph_digest`), deterministic SHA-256 via `contracts.identity`, and deserialization (`json_to_graph`).
+- Created `sim/workloads/onnx_adapter.py` — ONNX → `WorkloadGraphV1` lowering preserving symbolic dimension names, lowering only modeled/free/fused ops, raising `UnsupportedOperatorError` with node/opset/path context for unknown/unsupported ops.
+- Created `sim/workloads/legacy_adapter.py` — LLM tuple trace and CV dict trace → `WorkloadGraphV1`; `--batch-m 1` → `active_sequences=1` (decode), `--batch-m 2` → `token_block=2` (two-token prefill); conflicts with explicit bindings raise `ConfigError`.
+- Added `apply_bindings()` to `sim/workloads/dimensions.py` to substitute symbolic dims with concrete values for stable graph-instance IDs.
+- Created offline ONNX fixture `sim/tests/fixtures/tiny_mixed_ops.onnx` (Conv → Add → Relu) via `onnx.helper.make_model`.
+- Created `sim/tests/test_workload_adapters.py` — 24 tests covering JSON round-trip/digest, ONNX equivalence with hand-written canonical JSON, symbolic batch unbound/bound (1/2/4/8), unsupported op negative path, legacy batch mapping, and legacy LLM/CV cycle parity.
+- Modified `sim/cv/onnx_importer.py`, `cv_trace.py`, `cv_sim.py` to route through the unified operator registry and remove the unmatched-op→metadata 0-cycle pass-through.
+- Evidence captured to `.omo/evidence/task-8-adapter-equivalence.json` and `.omo/evidence/task-8-adapter-negative.txt`.
+
+### Key findings
+- **Canonical JSON digest stability**: Same graph → same SHA-256 across re-serialization; changing any concrete axis (batch 1/2/4/8) changes the digest predictably.
+- **Symbolic dimension preservation**: ONNX `dim_param` names are kept verbatim (e.g. `"batch"`); unbound symbolic dims fail `validate_dimensions` with `DimensionBindingError`.
+- **ONNX ↔ hand-written JSON equivalence**: `tiny_mixed_ops.onnx` lowers to the same node sequence (`conv`, `add`, `relu`) and tensor shapes as the hand-written golden graph.
+- **Fail-closed registry integration**: `cv_sim.py` now raises `UnsupportedOperatorError` for unknown trace types instead of assigning 0 cycles; `cv_trace.py` no longer has a generic fallback branch.
+- **Legacy batch semantics preserved**: `--batch-m 1` and `--batch-m 2` produce the expected dimension bindings without altering existing DSE JSON output structure.
+
+### Technical decisions
+- Canonical JSON uses `contracts.identity.canonical_json_bytes` after `graph.model_dump(mode="json")` for cross-platform stability.
+- `apply_bindings()` returns a new `WorkloadGraphV1` with symbolic dims substituted and leaves the original graph unchanged (pure function).
+- ONNX adapter defaults tensor precision to FP16 and layout to NCHW; bytes remain 0 until a dedicated footprint pass is implemented.
+- CV files use `DEFAULT_REGISTRY` directly rather than a hardcoded whitelist, making new modeled/free/fused ops available automatically.

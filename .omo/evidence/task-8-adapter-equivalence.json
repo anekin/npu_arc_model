@@ -1,0 +1,10 @@
+{
+  "task": "Todo 8: JSON/ONNX adapters + legacy trace lowering",
+  "evidence_type": "adapter-equivalence",
+  "command": "python3 -m pytest sim/tests/test_workload_adapters.py sim/tests/test_legacy_compatibility.py -q -k \"roundtrip or equivalence or legacy\"",
+  "exit_code": 0,
+  "git_commit": "ac405664f8d5a3e263e4f9ab4339c8161d11a0bd",
+  "lock_digest": "ce33a246885fb5620a61ecd2b5d8aa773d4503c3a99a9c5b1ecb56fabfe8b288",
+  "config_digest": "d3ad177cd825b7ef6342bc0f53402e61e5d4438267ae4112d7e6aca041a08217",
+  "pytest_output": "..........................."
+}

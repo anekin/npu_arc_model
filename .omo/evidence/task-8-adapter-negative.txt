@@ -1,0 +1,9 @@
+Task: Todo 8: JSON/ONNX adapters + legacy trace lowering
+Evidence type: adapter-negative-path
+Command: python3 -m pytest sim/tests/test_workload_adapters.py -q -k "unsupported or unbound or conflicting"
+Exit code: 0
+Git commit: ac405664f8d5a3e263e4f9ab4339c8161d11a0bd
+Lock digest: ce33a246885fb5620a61ecd2b5d8aa773d4503c3a99a9c5b1ecb56fabfe8b288
+Config digest: d3ad177cd825b7ef6342bc0f53402e61e5d4438267ae4112d7e6aca041a08217
+Pytest output:
+......

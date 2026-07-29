@@ -2,8 +2,9 @@
 Lightweight ONNX importer for MobileNetV3-Small topology extraction.
 
 Extracts graph topology (layer types, shapes, conv parameters) without
-loading weight values.  White-lists only ops known to appear in the
-MobileNetV3-Small export.
+loading weight values.  Operator support is derived from the unified
+operator registry: modeled and explicitly-free/fused ops pass through;
+unknown or unsupported ops raise ``UnsupportedOperatorError``.
 """
 
 from __future__ import annotations
@@ -12,26 +13,29 @@ from typing import Any
 
 import onnx
 
+from contracts.errors import UnsupportedOperatorError
+from workloads.operators import DEFAULT_REGISTRY
+
 # ---------------------------------------------------------------------------
-# Whitelist
+# ONNX op type -> trace op type key (must be modeled or free/fused in registry)
 # ---------------------------------------------------------------------------
 
-WHITELIST_OPS: frozenset[str] = frozenset({
-    "Conv",
-    "Add",
-    "GlobalAveragePool",
-    "MaxPool",
-    "HardSwish",
-    "HardSigmoid",
-    "Mul",
-    "Gemm",
-    "Reshape",
-    "Squeeze",
-    "Relu",
-    "ReduceMean",
-    "Concat",
-    "Shape",
-})
+ONNX_TO_TRACE_TYPE: dict[str, str] = {
+    "Conv": "Conv",
+    "Add": "Add",
+    "GlobalAveragePool": "GlobalAveragePool",
+    "MaxPool": "MaxPool",
+    "HardSwish": "HardSwish",
+    "HardSigmoid": "HardSigmoid",
+    "Mul": "Mul",
+    "Gemm": "Gemm",
+    "Reshape": "Reshape",
+    "Squeeze": "Reshape",
+    "Relu": "Relu",
+    "ReduceMean": "ReduceMean",
+    "Concat": "Concat",
+    "Shape": "Shape",
+}
 
 # SE block: ReduceMean -> Conv -> Relu -> Conv -> HardSigmoid -> Mul
 SE_PATTERN: tuple[str, ...] = (
@@ -47,6 +51,13 @@ SE_PATTERN: tuple[str, ...] = (
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+import os as _os
+import sys as _sys
+_sim_dir = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
+if _sim_dir not in _sys.path:
+    _sys.path.insert(0, _sim_dir)
+
 
 def _get_shape(
     value_info: onnx.ValueInfoProto,
@@ -170,8 +181,8 @@ def import_mobilenetv3(onnx_path: str) -> list[dict[str, Any]]:
 
     Raises
     ------
-    NotImplementedError
-        For any ONNX operator **not** in the whitelist.
+    UnsupportedOperatorError
+        For any ONNX operator that is unknown or unsupported by the registry.
     """
     model = onnx.load(onnx_path)
     model = onnx.shape_inference.infer_shapes(model)
@@ -183,11 +194,28 @@ def import_mobilenetv3(onnx_path: str) -> list[dict[str, Any]]:
 
     for node in graph.node:
         op_type = node.op_type
+        trace_type = ONNX_TO_TRACE_TYPE.get(op_type)
 
-        if op_type not in WHITELIST_OPS:
-            raise NotImplementedError(
-                f"Operator '{op_type}' is not in the whitelist. "
-                f"Supported ops: {sorted(WHITELIST_OPS)}"
+        if trace_type is None:
+            raise UnsupportedOperatorError(
+                f"ONNX node {node.name!r} uses unsupported operator {op_type!r}",
+                op_type=op_type,
+                node_id=node.name or f"<{op_type}>",
+            )
+
+        # Map to workload op type and verify registry support.
+        workload_op = trace_type.lower()
+        if workload_op == "globalaveragepool":
+            workload_op = "global_avg_pool"
+        elif workload_op == "maxpool":
+            workload_op = "max_pool"
+
+        entry = DEFAULT_REGISTRY.lookup_or_none(workload_op)
+        if entry is None or entry.disposition.value == "unsupported":
+            raise UnsupportedOperatorError(
+                f"ONNX node {node.name!r} maps to unsupported operator {workload_op!r}",
+                op_type=workload_op,
+                node_id=node.name or f"<{op_type}>",
             )
 
         # -- Basic info ----------------------------------------------------

@@ -13,7 +13,9 @@ Aggregates total cycles, MACs, DMA cycles, SRAM spill, and per-layer breakdown.
 import math
 from typing import Any, Dict, List
 
+from contracts.errors import UnsupportedOperatorError
 from engine.mac_engine import create_engine
+from workloads.operators import DEFAULT_REGISTRY
 
 
 # ---------------------------------------------------------------------------
@@ -22,9 +24,6 @@ from engine.mac_engine import create_engine
 
 # Default vector/SIMD width (elements/cycle) - overridden by config if present
 _DEFAULT_VECTOR_WIDTH = 128
-
-# Layer types that produce no intermediate tensor worth spilling
-_METADATA_TYPES = frozenset({"reshape", "shape", "concat", "reduce_mean"})
 
 # Layer types that execute on the SFU (no MXU)
 _SFU_TYPES = frozenset({"hard_swish", "hard_sigmoid", "relu", "global_avg_pool"})
@@ -186,12 +185,18 @@ def simulate_cv(trace: list, config: dict) -> dict:
             result = _simulate_sfu(entry)
         elif entry_type in _ELEMENTWISE_TYPES:
             result = _simulate_elementwise(entry, vector_width)
-        else:
-            # reshape, shape, concat, reduce_mean, or unknown
+        elif DEFAULT_REGISTRY.is_free_or_fused(entry_type):
+            # reshape, shape, concat, reduce_mean, transpose — explicitly free/fused
             result = _simulate_metadata(entry)
+        else:
+            raise UnsupportedOperatorError(
+                f"CV trace entry {name!r} uses unsupported operator {entry_type!r}",
+                op_type=entry_type,
+                node_id=name,
+            )
 
         # --- Accumulate activation volume for SRAM spill -------------------
-        if entry_type not in _METADATA_TYPES:
+        if not DEFAULT_REGISTRY.is_free_or_fused(entry_type):
             total_activation_bytes += _estimate_activation_bytes(
                 entry, bytes_per_element
             )

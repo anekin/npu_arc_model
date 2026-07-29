@@ -124,3 +124,30 @@
 **What**: A shape is `List[Union[int, str]]` — a fixed int dim or a named symbolic string.
 **Why**: This is the simplest representation that captures both fixed and symbolic dimensions. Pydantic's Union handles coercion, and the validator ensures positive ints and non-empty strings.
 **Alternatives**: A `ShapeElement` discriminated union or a `FixedDim(int)` / `SymbolicDim(str)` wrapper would be more type-safe but adds unnecessary indirection for the current use case.
+
+## Todo 8: JSON/ONNX Adapters and Legacy Trace Lowering (2026-07-30)
+
+### Decision 24: Canonical JSON adapter delegates to `contracts.identity`
+**What**: `json_adapter.py` builds the canonical dict via `graph.model_dump(mode="json")` and then uses `contracts.identity.canonical_json_bytes` / `digest_sha256`.
+**Why**: Reuses the same deterministic normalization (sorted keys, `repr` floats, enum values) already proven for design-point IDs, avoiding a second normalization implementation.
+**Alternatives**: Could have implemented adapter-specific normalization, but that would risk subtle divergence from the canonical identity machinery.
+
+### Decision 25: Dimension binding is a pure graph transformation
+**What**: `apply_bindings()` in `dimensions.py` returns a new `WorkloadGraphV1` with symbolic dims replaced by integers; the original graph is untouched.
+**Why**: Keeps the unbound symbolic graph as the authoritative schema instance while allowing stable concrete-instance digests after binding.
+**Alternatives**: Could have mutated tensor shapes in place, but immutability makes round-trip and digest tests deterministic.
+
+### Decision 26: ONNX adapter defaults precision/layout, not bytes
+**What**: Lowered tensors use `precision=FP16` and `layout=NCHW`; `bytes=0` until a dedicated footprint pass is available.
+**Why**: The adapter's job is topology and shape, not byte-accurate footprint. Footprint belongs to the future memory residency pass (Todo 10).
+**Alternatives**: Could derive bytes from shape + precision, but that duplicates footprint logic and could drift.
+
+### Decision 27: CV path uses the unified operator registry instead of a hardcoded whitelist
+**What**: `onnx_importer.py`, `cv_trace.py`, and `cv_sim.py` now consult `DEFAULT_REGISTRY` to accept modeled/free/fused ops and reject unknown/unsupported ops.
+**Why**: Eliminates the old unmatched-op→0-cycle-metadata path and ensures new modeled ops are automatically available to CV traces.
+**Alternatives**: Could have kept the whitelist and added explicit checks, but the registry already encodes the same intent with fail-closed semantics.
+
+### Decision 28: Legacy `--batch-m` conflicts raise `ConfigError`, not argparse error
+**What**: `apply_legacy_batch_m` raises `ConfigError` when `--batch-m` conflicts with an explicit `active_sequences`/`token_block` binding.
+**Why**: The conflict is a configuration semantic error, not a CLI parsing error. DSE/main code can map it to exit code 2 if needed without coupling the adapter to argparse.
+**Alternatives**: Could have raised `argparse.ArgumentError` inside the adapter, but that would couple core workload logic to CLI machinery.

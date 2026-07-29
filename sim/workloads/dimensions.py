@@ -20,6 +20,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Dict, Optional, Set
 
+from contracts.errors import DimensionBindingError
+
 
 # ── Named symbolic axis ──────────────────────────────────────────────────────
 
@@ -187,3 +189,38 @@ class DimensionBindings:
         """
         bound = set(self.to_dict().keys())
         return required_axes - bound
+
+
+def apply_bindings(
+    graph: "WorkloadGraphV1",
+    bindings: DimensionBindings,
+) -> "WorkloadGraphV1":
+    """Return a new graph with all symbolic dimensions replaced by bound values.
+
+    Args:
+        graph: The workload graph to bind.
+        bindings: Concrete dimension bindings.
+
+    Raises:
+        DimensionBindingError: if a symbolic dimension is unbound.
+    """
+    from workloads.schema import TensorSpec  # local import avoids circular dependency
+
+    binding_dict = bindings.to_dict()
+    new_tensors: list[TensorSpec] = []
+
+    for tensor in graph.tensors:
+        new_shape: list[int | str] = []
+        for dim in tensor.shape:
+            if isinstance(dim, str):
+                if dim not in binding_dict:
+                    raise DimensionBindingError(
+                        f"symbolic dimension {dim!r} is not bound",
+                        dimension=dim,
+                    )
+                new_shape.append(binding_dict[dim])
+            else:
+                new_shape.append(dim)
+        new_tensors.append(tensor.model_copy(update={"shape": new_shape}))
+
+    return graph.model_copy(update={"tensors": new_tensors})
