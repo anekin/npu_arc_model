@@ -1,10 +1,12 @@
 """Test all engine types instantiate via create_engine() without error.
 
 Every engine subclass must be constructable through the factory and
-report the correct engine_type identifier.
+report the correct engine_type identifier.  The registry is the single
+source of truth for the canonical engine list.
 """
 
 from engine.mac_engine import create_engine
+from engine.registry import canonical_engine_ids
 
 # Minimal config: all engines share the same mac_engine params
 # Only the "type" field varies.
@@ -22,15 +24,7 @@ _BASE_CONFIG = {
     },
 }
 
-ENGINE_TYPES = [
-    "systolic",
-    "block",
-    "os_systolic",
-    "input_stationary",
-    "tensor_core",
-    "wmma",
-    "gmma",
-]
+ENGINE_TYPES = list(canonical_engine_ids())
 
 
 def test_all_engines_instantiate():
@@ -42,3 +36,10 @@ def test_all_engines_instantiate():
         assert e.engine_type == etype, (
             f"Expected engine_type={etype!r}, got {e.engine_type!r}"
         )
+
+
+def test_canonical_engine_count():
+    """Registry must expose exactly 8 canonical engine IDs."""
+    assert len(canonical_engine_ids()) == 8, (
+        f"Expected 8 canonical engines, got {len(canonical_engine_ids())}"
+    )

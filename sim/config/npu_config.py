@@ -14,7 +14,7 @@ from pathlib import Path
 
 import yaml
 
-from sim.contracts.errors import ConfigError
+from contracts.errors import ConfigError
 
 
 def _validate_root_is_mapping(data: object) -> None:
@@ -143,8 +143,8 @@ def load_config_v2() -> dict:
     Returns ``HardwareConfigV2.model_dump()``.
     Raises ``ConfigError`` on any validation failure.
     """
-    from sim.contracts.hardware import HardwareConfigV2
-    from sim.contracts.migrations import migrate_v1_to_v2
+    from contracts.hardware import HardwareConfigV2
+    from contracts.migrations import migrate_v1_to_v2
 
     data = load_config()
 

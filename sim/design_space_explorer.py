@@ -167,12 +167,13 @@ def generate_configs(quick: bool = False) -> List[Dict[str, Any]]:
 
     configs = []
 
-    # Engine types — all seven architectures
+    # Engine types — from unified registry
     if quick:
-        engines = ["systolic", "block", "gmma"]
+        from engine.registry import engine_quick_ids_list
+        engines = engine_quick_ids_list()
     else:
-        engines = ["systolic", "os_systolic", "block",
-                   "tensor_core", "wmma", "gmma", "input_stationary", "fsa"]
+        from engine.registry import engine_full_ids
+        engines = engine_full_ids()
 
     # Array dimensions (constrained by area)
     if quick:
@@ -594,8 +595,10 @@ def main():
     power_model = PowerModel(base_cfg)
 
     configs = generate_configs(quick=args.quick)
+    from engine.registry import canonical_engine_ids
+    engine_types_in_configs = sorted(set(c['mac_engine']['type'] for c in configs))
     print(f"Design space: {len(configs)} configurations")
-    print(f"  Engine types: systolic, block")
+    print(f"  Engine types: {', '.join(engine_types_in_configs)}")
     dim_set = set((c['mac_engine']['array_height'],
                    c['mac_engine']['array_width']) for c in configs)
     print(f"  Array dims: {len(dim_set)}")
@@ -696,13 +699,24 @@ def main():
               f"{p.power_w:>6.1f}W {p.efficiency_tok_per_watt:>7.1f}{extra} {pareto_flag}")
 
     # ── Best per engine type ──
+    from engine.registry import engine_full_ids, lookup_by_prefix, is_valid_engine
+
     print(f"\n  Best per engine type (area ≤ 80mm², DRAM ≤ 102.4 GB/s):")
-    for eng in ["systolic", "os_systolic", "block", "tensor_core", "wmma", "gmma", "fsa"]:
-        eng_results = [r for r in results
-                       if eng in r.config_label and r.area_mm2 <= 80]
-        if eng_results:
-            best = max(eng_results, key=lambda x: x.tok_s)
-            print(f"    {eng}: {best.tok_s:.0f} {perf_label}, {best.area_mm2:.0f}mm², "
+    # Group results by canonical engine ID using registry prefix resolution
+    eng_groups: Dict[str, List[PPA]] = {eid: [] for eid in engine_full_ids()}
+    for r in results:
+        # Parse engine prefix from config_label (first token is truncated engine name)
+        prefix = r.config_label.split()[0] if r.config_label else ""
+        try:
+            eid = lookup_by_prefix(prefix)
+        except Exception:
+            continue
+        if is_valid_engine(eid) and r.area_mm2 <= 80:
+            eng_groups[eid].append(r)
+    for eid in engine_full_ids():
+        if eng_groups[eid]:
+            best = max(eng_groups[eid], key=lambda x: x.tok_s)
+            print(f"    {eid}: {best.tok_s:.0f} {perf_label}, {best.area_mm2:.0f}mm², "
                   f"{best.power_w:.1f}W — {best.config_label}")
 
     # ── Sensitivity Analysis (always run after sweep) ──

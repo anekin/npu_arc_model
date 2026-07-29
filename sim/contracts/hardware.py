@@ -243,7 +243,7 @@ class HardwareConfigV2(BaseModel):
 
         Uses the plan formula: bytes_per_cycle = bandwidth_gbps * 1000 / frequency_mhz
         """
-        from sim.contracts.units import bandwidth_gbps_to_bytes_per_cycle
+        from contracts.units import bandwidth_gbps_to_bytes_per_cycle
 
         return bandwidth_gbps_to_bytes_per_cycle(
             self.memory.bandwidth_gbps,

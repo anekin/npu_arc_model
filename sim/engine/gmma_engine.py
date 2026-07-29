@@ -115,13 +115,18 @@ class GMMAEngine(MACEngine):
 
         compute_cycles = int(total_compute)
         dma_cycles = int(total_dma)
+        raw_dma = (K * N * self.w_bits // 8 + M * K * self.a_bits // 8)
+        raw_dma_floor = math.ceil(raw_dma / self.eff_bw) if self.eff_bw > 0 else 0
 
         return EngineResult(
             compute_cycles=compute_cycles,
             dma_cycles=dma_cycles,
             total_cycles=int(total_cycles),
             utilization=util,
-            ops=total_macs,
+            mac_count=total_macs,
+            op_count=total_macs * 2,
+            ideal_compute_cycles=ideal,
+            raw_dma_cycles=raw_dma_floor,
             num_tiles=total_tiles,
             weight_bytes=int(total_weight_bytes),
             bottleneck="dma" if total_dma > total_compute else "compute",
@@ -179,13 +184,18 @@ class GMMAEngine(MACEngine):
 
         compute_cycles = int(per_tile_compute * total_tiles)
         dma_cycles = int(total - compute_cycles)
+        raw_dma = (K * N * self.w_bits // 8 + M * K * self.a_bits // 8) * 2
+        raw_dma_floor = math.ceil(raw_dma / self.eff_bw) if self.eff_bw > 0 else 0
 
         return EngineResult(
             compute_cycles=compute_cycles,
             dma_cycles=dma_cycles,
             total_cycles=total,
             utilization=util,
-            ops=total_macs,
+            mac_count=total_macs,
+            op_count=total_macs * 2,
+            ideal_compute_cycles=ideal,
+            raw_dma_cycles=raw_dma_floor,
             num_tiles=total_tiles,
             weight_bytes=total_weight_bytes,
             bottleneck="dma" if per_tile_dma_raw > per_tile_compute else "compute",

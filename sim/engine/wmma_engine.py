@@ -104,6 +104,13 @@ class WMMAEngine(MACEngine):
 
         per_tile_compute = fragments_per_tile * per_frag_compute
 
+        # Per-fragment DMA: startup overhead + fraction of tile bytes
+        per_frag_dma = (
+            self.DMA_STARTUP_CYCLES
+            + (per_tile_weight_bytes + per_tile_act_bytes)
+            / max(fragments_per_tile, 1) / self.eff_bw
+        )
+
         # Double-buffered pipeline across tiles.
         bottleneck = max(per_tile_compute, per_tile_dma)
         first_cold = per_tile_dma + per_tile_compute
@@ -119,28 +126,38 @@ class WMMAEngine(MACEngine):
 
         compute_cycles = int(per_tile_compute * total_tiles)
         dma_cycles = total - compute_cycles
+        raw_dma = (K * N * self.w_bits // 8 + M * K * self.a_bits // 8)
+        raw_dma_cycles = math.ceil(raw_dma / self.eff_bw) if self.eff_bw > 0 else 0
+
+        details = {
+            "frag_M_total": frag["frag_M_total"],
+            "frag_K_total": frag["frag_K_total"],
+            "frag_N_total": frag["frag_N_total"],
+            "total_fragments": frag["total_fragments"],
+            "fragments_per_tile": fragments_per_tile,
+            "per_fragment_compute": per_frag_compute,
+            "per_fragment_dma": round(per_frag_dma, 1),
+            "per_tile_compute": per_tile_compute,
+            "per_tile_dma": round(per_tile_dma, 1),
+            "tile_size": f"{self.FRAG_M}×{self.FRAG_K}×{self.FRAG_N}",
+            "num_warps": self.num_warps,
+        }
+        if weight_multiplier > 1:
+            details["weight_cache"] = True
 
         return EngineResult(
             compute_cycles=compute_cycles,
             dma_cycles=dma_cycles,
             total_cycles=total,
             utilization=util,
-            ops=total_macs,
+            mac_count=total_macs,
+            op_count=total_macs * 2,
+            ideal_compute_cycles=ideal,
+            raw_dma_cycles=raw_dma_cycles,
             num_tiles=total_tiles,
             weight_bytes=int(total_tiles * (per_tile_weight_bytes + per_tile_act_bytes)),
             bottleneck="compute" if per_tile_compute > per_tile_dma else "dma",
-            details={
-                "frag_M_total": frag["frag_M_total"],
-                "frag_K_total": frag["frag_K_total"],
-                "frag_N_total": frag["frag_N_total"],
-                "total_fragments": frag["total_fragments"],
-                "fragments_per_tile": fragments_per_tile,
-                "per_fragment_compute": per_frag_compute,
-                "per_tile_compute": per_tile_compute,
-                "per_tile_dma": round(per_tile_dma, 1),
-                "tile_size": f"{self.FRAG_M}×{self.FRAG_K}×{self.FRAG_N}",
-                "num_warps": self.num_warps,
-            },
+            details=details,
         )
 
     def estimate(self, M: int, K: int, N: int,

@@ -74,3 +74,36 @@
 - Invalid-input tests use non-crash criterion (engines may not raise for all invalid inputs, but must not crash)
 - `sim/tests/__init__.py` added to enable proper package imports for oracle module
 - FSA engine uses `ops_per_mac=2` and stores op_count not mac_count — need Todo 4 contract to enforce semantics
+
+## Todo 4: Engine Registry and Result Contracts (2026-07-30)
+
+### What was done
+- Created `sim/engine/registry.py` — single source of truth for all 8 canonical engine IDs, factory delegation, CLI choices, DSE enumeration, prefix matching for label resolution
+- Refactored `EngineResult` in `mac_engine.py`:
+  - Added `mac_count`, `op_count`, `ideal_compute_cycles`, `raw_dma_cycles` as required fields
+  - `ops` is now a deprecated `@property` returning `mac_count` (backward compat with deprecation warning)
+  - `__post_init__` validation rejects NaN/Inf, negative cycles, non-positive mac_count/op_count
+- Updated all 8 engine files: `ops=` → `mac_count=` + `op_count=` + `ideal_compute_cycles` + `raw_dma_cycles`
+- Fixed FSA `mac_count` semantics: changed from `M*K*N*ops_per_mac` to `M*K*N`; `op_count = 2*M*K*N`
+- Updated `npu_sim.py`: `--engine` choices now include `fsa`; `--list-engines` uses registry
+- Updated `design_space_explorer.py`: engine lists from registry; "best per engine" uses prefix resolution instead of label truncation matching; engine type print now dynamic
+- Updated tests:
+  - `test_engine_result_contract.py`: removed `pytest.skip` for diagnostics; hard failures via oracle `required_diagnostics`; updated to use `mac_count`/`op_count`
+  - `test_engine_instantiate.py`: uses registry `canonical_engine_ids()`; includes FSA; added `test_canonical_engine_count`
+  - `test_dse_coverage.py`: uses registry instead of regex-parsing factory code
+- Fixed import chain: changed `from sim.contracts...` → `from contracts...` in all files under `sim/` to maintain script-compatible imports
+- Added `per_fragment_dma` diagnostic to WMMA engine details
+- Added `weight_cache: True` to WMMA and OS-Systolic cache-pair details
+
+### Key findings
+- The `from sim.contracts.errors import ConfigError` import style broke standalone script execution (`python sim/npu_sim.py`) because `sys.path` adds `sim/` directly, making `sim.contracts` unresolvable; changed to `from contracts.errors import ConfigError` throughout
+- FSA's `ops` was storing `M*K*N*2` (op_count) while other engines stored `M*K*N` (mac_count); normalized to `mac_count = M*K*N` across all engines
+- WMMA engine had no `per_fragment_dma` diagnostic; computed as `startup + bytes_per_fragment / eff_bw`
+- DSE's "best per engine" used `eng in r.config_label` (substring matching on truncated labels like 'syst'), which was fragile; replaced with registry `lookup_by_prefix()`
+
+### Technical decisions
+- Registry lazy-loads engine factories to avoid circular imports
+- `EngineResult.__post_init__` validates basic sanity (finite, non-negative cycles, positive counts) but diagnostics validation is deferred to test/oracle layer
+- Cache-pair diagnostics relaxed: `per_fragment_dma` excluded from cache-pair check since fragment-level DMA differs from direct path
+- Quick-mode engine list (`systolic`, `block`, `gmma`) remains hardcoded in registry but derived through `engine_quick_ids_list()` API
+- All 8 engines now produce `mac_count` and `op_count` consistently; remaining red tests (bandwidth saturation, FSA weight_bytes=0) are Todo 5/6 scope

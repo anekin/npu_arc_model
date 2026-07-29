@@ -7,7 +7,7 @@ Public API surface for the contracts package:
   migrations — v1 ↔ v2 migration and legacy projection
 """
 
-from sim.contracts.errors import (  # noqa: F401
+from contracts.errors import (  # noqa: F401
     ConfigError,
     CoverageError,
     DimensionBindingError,
@@ -15,7 +15,7 @@ from sim.contracts.errors import (  # noqa: F401
     SchemaVersionError,
     UnsupportedOperatorError,
 )
-from sim.contracts.hardware import (  # noqa: F401
+from contracts.hardware import (  # noqa: F401
     DEFAULT_DRAM_EFFICIENCY_PROVENANCE,
     DEFAULT_GMMA_PIPELINE_PROVENANCE,
     DEFAULT_NODE_SCALE_PROVENANCE,
@@ -28,11 +28,11 @@ from sim.contracts.hardware import (  # noqa: F401
     SRAMConfig,
     TrustLevel,
 )
-from sim.contracts.migrations import (  # noqa: F401
+from contracts.migrations import (  # noqa: F401
     migrate_v1_to_v2,
     project_v2_to_legacy,
 )
-from sim.contracts.units import (  # noqa: F401
+from contracts.units import (  # noqa: F401
     bandwidth_gbps_to_bytes_per_cycle,
     bytes_per_cycle_to_bandwidth_gbps,
     bytes_to_gib,

@@ -18,8 +18,8 @@ import pytest
 import yaml
 from pydantic import ValidationError
 
-from sim.contracts.errors import ConfigError, SchemaVersionError
-from sim.contracts.hardware import (
+from contracts.errors import ConfigError, SchemaVersionError
+from contracts.hardware import (
     HardwareConfigV2,
     MACEngineConfig,
     MemoryConfig,
@@ -27,8 +27,8 @@ from sim.contracts.hardware import (
     SRAMConfig,
     TrustLevel,
 )
-from sim.contracts.migrations import LossReport, migrate_v1_to_v2, project_v2_to_legacy
-from sim.config.npu_config import load_config
+from contracts.migrations import LossReport, migrate_v1_to_v2, project_v2_to_legacy
+from config.npu_config import load_config
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────
@@ -487,15 +487,15 @@ def test_non_mapping_root_fails():
 
     try:
         # Monkey-patch the config path for the test
-        import sim.config.npu_config as cfg_mod
+        import config.npu_config as cfg_mod
         orig = str(Path(cfg_mod.__file__).with_suffix(".yaml"))
         # Use load_config logic directly
-        from sim.contracts.errors import ConfigError
+        from contracts.errors import ConfigError
         import yaml as y
 
         with open(tmp_path) as fh:
             data = y.safe_load(fh)
-        from sim.config.npu_config import _validate_root_is_mapping
+        from config.npu_config import _validate_root_is_mapping
 
         with pytest.raises(ConfigError) as exc_info:
             _validate_root_is_mapping(data)

@@ -13,6 +13,13 @@
 > - 参数来源、校准范围、误差预算、可信度等级和完整 agent-executed 验收证据
 > Effort:       XL
 > Risk:         High - 当前 63 项测试通过但仍可复现频率无效、M 边界反向、利用率超过 1、3D DRAM 未进入搜索空间等物理违例
+>
+> PPA 参数修正: **本计划执行前已通过 ULW-Research (2026-07-29) 完成关键 PPA 参数调研。**
+> - DRAM 有效带宽: README 的 75% 声明已证伪→删除，保留 `dram_efficiency=0.85` 为 conservative baseline（详见修正 1）
+> - TSMC 12nm 面积缩放: `(12/7)² = 2.94×` 已证伪→修正为密度比 **2.70×**（详见修正 2）
+> - PE 面积模型: block/systolic=2.0× 维持，降级为 T1 假设（详见修正 3）
+> - 完整修正文档: [`.omo/plans/arc-model-ppa-corrections.md`](arc-model-ppa-corrections.md)
+> - 调研数据源: [`.omo/ulw-research/20260729-pparams/SYNTHESIS.md`](../ulw-research/20260729-pparams/SYNTHESIS.md)
 
 ## Scope
 
@@ -201,7 +208,7 @@ Critical path: `1 → (2,3) → 4 → (5,6) → 7 → (8 → 12, 10 → 11) → 
 
 > Implementation + Test = ONE todo. Never separate.
 
-- [ ] 1. 冻结可复现环境、历史 baseline 与公共兼容面
+- [x] 1. 冻结可复现环境、历史 baseline 与公共兼容面
 
   **What to do**:
   1. 新增 `pyproject.toml` 与 `uv.lock`，声明 CPython `>=3.10,<3.13`，锁定 NumPy、PyYAML、Pydantic v2、ONNX、pytest、ruff、basedpyright；不新增 Hypothesis，property matrix 使用 pytest 参数化。`pyproject.toml` 同时固定 ruff 与 basedpyright 的项目检查范围。
@@ -230,8 +237,9 @@ Critical path: `1 → (2,3) → 4 → (5,6) → 7 → (8 → 12, 10 → 11) → 
   **Acceptance criteria**:
   - `uv sync --frozen` 在 clean venv 退出 0，随后 `uv run pytest --collect-only -q` 退出 0。
   - `uv run pytest sim/tests/test_legacy_compatibility.py sim/tests/test_environment_repro.py -q` 无 skip/xfail。
-  - golden 明确记录 legacy schema，不包含绝对路径、时间戳或未跟踪 source 文件。
-  - `git status --short` 仍只显示实施产生的预期文件和原有未跟踪 ultraresearch 目录。
+   - golden 明确记录 legacy schema，不包含绝对路径、时间戳或未跟踪 source 文件。
+   - `git status --short` 仍只显示实施产生的预期文件和原有未跟踪 ultraresearch 目录。
+   - golden 文件中必须记录当前 `process_node=12nm` 下的 `node_scale = (12/7)² = 2.94×` 作为冻结时的历史参考值（此值将在 Todo 11 中被修正为 2.70×），确保 before/after 可追溯。
 
   **QA scenarios**:
   - **Happy**: 在临时 uv 环境执行 legacy CLI snapshots，两次运行字段集合/exit code 相同；Evidence `.omo/evidence/task-1-legacy-baseline.json`。
@@ -247,17 +255,19 @@ Critical path: `1 → (2,3) → 4 → (5,6) → 7 → (8 → 12, 10 → 11) → 
 
   **Commit**: YES | `chore(repro): pin arc-model environment and freeze legacy contracts` | `pyproject.toml`, `uv.lock`, `README.md`, `sim/tests/test_environment_repro.py`, `sim/tests/test_legacy_compatibility.py`, `sim/tests/golden/legacy_cli_contract.json`
 
-- [ ] 2. 建立 schema v2、单位、错误与 legacy migration 契约
+- [x] 2. 建立 schema v2、单位、错误与 legacy migration 契约
 
   **What to do**:
   1. 新建 `sim/contracts/units.py`，只在此实现 GB/s↔bytes/cycle、cycles↔seconds/us、bytes/GiB 换算；所有换算使用显式 decimal GB 与 binary GiB 名称。
   2. 新建 `sim/contracts/errors.py`，定义 `ConfigError`、`SchemaVersionError`、`DimensionBindingError`、`UnsupportedOperatorError`、`CoverageError`、`NonAuthoritativeRunError`。
-  3. 新建 `sim/contracts/hardware.py`，用 Pydantic v2 定义 hardware/memory schema：
-     - v2 规范键为 `mac_engine`；
-     - 只出现 `mxu` 时迁移；
-     - 两者一致时接受并产生 structured warning；
-     - 不一致时 fail-closed；
-     - unknown field 默认 forbid。
+   3. 新建 `sim/contracts/hardware.py`，用 Pydantic v2 定义 hardware/memory schema：
+      - v2 规范键为 `mac_engine`；
+      - 只出现 `mxu` 时迁移；
+      - 两者一致时接受并产生 structured warning；
+      - 不一致时 fail-closed；
+      - unknown field 默认 forbid；
+      - **所有物理参数（dram_efficiency、process_node、PE area、TSV overhead 等）必须携带 `provenance` 字段**：`{source, trust_level: T0|T1|T2|T3, calibration_range, reference_uri}`。
+      - 已调研的 PPA 参数默认值及 provenance 来自 [`.omo/plans/arc-model-ppa-corrections.md`](arc-model-ppa-corrections.md)。
   4. 新建 `sim/contracts/migrations.py`，提供 v1→v2 pure migration 和 v2→legacy projection；输入不原地修改。
   5. 更新 `sim/config/npu_config.py`，顶层/嵌套 YAML 非 mapping、非法版本、bool 充当 int、非有限/非正数必须产生字段明确的 typed error。
   6. 新增 `sim/tests/test_contract_schema.py` 与 `sim/tests/test_units.py`，覆盖 800/1000/1200 MHz、25.6–819.2 GB/s 和 malformed YAML。
@@ -294,7 +304,7 @@ Critical path: `1 → (2,3) → 4 → (5,6) → 7 → (8 → 12, 10 → 11) → 
 
   **Commit**: YES | `feat(contracts): add versioned hardware schema and canonical units` | `sim/contracts/__init__.py`, `sim/contracts/units.py`, `sim/contracts/errors.py`, `sim/contracts/hardware.py`, `sim/contracts/migrations.py`, `sim/config/npu_config.py`, `sim/tests/test_contract_schema.py`, `sim/tests/test_units.py`
 
-- [ ] 3. 建立全引擎独立物理 oracle 红色矩阵
+- [x] 3. 建立全引擎独立物理 oracle 红色矩阵
 
   **What to do**:
   1. 新建 `sim/tests/oracles/physics.py`，用 closed-form MAC、byte、秒单位实现独立下界；禁止 import `sim.engine.*` estimator。
@@ -442,13 +452,14 @@ Critical path: `1 → (2,3) → 4 → (5,6) → 7 → (8 → 12, 10 → 11) → 
   2. `generate_configs` 只写 `bandwidth_gbps`；engine construction 时按每个 design point 频率计算 bytes/cycle。
   3. 修复 `npu_sim.py --freq`：override 必须在模型创建前归一化，或显式刷新所有消费 frequency 的组件。
   4. 审计 KV、DMA、DRAM、NoC、PPA 和 report 路径，禁止用 GB/s 数值冒充 bytes/cycle。
-  5. 新增 `sim/tests/test_frequency_bandwidth_scaling.py`：
-     - compute-only closed-form at 800/1000/1200 MHz wall time按 `1000/f` 比例，容差 0.1%；
-     - fixed 51.2 GB/s memory-only wall time差异 ≤0.1%，cycle 按频率比例；
-     - LPDDR5→HBM3 单调并在 compute floor 饱和；
-     - CLI/DSE output 与底层报告一致。
+   5. 新增 `sim/tests/test_frequency_bandwidth_scaling.py`：
+      - compute-only closed-form at 800/1000/1200 MHz wall time按 `1000/f` 比例，容差 0.1%；
+      - fixed 51.2 GB/s memory-only wall time差异 ≤0.1%，cycle 按频率比例；
+      - LPDDR5→HBM3 单调并在 compute floor 饱和；
+      - CLI/DSE output 与底层报告一致。
+   6. 确认 `dram_efficiency=0.85` 的正确位置与含义：per-bank refresh 仅 3.6%(JEDEC tRFCpb=140ns/tREFI=3900ns)，85% 是含控制器调度/命令总线/行冲突的 sequential decode 保守值；删除 README 中的 75% 错误声明；标记 `sim/models/dram.py` 为 dead code（引擎不用其 `effective_bandwidth_bytes_per_cycle()` 路径）。
 
-  **Must NOT do**:
+   **Must NOT do**:
   - 不修改 physical bandwidth 随 core frequency 一起缩放。
   - 不把功耗随频率变化误当成 throughput 已正确传播。
 
@@ -464,8 +475,9 @@ Critical path: `1 → (2,3) → 4 → (5,6) → 7 → (8 → 12, 10 → 11) → 
   **Acceptance criteria**:
   - `uv run pytest sim/tests/test_units.py sim/tests/test_frequency_bandwidth_scaling.py -q` 全绿无 skip。
   - DSE 相同 Block config 在 800/1000/1200 MHz 的 compute-bound tok/s 严格递增且比例误差 ≤0.1%。
-  - memory-bound wall time跨频率误差 ≤0.1%，HBM/LPDDR byte conservation exact。
-  - `npu_sim --freq 800/1000/1200 --json` 输出不再相同，并与独立换算 oracle 一致。
+   - memory-bound wall time跨频率误差 ≤0.1%，HBM/LPDDR byte conservation exact。
+   - `npu_sim --freq 800/1000/1200 --json` 输出不再相同，并与独立换算 oracle 一致。
+   - `grep -r "75%" sim/results/ docs/ reports/ --include="*.md"` 返回空（所有 75% DRAM 效率声明已替换为 85% 或标注 superseded）；若仍有无法在本 todo 中清理的文件，必须在 `.omo/notepads/arc-model-scenario-driven-dse-development/decisions.md` 中记录推迟理由并链接到 Todo 18。
 
   **QA scenarios**:
   - **Happy**: 三频点 × LPDDR/HBM × compute/memory-bound matrix；Evidence `.omo/evidence/task-6-frequency-bandwidth.json`。
@@ -679,7 +691,8 @@ Critical path: `1 → (2,3) → 4 → (5,6) → 7 → (8 → 12, 10 → 11) → 
      - dynamic energy 随 read/write bytes；
      - active power=energy/time；
      - 超出参数校准范围标 exploratory，不外推 authoritative。
-  3. 更新 `ppa_model.py`，区分 on-chip DRAM、HBM、LPDDR 组件；修复 OS 专用 area baseline 未消费问题；HBM 保留 PHY+TSV/package，on-chip 去外部 PHY。
+   3. 更新 `ppa_model.py`，区分 on-chip DRAM、HBM、LPDDR 组件；修复 OS 专用 area baseline 未消费问题；HBM 保留 PHY+TSV/package，on-chip 去外部 PHY。
+      - **关键修正**：12nm 面积缩放从 `(12/7)²=2.94×` 改为密度比 **2.70×**（12FFC 非真正12nm几何，详见 [arc-model-ppa-corrections.md](arc-model-ppa-corrections.md) 修正2）。
   4. 配置 `sim/config/memory_macros.yaml`，每个参数包含 value/unit/provenance/source/status/range；未校准默认 `engineering_assumption`。
   5. 新增独立 closed-form PPA/energy oracle 和 backend conformance tests，为未来 Ramulator/DRAMSim adapter 固定 protocol。
 
@@ -971,11 +984,29 @@ Critical path: `1 → (2,3) → 4 → (5,6) → 7 → (8 → 12, 10 → 11) → 
      - T2 reproduced RTL/reference + held-out validation：允许 measured domain 内相对决策并附 residual interval；
      - T3 signed-off representative RTL/silicon：允许范围内 numeric prediction，仍附 interval/limitations。
   3. 每个 decision-driving 参数保存 stable calibration_id、source URI/path/hash、tool/hardware、domain、training/held-out IDs、fit method、residual metrics、interval/status。
-  4. GMMA `pipeline_scale=0.05`、TensorCore descriptor=5、3D macro assumptions 初始为 T0；不得因测试通过升级。
+   4. GMMA `pipeline_scale=0.05`、TensorCore descriptor=5、3D macro assumptions 初始为 T0；不得因测试通过升级。
+      - **block/systolic=2.0× 维持但降为 T1**（Gemmini DAC 2021 提供 systolic 1.79× vector 参考，无 die-shot 直接验证）
+      - **WMMA(1.5×)、GMMA(1.75×block) 降为 T0**（无 published proxy）
+      - 完整 trust level 对照表见 [arc-model-ppa-corrections.md](arc-model-ppa-corrections.md) 修正5。
   5. 修改 `scripts/calibrate_mxu_model.py`：删除 raw RTL 缺失时用 analytic expected value 的 fallback；缺失/重复/checksum mismatch fail。
-  6. DSE `exploratory` 可运行 T0/T1 并标记；`decision-grade` 要求所有 Pareto-driving 参数 T2+ 且点在 calibration domain 内。
+   6. DSE `exploratory` 可运行 T0/T1 并标记；`decision-grade` 要求所有 Pareto-driving 参数 T2+ 且点在 calibration domain 内。
+   7. 新增 `references/calibration/parameters.yaml`，以 `calibration_id` 为键收录以下 **decision-driving 参数的完整 trust-level 条目**：
+      | 参数 | 当前来源 | Trust Level | Source URI |
+      |------|----------|:---:|------|
+      | systolic PE area @7nm | TPUv1 ISCA 2017 die-shot | T2 | Simba (MICRO 2019), DiP-WS (2024) 交叉验证 |
+      | block/systolic PE ratio = 2.0× | 架构推理 | T1 | Gemmini DAC 2021 (systolic 1.79× vector) |
+      | GMMA pipeline_scale = 0.05 | H100 架构假设 | T0 | — |
+      | TensorCore descriptor = 5 | TC fragment model | T0 | — |
+      | WMMA PE ratio = 1.5×block | 无 published proxy | T0 | — |
+      | GMMA PE ratio = 1.75×block | 无 published proxy | T0 | — |
+      | pJ/MAC @12nm (INT8 core) | DepFiN JSSC 2023 实测 | T1 | 0.10–0.20 pJ, 5–20 TOPS/W |
+      | TSV overhead = 10% | 行业经验法则 (HBM2/3) | T1 | — |
+      | DRAM PHY @12nm = 14.7mm² | Cadence/SNPS IP 公开数据 | T1 | 7nm baseline 5.0mm² × 2.70 |
+      | power density @12nm | DepFiN JSSC 2023 indirect | T1 | ~0.05–0.3 W/mm² range |
+      - **每个 entry 必须包含**: `calibration_id`, `value`, `unit`, `source_uri`, `source_hash`（如有）, `trust_level` (T0/T1/T2/T3), `calibration_range`, `status` (assumption/calibrated/exploratory)。
+      - `registry.py` 提供按 calibration_id 检索的 API。
 
-  **Must NOT do**:
+   **Must NOT do**:
   - 不从 production model output 生成“measured” calibration。
   - 不虚构 confidence interval。
 
@@ -988,12 +1019,13 @@ Critical path: `1 → (2,3) → 4 → (5,6) → 7 → (8 → 12, 10 → 11) → 
   - `reports/dse-engine-model-bugs-postfix-2026-07-27.md:75-121` — 当前 ranking/uncalibrated 不一致。
 
   **Acceptance criteria**:
-  - missing/checksum-mismatch raw data fail-closed；valid train/held-out fixture产生 deterministic metrics。
-  - T0 参数下 `decision-grade` 非零退出且列出 calibration IDs；`exploratory` 成功但所有受影响 point 标 exploratory。
-  - held-out IDs 不参与 fitting；registry change 使 calibration/result digest 变化。
-  - 超 calibration range 点不得 authoritative。
+   - missing/checksum-mismatch raw data fail-closed；valid train/held-out fixture产生 deterministic metrics。
+   - T0 参数下 `decision-grade` 非零退出且列出 calibration IDs；`exploratory` 成功但所有受影响 point 标 exploratory。
+   - held-out IDs 不参与 fitting；registry change 使 calibration/result digest 变化。
+   - 超 calibration range 点不得 authoritative。
+   - **上述 10 个 decision-driving 参数均可通过 `calibration_id` 在 registry 中查询到 source_uri 和 trust_level**；`missing_registry_entries` test 断言 registry 完整。
 
-  **QA scenarios**:
+   **QA scenarios**:
   - **Happy**: checksum-bound tiny calibration train/held-out 流程；Evidence `.omo/evidence/task-17-calibration.json`。
   - **Failure**: 缺 raw、篡改 byte、T0 decision-grade、extrapolation；Evidence `.omo/evidence/task-17-calibration-negative.txt`。
   - **Commands**:

@@ -76,6 +76,9 @@ class BlockEngine(MACEngine):
             act_bytes = M * K * self.a_bits // 8
             weight_stream_cycles = (total_weight_bytes + act_bytes) / self.on_chip_bw
 
+            raw_dma = (K * N * self.w_bits // 8 + M * K * self.a_bits // 8)
+            raw_dma_cycles = math.ceil(raw_dma / self.on_chip_bw) if self.on_chip_bw > 0 else 0
+            ideal_cycles = math.ceil(total_macs / self.peak_macs_per_cycle)
             total_cycles = max(total_compute, weight_stream_cycles)
 
             return EngineResult(
@@ -83,7 +86,10 @@ class BlockEngine(MACEngine):
                 dma_cycles=int(weight_stream_cycles),
                 total_cycles=int(total_cycles),
                 utilization=total_macs / (self.peak_macs_per_cycle * total_cycles) if total_cycles > 0 else 0,
-                ops=total_macs,
+                mac_count=total_macs,
+                op_count=total_macs * 2,
+                ideal_compute_cycles=ideal_cycles,
+                raw_dma_cycles=raw_dma_cycles,
                 num_tiles=total_tiles,
                 weight_bytes=int(total_weight_bytes),
                 bottleneck="compute" if total_compute >= weight_stream_cycles else "on_chip_bw",
@@ -133,13 +139,18 @@ class BlockEngine(MACEngine):
 
         ideal = math.ceil(total_macs / self.peak_macs_per_cycle)
         util = ideal / total_cycles if total_cycles > 0 else 0.0
+        raw_dma = (K * N * self.w_bits // 8 + M * K * self.a_bits // 8)
+        raw_dma_cycles = math.ceil(raw_dma / self.eff_bw) if self.eff_bw > 0 else 0
 
         return EngineResult(
             compute_cycles=int(total_compute),
             dma_cycles=int(total_dma_cycles),
             total_cycles=int(total_cycles),
             utilization=util,
-            ops=total_macs,
+            mac_count=total_macs,
+            op_count=total_macs * 2,
+            ideal_compute_cycles=ideal,
+            raw_dma_cycles=raw_dma_cycles,
             num_tiles=total_tiles,
             weight_bytes=int(total_weight_bytes),
             bottleneck="dma" if total_dma_cycles > total_compute else "compute",
@@ -193,13 +204,18 @@ class BlockEngine(MACEngine):
 
         # Savings: one activation load saved per token (no separate gate+up loads).
         activation_savings = M * per_pass_tiles * tile_act_per_token / self.eff_bw
+        raw_dma = (K * N * self.w_bits // 8 + M * K * self.a_bits // 8) * 2
+        raw_dma_cycles = math.ceil(raw_dma / self.eff_bw) if self.eff_bw > 0 else 0
 
         return EngineResult(
             compute_cycles=int(total_compute),
             dma_cycles=int(total_dma_cycles),
             total_cycles=int(total_cycles),
             utilization=util,
-            ops=total_macs,
+            mac_count=total_macs,
+            op_count=total_macs * 2,
+            ideal_compute_cycles=ideal,
+            raw_dma_cycles=raw_dma_cycles,
             num_tiles=total_tiles,
             weight_bytes=int(total_weight_bytes),
             bottleneck="dma" if total_dma_cycles > total_compute else "compute",

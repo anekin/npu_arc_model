@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "active_work_id": "dse-engine-model-bug-fix-f2613fba",
+  "active_work_id": "arc-model-scenario-driven-dse-development-a0aea4bb",
   "works": {
     "dse-engine-model-bug-fix-f2613fba": {
       "work_id": "dse-engine-model-bug-fix-f2613fba",
@@ -85,87 +85,89 @@
       },
       "ended_at": "2026-07-28T01:58:35.071Z",
       "elapsed_ms": 2963625
+    },
+    "arc-model-scenario-driven-dse-development-a0aea4bb": {
+      "work_id": "arc-model-scenario-driven-dse-development-a0aea4bb",
+      "active_plan": "/home/prj/zhengs/caduceuscore/npu_arc_model/.omo/plans/arc-model-scenario-driven-dse-development.md",
+      "plan_name": "arc-model-scenario-driven-dse-development",
+      "status": "active",
+      "started_at": "2026-07-29T14:26:47.478Z",
+      "updated_at": "2026-07-29T15:46:49.728Z",
+      "session_ids": [
+        "opencode:ses_053ba6068ffeyiIpkBUK0ulwPN"
+      ],
+      "session_origins": {
+        "opencode:ses_053ba6068ffeyiIpkBUK0ulwPN": "direct"
+      },
+      "agent": "atlas",
+      "task_sessions": {
+        "todo:1": {
+          "task_key": "todo:1",
+          "task_label": "1",
+          "task_title": "冻结可复现环境、历史 baseline 与公共兼容面",
+          "session_id": "opencode:ses_051b79ca5ffe9rofOea6oVnpse",
+          "agent": "Sisyphus-Junior",
+          "category": "unspecified-high",
+          "updated_at": "2026-07-29T15:29:45.729Z",
+          "started_at": "2026-07-29T15:27:14.448Z",
+          "status": "completed",
+          "ended_at": "2026-07-29T15:29:45.729Z",
+          "elapsed_ms": 151281
+        },
+        "todo:2": {
+          "task_key": "todo:2",
+          "task_label": "2",
+          "task_title": "建立 schema v2、单位、错误与 legacy migration 契约",
+          "session_id": "opencode:ses_0517fbd41ffextfrirq47gX3Bb",
+          "agent": "Sisyphus-Junior",
+          "category": "unspecified-high",
+          "updated_at": "2026-07-29T15:46:49.728Z",
+          "started_at": "2026-07-29T15:45:18.062Z",
+          "status": "completed",
+          "ended_at": "2026-07-29T15:46:49.728Z",
+          "elapsed_ms": 91666
+        }
+      }
     }
   },
-  "active_plan": "/home/prj/zhengs/caduceuscore/npu_arc_model/.omo/plans/dse-engine-model-bug-fix.md",
-  "started_at": "2026-07-28T01:09:11.446Z",
-  "status": "completed",
-  "updated_at": "2026-07-28T01:58:35.071Z",
+  "active_plan": "/home/prj/zhengs/caduceuscore/npu_arc_model/.omo/plans/arc-model-scenario-driven-dse-development.md",
+  "started_at": "2026-07-29T14:26:47.478Z",
+  "status": "active",
+  "updated_at": "2026-07-29T15:46:49.728Z",
   "session_ids": [
-    "opencode:ses_05ce31e95ffeWG9cY0WPn3YoRJ"
+    "opencode:ses_053ba6068ffeyiIpkBUK0ulwPN"
   ],
   "session_origins": {
-    "opencode:ses_05ce31e95ffeWG9cY0WPn3YoRJ": "direct"
+    "opencode:ses_053ba6068ffeyiIpkBUK0ulwPN": "direct"
   },
-  "plan_name": "dse-engine-model-bug-fix",
+  "plan_name": "arc-model-scenario-driven-dse-development",
   "task_sessions": {
     "todo:1": {
       "task_key": "todo:1",
       "task_label": "1",
-      "task_title": "建立测试基础设施（pytest.ini + conftest + 修正矛盾断言）",
-      "session_id": "opencode:ses_059a7cfc4ffebL3W5cImo5E1s7",
-      "agent": "Sisyphus-Junior",
-      "category": "quick",
-      "started_at": "2026-07-28T01:21:45.848Z",
-      "status": "completed",
-      "updated_at": "2026-07-28T01:33:49.561Z",
-      "ended_at": "2026-07-28T01:33:49.561Z",
-      "elapsed_ms": 723713
-    },
-    "todo:6": {
-      "task_key": "todo:6",
-      "task_label": "6",
-      "task_title": "修正 OS-Systolic K-reduction + Block-equivalent DMA 核算",
-      "session_id": "opencode:ses_059a247e3ffew57AZDen0QU0SI",
-      "agent": "Sisyphus-Junior",
-      "category": "quick",
-      "updated_at": "2026-07-28T01:42:00.714Z",
-      "started_at": "2026-07-28T01:40:46.660Z",
-      "status": "completed",
-      "ended_at": "2026-07-28T01:42:00.714Z",
-      "elapsed_ms": 74054
-    },
-    "todo:10": {
-      "task_key": "todo:10",
-      "task_label": "10",
-      "task_title": "端到端 CLI 基准重测 + 完整回归",
-      "session_id": "opencode:ses_0599c0116ffevLwmqL6MnpF3fI",
+      "task_title": "冻结可复现环境、历史 baseline 与公共兼容面",
+      "session_id": "opencode:ses_051b79ca5ffe9rofOea6oVnpse",
       "agent": "Sisyphus-Junior",
       "category": "unspecified-high",
-      "updated_at": "2026-07-28T01:46:14.769Z",
-      "started_at": "2026-07-28T01:45:35.795Z",
+      "updated_at": "2026-07-29T15:29:45.729Z",
+      "started_at": "2026-07-29T15:27:14.448Z",
       "status": "completed",
-      "ended_at": "2026-07-28T01:46:14.769Z",
-      "elapsed_ms": 38974
+      "ended_at": "2026-07-29T15:29:45.729Z",
+      "elapsed_ms": 151281
     },
-    "todo:11": {
-      "task_key": "todo:11",
-      "task_label": "11",
-      "task_title": "发布 post-fix 证据 + 更新架构文档",
-      "session_id": "opencode:ses_0599880c5ffeKFR9mOd6UaSqso",
-      "agent": "Sisyphus-Junior",
-      "category": "writing",
-      "updated_at": "2026-07-28T01:52:24.053Z",
-      "started_at": "2026-07-28T01:51:50.507Z",
-      "status": "completed",
-      "ended_at": "2026-07-28T01:52:24.053Z",
-      "elapsed_ms": 33546
-    },
-    "final-wave:f1": {
-      "task_key": "final-wave:f1",
-      "task_label": "F1",
-      "task_title": "Plan compliance audit",
-      "session_id": "opencode:ses_05992ac4effe4ROea415ZV0BPi",
+    "todo:2": {
+      "task_key": "todo:2",
+      "task_label": "2",
+      "task_title": "建立 schema v2、单位、错误与 legacy migration 契约",
+      "session_id": "opencode:ses_0517fbd41ffextfrirq47gX3Bb",
       "agent": "Sisyphus-Junior",
       "category": "unspecified-high",
-      "updated_at": "2026-07-28T01:57:26.751Z",
-      "started_at": "2026-07-28T01:56:23.091Z",
+      "updated_at": "2026-07-29T15:46:49.728Z",
+      "started_at": "2026-07-29T15:45:18.062Z",
       "status": "completed",
-      "ended_at": "2026-07-28T01:57:26.751Z",
-      "elapsed_ms": 63660
+      "ended_at": "2026-07-29T15:46:49.728Z",
+      "elapsed_ms": 91666
     }
   },
-  "agent": "atlas",
-  "ended_at": "2026-07-28T01:58:35.071Z",
-  "elapsed_ms": 2963625
+  "agent": "atlas"
 }

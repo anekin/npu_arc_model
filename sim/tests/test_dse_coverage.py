@@ -2,7 +2,8 @@
 
 Verifies that `generate_configs()` enumerates every engine type
 that `create_engine()` supports, and that the quick-mode list is
-exactly the expected three engines.
+exactly the expected three engines.  Uses the unified registry as
+the single source of truth.
 """
 
 import inspect
@@ -11,19 +12,10 @@ from pathlib import Path
 
 import pytest
 
+from engine.registry import canonical_engine_ids, quick_engine_ids
+
 
 # ── helpers ──────────────────────────────────────────────────────
-
-
-def _get_create_engine_supported_types() -> set:
-    """Dynamically extract all `engine_type == "..."` branches
-    from the `create_engine` factory function."""
-
-    from engine.mac_engine import create_engine  # type: ignore[import-untyped]
-
-    src = inspect.getsource(create_engine)
-    # matches lines like:  elif engine_type == "systolic":
-    return set(re.findall(r'engine_type == "(\w+)"', src))
 
 
 def _get_dse_engine_types(quick: bool) -> set:
@@ -40,14 +32,14 @@ def _get_dse_engine_types(quick: bool) -> set:
 class TestDseCoverage:
     """DSE engine-coverage contract tests."""
 
-    def test_full_engine_list_matches_factory(self):
+    def test_full_engine_list_matches_registry(self):
         """generate_configs(quick=False) must enumerate every engine
-        type that create_engine() can instantiate."""
-        factory_types = _get_create_engine_supported_types()
+        type in the canonical registry."""
+        registry_types = set(canonical_engine_ids())
         dse_types = _get_dse_engine_types(quick=False)
 
-        assert factory_types == dse_types, (
-            f"Factory supports {sorted(factory_types)}, "
+        assert registry_types == dse_types, (
+            f"Registry has {sorted(registry_types)}, "
             f"but DSE generates {sorted(dse_types)}"
         )
         # Sanity: we know there are exactly 8 engines today
@@ -57,10 +49,11 @@ class TestDseCoverage:
         """generate_configs(quick=True) must cover exactly the three
         priority engines: systolic, block, gmma."""
         dse_types = _get_dse_engine_types(quick=True)
+        expected = set(quick_engine_ids())
 
-        assert dse_types == {"systolic", "block", "gmma"}, (
+        assert dse_types == expected, (
             f"Quick mode generated {sorted(dse_types)}, "
-            "expected {'systolic', 'block', 'gmma'}"
+            f"expected {sorted(expected)}"
         )
         assert len(dse_types) == 3
 

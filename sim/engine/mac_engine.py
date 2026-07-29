@@ -7,32 +7,97 @@
 所有引擎实现统一的 estimate(M,K,N) → EngineResult 接口。
 """
 
+import math
+import warnings
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any, Dict, Optional, Tuple
 
+from contracts.errors import ConfigError
+
 
 @dataclass
 class EngineResult:
-    """统一引擎性能结果"""
+    """统一引擎性能结果 — v2 contract.
+
+    Required fields (non-negotiable):
+      mac_count           — M × K × N multiply-accumulates
+      op_count            — 2 × mac_count
+      ideal_compute_cycles — ceil(mac_count / peak_macs_per_cycle)
+      raw_dma_cycles       — ceil(raw_transfer_bytes / eff_bytes_per_cycle)
+
+    ``ops`` is a deprecated read-only alias for ``mac_count``.
+    """
+
     compute_cycles: int
     dma_cycles: int           # DRAM ↔ SRAM 数据传输
     total_cycles: int
     utilization: float        # 理论峰值利用率
-    ops: int                  # 总 MAC 操作数
+    mac_count: int            # M × K × N multiply-accumulates
+    op_count: int             # 2 × mac_count
     num_tiles: int = 0
     weight_bytes: int = 0
     bottleneck: str = ""      # "compute" | "dma"
     details: Dict[str, Any] = field(default_factory=dict)
     stall_cycles_dram: int = 0
     stall_cycles_sram: int = 0
+    ideal_compute_cycles: int = 0
+    raw_dma_cycles: int = 0
+
+    def __post_init__(self) -> None:
+        """Validate finite values, non-negative cycles, positive counts."""
+        _validate_finite(self.mac_count, "mac_count")
+        _validate_finite(self.op_count, "op_count")
+        _validate_finite(self.ideal_compute_cycles, "ideal_compute_cycles")
+        _validate_finite(self.raw_dma_cycles, "raw_dma_cycles")
+        _validate_finite(self.total_cycles, "total_cycles")
+        _validate_finite(self.compute_cycles, "compute_cycles")
+        _validate_finite(self.dma_cycles, "dma_cycles")
+        _validate_finite(self.utilization, "utilization")
+        _validate_finite(self.weight_bytes, "weight_bytes")
+
+        if self.total_cycles < 0:
+            raise ValueError(f"total_cycles must be non-negative, got {self.total_cycles}")
+        if self.compute_cycles < 0:
+            raise ValueError(f"compute_cycles must be non-negative, got {self.compute_cycles}")
+        if self.dma_cycles < 0:
+            raise ValueError(f"dma_cycles must be non-negative, got {self.dma_cycles}")
+        if self.ideal_compute_cycles < 0:
+            raise ValueError(f"ideal_compute_cycles must be non-negative, got {self.ideal_compute_cycles}")
+        if self.raw_dma_cycles < 0:
+            raise ValueError(f"raw_dma_cycles must be non-negative, got {self.raw_dma_cycles}")
+        if self.mac_count <= 0:
+            raise ValueError(f"mac_count must be positive, got {self.mac_count}")
+        if self.op_count <= 0:
+            raise ValueError(f"op_count must be positive, got {self.op_count}")
+
+    @property
+    def ops(self) -> int:
+        """Deprecated: use ``mac_count`` instead.
+
+        Returns the MAC count (M × K × N) for backward compatibility with
+        legacy consumers.  Use ``mac_count`` in new code.
+        """
+        warnings.warn(
+            "EngineResult.ops is deprecated; use mac_count instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.mac_count
 
     def __repr__(self):
         return (f"Engine(total={self.total_cycles}c, "
                 f"compute={self.compute_cycles}c, dma={self.dma_cycles}c, "
                 f"util={self.utilization:.1%}, tiles={self.num_tiles}, "
+                f"mac_count={self.mac_count}, "
                 f"bottleneck={self.bottleneck}, "
                 f"stall_dram={self.stall_cycles_dram}, stall_sram={self.stall_cycles_sram})")
+
+
+def _validate_finite(value: float, name: str) -> None:
+    """Reject NaN and Inf values in result fields."""
+    if not math.isfinite(value):
+        raise ValueError(f"{name} must be finite, got {value}")
 
 
 class MACEngine(ABC):
@@ -125,33 +190,13 @@ class MACEngine(ABC):
 
 
 def create_engine(config: Dict[str, Any]) -> MACEngine:
-    """工厂函数：根据配置创建引擎实例"""
+    """工厂函数：根据配置创建引擎实例.
+
+    Uses the unified engine registry as the single source of truth.
+    Raises ``ConfigError`` for unknown engine types.
+    """
+    from engine.registry import create_engine_by_type
+
     mac = config.get("mac_engine", config.get("mxu", {}))
     engine_type = mac.get("type", "block")
-
-    if engine_type == "systolic":
-        from engine.systolic_engine import SystolicEngine
-        return SystolicEngine(config)
-    elif engine_type == "os_systolic":
-        from engine.os_systolic_engine import OutputStationaryEngine
-        return OutputStationaryEngine(config)
-    elif engine_type == "input_stationary":
-        from engine.is_systolic_engine import InputStationaryEngine
-        return InputStationaryEngine(config)
-    elif engine_type == "tensor_core":
-        from engine.tensor_core_engine import TensorCoreEngine
-        return TensorCoreEngine(config)
-    elif engine_type == "wmma":
-        from engine.wmma_engine import WMMAEngine
-        return WMMAEngine(config)
-    elif engine_type == "gmma":
-        from engine.gmma_engine import GMMAEngine
-        return GMMAEngine(config)
-    elif engine_type == "fsa":
-        from engine.fsa_engine import FSAEngine
-        return FSAEngine(config)
-    elif engine_type == "block":
-        from engine.block_engine import BlockEngine
-        return BlockEngine(config)
-    else:
-        raise ValueError(f"Unknown engine type: {engine_type}")
+    return create_engine_by_type(engine_type, config)

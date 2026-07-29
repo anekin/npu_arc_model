@@ -51,12 +51,18 @@ class SystolicEngine(MACEngine):
         compute_cycles = int(per_tile_compute * total_tiles)
         dma_cycles = total - compute_cycles
 
+        raw_dma = (K * N * self.w_bits // 8 + M * K * self.a_bits // 8)
+        raw_dma_cycles = math.ceil(raw_dma / self.eff_bw) if self.eff_bw > 0 else 0
+
         return EngineResult(
             compute_cycles=compute_cycles,
             dma_cycles=dma_cycles,
             total_cycles=total,
             utilization=utilization,
-            ops=total_macs,
+            mac_count=total_macs,
+            op_count=total_macs * 2,
+            ideal_compute_cycles=ideal_cycles,
+            raw_dma_cycles=raw_dma_cycles,
             num_tiles=total_tiles,
             weight_bytes=total_weight_bytes,
             bottleneck="compute" if per_tile_compute > per_tile_dma else "dma",
@@ -112,12 +118,18 @@ class SystolicEngine(MACEngine):
         compute_cycles = int(per_tile_compute * total_tiles)
         dma_cycles = total - compute_cycles
 
+        raw_dma = (K * N * self.w_bits // 8 + M * K * self.a_bits // 8)
+        raw_dma_cycles = math.ceil(raw_dma / self.eff_bw) if self.eff_bw > 0 else 0
+
         return EngineResult(
             compute_cycles=compute_cycles,
             dma_cycles=dma_cycles,
             total_cycles=total,
             utilization=utilization,
-            ops=total_macs,
+            mac_count=total_macs,
+            op_count=total_macs * 2,
+            ideal_compute_cycles=ideal_cycles,
+            raw_dma_cycles=raw_dma_cycles,
             num_tiles=total_tiles,
             weight_bytes=total_weight_bytes,
             bottleneck="compute" if per_tile_compute > per_tile_dma else "dma",
@@ -176,12 +188,18 @@ class SystolicEngine(MACEngine):
         ideal = math.ceil(total_macs / self.peak_macs_per_cycle)
         util = ideal / total if total > 0 else 0.0
 
+        raw_dma = (K * N * self.w_bits // 8 + M * K * self.a_bits // 8) * 2
+        raw_dma_cycles = math.ceil(raw_dma / self.eff_bw) if self.eff_bw > 0 else 0
+
         return EngineResult(
             compute_cycles=int(dual_compute * total_dual),
             dma_cycles=int(total - dual_compute * total_dual),
             total_cycles=total,
             utilization=util,
-            ops=total_macs,
+            mac_count=total_macs,
+            op_count=total_macs * 2,
+            ideal_compute_cycles=ideal,
+            raw_dma_cycles=raw_dma_cycles,
             num_tiles=total_dual,
             weight_bytes=total_weight_bytes,
             bottleneck="compute" if dual_compute > dual_dma else "dma",

@@ -52,7 +52,7 @@ def migrate_v1_to_v2(config: dict[str, Any]) -> tuple[dict[str, Any], LossReport
       - ``version`` set to "2".
       - Unknown top-level keys preserved only if they pass through validation.
     """
-    from sim.contracts.errors import ConfigError
+    from contracts.errors import ConfigError
 
     data = deepcopy(config)
     loss = LossReport()

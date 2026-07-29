@@ -484,7 +484,7 @@ def main():
     # ── Live override args ──
     parser.add_argument("--engine", default=None,
                         choices=["systolic", "os_systolic", "block", "tensor_core",
-                                 "wmma", "gmma", "input_stationary"],
+                                 "wmma", "gmma", "input_stationary", "fsa"],
                         help="Override engine type (ignores config)")
     parser.add_argument("--dram", default=None,
                         choices=["25", "50", "100", "200", "460", "819"],
@@ -505,14 +505,8 @@ def main():
 
     # List modes
     if args.list_engines:
-        print("Available MAC engines:")
-        print("  systolic          Weight-Stationary Systolic Array (TPUv1)")
-        print("  os_systolic       Output-Stationary Systolic (Gemmini)")
-        print("  block             Block Engine — full parallel MAC (TPUv4 VMU)")
-        print("  tensor_core       Multi 16×16 Tensor Cores (A100 style)")
-        print("  wmma              16×16 Warp MMA (Volta/Ampere style)")
-        print("  gmma              Group MMA + TMA async DMA (Hopper H100 style)")
-        print("  input_stationary  Input-Stationary (Eyeriss)")
+        from engine.registry import engine_listing
+        print(engine_listing())
         return
     if args.list_dram:
         print("DRAM bandwidth presets:")

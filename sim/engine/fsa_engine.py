@@ -10,6 +10,7 @@ This engine models:
   - Area overhead: +12% vs baseline systolic array
 """
 
+import math
 from dataclasses import dataclass, field
 from typing import Any, Dict
 
@@ -51,7 +52,8 @@ class FSAEngine(MACEngine):
         Activations broadcast across N-tiles, read once per K-tile.
         """
         H, W = self.H, self.W
-        macs = M * K * N * self.ops_per_mac
+        mac_count = M * K * N
+        op_count = mac_count * 2
 
         # K-dimension tiling (critical for large models)
         tiles_k = max(1, (K + H - 1) // H)
@@ -86,14 +88,21 @@ class FSAEngine(MACEngine):
 
         total_cycles = max(compute_cycles, dma_cycles)
         peak = self.peak_macs_per_cycle
-        utilization = macs / (peak * total_cycles) if total_cycles > 0 else 0
+        utilization = mac_count / (peak * total_cycles) if total_cycles > 0 else 0
+
+        raw_dma = (K * N * self.w_bits // 8 + M * K * self.a_bits // 8)
+        raw_dma_cycles = math.ceil(raw_dma / self.eff_bw) if self.eff_bw > 0 else 0
+        ideal_cycles = math.ceil(mac_count / peak) if peak > 0 else 0
 
         return EngineResult(
             compute_cycles=int(compute_cycles),
             dma_cycles=int(dma_cycles),
             total_cycles=int(total_cycles),
             utilization=min(utilization, 1.0),
-            ops=macs,
+            mac_count=mac_count,
+            op_count=op_count,
+            ideal_compute_cycles=ideal_cycles,
+            raw_dma_cycles=raw_dma_cycles,
             num_tiles=total_tiles,
             weight_bytes=int(effective_weight_bytes),
             bottleneck="compute" if compute_cycles >= dma_cycles else "dma",
@@ -148,11 +157,12 @@ class FSAEngine(MACEngine):
 
         total_compute = (phase1_cycles + phase2_cycles) * num_kv_heads
 
-        # Total MAC ops (both matmuls)
-        mac_ops = (
-            2 * num_kv_heads * seq_q * seq_kv * head_dim +
-            2 * num_kv_heads * seq_q * head_dim * seq_kv
-        )
+        # Total MAC operations (both matmuls)
+        # Phase 1: QK^T: seq_q × seq_kv × head_dim MACs per head
+        # Phase 2: PV:  seq_q × head_dim × seq_kv MACs per head
+        mac_count = num_kv_heads * seq_q * seq_kv * head_dim + \
+                     num_kv_heads * seq_q * head_dim * seq_kv
+        op_count = mac_count * 2
 
         # DMA for K, V, Q loading
         elem_bytes = self.a_bits // 8
@@ -164,14 +174,20 @@ class FSAEngine(MACEngine):
 
         total_cycles = max(total_compute, int(dma_cycles))
         peak = self.peak_macs_per_cycle
-        utilization = mac_ops / (peak * max(total_cycles, 1)) if total_cycles > 0 else 0
+        utilization = mac_count / (peak * max(total_cycles, 1)) if total_cycles > 0 else 0
+
+        raw_dma_cycles = math.ceil(dma_bytes / self.eff_bw) if self.eff_bw > 0 else 0
+        ideal_cycles = math.ceil(mac_count / peak) if peak > 0 else 0
 
         return EngineResult(
             compute_cycles=int(total_compute),
             dma_cycles=int(dma_cycles),
             total_cycles=int(total_cycles),
             utilization=min(utilization, 1.0),
-            ops=mac_ops,
+            mac_count=mac_count,
+            op_count=op_count,
+            ideal_compute_cycles=ideal_cycles,
+            raw_dma_cycles=raw_dma_cycles,
             num_tiles=tiles_p1 + tiles_p2,
             weight_bytes=0,  # no weight — attention is activation-driven
             bottleneck="compute" if total_compute >= dma_cycles else "dma",
