@@ -24,7 +24,7 @@ import hashlib
 import json
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SIM_DIR = REPO_ROOT / "sim"
@@ -34,9 +34,8 @@ OUTPUT_FILE = REPO_ROOT / ".omo" / "evidence" / "mxu-calibration.json"
 # Add sim to path for MXUModel and calibration modules.
 sys.path.insert(0, str(SIM_DIR))
 
-from calibration.schema import CalibrationError
-from models.mxu import MXUModel
-
+from calibration.schema import CalibrationError  # noqa: E402
+from models.mxu import MXUModel  # noqa: E402
 
 MODEL_CONFIG = {
     "mxu": {
@@ -77,7 +76,7 @@ def _verify_checksums(raw_dir: Path) -> None:
             details={"path": str(sums_path)},
         )
 
-    expected: Dict[str, str] = {}
+    expected: dict[str, str] = {}
     for line in sums_path.read_text(encoding="utf-8").splitlines():
         line = line.strip()
         if not line:
@@ -107,23 +106,25 @@ def _verify_checksums(raw_dir: Path) -> None:
             )
 
 
-def _load_csv(path: Path) -> List[dict[str, Any]]:
+def _load_csv(path: Path) -> list[dict[str, Any]]:
     """Load a calibration CSV file."""
-    rows: List[dict[str, Any]] = []
+    rows: list[dict[str, Any]] = []
     with path.open("r", encoding="utf-8", newline="") as f:
         reader = csv.DictReader(f)
         for row in reader:
-            rows.append({
-                "case_id": row["case_id"].strip(),
-                "M": int(row["M"]),
-                "N": int(row["N"]),
-                "K": int(row["K"]),
-                "measured_cycles": int(row["measured_cycles"]),
-            })
+            rows.append(
+                {
+                    "case_id": row["case_id"].strip(),
+                    "M": int(row["M"]),
+                    "N": int(row["N"]),
+                    "K": int(row["K"]),
+                    "measured_cycles": int(row["measured_cycles"]),
+                }
+            )
     return rows
 
 
-def _load_raw_fixtures(raw_dir: Path) -> Tuple[List[dict[str, Any]], List[dict[str, Any]]]:
+def _load_raw_fixtures(raw_dir: Path) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """Return (train_rows, heldout_rows) after checksum and duplicate checks."""
     _verify_checksums(raw_dir)
 
@@ -146,7 +147,7 @@ def _load_raw_fixtures(raw_dir: Path) -> Tuple[List[dict[str, Any]], List[dict[s
     train_rows = _load_csv(train_path)
     heldout_rows = _load_csv(heldout_path)
 
-    seen: Dict[str, str] = {}
+    seen: dict[str, str] = {}
     for row in train_rows:
         cid = row["case_id"]
         if cid in seen:
@@ -160,8 +161,7 @@ def _load_raw_fixtures(raw_dir: Path) -> Tuple[List[dict[str, Any]], List[dict[s
         cid = row["case_id"]
         if cid in seen:
             raise CalibrationError(
-                f"duplicate case_id across train/held-out: {cid!r} "
-                f"(already in {seen[cid]})",
+                f"duplicate case_id across train/held-out: {cid!r} (already in {seen[cid]})",
                 reason="duplicate_case_id",
                 details={"case_id": cid, "partition": "heldout", "existing_partition": seen[cid]},
             )
@@ -170,18 +170,18 @@ def _load_raw_fixtures(raw_dir: Path) -> Tuple[List[dict[str, Any]], List[dict[s
     return train_rows, heldout_rows
 
 
-def _model_cycles(model: MXUModel, M: int, K: int, N: int) -> int:
+def _model_cycles(model: MXUModel, M: int, K: int, N: int) -> int:  # noqa: N803
     """Return MXUModel total cycles for (M,K,N)."""
     return model.estimate(M, K, N).total_cycles
 
 
-def _fit_correction(train_rows: List[dict[str, Any]]) -> float:
+def _fit_correction(train_rows: list[dict[str, Any]]) -> float:
     """Fit a single multiplicative correction factor on training data.
 
     Held-out rows must not participate in fitting.
     """
     model = MXUModel(MODEL_CONFIG)
-    ratios: List[float] = []
+    ratios: list[float] = []
     for row in train_rows:
         measured = int(row["measured_cycles"])
         predicted = _model_cycles(model, row["M"], row["K"], row["N"])
@@ -197,33 +197,35 @@ def _fit_correction(train_rows: List[dict[str, Any]]) -> float:
 
 
 def _evaluate(
-    rows: List[dict[str, Any]],
+    rows: list[dict[str, Any]],
     model: MXUModel,
     correction: float,
 ) -> dict[str, Any]:
     """Compute deterministic calibration metrics for a set of cases."""
-    abs_errors: List[float] = []
-    rel_errors: List[float] = []
-    entries: List[dict[str, Any]] = []
+    abs_errors: list[float] = []
+    rel_errors: list[float] = []
+    entries: list[dict[str, Any]] = []
 
     for row in rows:
-        M, K, N = row["M"], row["K"], row["N"]
+        M, K, N = row["M"], row["K"], row["N"]  # noqa: N806
         measured = int(row["measured_cycles"])
         predicted = int(round(_model_cycles(model, M, K, N) * correction))
         abs_err = abs(measured - predicted)
         rel_err = abs_err / max(measured, 1)
         abs_errors.append(abs_err)
         rel_errors.append(rel_err)
-        entries.append({
-            "case_id": row["case_id"],
-            "M": M,
-            "N": N,
-            "K": K,
-            "measured_cycles": measured,
-            "predicted_cycles": predicted,
-            "absolute_error": abs_err,
-            "relative_error": round(rel_err, 6),
-        })
+        entries.append(
+            {
+                "case_id": row["case_id"],
+                "M": M,
+                "N": N,
+                "K": K,
+                "measured_cycles": measured,
+                "predicted_cycles": predicted,
+                "absolute_error": abs_err,
+                "relative_error": round(rel_err, 6),
+            }
+        )
 
     return {
         "count": len(rows),

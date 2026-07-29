@@ -76,11 +76,7 @@ def calibration_ids_for_design_point(hw_config: dict[str, Any]) -> set[str]:
     # Memory subsystem.
     mem_type = str(hw_config.get("memory", {}).get("type", "LPDDR5-6400")).lower()
     onchip = hw_config.get("on_chip_memory", {})
-    uses_tsv = (
-        "hbm" in mem_type
-        or "onchip" in mem_type
-        or float(onchip.get("capacity_gb", 0)) > 0
-    )
+    uses_tsv = "hbm" in mem_type or "onchip" in mem_type or float(onchip.get("capacity_gb", 0)) > 0
     if uses_tsv:
         ids.add("tsv_overhead_pct")
     # External DRAM PHY is only relevant for external memory tiers.
@@ -174,20 +170,24 @@ class TrustGate:
         for cid in sorted(set(calibration_ids)):
             entry = self.registry.lookup(cid)
             if entry is None:
-                violations.append({
-                    "calibration_id": cid,
-                    "reason": "unknown_calibration_id",
-                })
+                violations.append(
+                    {
+                        "calibration_id": cid,
+                        "reason": "unknown_calibration_id",
+                    }
+                )
                 max_trust = min(max_trust, TrustLevel.T0, key=_trust_rank)
                 continue
 
             if _trust_rank(entry.trust_level) < _trust_rank(require_trust):
-                violations.append({
-                    "calibration_id": cid,
-                    "reason": "trust_level_too_low",
-                    "actual_trust": entry.trust_level.value,
-                    "required_trust": require_trust.value,
-                })
+                violations.append(
+                    {
+                        "calibration_id": cid,
+                        "reason": "trust_level_too_low",
+                        "actual_trust": entry.trust_level.value,
+                        "required_trust": require_trust.value,
+                    }
+                )
 
             actual: float | None
             if cid in values:
@@ -198,12 +198,14 @@ class TrustGate:
                 actual = None
 
             if actual is not None and not entry.is_in_range(actual):
-                violations.append({
-                    "calibration_id": cid,
-                    "reason": "out_of_calibration_range",
-                    "actual_value": actual,
-                    "calibration_range": entry.calibration_range,
-                })
+                violations.append(
+                    {
+                        "calibration_id": cid,
+                        "reason": "out_of_calibration_range",
+                        "actual_value": actual,
+                        "calibration_range": entry.calibration_range,
+                    }
+                )
                 # Out-of-range is capped at T1 even if the entry itself is T2+.
                 max_trust = min(max_trust, TrustLevel.T1, key=_trust_rank)
                 continue

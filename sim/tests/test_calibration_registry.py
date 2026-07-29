@@ -91,10 +91,9 @@ def test_registry_digest_changes_on_value_change():
     entry = registry.get("gmma_pipeline_scale")
     entry_dict = entry.model_dump(mode="json")
     entry_dict["value"] = 0.99
-    modified = CalibrationRegistry([
-        e if e.calibration_id != "gmma_pipeline_scale" else e.model_validate(entry_dict)
-        for e in registry.entries()
-    ])
+    modified = CalibrationRegistry(
+        [e if e.calibration_id != "gmma_pipeline_scale" else e.model_validate(entry_dict) for e in registry.entries()]
+    )
     d2 = modified.to_dict()
     assert d1 != d2
 
@@ -109,7 +108,11 @@ def test_parameters_yaml_has_required_fields():
         assert entry.source_uri is not None or entry.trust_level == TrustLevel.T0
         assert entry.trust_level in {TrustLevel.T0, TrustLevel.T1, TrustLevel.T2, TrustLevel.T3}
         assert entry.calibration_range
-        assert entry.status in {CalibrationStatus.assumption, CalibrationStatus.calibrated, CalibrationStatus.exploratory}
+        assert entry.status in {
+            CalibrationStatus.assumption,
+            CalibrationStatus.calibrated,
+            CalibrationStatus.exploratory,
+        }
 
 
 # ── calibrate_mxu_model.py integration ─────────────────────────────────────
@@ -152,19 +155,23 @@ def test_heldout_ids_do_not_participate_in_fitting():
 def test_calibrate_script_fails_closed_on_missing_raw_dir(tmp_path: Path):
     """Missing raw fixture directory causes non-zero exit with CalibrationError."""
     result = subprocess.run(
-        [sys.executable, "-c", f"""
+        [
+            sys.executable,
+            "-c",
+            f"""
 import sys
-sys.path.insert(0, {str(REPO_ROOT / 'sim')!r})
+sys.path.insert(0, {str(REPO_ROOT / "sim")!r})
 from pathlib import Path
 from scripts.calibrate_mxu_model import _load_raw_fixtures
 from calibration.schema import CalibrationError
 try:
-    _load_raw_fixtures(Path({str(tmp_path / 'empty')!r}))
+    _load_raw_fixtures(Path({str(tmp_path / "empty")!r}))
     sys.exit(0)
 except CalibrationError as e:
     print(e.reason)
     sys.exit(2)
-"""],
+""",
+        ],
         capture_output=True,
         text=True,
         check=False,

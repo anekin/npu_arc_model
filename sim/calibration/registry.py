@@ -9,7 +9,9 @@ from typing import Any
 import yaml
 from calibration.schema import CalibrationEntry, CalibrationError
 
-DEFAULT_PARAMETERS_PATH = Path(__file__).resolve().parent.parent.parent / "references" / "calibration" / "parameters.yaml"
+DEFAULT_PARAMETERS_PATH = (
+    Path(__file__).resolve().parent.parent.parent / "references" / "calibration" / "parameters.yaml"
+)
 
 
 class CalibrationRegistry:
@@ -107,9 +109,7 @@ class CalibrationRegistry:
         """Return a canonical dict suitable for hashing."""
         return {
             "schema_version": "1",
-            "parameters": {
-                cid: entry.model_dump(mode="json") for cid, entry in sorted(self._entries.items())
-            },
+            "parameters": {cid: entry.model_dump(mode="json") for cid, entry in sorted(self._entries.items())},
         }
 
 

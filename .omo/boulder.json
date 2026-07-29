@@ -92,7 +92,7 @@
       "plan_name": "arc-model-scenario-driven-dse-development",
       "status": "active",
       "started_at": "2026-07-29T14:26:47.478Z",
-      "updated_at": "2026-07-29T21:34:32.756Z",
+      "updated_at": "2026-07-29T22:27:52.680Z",
       "session_ids": [
         "opencode:ses_053ba6068ffeyiIpkBUK0ulwPN"
       ],
@@ -144,12 +144,12 @@
           "task_key": "todo:4",
           "task_label": "4",
           "task_title": "统一 engine registry、result、输入和 diagnostic 契约",
-          "session_id": "opencode:ses_0507918a9ffe5Pxhb1uzl1BOyd",
+          "session_id": "opencode:ses_0502c1036ffeHM4xm3B8NBBXFK",
           "agent": "Sisyphus-Junior",
           "category": "deep",
           "started_at": "2026-07-29T16:54:55.573Z",
           "status": "running",
-          "updated_at": "2026-07-29T21:34:32.758Z"
+          "updated_at": "2026-07-29T22:27:52.686Z"
         }
       }
     }
@@ -157,7 +157,7 @@
   "active_plan": "/home/prj/zhengs/caduceuscore/npu_arc_model/.omo/plans/arc-model-scenario-driven-dse-development.md",
   "started_at": "2026-07-29T14:26:47.478Z",
   "status": "active",
-  "updated_at": "2026-07-29T21:34:32.756Z",
+  "updated_at": "2026-07-29T22:27:52.680Z",
   "session_ids": [
     "opencode:ses_053ba6068ffeyiIpkBUK0ulwPN"
   ],
@@ -209,12 +209,12 @@
       "task_key": "todo:4",
       "task_label": "4",
       "task_title": "统一 engine registry、result、输入和 diagnostic 契约",
-      "session_id": "opencode:ses_0507918a9ffe5Pxhb1uzl1BOyd",
+      "session_id": "opencode:ses_0502c1036ffeHM4xm3B8NBBXFK",
       "agent": "Sisyphus-Junior",
       "category": "deep",
       "started_at": "2026-07-29T16:54:55.573Z",
       "status": "running",
-      "updated_at": "2026-07-29T21:34:32.758Z"
+      "updated_at": "2026-07-29T22:27:52.686Z"
     }
   },
   "agent": "atlas"

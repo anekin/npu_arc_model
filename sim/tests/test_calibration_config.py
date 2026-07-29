@@ -7,7 +7,6 @@ Covers:
 """
 
 import pytest
-
 from config.npu_config import load_config
 from engine.mac_engine import create_engine
 

@@ -132,7 +132,11 @@ class ScenarioDseRunner:
             image_count = int(av.get("image_count", 1))
 
             # VLA/Physical-AI: one job processes action_horizon * flow_steps actions.
-            if base_scenario.workload_ref and "vla" not in base_scenario.workload_ref and "physical" not in base_scenario.workload_ref:
+            if (
+                base_scenario.workload_ref
+                and "vla" not in base_scenario.workload_ref
+                and "physical" not in base_scenario.workload_ref
+            ):
                 cls_work_ms = work_ms * max(token_block / max(active_sequences, 1), 1.0)
             else:
                 cls_work_ms = work_ms * action_horizon * flow_steps * max(image_count, 1)
@@ -141,33 +145,35 @@ class ScenarioDseRunner:
             cls_period = max(cls_work_ms * 1.5, period_ms)
             cls_deadline = max(cls_work_ms * 2.0, deadline_ms)
 
-            classes.append(WorkloadClass(
-                id=base_cls.id or f"class_{idx}",
-                arrival=ArrivalPattern(
-                    mode=ArrivalMode.PERIODIC,
-                    period_ms=cls_period,
-                    count=max(base_scenario.warmup_count + base_scenario.measurement_count + 10, 20),
-                    offset_ms=0.0,
-                ),
-                work_ms=cls_work_ms,
-                relative_deadline_ms=cls_deadline,
-                timeout_ms=cls_deadline * 2.0,
-                priority=base_cls.priority,
-                queue_policy=queue_policy,
-                queue_capacity=base_cls.queue_capacity,
-                stream_id=base_cls.stream_id,
-                resource_requirements=dict(base_cls.resource_requirements),
-                memory_bytes=base_cls.memory_bytes,
-                bandwidth_fraction=base_cls.bandwidth_fraction,
-                admission_excluded=base_cls.admission_excluded,
-                metadata={
-                    **base_cls.metadata,
-                    "resident_models": resident_models,
-                    "inflight_jobs": inflight_jobs,
-                    "partition": partition,
-                    "nonpreemptible_quantum_ms": quantum_ms,
-                },
-            ))
+            classes.append(
+                WorkloadClass(
+                    id=base_cls.id or f"class_{idx}",
+                    arrival=ArrivalPattern(
+                        mode=ArrivalMode.PERIODIC,
+                        period_ms=cls_period,
+                        count=max(base_scenario.warmup_count + base_scenario.measurement_count + 10, 20),
+                        offset_ms=0.0,
+                    ),
+                    work_ms=cls_work_ms,
+                    relative_deadline_ms=cls_deadline,
+                    timeout_ms=cls_deadline * 2.0,
+                    priority=base_cls.priority,
+                    queue_policy=queue_policy,
+                    queue_capacity=base_cls.queue_capacity,
+                    stream_id=base_cls.stream_id,
+                    resource_requirements=dict(base_cls.resource_requirements),
+                    memory_bytes=base_cls.memory_bytes,
+                    bandwidth_fraction=base_cls.bandwidth_fraction,
+                    admission_excluded=base_cls.admission_excluded,
+                    metadata={
+                        **base_cls.metadata,
+                        "resident_models": resident_models,
+                        "inflight_jobs": inflight_jobs,
+                        "partition": partition,
+                        "nonpreemptible_quantum_ms": quantum_ms,
+                    },
+                )
+            )
 
         return Scenario(
             name=base_scenario.name,
@@ -268,7 +274,11 @@ class ScenarioDseRunner:
                 break
 
         # Power proxy: if scenario energy is available and window time is positive.
-        energy = metrics.energy_joules if metrics.energy_joules > 0 else ppa.power_w * (metrics.window_time_ps / 1_000_000_000_000.0)
+        energy = (
+            metrics.energy_joules
+            if metrics.energy_joules > 0
+            else ppa.power_w * (metrics.window_time_ps / 1_000_000_000_000.0)
+        )
 
         engine_metrics = EngineMetrics(
             tok_per_s=ppa.tok_s,
@@ -362,14 +372,16 @@ class ScenarioDseRunner:
                     message="evaluation returned no result",
                 )
                 errors.append(err)
-                v2_results.append(DesignPointResult(
-                    design_point_id=point.design_point_id,
-                    status=RunStatus.failed,
-                    scenario_ref=point.scenario_ref,
-                    workload_ref=point.workload_ref or "",
-                    trust_level=RunTrustLevel.non_authoritative,
-                    error=err,
-                ))
+                v2_results.append(
+                    DesignPointResult(
+                        design_point_id=point.design_point_id,
+                        status=RunStatus.failed,
+                        scenario_ref=point.scenario_ref,
+                        workload_ref=point.workload_ref or "",
+                        trust_level=RunTrustLevel.non_authoritative,
+                        error=err,
+                    )
+                )
                 manifest.record_failed(point, err.message)
 
         has_errors = any(ep.error is not None for ep in evaluated)
@@ -387,14 +399,20 @@ class ScenarioDseRunner:
             pruned=0,
             failed=sum(1 for ep in evaluated if ep.error is not None),
             filtered=0,
-            complete=sum(1 for ep in evaluated if ep.error is None and ep.result is not None and ep.result.status == RunStatus.complete),
+            complete=sum(
+                1
+                for ep in evaluated
+                if ep.error is None and ep.result is not None and ep.result.status == RunStatus.complete
+            ),
             partial=sum(1 for ep in evaluated if ep.result is not None and ep.result.status == RunStatus.partial),
         )
 
         # Input / workload / calibration digests for reproducibility.
         input_source = {
             "scenario": self.scenario.model_dump(mode="json"),
-            "axes_config_path": str(self.design_space.axes_config.get("base_config_source", "config/design_space.yaml")),
+            "axes_config_path": str(
+                self.design_space.axes_config.get("base_config_source", "config/design_space.yaml")
+            ),
             "seed": self.run_config.seed,
         }
         input_digest = digest_sha256(input_source)
@@ -420,11 +438,7 @@ class ScenarioDseRunner:
         result_set.frontier_design_point_ids = [p.result.design_point_id for p in frontier]
 
         if self.run_config.trust_mode == "decision_grade":
-            violating_ids = sorted({
-                v["calibration_id"]
-                for ep in evaluated
-                for v in ep.calibration_violations
-            })
+            violating_ids = sorted({v["calibration_id"] for ep in evaluated for v in ep.calibration_violations})
             if violating_ids:
                 raise ConfigError(
                     f"decision-grade trust gate failed for calibration IDs: {', '.join(violating_ids)}",

@@ -89,8 +89,7 @@ class CalibrationError(ValueError):
 
     def __repr__(self) -> str:
         return (
-            f"{type(self).__name__}({self.args[0]!r}, "
-            f"calibration_id={self.calibration_id!r}, reason={self.reason!r})"
+            f"{type(self).__name__}({self.args[0]!r}, calibration_id={self.calibration_id!r}, reason={self.reason!r})"
         )
 
 
