@@ -55,14 +55,14 @@ def _init_factories() -> None:
     from engine.is_systolic_engine import InputStationaryEngine
     from engine.fsa_engine import FSAEngine
 
-    _factories["systolic"] = lambda cfg: SystolicEngine(cfg)
-    _factories["os_systolic"] = lambda cfg: OutputStationaryEngine(cfg)
-    _factories["block"] = lambda cfg: BlockEngine(cfg)
-    _factories["tensor_core"] = lambda cfg: TensorCoreEngine(cfg)
-    _factories["wmma"] = lambda cfg: WMMAEngine(cfg)
-    _factories["gmma"] = lambda cfg: GMMAEngine(cfg)
-    _factories["input_stationary"] = lambda cfg: InputStationaryEngine(cfg)
-    _factories["fsa"] = lambda cfg: FSAEngine(cfg)
+    _factories["systolic"] = lambda cfg, **kw: SystolicEngine(cfg, **kw)
+    _factories["os_systolic"] = lambda cfg, **kw: OutputStationaryEngine(cfg, **kw)
+    _factories["block"] = lambda cfg, **kw: BlockEngine(cfg, **kw)
+    _factories["tensor_core"] = lambda cfg, **kw: TensorCoreEngine(cfg, **kw)
+    _factories["wmma"] = lambda cfg, **kw: WMMAEngine(cfg, **kw)
+    _factories["gmma"] = lambda cfg, **kw: GMMAEngine(cfg, **kw)
+    _factories["input_stationary"] = lambda cfg, **kw: InputStationaryEngine(cfg, **kw)
+    _factories["fsa"] = lambda cfg, **kw: FSAEngine(cfg, **kw)
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
@@ -119,7 +119,12 @@ def engine_quick_ids_list() -> List[str]:
     return list(_ENGINE_QUICK_IDS)
 
 
-def create_engine_by_type(engine_type: str, config: Dict[str, Any]) -> Any:
+def create_engine_by_type(
+    engine_type: str,
+    config: Dict[str, Any],
+    graph: "WorkloadGraphV1 | None" = None,
+    memory_access_plan: "MemoryAccessPlan | None" = None,
+) -> Any:
     """Create an engine instance from the canonical engine type string.
 
     Uses the lazy-loaded factory registry.  Raises ``ConfigError``
@@ -132,7 +137,7 @@ def create_engine_by_type(engine_type: str, config: Dict[str, Any]) -> Any:
             f"Unknown engine type: {engine_type!r}",
             field_path="mac_engine.type",
         )
-    return factory(config)
+    return factory(config, graph=graph, memory_access_plan=memory_access_plan)
 
 
 def is_valid_engine(engine_type: str) -> bool:

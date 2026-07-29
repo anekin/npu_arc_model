@@ -42,7 +42,7 @@ class DMAModel:
             weight_load (2) > kv_access (1) > output_store (0).
     """
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: Dict[str, Any], memory_access_plan: Any = None):
         dma = config["dma"]
         self.burst_size = int(dma["burst_size_bytes"])          # 256
         self.descriptor_overhead = int(dma["descriptor_overhead_cycles"])  # 5
@@ -68,6 +68,8 @@ class DMAModel:
         freq_mhz = float(config.get("mac_engine", config.get("mxu", {})).get("frequency_mhz", 1000))
         bw_gbps = float(mem.get("bandwidth_gbps", 51.2))
         self.bw_bytes_per_cycle = _bw2bpc(bw_gbps, freq_mhz)
+
+        self.memory_access_plan = memory_access_plan
 
     def estimate_transfer(self, size_bytes: int, direction: str = "load") -> int:
         """Estimate cycles for a single DMA transfer.

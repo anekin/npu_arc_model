@@ -24,7 +24,7 @@ class KVCacheModel:
     - On layer switch: SRAM is reloaded with that layer's KV window
     """
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: Dict[str, Any], memory_access_plan: Any = None):
         kv = config["kv_cache"]
         self.sram_bytes = int(kv["sram_kb"]) * 1024       # 256 KB
         self.dram_region_mb = int(kv["dram_region_mb"])    # 96 MB
@@ -36,6 +36,15 @@ class KVCacheModel:
         freq_mhz = float(config.get("mac_engine", config.get("mxu", {})).get("frequency_mhz", 1000))
         bw_gbps = float(mem.get("bandwidth_gbps", 51.2))
         self.bw_bytes_per_cycle = _bw2bpc(bw_gbps, freq_mhz)
+
+        self.memory_access_plan = memory_access_plan
+        if memory_access_plan is not None:
+            kv_fastest = memory_access_plan.fastest_allocated_tier("kv")
+            if kv_fastest is not None:
+                tier = memory_access_plan.hierarchy.get_tier(kv_fastest)
+                self.bw_bytes_per_cycle = _bw2bpc(
+                    tier.effective_read_bw_gbps(), freq_mhz
+                )
 
         # Timing parameters
         # SRAM access: ~2 cycles (1 read + 1 write port)

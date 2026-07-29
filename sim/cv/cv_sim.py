@@ -144,7 +144,11 @@ def _simulate_metadata(entry: dict) -> dict:
 # Main simulation entry point
 # ---------------------------------------------------------------------------
 
-def simulate_cv(trace: list, config: dict) -> dict:
+def simulate_cv(
+    trace: list,
+    config: dict,
+    memory_access_plan: Any = None,
+) -> dict:
     """Simulate a CV trace through the NPU, returning cycle/MAC/layer breakdown.
 
     Args:
@@ -152,6 +156,7 @@ def simulate_cv(trace: list, config: dict) -> dict:
                Each entry follows the schema:
                  {type, name, M, K, N, im2col_overhead_cycles, sfu_cycles}
         config: ``npu_config.yaml`` loaded as a dict via ``yaml.safe_load``.
+        memory_access_plan: Optional unified plan used for spill accounting.
 
     Returns:
         {
@@ -162,7 +167,7 @@ def simulate_cv(trace: list, config: dict) -> dict:
             "layers": [ {name, type, cycles, compute_cycles, dma_cycles, macs, mxu_util_pct}, ... ]
         }
     """
-    engine = create_engine(config)
+    engine = create_engine(config, memory_access_plan=memory_access_plan)
     bytes_per_element = _get_bytes_per_element(config)
     vector_width = _get_vector_width(config)
     l1_kb, l2_kb = _get_sram_config(config)
@@ -221,9 +226,12 @@ def simulate_cv(trace: list, config: dict) -> dict:
         })
 
     # --- SRAM spill calculation -------------------------------------------
-    total_activation_kb = total_activation_bytes / 1024.0
-    sram_spill_kb = total_activation_kb - total_sram_kb
-    sram_spill_mb = max(0.0, sram_spill_kb / 1024.0)
+    if memory_access_plan is not None:
+        sram_spill_mb = memory_access_plan.spill_bytes_total / (1024.0 * 1024.0)
+    else:
+        total_activation_kb = total_activation_bytes / 1024.0
+        sram_spill_kb = total_activation_kb - total_sram_kb
+        sram_spill_mb = max(0.0, sram_spill_kb / 1024.0)
 
     return {
         "total_cycles": total_cycles,

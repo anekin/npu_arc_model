@@ -173,3 +173,23 @@
 **What**: Every `market_source` fact must carry a `reference_uri`; `engineering_assumption` facts are allowed without one. Each fixture exposes `provenance_summary()` for quick audit.
 **Why**: The plan requires separating source facts from engineering assumptions. Rejecting source-less market facts enforces this separation and prevents silent sourcing drift.
 **Alternatives**: Could have allowed market facts without URIs, but that would undermine traceability.
+
+### Decision 33: Immutable `MemoryAccessPlan` with closed-form digest
+**What**: `MemoryAccessPlan` is a Pydantic v2 `BaseModel` with `frozen=True`, `extra='forbid'`, and `model_config` validation. Its `digest` field is computed from `contracts.identity.digest_sha256(canonical_dict)` where the canonical dict is sorted, with floats rounded to a fixed tolerance.
+**Why**: Engines, tests, and downstream tools must compare memory plans by identity. A stable digest over a canonical dict guarantees that semantically identical plans produce identical digests regardless of construction order or floating-point noise.
+**Alternatives**: Could have used `model_computed_fields` for the digest, but making it an explicit field set at construction time keeps serialization and oracle comparison simple.
+
+### Decision 34: Oracle must be independent of production estimator
+**What**: `sim/tests/oracles/memory.py` recomputes tier splits from graph tensor footprints and config capacities using its own deterministic algorithm; it does not import `models.residency`.
+**Why**: The plan explicitly requires an independent oracle. Sharing implementation between oracle and estimator would allow a bug in the estimator to pass its own test.
+**Alternatives**: Could have refactored a shared helper, but that would violate the independence requirement.
+
+### Decision 35: All-or-nothing placement for weights and KV, splittable for activations/scratch/queues
+**What**: Weights and KV cache tensors must fit wholly in a single tier or are rejected (`CoverageError`). Activations, scratch, and queues can be split across tiers and spill from on-chip to off-chip.
+**Why**: Weights are loaded once and benefit from contiguous residency; splitting KV across tiers complicates addressing and doesn't improve throughput for streaming attention. Activations and scratch are transient and naturally tier-splittable.
+**Alternatives**: Could have allowed KV splitting, but it would introduce tier-crossing indexing that is not modeled here and provides no benefit at this abstraction level.
+
+### Decision 36: Digest identity across all 8 engines for the same graph/config
+**What**: Every engine in `engine.registry` receives the same `MemoryAccessPlan` for a given workload graph and config, and the plan digest is identical regardless of which engine produces it.
+**Why**: Residency is a property of the workload/config, not the execution engine. Divergent digests would imply engine-specific memory policies, which we do not want.
+**Alternatives**: Could have let each engine build a partial plan, but the acceptance criteria require a unified plan.

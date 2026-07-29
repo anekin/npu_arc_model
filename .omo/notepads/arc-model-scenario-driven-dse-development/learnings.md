@@ -328,3 +328,10 @@
 - Fixtures use compact layer counts (e.g., 2 VLM decoder layers) so the catalog loads and validates in seconds while preserving representative topology.
 - Unused canonical dimensions are bound in select fixtures purely for coverage enumeration; graphs remain symbolic-only for the dimensions they actually consume.
 - Negative tests verify `DimensionBindingError` for unbound dimensions and `ConfigError` for source-less market facts, bad trace builders, and duplicate workload names.
+
+### Todo 10 — Memory hierarchy, residency, and spill planning
+- Created `sim/models/memory_hierarchy.py` (tier/hierarchy) and `sim/models/residency.py` (immutable `MemoryAccessPlan` builder with deterministic digest).
+- Created closed-form oracle `sim/tests/oracles/memory.py` that recomputes capacity split from graph footprint without using `residency.py`.
+- Added `sim/tests/test_memory_residency.py` covering tier selection, priority ordering, capacity conservation, cross-engine digest identity, and negative paths.
+- Integrated the plan into `sim/engine/mac_engine.py`, `sim/engine/block_engine.py`, `sim/engine/registry.py`, `sim/models/kv_cache.py`, `sim/models/dma.py`, `sim/cv/cv_sim.py`, and `sim/npu_sim.py`.
+- Targeted memory tests pass; full suite is blocked by 3 unrelated failures in `sim/tests/test_workload_catalog.py` (Todo 12 fixtures not fully populated).

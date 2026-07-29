@@ -54,59 +54,11 @@ class BlockEngine(MACEngine):
 
     def estimate(self, M: int, K: int, N: int,
                  weight_preloaded: bool = False) -> EngineResult:
-        """Block GEMM estimate. Supports on-chip 3D DRAM (weight resident) mode."""
+        """Block GEMM estimate.  Uses the unified memory access plan for bandwidth."""
         N_tiles = math.ceil(N / self.W)
 
         total_macs = M * K * N
         total_weight_bytes = K * N * self.w_bits // 8
-
-        if self.weight_resident:
-            # ── On-chip 3D DRAM: weights resident, but activations still
-            #     must be loaded from external DRAM. Respect all physical floors.
-            M_tiles = math.ceil(M / self.H)
-            N_tiles = math.ceil(N / self.W)
-            total_tiles = M_tiles * N_tiles
-
-            # Per tile: K reduction cycles (one MAC/cycle/PE) + overhead
-            per_tile_compute = K + BROADCAST_SYNC_CYCLES + \
-                _accumulate_cycles(self.w_bits, self.a_bits)
-            total_compute = per_tile_compute * total_tiles
-
-            # Weight streaming from on-chip memory (once per token)
-            act_bytes = M * K * self.a_bits // 8
-            weight_stream_cycles = (total_weight_bytes + act_bytes) / self.on_chip_bw
-
-            total_macs = M * K * N
-            ideal_cycles = math.ceil(total_macs / self.peak_macs_per_cycle)
-
-            raw_dma_bytes = K * N * self.w_bits // 8 + M * K * self.a_bits // 8
-            raw_dma_cycles = math.ceil(raw_dma_bytes / self.bw_raw) if self.bw_raw > 0 else 0
-
-            # Activation DMA via external DRAM floor
-            act_dma_ext = math.ceil(act_bytes / self.bw_raw) if self.bw_raw > 0 else 0
-
-            total_cycles = max(total_compute, weight_stream_cycles, ideal_cycles, act_dma_ext)
-
-            return EngineResult(
-                compute_cycles=int(total_compute),
-                dma_cycles=int(weight_stream_cycles),
-                total_cycles=int(total_cycles),
-                utilization=total_macs / (self.peak_macs_per_cycle * total_cycles) if total_cycles > 0 else 0,
-                mac_count=total_macs,
-                op_count=total_macs * 2,
-                ideal_compute_cycles=ideal_cycles,
-                raw_dma_cycles=raw_dma_cycles,
-                num_tiles=total_tiles,
-                weight_bytes=int(total_weight_bytes),
-                bottleneck="compute" if total_compute >= weight_stream_cycles else "on_chip_bw",
-                details={
-                    "M_tiles": M_tiles,
-                    "N_tiles": N_tiles,
-                    "per_tile_compute": per_tile_compute,
-                    "on_chip_mode": True,
-                    "on_chip_bw": self.on_chip_bw,
-                },
-            )
 
         # ── External DRAM: time-multiplexed M ──
         # M tokens processed sequentially (M passes) sharing one weight load.

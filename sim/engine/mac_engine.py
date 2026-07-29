@@ -14,6 +14,10 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, Optional, Tuple
 
 from contracts.errors import ConfigError
+from contracts.units import bandwidth_gbps_to_bytes_per_cycle as _bw2bpc
+from models.memory_hierarchy import build_hierarchy_from_config
+from models.residency import build_memory_access_plan
+from workloads.schema import WorkloadGraphV1
 
 
 @dataclass
@@ -103,9 +107,28 @@ def _validate_finite(value: float, name: str) -> None:
 class MACEngine(ABC):
     """MAC 引擎抽象基类"""
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(
+        self,
+        config: Dict[str, Any],
+        graph: WorkloadGraphV1 | None = None,
+        memory_access_plan: "MemoryAccessPlan | None" = None,
+    ):
         self.config = config
         self._parse_config(config)
+
+        if memory_access_plan is not None:
+            self.memory_access_plan = memory_access_plan
+        elif graph is not None:
+            from models.memory_hierarchy import MemoryHierarchy
+            hierarchy = build_hierarchy_from_config(config)
+            self.memory_access_plan = build_memory_access_plan(graph, hierarchy)
+        else:
+            hierarchy = build_hierarchy_from_config(config)
+            self.memory_access_plan = build_memory_access_plan(
+                WorkloadGraphV1(), hierarchy
+            )
+
+        self._apply_memory_plan()
 
     def _parse_config(self, config: Dict[str, Any]):
         """解析公共配置参数"""
@@ -118,12 +141,12 @@ class MACEngine(ABC):
         self.ops_per_mac = int(mac.get("ops_per_mac", 2))
 
         mem = config.get("memory", {})
-        from contracts.units import bandwidth_gbps_to_bytes_per_cycle as _bw2bpc
         bw_gbps = float(mem.get("bandwidth_gbps", 51.2))
         self.bw_raw = _bw2bpc(bw_gbps, self.f_mhz)
         self.dram_efficiency = float(mem.get("dram_efficiency", 0.85))
         opts = config.get("optimizations", {})
         self.bw_multiplier = float(opts.get("dma_bw_multiplier", 1.0))
+
         self.eff_bw = self.bw_raw * self.dram_efficiency * self.bw_multiplier
 
         # SRAM: 60% weight buffer, 40% KV tile buffer
@@ -137,10 +160,30 @@ class MACEngine(ABC):
         self.on_chip_capacity_gb = float(onchip.get("capacity_gb", 0))
         self.on_chip_bw = float(onchip.get("bandwidth_gbps", 0))  # GB/s
 
-    @property
-    def weight_resident(self) -> bool:
-        """True if all model weights fit in on-chip memory."""
-        return self.on_chip_capacity_gb > 0 and self.on_chip_bw > 0
+    def _apply_memory_plan(self) -> None:
+        """Consume ``self.memory_access_plan`` to set effective bandwidth.
+
+        If all weights are resident in the fastest eligible tier (no spill),
+        weight transfers use that tier's bandwidth.  Otherwise the external
+        DRAM bandwidth is used.  This replaces the old positive predicate
+        ``weight_resident`` and ensures monotonic behavior as capacity shrinks.
+        """
+        plan = self.memory_access_plan
+        if plan is None:
+            return
+
+        weight = plan.placements_for_category("weight")
+        total_weight_spill = sum(p.spill_bytes for p in weight)
+        if total_weight_spill == 0:
+            fastest = plan.fastest_allocated_tier("weight")
+            if fastest is not None:
+                tier = plan.hierarchy.get_tier(fastest)
+                self.eff_bw = _bw2bpc(
+                    tier.effective_read_bw_gbps(), self.f_mhz
+                )
+                return
+
+        self.eff_bw = self.bw_raw * self.dram_efficiency * self.bw_multiplier
 
     def _dram_eff_for_bytes(self, transfer_bytes: int) -> float:
         """DRAM utilization factor for a given transfer size.
@@ -191,7 +234,11 @@ class MACEngine(ABC):
 
 
 
-def create_engine(config: Dict[str, Any]) -> MACEngine:
+def create_engine(
+    config: Dict[str, Any],
+    graph: WorkloadGraphV1 | None = None,
+    memory_access_plan: "MemoryAccessPlan | None" = None,
+) -> MACEngine:
     """工厂函数：根据配置创建引擎实例.
 
     Uses the unified engine registry as the single source of truth.
@@ -201,4 +248,6 @@ def create_engine(config: Dict[str, Any]) -> MACEngine:
 
     mac = config.get("mac_engine", config.get("mxu", {}))
     engine_type = mac.get("type", "block")
-    return create_engine_by_type(engine_type, config)
+    return create_engine_by_type(
+        engine_type, config, graph=graph, memory_access_plan=memory_access_plan
+    )

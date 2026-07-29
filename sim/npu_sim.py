@@ -21,6 +21,8 @@ import yaml
 sys.path.insert(0, str(Path(__file__).parent))
 
 from engine.mac_engine import create_engine
+from models.memory_hierarchy import build_hierarchy_from_config
+from models.residency import build_memory_access_plan
 from models.sfu import SFUModel
 from models.vector import VectorModel
 from models.dma import DMAModel
@@ -31,6 +33,7 @@ from engine.timeline import (
     CoreTimeline, LayerBreakdown, SimulationReport, breakdown_events,
 )
 from engine.multicore import MultiCoreTimeline, FIFOConfig, CrossbarConfig
+from workloads.legacy_adapter import lower_llm_tuple_trace
 
 
 # ── Default 3B model trace ──────────────────────────────────────────
@@ -83,14 +86,19 @@ class NPUSimulator:
         mac = self.config.get("mac_engine", self.config.get("mxu", {}))
         self.f_mhz = int(mac.get("frequency_mhz", 1000))
 
-        # Initialize models
-        self.mxu = create_engine(self.config)
+        decode_trace = generate_qwen3b_trace(prompt_len=1)
+        graph, _ = lower_llm_tuple_trace(decode_trace, graph_name="qwen3b_decode")
+        hierarchy = build_hierarchy_from_config(self.config)
+        memory_plan = build_memory_access_plan(graph, hierarchy)
+
+        self.mxu = create_engine(self.config, memory_access_plan=memory_plan)
         self.sfu = SFUModel(self.config)
         self.vector = VectorModel(self.config)
-        self.dma = DMAModel(self.config)
-        self.kv = KVCacheModel(self.config)
+        self.dma = DMAModel(self.config, memory_access_plan=memory_plan)
+        self.kv = KVCacheModel(self.config, memory_access_plan=memory_plan)
         self.dram = DRAMModel(self.config)
         self.noc = NoCModel(self.config)
+        self.memory_access_plan = memory_plan
 
         # Configure KV cache for Qwen2.5-3B
         self.kv.configure_for_model(
@@ -559,19 +567,24 @@ def main():
         opts["weight_cache"] = args.weight_cache
         overrides.append(f"wc={args.weight_cache}")
 
+    decode_trace = generate_qwen3b_trace(prompt_len=1)
+    graph, _ = lower_llm_tuple_trace(decode_trace, graph_name="qwen3b_decode")
+
     if overrides:
         if not args.json:
             print(f"[override] {', '.join(overrides)}")
-        # Re-init all frequency/bandwidth-consuming models with overridden config
         mac = cfg.get("mac_engine", cfg.get("mxu", {}))
         sim.f_mhz = int(mac.get("frequency_mhz", 1000))
-        sim.mxu = create_engine(cfg)
-        sim.dma = DMAModel(cfg)
+        hierarchy = build_hierarchy_from_config(cfg)
+        memory_plan = build_memory_access_plan(graph, hierarchy)
+        sim.mxu = create_engine(cfg, memory_access_plan=memory_plan)
+        sim.dma = DMAModel(cfg, memory_access_plan=memory_plan)
         sim.dram = DRAMModel(cfg)
-        sim.kv = KVCacheModel(cfg)
+        sim.kv = KVCacheModel(cfg, memory_access_plan=memory_plan)
         sim.kv.configure_for_model(
             num_kv_heads=16, head_dim=128, num_layers=36, max_context=2048
         )
+        sim.memory_access_plan = memory_plan
         sim.config = cfg
 
     if args.isa:
