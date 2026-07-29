@@ -180,7 +180,7 @@ class TensorCoreEngine(MACEngine):
                 "per_subtile_compute": per_wave_compute,
                 "descriptor_cycles_per_wave": descriptor_cycles_per_wave,
                 "total_descriptor_cycles": total_descriptor_cycles,
-                "subtile_size": f"{self.SUBTILE_K}x{self.SUBTILE_M}x{self.SUBTILE_N}",
+                "subtile_size": f"{self.SUBTILE_K}×{self.SUBTILE_M}×{self.SUBTILE_N}",
             },
         )
 
