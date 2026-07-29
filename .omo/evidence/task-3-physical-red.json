@@ -1,0 +1,222 @@
+.......F.......F.......F.......F........................................ [  6%]
+........................................................................ [ 12%]
+........................................................................ [ 18%]
+..............................................F.......F.......F...F...F. [ 24%]
+......F.......F.......F.......F......................................... [ 30%]
+.................................................F...................... [ 36%]
+........................................................................ [ 42%]
+........................................................................ [ 48%]
+........................................................................ [ 54%]
+........F..F....F..F....F..F....FFFFFFFFFFFFFF.F......F...F...F......F.. [ 60%]
+.....F....F..F.........F.......F.......F................................ [ 66%]
+........................................................................ [ 72%]
+........................................................................ [ 79%]
+........................................................................ [ 85%]
+........................................................................ [ 91%]
+........................................................................ [ 97%]
+................................                                         [100%]
+=================================== FAILURES ===================================
+E   AssertionError: fsa: ops=15840, expected mac_count=7920
+    assert 15840 == 7920
+     +  where 15840 = Engine(total=516c, compute=516c, dma=252c, util=0.4%, tiles=4, bottleneck=compute, stall_dram=0, stall_sram=0).ops
+/home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engine_physical_invariants.py:176: AssertionError: fsa: ops=15840, expected mac_count=7920
+E   AssertionError: fsa: ops=47520, expected mac_count=23760
+    assert 47520 == 23760
+     +  where 47520 = Engine(total=758c, compute=524c, dma=758c, util=0.8%, tiles=4, bottleneck=dma, stall_dram=0, stall_sram=0).ops
+/home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engine_physical_invariants.py:176: AssertionError: fsa: ops=47520, expected mac_count=23760
+E   AssertionError: fsa: ops=524288, expected mac_count=262144
+    assert 524288 == 262144
+     +  where 524288 = Engine(total=9411c, compute=192c, dma=9411c, util=0.7%, tiles=1, bottleneck=dma, stall_dram=0, stall_sram=0).ops
+/home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engine_physical_invariants.py:176: AssertionError: fsa: ops=524288, expected mac_count=262144
+E   AssertionError: fsa: ops=4055040, expected mac_count=2027520
+    assert 4055040 == 2027520
+     +  where 4055040 = Engine(total=64705c, compute=6144c, dma=64705c, util=0.8%, tiles=16, bottleneck=dma, stall_dram=0, stall_sram=0).ops
+/home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engine_physical_invariants.py:176: AssertionError: fsa: ops=4055040, expected mac_count=2027520
+E   AssertionError: gmma LPDDR5 M=1,64,64: total_cycles=7 < floor=42 (raw_bytes=2112, eff_bpc=51.2)
+    assert 7 >= 42
+     +  where 7 = Engine(total=7c, compute=7c, dma=1c, util=14.3%, tiles=1, bottleneck=compute, stall_dram=0, stall_sram=0).total_cycles
+/home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engine_physical_invariants.py:270: AssertionError: gmma LPDDR5 M=1,64,64: total_cycles=7 < floor=42 (raw_bytes=2112, eff_bpc=51.2)
+E   AssertionError: gmma LPDDR5 M=4,64,64: total_cycles=7 < floor=45 (raw_bytes=2304, eff_bpc=51.2)
+    assert 7 >= 45
+     +  where 7 = Engine(total=7c, compute=7c, dma=5c, util=28.6%, tiles=1, bottleneck=compute, stall_dram=0, stall_sram=0).total_cycles
+/home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engine_physical_invariants.py:270: AssertionError: gmma LPDDR5 M=4,64,64: total_cycles=7 < floor=45 (raw_bytes=2304, eff_bpc=51.2)
+E   AssertionError: gmma LPDDR5 M=16,64,64: total_cycles=23 < floor=60 (raw_bytes=3072, eff_bpc=51.2)
+    assert 23 >= 60
+     +  where 23 = Engine(total=23c, compute=8c, dma=23c, util=34.0%, tiles=1, bottleneck=dma, stall_dram=0, stall_sram=0).total_cycles
+/home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engine_physical_invariants.py:270: AssertionError: gmma LPDDR5 M=16,64,64: total_cycles=23 < floor=60 (raw_bytes=3072, eff_bpc=51.2)
+E   AssertionError: os_systolic LPDDR5 M=64,64,64: total_cycles=94 < floor=120 (raw_bytes=6144, eff_bpc=51.2)
+    assert 94 >= 120
+     +  where 94 = Engine(total=94c, compute=68c, dma=94c, util=34.0%, tiles=1, bottleneck=dma, stall_dram=0, stall_sram=0).total_cycles
+/home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engine_physical_invariants.py:270: AssertionError: os_systolic LPDDR5 M=64,64,64: total_cycles=94 < floor=120 (raw_bytes=6144, eff_bpc=51.2)
+E   AssertionError: gmma LPDDR5 M=64,64,64: total_cycles=94 < floor=120 (raw_bytes=6144, eff_bpc=51.2)
+    assert 94 >= 120
+     +  where 94 = Engine(total=94c, compute=10c, dma=94c, util=34.0%, tiles=1, bottleneck=dma, stall_dram=0, stall_sram=0).total_cycles
+/home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engine_physical_invariants.py:270: AssertionError: gmma LPDDR5 M=64,64,64: total_cycles=94 < floor=120 (raw_bytes=6144, eff_bpc=51.2)
+E   AssertionError: gmma LPDDR5 M=1,110,72: total_cycles=28 < floor=80 (raw_bytes=4070, eff_bpc=51.2)
+    assert 28 >= 80
+     +  where 28 = Engine(total=28c, compute=28c, dma=2c, util=3.6%, tiles=4, bottleneck=compute, stall_dram=0, stall_sram=0).total_cycles
+/home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engine_physical_invariants.py:270: AssertionError: gmma LPDDR5 M=1,110,72: total_cycles=28 < floor=80 (raw_bytes=4070, eff_bpc=51.2)
+E   AssertionError: gmma LPDDR5 M=4,110,72: total_cycles=28 < floor=86 (raw_bytes=4400, eff_bpc=51.2)
+    assert 28 >= 86
+     +  where 28 = Engine(total=28c, compute=28c, dma=10c, util=14.3%, tiles=4, bottleneck=compute, stall_dram=0, stall_sram=0).total_cycles
+/home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engine_physical_invariants.py:270: AssertionError: gmma LPDDR5 M=4,110,72: total_cycles=28 < floor=86 (raw_bytes=4400, eff_bpc=51.2)
+E   AssertionError: gmma LPDDR5 M=16,110,72: total_cycles=40 < floor=112 (raw_bytes=5720, eff_bpc=51.2)
+    assert 40 >= 112
+     +  where 40 = Engine(total=40c, compute=32c, dma=40c, util=39.6%, tiles=4, bottleneck=dma, stall_dram=0, stall_sram=0).total_cycles
+/home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engine_physical_invariants.py:270: AssertionError: gmma LPDDR5 M=16,110,72: total_cycles=40 < floor=112 (raw_bytes=5720, eff_bpc=51.2)
+E   AssertionError: gmma LPDDR5 M=64,110,72: total_cycles=161 < floor=215 (raw_bytes=11000, eff_bpc=51.2)
+    assert 161 >= 215
+     +  where 161 = Engine(total=161c, compute=40c, dma=161c, util=38.3%, tiles=4, bottleneck=dma, stall_dram=0, stall_sram=0).total_cycles
+/home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engine_physical_invariants.py:270: AssertionError: gmma LPDDR5 M=64,110,72: total_cycles=161 < floor=215 (raw_bytes=11000, eff_bpc=51.2)
+E   AssertionError: block HIGH_BW M=64,64,64: total_cycles=68 < floor=80 (raw_bytes=6144, eff_bpc=500.0)
+    assert 68 >= 80
+     +  where 68 = Engine(total=68c, compute=68c, dma=12c, util=47.1%, tiles=1, bottleneck=compute, stall_dram=0, stall_sram=0).total_cycles
+/home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engine_physical_invariants.py:270: AssertionError: block HIGH_BW M=64,64,64: total_cycles=68 < floor=80 (raw_bytes=6144, eff_bpc=500.0)
+E   AssertionError: systolic LPDDR5 K=110,N=72: M=2→3: total_cycles decreased (1074 → 695)
+    assert False
+/home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engine_physical_invariants.py:324: AssertionError: systolic LPDDR5 K=110,N=72: M=2→3: total_cycles decreased (1074 → 695)
+E   AssertionError: input_stationary LPDDR5 K=110,N=72: M=1→2: total_cycles decreased (16723 → 8405)
+    assert False
+/home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engine_physical_invariants.py:324: AssertionError: input_stationary LPDDR5 K=110,N=72: M=1→2: total_cycles decreased (16723 → 8405)
+E   AssertionError: systolic HBM3 K=110,N=72: M=2→3: total_cycles decreased (1027 → 532)
+    assert False
+/home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engine_physical_invariants.py:324: AssertionError: systolic HBM3 K=110,N=72: M=2→3: total_cycles decreased (1027 → 532)
+E   AssertionError: input_stationary HBM3 K=110,N=72: M=1→2: total_cycles decreased (16645 → 8325)
+    assert False
+/home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engine_physical_invariants.py:324: AssertionError: input_stationary HBM3 K=110,N=72: M=1→2: total_cycles decreased (16645 → 8325)
+E   AssertionError: systolic HIGH_BW K=110,N=72: M=2→3: total_cycles decreased (1074 → 695)
+    assert False
+/home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engine_physical_invariants.py:324: AssertionError: systolic HIGH_BW K=110,N=72: M=2→3: total_cycles decreased (1074 → 695)
+E   AssertionError: input_stationary HIGH_BW K=110,N=72: M=1→2: total_cycles decreased (16723 → 8405)
+    assert False
+/home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engine_physical_invariants.py:324: AssertionError: input_stationary HIGH_BW K=110,N=72: M=1→2: total_cycles decreased (16723 → 8405)
+E   AssertionError: systolic: At 819.2 GB/s, total_cycles=536 is 13300.0% above compute floor 4 — should saturate within 5.0%
+    assert False
+/home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engine_physical_invariants.py:365: AssertionError: systolic: At 819.2 GB/s, total_cycles=536 is 13300.0% above compute floor 4 — should saturate within 5.0%
+E   AssertionError: block: At 819.2 GB/s, total_cycles=1088 is 27100.0% above compute floor 4 — should saturate within 5.0%
+    assert False
+/home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engine_physical_invariants.py:365: AssertionError: block: At 819.2 GB/s, total_cycles=1088 is 27100.0% above compute floor 4 — should saturate within 5.0%
+E   AssertionError: os_systolic: At 819.2 GB/s, total_cycles=272 is 6700.0% above compute floor 4 — should saturate within 5.0%
+    assert False
+/home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engine_physical_invariants.py:365: AssertionError: os_systolic: At 819.2 GB/s, total_cycles=272 is 6700.0% above compute floor 4 — should saturate within 5.0%
+E   AssertionError: input_stationary: At 819.2 GB/s, total_cycles=4165 is 104025.0% above compute floor 4 — should saturate within 5.0%
+    assert False
+/home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engine_physical_invariants.py:365: AssertionError: input_stationary: At 819.2 GB/s, total_cycles=4165 is 104025.0% above compute floor 4 — should saturate within 5.0%
+E   AssertionError: tensor_core: At 819.2 GB/s, total_cycles=145 is 3525.0% above compute floor 4 — should saturate within 5.0%
+    assert False
+/home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engine_physical_invariants.py:365: AssertionError: tensor_core: At 819.2 GB/s, total_cycles=145 is 3525.0% above compute floor 4 — should saturate within 5.0%
+E   AssertionError: wmma: At 819.2 GB/s, total_cycles=52819 is 1320375.0% above compute floor 4 — should saturate within 5.0%
+    assert False
+/home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engine_physical_invariants.py:365: AssertionError: wmma: At 819.2 GB/s, total_cycles=52819 is 1320375.0% above compute floor 4 — should saturate within 5.0%
+E   AssertionError: gmma: At 819.2 GB/s, total_cycles=28 is 600.0% above compute floor 4 — should saturate within 5.0%
+    assert False
+/home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engine_physical_invariants.py:365: AssertionError: gmma: At 819.2 GB/s, total_cycles=28 is 600.0% above compute floor 4 — should saturate within 5.0%
+E   AssertionError: fsa: At 819.2 GB/s, total_cycles=528 is 13100.0% above compute floor 4 — should saturate within 5.0%
+    assert False
+/home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engine_physical_invariants.py:365: AssertionError: fsa: At 819.2 GB/s, total_cycles=528 is 13100.0% above compute floor 4 — should saturate within 5.0%
+E   AssertionError: systolic: At 819.2 GB/s, total_cycles=200 is 525.0% above compute floor 32 — should saturate within 5.0%
+    assert False
+/home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engine_physical_invariants.py:365: AssertionError: systolic: At 819.2 GB/s, total_cycles=200 is 525.0% above compute floor 32 — should saturate within 5.0%
+E   AssertionError: block: At 819.2 GB/s, total_cycles=4352 is 13500.0% above compute floor 32 — should saturate within 5.0%
+    assert False
+/home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engine_physical_invariants.py:365: AssertionError: block: At 819.2 GB/s, total_cycles=4352 is 13500.0% above compute floor 32 — should saturate within 5.0%
+E   AssertionError: os_systolic: At 819.2 GB/s, total_cycles=68 is 112.5% above compute floor 32 — should saturate within 5.0%
+    assert False
+/home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engine_physical_invariants.py:365: AssertionError: os_systolic: At 819.2 GB/s, total_cycles=68 is 112.5% above compute floor 32 — should saturate within 5.0%
+E   AssertionError: input_stationary: At 819.2 GB/s, total_cycles=137 is 328.1% above compute floor 32 — should saturate within 5.0%
+    assert False
+/home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engine_physical_invariants.py:365: AssertionError: input_stationary: At 819.2 GB/s, total_cycles=137 is 328.1% above compute floor 32 — should saturate within 5.0%
+E   AssertionError: tensor_core: At 819.2 GB/s, total_cycles=199 is 521.9% above compute floor 32 — should saturate within 5.0%
+    assert False
+/home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engine_physical_invariants.py:365: AssertionError: tensor_core: At 819.2 GB/s, total_cycles=199 is 521.9% above compute floor 32 — should saturate within 5.0%
+E   AssertionError: wmma: At 819.2 GB/s, total_cycles=106120 is 331525.0% above compute floor 32 — should saturate within 5.0%
+    assert False
+/home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engine_physical_invariants.py:365: AssertionError: wmma: At 819.2 GB/s, total_cycles=106120 is 331525.0% above compute floor 32 — should saturate within 5.0%
+E   AssertionError: fsa: At 819.2 GB/s, total_cycles=588 is 1737.5% above compute floor 32 — should saturate within 5.0%
+    assert False
+/home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engine_physical_invariants.py:365: AssertionError: fsa: At 819.2 GB/s, total_cycles=588 is 1737.5% above compute floor 32 — should saturate within 5.0%
+E   AssertionError: gmma BW=51.2 M=4,110,72: total_cycles=28 < combined_floor=86
+    assert 28 >= 86
+     +  where 28 = Engine(total=28c, compute=28c, dma=10c, util=14.3%, tiles=4, bottleneck=compute, stall_dram=0, stall_sram=0).total_cycles
+/home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engine_physical_invariants.py:386: AssertionError: gmma BW=51.2 M=4,110,72: total_cycles=28 < combined_floor=86
+E   AssertionError: os_systolic BW=51.2 M=64,64,64: total_cycles=94 < combined_floor=120
+    assert 94 >= 120
+     +  where 94 = Engine(total=94c, compute=68c, dma=94c, util=34.0%, tiles=1, bottleneck=dma, stall_dram=0, stall_sram=0).total_cycles
+/home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engine_physical_invariants.py:386: AssertionError: os_systolic BW=51.2 M=64,64,64: total_cycles=94 < combined_floor=120
+E   AssertionError: gmma BW=51.2 M=64,64,64: total_cycles=94 < combined_floor=120
+    assert 94 >= 120
+     +  where 94 = Engine(total=94c, compute=10c, dma=94c, util=34.0%, tiles=1, bottleneck=dma, stall_dram=0, stall_sram=0).total_cycles
+/home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engine_physical_invariants.py:386: AssertionError: gmma BW=51.2 M=64,64,64: total_cycles=94 < combined_floor=120
+E   AssertionError: wmma M=1,110,72: Missing diagnostics for wmma: {'per_fragment_dma'}
+    assert False
+/home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engine_physical_invariants.py:406: AssertionError: wmma M=1,110,72: Missing diagnostics for wmma: {'per_fragment_dma'}
+E   AssertionError: wmma M=64,64,64: Missing diagnostics for wmma: {'per_fragment_dma'}
+    assert False
+/home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engine_physical_invariants.py:406: AssertionError: wmma M=64,64,64: Missing diagnostics for wmma: {'per_fragment_dma'}
+E   AssertionError: os_systolic cache-pair: no cache indicator in ['K_tiles', 'N_tiles', 'per_tile_compute', 'broadcast_sync', 'k_reduction_cycles', 'raw_dma_cycles', 'total_compute_cycles', 'bottleneck_reason', 'activation_reuse_savings', 'dataflow']
+    assert ('weight_cache' in {'K_tiles': 2, 'N_tiles': 2, 'activation_reuse_savings': 2, 'bottleneck_reason': 'Compute (544 cycles) dominates DMA (2 cycles)', ...} or False)
+     +  where {'K_tiles': 2, 'N_tiles': 2, 'activation_reuse_savings': 2, 'bottleneck_reason': 'Compute (544 cycles) dominates DMA (2 cycles)', ...} = Engine(total=544c, compute=544c, dma=2c, util=0.4%, tiles=4, bottleneck=compute, stall_dram=0, stall_sram=0).details
+     +  and   False = any(<generator object TestDiagnostics.test_diagnostics_cache_pair.<locals>.<genexpr> at 0x7fd43e132ab0>)
+/home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engine_physical_invariants.py:424: AssertionError: os_systolic cache-pair: no cache indicator in ['K_tiles', 'N_tiles', 'per_tile_compute', 'broadcast_sync', 'k_reduction_cycles', 'raw_dma_cycles', 'total_compute_cycles', 'bottleneck_reason', 'activation_reuse_savings', 'dataflow']
+E   AssertionError: wmma cache-pair: no cache indicator in ['frag_M_total', 'frag_K_total', 'frag_N_total', 'total_fragments', 'fragments_per_tile', 'per_fragment_compute', 'per_tile_compute', 'per_tile_dma', 'tile_size', 'num_warps']
+    assert ('weight_cache' in {'frag_K_total': 7, 'frag_M_total': 1, 'frag_N_total': 5, 'fragments_per_tile': 8, ...} or False)
+     +  where {'frag_K_total': 7, 'frag_M_total': 1, 'frag_N_total': 5, 'fragments_per_tile': 8, ...} = Engine(total=105647c, compute=105472c, dma=175c, util=0.0%, tiles=4, bottleneck=compute, stall_dram=0, stall_sram=0).details
+     +  and   False = any(<generator object TestDiagnostics.test_diagnostics_cache_pair.<locals>.<genexpr> at 0x7fd43e133ed0>)
+/home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engine_physical_invariants.py:424: AssertionError: wmma cache-pair: no cache indicator in ['frag_M_total', 'frag_K_total', 'frag_N_total', 'total_fragments', 'fragments_per_tile', 'per_fragment_compute', 'per_tile_compute', 'per_tile_dma', 'tile_size', 'num_warps']
+E   AssertionError: weight_bytes must be positive
+    assert 0 > 0
+     +  where 0 = Engine(total=516c, compute=516c, dma=252c, util=0.4%, tiles=4, bottleneck=compute, stall_dram=0, stall_sram=0).weight_bytes
+/home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engine_physical_invariants.py:448: AssertionError: weight_bytes must be positive
+E   AssertionError: weight_bytes must be positive
+    assert 0 > 0
+     +  where 0 = Engine(total=9411c, compute=192c, dma=9411c, util=0.7%, tiles=1, bottleneck=dma, stall_dram=0, stall_sram=0).weight_bytes
+/home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engine_physical_invariants.py:448: AssertionError: weight_bytes must be positive
+E   assert 524288 == ((64 * 64) * 64)
+     +  where 524288 = Engine(total=9411c, compute=192c, dma=9411c, util=0.7%, tiles=1, bottleneck=dma, stall_dram=0, stall_sram=0).ops
+/home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engine_physical_invariants.py:459: assert 524288 == ((64 * 64) * 64)
+=========================== short test summary info ============================
+FAILED sim/tests/test_engine_physical_invariants.py::TestMacOpCount::test_mac_count_correct[1-110-72-fsa]
+FAILED sim/tests/test_engine_physical_invariants.py::TestMacOpCount::test_mac_count_correct[3-110-72-fsa]
+FAILED sim/tests/test_engine_physical_invariants.py::TestMacOpCount::test_mac_count_correct[64-64-64-fsa]
+FAILED sim/tests/test_engine_physical_invariants.py::TestMacOpCount::test_mac_count_correct[256-110-72-fsa]
+FAILED sim/tests/test_engine_physical_invariants.py::TestDMAFloor::test_dma_floor[LPDDR5-51.2-64-64-1-gmma]
+FAILED sim/tests/test_engine_physical_invariants.py::TestDMAFloor::test_dma_floor[LPDDR5-51.2-64-64-4-gmma]
+FAILED sim/tests/test_engine_physical_invariants.py::TestDMAFloor::test_dma_floor[LPDDR5-51.2-64-64-16-gmma]
+FAILED sim/tests/test_engine_physical_invariants.py::TestDMAFloor::test_dma_floor[LPDDR5-51.2-64-64-64-os_systolic]
+FAILED sim/tests/test_engine_physical_invariants.py::TestDMAFloor::test_dma_floor[LPDDR5-51.2-64-64-64-gmma]
+FAILED sim/tests/test_engine_physical_invariants.py::TestDMAFloor::test_dma_floor[LPDDR5-51.2-110-72-1-gmma]
+FAILED sim/tests/test_engine_physical_invariants.py::TestDMAFloor::test_dma_floor[LPDDR5-51.2-110-72-4-gmma]
+FAILED sim/tests/test_engine_physical_invariants.py::TestDMAFloor::test_dma_floor[LPDDR5-51.2-110-72-16-gmma]
+FAILED sim/tests/test_engine_physical_invariants.py::TestDMAFloor::test_dma_floor[LPDDR5-51.2-110-72-64-gmma]
+FAILED sim/tests/test_engine_physical_invariants.py::TestDMAFloor::test_dma_floor[HIGH_BW-500.0-64-64-64-block]
+FAILED sim/tests/test_engine_physical_invariants.py::TestMMonotonic::test_m_non_decreasing[LPDDR5-51.2-systolic]
+FAILED sim/tests/test_engine_physical_invariants.py::TestMMonotonic::test_m_non_decreasing[LPDDR5-51.2-input_stationary]
+FAILED sim/tests/test_engine_physical_invariants.py::TestMMonotonic::test_m_non_decreasing[HBM3-819.2-systolic]
+FAILED sim/tests/test_engine_physical_invariants.py::TestMMonotonic::test_m_non_decreasing[HBM3-819.2-input_stationary]
+FAILED sim/tests/test_engine_physical_invariants.py::TestMMonotonic::test_m_non_decreasing[HIGH_BW-500.0-systolic]
+FAILED sim/tests/test_engine_physical_invariants.py::TestMMonotonic::test_m_non_decreasing[HIGH_BW-500.0-input_stationary]
+FAILED sim/tests/test_engine_physical_invariants.py::TestBandwidthSaturation::test_bandwidth_saturation[4-110-72-systolic]
+FAILED sim/tests/test_engine_physical_invariants.py::TestBandwidthSaturation::test_bandwidth_saturation[4-110-72-block]
+FAILED sim/tests/test_engine_physical_invariants.py::TestBandwidthSaturation::test_bandwidth_saturation[4-110-72-os_systolic]
+FAILED sim/tests/test_engine_physical_invariants.py::TestBandwidthSaturation::test_bandwidth_saturation[4-110-72-input_stationary]
+FAILED sim/tests/test_engine_physical_invariants.py::TestBandwidthSaturation::test_bandwidth_saturation[4-110-72-tensor_core]
+FAILED sim/tests/test_engine_physical_invariants.py::TestBandwidthSaturation::test_bandwidth_saturation[4-110-72-wmma]
+FAILED sim/tests/test_engine_physical_invariants.py::TestBandwidthSaturation::test_bandwidth_saturation[4-110-72-gmma]
+FAILED sim/tests/test_engine_physical_invariants.py::TestBandwidthSaturation::test_bandwidth_saturation[4-110-72-fsa]
+FAILED sim/tests/test_engine_physical_invariants.py::TestBandwidthSaturation::test_bandwidth_saturation[64-64-64-systolic]
+FAILED sim/tests/test_engine_physical_invariants.py::TestBandwidthSaturation::test_bandwidth_saturation[64-64-64-block]
+FAILED sim/tests/test_engine_physical_invariants.py::TestBandwidthSaturation::test_bandwidth_saturation[64-64-64-os_systolic]
+FAILED sim/tests/test_engine_physical_invariants.py::TestBandwidthSaturation::test_bandwidth_saturation[64-64-64-input_stationary]
+FAILED sim/tests/test_engine_physical_invariants.py::TestBandwidthSaturation::test_bandwidth_saturation[64-64-64-tensor_core]
+FAILED sim/tests/test_engine_physical_invariants.py::TestBandwidthSaturation::test_bandwidth_saturation[64-64-64-wmma]
+FAILED sim/tests/test_engine_physical_invariants.py::TestBandwidthSaturation::test_bandwidth_saturation[64-64-64-fsa]
+FAILED sim/tests/test_engine_physical_invariants.py::TestBandwidthSaturation::test_bw_saturation_combined[4-110-72-gmma]
+FAILED sim/tests/test_engine_physical_invariants.py::TestBandwidthSaturation::test_bw_saturation_combined[64-64-64-os_systolic]
+FAILED sim/tests/test_engine_physical_invariants.py::TestBandwidthSaturation::test_bw_saturation_combined[64-64-64-gmma]
+FAILED sim/tests/test_engine_physical_invariants.py::TestDiagnostics::test_diagnostics_complete[1-110-72-wmma]
+FAILED sim/tests/test_engine_physical_invariants.py::TestDiagnostics::test_diagnostics_complete[64-64-64-wmma]
+FAILED sim/tests/test_engine_physical_invariants.py::TestDiagnostics::test_diagnostics_cache_pair[os_systolic]
+FAILED sim/tests/test_engine_physical_invariants.py::TestDiagnostics::test_diagnostics_cache_pair[wmma]
+FAILED sim/tests/test_engine_physical_invariants.py::TestBasicInvariants::test_result_fields_positive[1-110-72-fsa]
+FAILED sim/tests/test_engine_physical_invariants.py::TestBasicInvariants::test_result_fields_positive[64-64-64-fsa]
+FAILED sim/tests/test_engine_physical_invariants.py::TestBasicInvariants::test_small_square_gemm[fsa]
