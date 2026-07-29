@@ -267,6 +267,18 @@ def main(argv: list[str] | None = None) -> int:
         if errors:
             for err in errors:
                 print(f"RELEASE_GATE_FAIL: {err}", file=sys.stderr)
+            report = {
+                "profile": args.profile,
+                "scenario": args.scenario,
+                "space": args.space,
+                "verdict": "FAIL",
+                "errors": errors,
+            }
+            if args.output:
+                args.output.parent.mkdir(parents=True, exist_ok=True)
+                args.output.write_text(json.dumps(report, indent=2), encoding="utf-8")
+            else:
+                print(json.dumps(report, indent=2))
             return 1
 
         # Write content-addressed artifacts.
