@@ -1,0 +1,229 @@
+scenarios:
+  stable_hand:
+    name: stable_hand
+    description: |
+      Canonical under-loaded hand case: 4 ms work every 10 ms on a single
+      compute unit.  Expected P50=P99=max=4 ms latency, utilization=0.4,
+      zero deadline misses.
+    seed: 0
+    warmup_count: 10
+    measurement_count: 100
+    drain: true
+    max_simulation_time_ms: 5000.0
+    recovery_phase_start_ms: null
+    compute_capacity: 1
+    classes:
+      - id: A
+        arrival:
+          mode: periodic
+          period_ms: 10.0
+          count: 120
+          offset_ms: 0.0
+        work_ms: 4.0
+        relative_deadline_ms: 10.0
+        timeout_ms: 10.0
+        priority: 0
+        queue_policy: fifo
+        queue_capacity: 16
+        resource_requirements:
+          compute: 1
+        memory_bytes: 0
+        bandwidth_fraction: 0.0
+        admission_excluded: true
+
+  overload_fifo:
+    name: overload_fifo
+    description: |
+      120% offered load on a FIFO queue: 6 ms work every 5 ms.  Backlog and
+      latency grow; deadline misses occur.
+    seed: 0
+    warmup_count: 5
+    measurement_count: 50
+    drain: true
+    max_simulation_time_ms: 2000.0
+    recovery_phase_start_ms: null
+    compute_capacity: 1
+    classes:
+      - id: A
+        arrival:
+          mode: periodic
+          period_ms: 5.0
+          count: 60
+          offset_ms: 0.0
+        work_ms: 6.0
+        relative_deadline_ms: 5.0
+        timeout_ms: 5.0
+        priority: 0
+        queue_policy: fifo
+        queue_capacity: 128
+        resource_requirements:
+          compute: 1
+        memory_bytes: 0
+        bandwidth_fraction: 0.0
+        admission_excluded: true
+
+  overload_recovery:
+    name: overload_recovery
+    description: |
+      50 releases at 6 ms/5 ms create backlog, then a second stream at
+      3.5 ms/5 ms (70% load) allows the queue to drain.  Recovery time is
+      recorded once the backlog reaches zero after the recovery phase starts.
+    seed: 0
+    warmup_count: 5
+    measurement_count: 40
+    drain: true
+    max_simulation_time_ms: 3000.0
+    recovery_phase_start_ms: 250.0
+    compute_capacity: 1
+    classes:
+      - id: overload
+        arrival:
+          mode: periodic
+          period_ms: 5.0
+          count: 50
+          offset_ms: 0.0
+        work_ms: 6.0
+        relative_deadline_ms: 5.0
+        timeout_ms: 5.0
+        priority: 0
+        queue_policy: fifo
+        queue_capacity: 256
+        resource_requirements:
+          compute: 1
+        memory_bytes: 0
+        bandwidth_fraction: 0.0
+        admission_excluded: true
+      - id: recovery
+        arrival:
+          mode: periodic
+          period_ms: 5.0
+          count: 45
+          offset_ms: 250.0
+        work_ms: 3.5
+        relative_deadline_ms: 5.0
+        timeout_ms: 5.0
+        priority: 0
+        queue_policy: fifo
+        queue_capacity: 256
+        resource_requirements:
+          compute: 1
+        memory_bytes: 0
+        bandwidth_fraction: 0.0
+        admission_excluded: true
+
+  mailbox_overload:
+    name: mailbox_overload
+    description: |
+      Per-stream mailbox_latest under overload.  Only one pending item is kept
+      per stream; arrivals replace pending items and produce replacements>0
+      while the pending depth never exceeds 1.
+    seed: 0
+    warmup_count: 5
+    measurement_count: 50
+    drain: true
+    max_simulation_time_ms: 2000.0
+    recovery_phase_start_ms: null
+    compute_capacity: 1
+    classes:
+      - id: streamA
+        stream_id: streamA
+        arrival:
+          mode: periodic
+          period_ms: 3.0
+          count: 60
+          offset_ms: 0.0
+        work_ms: 5.0
+        relative_deadline_ms: 3.0
+        timeout_ms: 3.0
+        priority: 0
+        queue_policy: mailbox_latest
+        queue_capacity: 1
+        resource_requirements:
+          compute: 1
+        memory_bytes: 0
+        bandwidth_fraction: 0.0
+        admission_excluded: true
+
+  priority_preempt:
+    name: priority_preempt
+    description: |
+      High-priority periodic traffic preempts a long-running low-priority job.
+      Low-priority work is 8 ms every 10 ms; high-priority work is 2 ms every
+      5 ms.  High-priority jobs should meet deadline; low-priority jobs miss.
+    seed: 0
+    warmup_count: 5
+    measurement_count: 50
+    drain: true
+    max_simulation_time_ms: 2000.0
+    recovery_phase_start_ms: null
+    compute_capacity: 1
+    preemption_enabled: true
+    classes:
+      - id: low
+        arrival:
+          mode: periodic
+          period_ms: 10.0
+          count: 60
+          offset_ms: 0.0
+        work_ms: 8.0
+        relative_deadline_ms: 10.0
+        timeout_ms: 10.0
+        priority: 1
+        queue_policy: fifo
+        queue_capacity: 8
+        resource_requirements:
+          compute: 1
+        memory_bytes: 0
+        bandwidth_fraction: 0.0
+        admission_excluded: true
+      - id: high
+        arrival:
+          mode: periodic
+          period_ms: 5.0
+          count: 110
+          offset_ms: 0.0
+        work_ms: 2.0
+        relative_deadline_ms: 5.0
+        timeout_ms: 5.0
+        priority: 5
+        queue_policy: fifo
+        queue_capacity: 8
+        resource_requirements:
+          compute: 1
+        memory_bytes: 0
+        bandwidth_fraction: 0.0
+        admission_excluded: true
+
+  admission_reject:
+    name: admission_reject
+    description: |
+      Admission controller rejects jobs that would exceed available memory while
+      an earlier job is still inflight.  Each job needs 60 B and runs 3 ms;
+      arrivals are every 2 ms, so the second arrival must be rejected.
+    seed: 0
+    warmup_count: 0
+    measurement_count: 20
+    drain: true
+    max_simulation_time_ms: 1000.0
+    recovery_phase_start_ms: null
+    compute_capacity: 1
+    memory_available_bytes: 100
+    max_inflight_jobs: 128
+    max_bandwidth_fraction: 1.0
+    classes:
+      - id: big
+        arrival:
+          mode: periodic
+          period_ms: 2.0
+          count: 25
+          offset_ms: 0.0
+        work_ms: 3.0
+        relative_deadline_ms: 2.0
+        timeout_ms: 2.0
+        priority: 0
+        queue_policy: fifo
+        queue_capacity: 32
+        resource_requirements:
+          compute: 1
+        memory_bytes: 60
+        bandwidth_fraction: 0.0
