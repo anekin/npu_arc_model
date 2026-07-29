@@ -142,3 +142,33 @@
 - Raw DMA wall-time invariance (not total wall-time) is the correct property to test for memory-bound scenarios, since compute cycles are always frequency-independent and affect total_cycles
 - DSE `tok_s_from_layer` frequency-dependent behavior verified by parameterized test at 800/1000/1200 MHz — tok/s ratios match frequency ratios within 0.5%
 - CLI override tolerance of 15% accounts for SFU/KV/DRAM components that have their own frequency dependencies
+
+## Todo 5: Engine Physical Formula Fixes (2026-07-30)
+
+### What was done
+- **SystolicEngine**: Removed `_estimate_decode`/`_estimate_prefill` dispatch (M≤2 vs M>2 threshold). Replaced with unified M-tiling formula: per-K-tile compute = sum of M-tile pipeline depths (fill H+W + drain rows_per_tile). Total monotonic with M — M=2→3 now goes 570→575 (was 1074→695 decrease).
+- **OS-SystolicEngine**: Added M-tiling to per_tile_compute. Per M-tile pass now uses `H + BROADCAST_SYNC + accumulate_cycles` with last M-tile using actual effective rows. DMA now uses `math.ceil` and `self.bw_raw` (not `self.eff_bw`) for raw DMA floor. total_cycles = max(compute, ideal, raw_dma_floor). M=1 returns 272 cycles, M=1024 returns 2588 — no longer identical.
+- **GMMAEngine**: Pipeline compute now forced >= ideal MAC floor via `max(total_compute, ideal, raw_dma_floor, total_dma_ceil)`. Raw DMA uses `self.bw_raw` (not `self.eff_bw`) and `math.ceil`. Cache-pair same guard. `pipeline_scale` still configurable but cannot produce super-peak throughput.
+- **TensorCoreEngine**: Partial M/K/N sub-tiles in last wave use actual effective dimensions (not `min(M, SUBTILE_M)` for all). Per-sub-tile weight/activation bytes computed with actual k_eff, n_eff, m_eff per sub-tile. M=17 weight_bytes=8448 = 4×full_tile(1536) + 4×tail(576).
+- **InputStationaryEngine**: Removed non-monotonic `reuse_factor` artifact. Per-tile compute = K_tiles + H + W, scales via M_tiles. No M=1→2 decrease (was 16723→8405, now monotonic).
+- **BlockEngine**: On-chip mode now respects external DRAM activation DMA floor via `max(total_compute, weight_stream_cycles, ideal_cycles, act_dma_ext)`.
+- **FSAEngine**: Fixed `estimate_weight_cache_pair` to return doubled mac_count/compute_cycles/total_cycles. Removed `min(utilization, 1.0)` clamp. Changed `weight_bytes` to report total weight bytes (not effective=0 when cached). Raw DMA uses `self.bw_raw`.
+- **MXUModel**: Applied same unified M-tiling formula as SystolicEngine to keep regression tests aligned.
+
+### Key findings
+- The old Systolic decode formula `H*(M+1)+W` was overcounting for small M due to non-pipelined assumption. Correct pipelined formula: `H+W+rows_per_tile` per M-tile, with `2H+W` for full tiles.
+- OS engine's compute was M-independent (used only H for per-tile depth), making M=1 and M=1024 produce identical compute cycles. M-tiling fixes this: compute scales linearly with ceil(M/H).
+- GMMA's `pipeline_scale=0.05` could produce total_cycles below ideal MAC floor for small shapes. Adding `ideal` to the `max()` guard ensures physical correctness without removing the calibration parameter.
+- The `reuse_factor = min(M,H)/H` in IS engine created a non-monotonic transition at M=H because per_tile_compute = base/reuse went from very large to base as reuse increased. Removing the factor and relying on M-tiling for scaling is both monotonic and simpler.
+- Bandwidth saturation failures (16 tests, all 8 engines) remain as Todo 6 scope — frequency/bandwidth unit propagation fix needed.
+
+### Technical decisions
+- All raw DMA floors now use `self.bw_raw` (raw bandwidth) instead of `self.eff_bw` (efficiency-adjusted). The physical DMA floor is the theoretical peak bandwidth, not the efficiency-derated value.
+- OS's `dma_cycles` field now reports `int(total_compute_cycles)` (compute, not DMA) to match the engine's compute-bound identity. The `raw_dma_cycles` captures the physical DMA floor correctly.
+- Cache-pair methods updated across all engines to match their estimate counterparts.
+- IS required diagnostics oracle updated to remove `reuse_factor` key (no longer in engine details).
+
+### Regression status
+- test_engine_result_contract.py: 0 failures
+- test_engines.py: 0 failures (baselines updated; MXUModel aligned)
+- test_engine_physical_invariants.py: 15 failures, all `TestBandwidthSaturation` (Todo 6 scope)

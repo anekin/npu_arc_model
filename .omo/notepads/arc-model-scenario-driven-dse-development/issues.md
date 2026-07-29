@@ -31,3 +31,23 @@
 - Todo 4: engine registry/result contract must enforce ops semantics
 - Todo 5: formula repairs for Systolic, OS, GMMA, TensorCore
 - Todo 6: frequency/bandwidth unit propagation must fix BW saturation across all engines
+
+## Todo 5 Completion Status (2026-07-30)
+
+### Resolved Failures (from Todo 3 Red Manifest)
+
+| Failure Category | Status | Resolution |
+|:---|:---|:---|
+| SYSTOLIC M=2→3 latency decrease | ✅ FIXED | Unified M-tiling formula, no decode/prefill dispatch |
+| OS M scaling (same compute for all M) | ✅ FIXED | Added M-tiling to per_tile_compute |
+| InputStationary M monotonicity | ✅ FIXED | Removed reuse_factor artifact |
+| GMMA pipeline undercuts MAC floor | ✅ FIXED | Added ideal floor to max() guard |
+| GMMA DMA floor violation | ✅ FIXED | raw DMA uses `ceil` and `self.bw_raw` |
+| OS DMA floor violation | ✅ FIXED | raw DMA uses `ceil` and `self.bw_raw` |
+| FSA mac_count = op_count | ✅ FIXED | Already fixed in Todo 4 |
+| FSA weight_bytes=0 | ✅ FIXED | Report total weight bytes, not effective=0 |
+| WMMA diagnostics incomplete | ✅ FIXED | Already fixed in Todo 4 |
+| TensorCore partial M tile | ✅ FIXED | Last wave uses actual effective dimensions |
+
+### Remaining: Bandwidth Saturation (16 tests, Todo 6)
+All 8 engines fail bandwidth saturation at 819.2 GB/s because pipeline overheads (broadcast_sync, accumulate, etc.) are constant and don't scale down with BW increase. This requires Todo 6's frequency/bandwidth unit propagation fix.
