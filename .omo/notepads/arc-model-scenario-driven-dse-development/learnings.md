@@ -107,3 +107,38 @@
 - Cache-pair diagnostics relaxed: `per_fragment_dma` excluded from cache-pair check since fragment-level DMA differs from direct path
 - Quick-mode engine list (`systolic`, `block`, `gmma`) remains hardcoded in registry but derived through `engine_quick_ids_list()` API
 - All 8 engines now produce `mac_count` and `op_count` consistently; remaining red tests (bandwidth saturation, FSA weight_bytes=0) are Todo 5/6 scope
+
+## Todo 6: Frequency/Bandwidth Unit Propagation (2026-07-30)
+
+### What was done
+- Removed hardcoded 1000 MHz constant from `design_space_explorer.py:tok_s_from_layer` — now uses `contracts.units.cycles_to_microseconds` with actual design-point frequency
+- `generate_configs` no longer writes `bandwidth_bytes_per_cycle = bw_gbps` (was numerically incorrect); only writes `bandwidth_gbps`
+- `_compute_kv_cycles` in DSE now computes `bytes_per_cycle` from `bandwidth_gbps` and `frequency_mhz` via `contracts.units`
+- `MACEngine._parse_config` now computes `bw_raw` from `bandwidth_gbps` + `frequency_mhz` instead of reading `bandwidth_bytes_per_cycle` directly
+- `DMAModel` and `KVCacheModel` now compute `bw_bytes_per_cycle` from `bandwidth_gbps` + `frequency_mhz`
+- `npu_sim.py` `NPUSimulator.__init__` reads frequency from `mac_engine` (not only `mxu`); uses `cycles_to_microseconds` for wall-time; `sim.f_mhz` updated in CLI override section
+- CLI `--freq` override now also refreshes `sim.kv` (KVCacheModel) since it caches `bw_bytes_per_cycle`
+- Marked `sim/models/dram.py:DRAMModel` as dead code — only `add_refresh_overhead()` is called; engines use `contracts.units` path
+- README.md "75% DRAM 效率" claim replaced with "0.85 conservative baseline" with provenance note
+- `docs/tiny-npu-analysis/` "75% 效率" updated to "85% 效率"
+- Created `sim/tests/test_frequency_bandwidth_scaling.py` with 13 tests covering compute-bound wall-time scaling, DMA-wall-time invariance, bandwidth monotonicity/saturation, DSE frequency-dependent output, CLI override output, and legacy-field rejection
+- Evidence captured to `.omo/evidence/task-6-frequency-bandwidth.json` and `.omo/evidence/task-6-unit-negative.txt`
+
+### Key findings
+- **Before fix**: `npu_sim --freq 800/1000/1200 --json` produced identical output (proved frequency was not propagating)
+- **After fix**: outputs differ correctly: 800→19.2, 1000→21.6, 1200→22.4 tok/s (block engine, 64x64, LPDDR5-64b)
+- **DMA wall time is frequency-invariant**: For fixed 51.2 GB/s, `raw_dma_cycles / freq_mhz` is constant (1392.44 us) across 800/1000/1200 MHz — proof that the unit pipeline is correct
+- **Compute-bound wall time scales as 1000/f**: As expected when total_cycles is frequency-independent and wall_time = cycles/freq
+- **LPDDR5→HBM3 saturation**: At 819.2 GB/s, block engine is compute-bound — bandwidth increase no longer changes tok/s (correct behavior)
+- **CLI tok/s ratio not exactly freq-dependent**: Due to non-compute components (SFU, KV cache, DRAM refresh) that don't scale with core frequency — expected for a real system simulation
+- `engine_eval_v3.md` 75% DRAM efficiency claim deferred to Todo 18 (historical dated report)
+- Conftest `bandwidth_bytes_per_cycle = 51.2` field is harmless — engines now use `bandwidth_gbps` as authoritative source
+- Test files (`test_engines.py:24`, `test_engine_invalid_inputs.py:63`, etc.) still include `bandwidth_bytes_per_cycle` in config dicts for backward compatibility — not removed as they're test fixtures, not production code
+
+### Technical decisions
+- `bandwidth_gbps` default of 51.2 is consistent with all existing test configs (which also use 51.2 GB/s)
+- Engine construction computes bytes/cycle at init time — no dynamic recalculation needed since frequency doesn't change during estimation
+- `sim.f_mhz` must be updated in CLI override, not just engine/model recreation — otherwise wall-time conversion uses stale config value
+- Raw DMA wall-time invariance (not total wall-time) is the correct property to test for memory-bound scenarios, since compute cycles are always frequency-independent and affect total_cycles
+- DSE `tok_s_from_layer` frequency-dependent behavior verified by parameterized test at 800/1000/1200 MHz — tok/s ratios match frequency ratios within 0.5%
+- CLI override tolerance of 15% accounts for SFU/KV/DRAM components that have their own frequency dependencies

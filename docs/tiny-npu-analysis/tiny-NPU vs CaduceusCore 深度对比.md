@@ -102,7 +102,7 @@ related: [[tiny-NPU五大计算引擎RTL解剖]], [[CaduceusCore架构]]
 
 1. **8 引擎 DSE** — 不是选定一个架构，而是让 Pareto 前沿说话
 2. **完整验证链** — Arc(数值精度) → Func(bit-exact) → E2E(llama.cpp 全栈) → RTL
-3. **DRAM 墙壁建模** — 75% 效率、BW 天花板、DRAM PHY 面积，不画饼
+3. **DRAM 墙壁建模** — 85% 效率（conservative baseline）、BW 天花板、DRAM PHY 面积，不画饼
 4. **双场景策略** — LPDDR5 低成本 + 3D DRAM 高性能，一颗 die 不一定打天下
 5. **软件栈** — ggml NPU backend + ExecuTorch delegate
 6. **面积可溯源** — TPUv1 ISCA 2017 die-shot 为锚，不凭空估面积

@@ -85,8 +85,11 @@ def _compute_kv_cycles(config: Dict[str, Any], batch_m: int = 1) -> int:
     l2_kb = int(sram.get("l2_shared_kb", 2048))
     kvbuf_kb = int(l2_kb * 0.4)
 
+    from contracts.units import bandwidth_gbps_to_bytes_per_cycle as _bw2bpc
     mem = config.get("memory", {})
-    bw_raw = float(mem.get("bandwidth_bytes_per_cycle", 51.2))
+    freq_mhz = float(config.get("mac_engine", {}).get("frequency_mhz", 1000))
+    bw_gbps = float(mem.get("bandwidth_gbps", 51.2))
+    bw_raw = _bw2bpc(bw_gbps, freq_mhz)
     dram_eff = float(mem.get("dram_efficiency", 0.85))
     eff_bw = bw_raw * dram_eff
 
@@ -145,9 +148,10 @@ def simulate_layer(config: Dict[str, Any], batch_m: int = None) -> tuple:
     return total, weight_bytes
 
 
-def tok_s_from_layer(layer_cycles: int, num_layers: int) -> float:
-    f_mhz = 1000
-    total_us = layer_cycles * num_layers / f_mhz
+def tok_s_from_layer(layer_cycles: int, num_layers: int, f_mhz: float) -> float:
+    """Convert per-layer cycle count to tokens/second using actual frequency."""
+    from contracts.units import cycles_to_microseconds as _c2us
+    total_us = _c2us(layer_cycles * num_layers, f_mhz)
     return round(1e6 / total_us, 1) if total_us > 0 else 0
 
 
@@ -245,7 +249,6 @@ def generate_configs(quick: bool = False) -> List[Dict[str, Any]]:
                                 cfg["mac_engine"]["weight_precision_bits"] = w_bits
                                 cfg["mac_engine"]["frequency_mhz"] = freq
                                 cfg["memory"]["bandwidth_gbps"] = bw_gbps
-                                cfg["memory"]["bandwidth_bytes_per_cycle"] = bw_gbps
                                 cfg["memory"]["dram_width_bits"] = dw_bits
                                 cfg["memory"]["dram_efficiency"] = 0.85
                                 cfg["sram"]["l2_shared_kb"] = l2_kb
@@ -274,7 +277,8 @@ def evaluate_config(cfg: Dict[str, Any], area_model: AreaModel,
         dw_util = _depthwise_util_from_cv_result(cv_result)
     else:
         layer_cycles, _ = simulate_layer(cfg)
-        fps = tok_s_from_layer(layer_cycles, _NUM_LAYERS)
+        freq = cfg["mac_engine"]["frequency_mhz"]
+        fps = tok_s_from_layer(layer_cycles, _NUM_LAYERS, freq)
         area_result = area_model.estimate(cfg, engine_type)
         area = area_result["total_mm2"]
         power = power_model.estimate(area_model, cfg, engine_type)

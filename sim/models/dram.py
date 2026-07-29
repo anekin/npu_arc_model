@@ -1,4 +1,14 @@
-"""LPDDR5 DRAM 时序模型 — 刷新、行周期、带宽效率"""
+"""LPDDR5 DRAM 时序模型 — 刷新、行周期、带宽效率
+
+.. warning::
+   This module is **DEAD CODE** as of Todo 6 (frequency/bandwidth unit repair).
+   The engine path does **not** use ``DRAMModel.effective_bandwidth_bytes_per_cycle()``.
+   Only ``add_refresh_overhead()`` is called (from ``npu_sim.py``), and it only uses
+   the refresh fraction, not the bandwidth-per-cycle model.
+   
+   The canonical bandwidth-to-cycles conversion is in ``contracts.units.bandwidth_gbps_to_bytes_per_cycle()``.
+   All engines now compute ``bytes_per_cycle`` directly from ``bandwidth_gbps`` at construction time.
+"""
 
 from typing import Any, Dict
 

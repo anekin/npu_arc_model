@@ -118,7 +118,9 @@ class MACEngine(ABC):
         self.ops_per_mac = int(mac.get("ops_per_mac", 2))
 
         mem = config.get("memory", {})
-        self.bw_raw = float(mem.get("bandwidth_bytes_per_cycle", 51.2))
+        from contracts.units import bandwidth_gbps_to_bytes_per_cycle as _bw2bpc
+        bw_gbps = float(mem.get("bandwidth_gbps", 51.2))
+        self.bw_raw = _bw2bpc(bw_gbps, self.f_mhz)
         self.dram_efficiency = float(mem.get("dram_efficiency", 0.85))
         opts = config.get("optimizations", {})
         self.bw_multiplier = float(opts.get("dma_bw_multiplier", 1.0))

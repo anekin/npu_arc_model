@@ -53,7 +53,7 @@ Phase 2:  交叉校验    → 对比已知产品（TPUv1/RK1828/Eyeriss）
 | 决策 | 结论 | 依据 |
 |:---|:---|:---|
 | **PE 面积校准** | TPUv1 ISCA 2017 die-shot 为主锚点 | [`references/area_sources.md`](references/area_sources.md) |
-| **DRAM 效率** | 75%（非 85%） | JEDEC 实测：刷新 5.4% + 行冲突 4.5% + 总线 1-2% |
+| **DRAM 效率** | 0.85 — conservative sequential decode baseline (per-bank refresh ~3.6%, extra from controller scheduling/command bus/bank conflicts) | 详见 contracts/hardware.py MemoryConfig |
 | **量化方案** | per-block (g=128) INT4 | cos_sim > 0.99，比 per-channel 稳定 0.014 |
 | **SRAM 灵敏度** | LPDDR5 场景：4-6MB sweet spot；3D DRAM 场景：512KB 足够 | DSE 扫描结果 |
 | **过程节点** | TSMC 12nm（面积 = 7nm 基线 × 2.94） | 用户指定 |

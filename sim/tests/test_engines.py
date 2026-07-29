@@ -346,7 +346,7 @@ def test_gmma_tma_overlap():
 
     cfg_lpddr5 = _engine_config("gmma")
     cfg_hbm2e = _engine_config("gmma")
-    cfg_hbm2e["memory"]["bandwidth_bytes_per_cycle"] = 460.0
+    cfg_hbm2e["memory"]["bandwidth_gbps"] = 460.0
 
     r_lpddr5 = create_engine(cfg_lpddr5).estimate(M, K, N)
     r_hbm2e = create_engine(cfg_hbm2e).estimate(M, K, N)

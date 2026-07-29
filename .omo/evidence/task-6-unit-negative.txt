@@ -1,0 +1,8 @@
+.                                                                        [100%]
+=============================== warnings summary ===============================
+sim/tests/test_frequency_bandwidth_scaling.py:342
+  /home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_frequency_bandwidth_scaling.py:342: PytestUnknownMarkWarning: Unknown pytest.mark.cli - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.cli
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+1 passed, 44 deselected, 1 warning in 0.04s

@@ -80,7 +80,8 @@ class NPUSimulator:
         with open(config_path) as f:
             self.config = yaml.safe_load(f)
         self.num_cores = int(self.config.get("cores", 1))
-        self.f_mhz = int(self.config["mxu"]["frequency_mhz"])
+        mac = self.config.get("mac_engine", self.config.get("mxu", {}))
+        self.f_mhz = int(mac.get("frequency_mhz", 1000))
 
         # Initialize models
         self.mxu = create_engine(self.config)
@@ -281,7 +282,8 @@ class NPUSimulator:
             print(f"[DEBUG SYSTEM/dram_refresh] wall_clock += {timeline._current_cycle - _prev_cycle:>10,}  (accumulated: {timeline._current_cycle:>12,})")
 
         total_cycles = timeline.total_cycles
-        decode_us = total_cycles / self.f_mhz
+        from contracts.units import cycles_to_microseconds as _c2us
+        decode_us = _c2us(total_cycles, self.f_mhz)
         decode_tok_per_s = 1e6 / decode_us if decode_us > 0 else 0
 
         breakdown = breakdown_events(timeline.events)
@@ -365,7 +367,8 @@ class NPUSimulator:
         timeline.add_kv("dram_refresh", refresh_cycles, -1)
 
         total_cycles = timeline.total_cycles
-        decode_us = total_cycles / self.f_mhz
+        from contracts.units import cycles_to_microseconds as _c2us
+        decode_us = _c2us(total_cycles, self.f_mhz)
         decode_tok_per_s = 1e6 / decode_us if decode_us > 0 else 0
 
         breakdown = breakdown_events(timeline.events)
@@ -534,9 +537,8 @@ def main():
               "460": 460.0, "819": 819.2}[args.dram]
         mem = cfg.get("memory", {})
         mem["bandwidth_gbps"] = bw
-        mem["bandwidth_bytes_per_cycle"] = bw
         mem["dram_width_bits"] = {"25": 32, "50": 64, "100": 128,
-                                  "200": 256, "460": 1024, "819": 1024}[args.dram]
+                                   "200": 256, "460": 1024, "819": 1024}[args.dram]
         overrides.append(f"DRAM={bw}GB/s")
     if args.array:
         h, w = args.array.split("x")
@@ -560,10 +562,16 @@ def main():
     if overrides:
         if not args.json:
             print(f"[override] {', '.join(overrides)}")
-        # Re-init models with overridden config
+        # Re-init all frequency/bandwidth-consuming models with overridden config
+        mac = cfg.get("mac_engine", cfg.get("mxu", {}))
+        sim.f_mhz = int(mac.get("frequency_mhz", 1000))
         sim.mxu = create_engine(cfg)
         sim.dma = DMAModel(cfg)
         sim.dram = DRAMModel(cfg)
+        sim.kv = KVCacheModel(cfg)
+        sim.kv.configure_for_model(
+            num_kv_heads=16, head_dim=128, num_layers=36, max_context=2048
+        )
         sim.config = cfg
 
     if args.isa:

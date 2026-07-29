@@ -57,3 +57,26 @@
 **What**: `EngineResult.__post_init__` rejects NaN/Inf, negative cycles, and non-positive mac_count/op_count. It does NOT validate diagnostics or utilization bounds.
 **Why**: Diagnostic validation requires engine-type context (different engines have different required keys). Utilization validation is a test/oracle responsibility, not a construction-time check.
 **Alternatives**: Could have added `engine_type` field to EngineResult for self-validation, but that couples result to creation context.
+
+## Todo 6: Frequency/Bandwidth Unit Propagation (2026-07-30)
+
+### Decision 12: bandwidth_bytes_per_cycle is now computed, not configured
+**What**: All engine and model construction now computes `bytes_per_cycle` from `bandwidth_gbps` and `frequency_mhz` at construction time, rather than reading a pre-configured `bandwidth_bytes_per_cycle` field.
+**Why**: The old approach (writing `bandwidth_bytes_per_cycle = bw_gbps` in DSE) was numerically wrong (GB/s ≠ bytes/cycle unless f=1000 MHz). The new approach uses `contracts.units.bandwidth_gbps_to_bytes_per_cycle()` for correct conversion at every design-point frequency.
+**Alternatives**: Could have kept `bandwidth_bytes_per_cycle` as a required-but-computed field, but in-place computation at construction time is simpler and eliminates stale values.
+
+### Decision 13: DRAMModel is dead code
+**What**: Marked `sim/models/dram.py:DRAMModel.effective_bandwidth_bytes_per_cycle()` as dead code — only `add_refresh_overhead()` is called.
+**Why**: Todos 2-4 already established that engines compute their own bytes/cycle from `bandwidth_gbps` via `contracts.units`. The DRAM model's alternative formula was unused and its 75% efficiency claim was disproven in ULW-Research.
+**Alternatives**: Could have upgraded DRAMModel to use the new unit pipeline, but no consumer uses it — keeping dead code documented is cleaner than refactoring unused code.
+
+### Decision 14: CLI --freq override must refresh sim.f_mhz
+**What**: `npu_sim.py` CLI override section now updates `sim.f_mhz` in addition to recreating `sim.mxu`, `sim.dma`, `sim.dram`, and `sim.kv`.
+**Why**: `sim.f_mhz` is set once in `__init__` but the `simulate_decode` method uses it for wall-clock conversion. Without updating it, the engine would use the override frequency but wall-time conversion would use the config-file frequency — producing incorrect results.
+**Alternatives**: Could have read frequency from config dict on every use, but `self.f_mhz` is used throughout — updating it at override time is the minimal fix.
+
+### Decision 15: engine_eval_v3.md 75% DRAM efficiency deferred
+**What**: `sim/results/engine_eval_v3.md` still contains "75% LPDDR5 实际效率" in title and content.
+**Why**: This is a historical dated evaluation report. The 75% claim has been disproven (per ULW-Research and `.omo/plans/arc-model-ppa-corrections.md`). The canonical value is now `dram_efficiency=0.85` in `contracts/hardware.py`.
+**Deferral**: Full cleanup of historical reports is deferred to Todo 18 (final acceptance and release evidence). The report's title clearly identifies it as a dated artifact; the new DSE infrastructure uses 0.85.
+**Linked task**: Todo 18 — full matrix end-to-end acceptance, documentation, and release evidence.

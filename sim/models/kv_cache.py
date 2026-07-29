@@ -32,7 +32,10 @@ class KVCacheModel:
         self.element_bytes = self.element_bits // 8          # 1
 
         mem = config["memory"]
-        self.bw_bytes_per_cycle = float(mem["bandwidth_bytes_per_cycle"])
+        from contracts.units import bandwidth_gbps_to_bytes_per_cycle as _bw2bpc
+        freq_mhz = float(config.get("mac_engine", config.get("mxu", {})).get("frequency_mhz", 1000))
+        bw_gbps = float(mem.get("bandwidth_gbps", 51.2))
+        self.bw_bytes_per_cycle = _bw2bpc(bw_gbps, freq_mhz)
 
         # Timing parameters
         # SRAM access: ~2 cycles (1 read + 1 write port)

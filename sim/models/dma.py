@@ -64,7 +64,10 @@ class DMAModel:
         ]
 
         mem = config["memory"]
-        self.bw_bytes_per_cycle = float(mem["bandwidth_bytes_per_cycle"])  # 51.2
+        from contracts.units import bandwidth_gbps_to_bytes_per_cycle as _bw2bpc
+        freq_mhz = float(config.get("mac_engine", config.get("mxu", {})).get("frequency_mhz", 1000))
+        bw_gbps = float(mem.get("bandwidth_gbps", 51.2))
+        self.bw_bytes_per_cycle = _bw2bpc(bw_gbps, freq_mhz)
 
     def estimate_transfer(self, size_bytes: int, direction: str = "load") -> int:
         """Estimate cycles for a single DMA transfer.
