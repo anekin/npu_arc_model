@@ -7,18 +7,19 @@
 
 from __future__ import annotations
 
-import copy
-import math
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import yaml
-
-from calibration.evaluate import TrustGate, calibration_digest, calibration_ids_for_design_point
+from calibration.evaluate import (
+    TrustGate,
+    calibration_digest,
+    calibration_ids_for_design_point,
+)
 from calibration.registry import CalibrationRegistry
-from contracts.errors import ConfigError, NonAuthoritativeRunError
-from contracts.identity import canonical_json_bytes, digest_sha256
+from contracts.errors import ConfigError
+from contracts.identity import digest_sha256
 from contracts.result import (
     CalibrationRef,
     DesignPointResult,
@@ -34,9 +35,15 @@ from dse.manifest import CoverageManifest
 from dse.models import DesignPoint
 from dse.pareto import MultiObjectivePareto, ParetoPoint
 from dse.space import DesignSpace, GenerationResult
-from scenarios.compiler import CompiledScenario, compile_scenario
-from scenarios.schema import ArrivalMode, ArrivalPattern, QueuePolicy, Scenario, WorkloadClass
 from scenario_runner import run_scenario
+from scenarios.compiler import compile_scenario
+from scenarios.schema import (
+    ArrivalMode,
+    ArrivalPattern,
+    QueuePolicy,
+    Scenario,
+    WorkloadClass,
+)
 from scheduler.metrics import ScenarioMetrics
 from workloads.catalog import WorkloadFixture, load_all_fixtures
 
@@ -64,10 +71,10 @@ class EvaluatedPoint:
     """A design point together with its evaluation outcome."""
 
     point: DesignPoint
-    result: Optional[DesignPointResult] = None
-    metrics: Optional[ScenarioMetrics] = None
-    ppa: Optional[Any] = None
-    error: Optional[ErrorRecord] = None
+    result: DesignPointResult | None = None
+    metrics: ScenarioMetrics | None = None
+    ppa: Any | None = None
+    error: ErrorRecord | None = None
     calibration_violations: list[dict[str, Any]] = field(default_factory=list)
 
 
@@ -82,16 +89,16 @@ class ScenarioDseRunner:
         if run_config.thermal_limit_w is not None:
             self.pareto.thermal_limit_w = run_config.thermal_limit_w
         self.pareto.quality_gate_required = run_config.quality_gate_required
-        self._fixtures: Optional[Dict[str, WorkloadFixture]] = None
+        self._fixtures: dict[str, WorkloadFixture] | None = None
         self._registry = CalibrationRegistry.from_yaml()
         self._trust_gate = TrustGate(self._registry)
 
-    def _fixtures_map(self) -> Dict[str, WorkloadFixture]:
+    def _fixtures_map(self) -> dict[str, WorkloadFixture]:
         if self._fixtures is None:
             self._fixtures = load_all_fixtures()
         return self._fixtures
 
-    def _fixture_for_scenario(self) -> Optional[WorkloadFixture]:
+    def _fixture_for_scenario(self) -> WorkloadFixture | None:
         ref = self.scenario.workload_ref
         if ref is None:
             return None
@@ -114,7 +121,7 @@ class ScenarioDseRunner:
         period_ms = max(1.0, work_ms * 2.0)
         deadline_ms = max(1.0, work_ms * 3.0)
 
-        classes: List[WorkloadClass] = []
+        classes: list[WorkloadClass] = []
         for idx, base_cls in enumerate(base_scenario.classes):
             cls_work_ms = work_ms
             # Scale service time by relevant workload dimensions.
@@ -182,11 +189,11 @@ class ScenarioDseRunner:
             metadata={**base_scenario.metadata, "point_axis_values": dict(av)},
         )
 
-    def _evaluate_ppa(self, point: DesignPoint) -> Tuple[Any, Optional[str]]:
+    def _evaluate_ppa(self, point: DesignPoint) -> tuple[Any, str | None]:
         """Evaluate PPA for a design point using legacy AreaModel/PowerModel."""
         try:
-            from engine.ppa_model import AreaModel, PowerModel
             import design_space_explorer as dse_module
+            from engine.ppa_model import AreaModel, PowerModel
 
             base_path = SIM_DIR / "config" / "design_space.yaml"
             base_cfg = yaml.safe_load(base_path.read_text(encoding="utf-8"))
@@ -292,9 +299,7 @@ class ScenarioDseRunner:
 
         if self.run_config.trust_mode == "decision_grade" and (not gate_ok or gate_trust.value in {"T0", "T1"}):
             point_trust = RunTrustLevel.non_authoritative
-        elif gate_trust.value == "T0":
-            point_trust = RunTrustLevel.exploratory
-        elif gate_trust.value == "T1":
+        elif gate_trust.value == "T0" or gate_trust.value == "T1":
             point_trust = RunTrustLevel.exploratory
         elif gate_trust.value == "T2":
             point_trust = RunTrustLevel.calibrated_estimate
@@ -325,8 +330,8 @@ class ScenarioDseRunner:
 
     def run(
         self,
-        generation_result: Optional[GenerationResult] = None,
-    ) -> Tuple[DesignSpaceResultV2, CoverageManifest, List[ParetoPoint]]:
+        generation_result: GenerationResult | None = None,
+    ) -> tuple[DesignSpaceResultV2, CoverageManifest, list[ParetoPoint]]:
         """Evaluate all design points and return v2 result, manifest, and Pareto frontier."""
         if generation_result is None:
             generation_result = self.design_space.generate_with_exclusions()
@@ -334,9 +339,9 @@ class ScenarioDseRunner:
         points = list(generation_result.points)
         manifest = CoverageManifest(self.design_space.axes, points, generation_result.exclusions)
 
-        evaluated: List[EvaluatedPoint] = []
-        v2_results: List[DesignPointResult] = []
-        errors: List[ErrorRecord] = []
+        evaluated: list[EvaluatedPoint] = []
+        v2_results: list[DesignPointResult] = []
+        errors: list[ErrorRecord] = []
 
         for point in points:
             manifest.record_evaluated(point)
@@ -429,7 +434,7 @@ class ScenarioDseRunner:
 
         return result_set, manifest, frontier
 
-    def recommendation(self, result_set: DesignSpaceResultV2) -> List[DesignPointResult]:
+    def recommendation(self, result_set: DesignSpaceResultV2) -> list[DesignPointResult]:
         """Return release recommendation or raise NonAuthoritativeRunError."""
         return release_recommendation(result_set)
 
@@ -442,7 +447,7 @@ def run_scenario_dse(
     allow_partial: bool = False,
     thermal_limit_w: float = 150.0,
     trust_mode: str = "exploratory",
-) -> Tuple[DesignSpaceResultV2, CoverageManifest, List[ParetoPoint]]:
+) -> tuple[DesignSpaceResultV2, CoverageManifest, list[ParetoPoint]]:
     """Convenience wrapper to run scenario-driven DSE."""
     config = DseRunConfig(
         scenario=scenario,

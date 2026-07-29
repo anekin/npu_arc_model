@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Dict, Iterable, Optional
+from typing import Any
 
 import yaml
-
 from calibration.schema import CalibrationEntry, CalibrationError
-
 
 DEFAULT_PARAMETERS_PATH = Path(__file__).resolve().parent.parent.parent / "references" / "calibration" / "parameters.yaml"
 
@@ -17,7 +16,7 @@ class CalibrationRegistry:
     """In-memory registry of calibration entries keyed by calibration_id."""
 
     def __init__(self, entries: Iterable[CalibrationEntry]) -> None:
-        self._entries: Dict[str, CalibrationEntry] = {}
+        self._entries: dict[str, CalibrationEntry] = {}
         for entry in entries:
             if entry.calibration_id in self._entries:
                 raise CalibrationError(
@@ -28,7 +27,7 @@ class CalibrationRegistry:
             self._entries[entry.calibration_id] = entry
 
     @classmethod
-    def from_yaml(cls, path: Path | str | None = None) -> "CalibrationRegistry":
+    def from_yaml(cls, path: Path | str | None = None) -> CalibrationRegistry:
         """Load registry from the canonical parameters.yaml file."""
         if path is None:
             path = DEFAULT_PARAMETERS_PATH
@@ -57,7 +56,7 @@ class CalibrationRegistry:
         return cls(entries)
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "CalibrationRegistry":
+    def from_dict(cls, data: dict[str, Any]) -> CalibrationRegistry:
         """Build a registry from a dict mapping IDs to entry dicts."""
         entries = []
         for calibration_id, item in data.items():
@@ -86,7 +85,7 @@ class CalibrationRegistry:
                 reason="unknown_id",
             ) from exc
 
-    def lookup(self, calibration_id: str) -> Optional[CalibrationEntry]:
+    def lookup(self, calibration_id: str) -> CalibrationEntry | None:
         """Return the entry or ``None`` if unknown."""
         return self._entries.get(calibration_id)
 
@@ -114,4 +113,4 @@ class CalibrationRegistry:
         }
 
 
-__all__ = ["CalibrationRegistry", "DEFAULT_PARAMETERS_PATH"]
+__all__ = ["DEFAULT_PARAMETERS_PATH", "CalibrationRegistry"]

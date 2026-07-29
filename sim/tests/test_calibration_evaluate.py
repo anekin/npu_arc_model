@@ -11,11 +11,9 @@ Covers:
 
 from __future__ import annotations
 
-import copy
 from pathlib import Path
 
 import pytest
-
 from calibration.evaluate import (
     TrustGate,
     calibration_digest,
@@ -142,7 +140,7 @@ def test_trust_gate_blocks_unknown_id():
     """Unknown calibration ID is reported as a violation."""
     registry = CalibrationRegistry.from_yaml()
     gate = TrustGate(registry)
-    ok, max_trust, violations = gate.check({"unknown_param"}, require_trust=TrustLevel.T0)
+    ok, _max_trust, violations = gate.check({"unknown_param"}, require_trust=TrustLevel.T0)
     assert not ok
     assert any(v["reason"] == "unknown_calibration_id" for v in violations)
 
@@ -208,7 +206,13 @@ def test_runner_exploratory_marks_t0_points_exploratory():
     """ScenarioDseRunner in exploratory mode marks T0-affected points exploratory."""
     from dse.runner import DseRunConfig, ScenarioDseRunner
     from dse.space import load_design_space_from_yaml
-    from scenarios.schema import Scenario, WorkloadClass, ArrivalPattern, ArrivalMode, QueuePolicy
+    from scenarios.schema import (
+        ArrivalMode,
+        ArrivalPattern,
+        QueuePolicy,
+        Scenario,
+        WorkloadClass,
+    )
 
     scenario = Scenario(
         name="test_exploratory",
@@ -250,7 +254,13 @@ def test_runner_decision_grade_fails_on_t0():
     from contracts.errors import ConfigError
     from dse.runner import DseRunConfig, ScenarioDseRunner
     from dse.space import load_design_space_from_yaml
-    from scenarios.schema import Scenario, WorkloadClass, ArrivalPattern, ArrivalMode, QueuePolicy
+    from scenarios.schema import (
+        ArrivalMode,
+        ArrivalPattern,
+        QueuePolicy,
+        Scenario,
+        WorkloadClass,
+    )
 
     scenario = Scenario(
         name="test_decision_grade",

@@ -7,11 +7,10 @@ Defines :class:`CalibrationEntry`, the provenance/status enums, and the
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any, Optional
-
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from typing import Any
 
 from contracts.hardware import TrustLevel
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class CalibrationStatus(str, Enum):
@@ -38,12 +37,12 @@ class CalibrationEntry(BaseModel):
     calibration_id: str = Field(..., description="Stable registry key")
     value: float = Field(..., description="Current best value")
     unit: str = Field(..., description="Physical unit")
-    source_uri: Optional[str] = Field(default=None, description="URI/path to source")
-    source_hash: Optional[str] = Field(default=None, description="SHA-256 of raw source data when applicable")
+    source_uri: str | None = Field(default=None, description="URI/path to source")
+    source_hash: str | None = Field(default=None, description="SHA-256 of raw source data when applicable")
     trust_level: TrustLevel = Field(..., description="T0-T3 as defined in contracts.hardware")
     calibration_range: str = Field(..., description="Human-readable calibrated domain")
-    range_min: Optional[float] = Field(default=None, description="Programmatic lower bound")
-    range_max: Optional[float] = Field(default=None, description="Programmatic upper bound")
+    range_min: float | None = Field(default=None, description="Programmatic lower bound")
+    range_max: float | None = Field(default=None, description="Programmatic upper bound")
     status: CalibrationStatus = Field(..., description="assumption | calibrated | exploratory | superseded")
     description: str = Field(default="")
 
@@ -65,9 +64,7 @@ class CalibrationEntry(BaseModel):
         """Return True if *actual_value* lies inside [range_min, range_max]."""
         if self.range_min is not None and actual_value < self.range_min:
             return False
-        if self.range_max is not None and actual_value > self.range_max:
-            return False
-        return True
+        return not (self.range_max is not None and actual_value > self.range_max)
 
 
 class CalibrationError(ValueError):
@@ -83,7 +80,7 @@ class CalibrationError(ValueError):
         *,
         calibration_id: str = "",
         reason: str = "",
-        details: Optional[dict[str, Any]] = None,
+        details: dict[str, Any] | None = None,
     ) -> None:
         super().__init__(message)
         self.calibration_id = calibration_id

@@ -8,14 +8,12 @@ identities.
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Any, Dict, Iterable, Optional, Set, Tuple
-
-from contracts.hardware import TrustLevel
-from contracts.identity import digest_sha256
+from collections.abc import Iterable
+from typing import Any
 
 from calibration.registry import CalibrationRegistry
-from calibration.schema import CalibrationEntry
+from contracts.hardware import TrustLevel
+from contracts.identity import digest_sha256
 
 
 def calibration_digest(registry: CalibrationRegistry) -> str:
@@ -28,7 +26,7 @@ def result_digest(
     workload_digest: str,
     calibration_digest: str,
     *,
-    extra: Optional[dict[str, Any]] = None,
+    extra: dict[str, Any] | None = None,
 ) -> str:
     """Return a stable digest combining input, workload, and calibration."""
     source = {
@@ -48,14 +46,14 @@ def _node_scale_factor(process_node_nm: float) -> float:
     return (process_node_nm / 7.0) ** 2
 
 
-def calibration_ids_for_design_point(hw_config: dict[str, Any]) -> Set[str]:
+def calibration_ids_for_design_point(hw_config: dict[str, Any]) -> set[str]:
     """Return the calibration IDs consumed by a hardware config.
 
     The mapping mirrors the parameters consumed by ``engine.ppa_model`` and
     the MAC engines: PE baselines, engine-specific ratios, pipeline/descriptor
     constants, memory PHY/TSV, and power-density anchors.
     """
-    ids: Set[str] = set()
+    ids: set[str] = set()
 
     # Always-used power/energy anchors.
     ids.add("pj_per_mac_12nm_int8")
@@ -92,11 +90,9 @@ def calibration_ids_for_design_point(hw_config: dict[str, Any]) -> Set[str]:
     return ids
 
 
-def _actual_value(calibration_id: str, hw_config: dict[str, Any]) -> Optional[float]:
+def _actual_value(calibration_id: str, hw_config: dict[str, Any]) -> float | None:
     """Extract the actual config value for a calibration ID."""
     area_model = hw_config.get("area_model", {})
-    mac = hw_config.get("mac_engine", {})
-    engine_type = mac.get("type", "block").lower()
 
     if calibration_id == "systolic_pe_area_7nm":
         return float(area_model.get("systolic_pe_area_mm2", 2.0))
@@ -157,10 +153,10 @@ class TrustGate:
         self,
         calibration_ids: Iterable[str],
         *,
-        values: Optional[dict[str, float]] = None,
+        values: dict[str, float] | None = None,
         require_trust: TrustLevel = TrustLevel.T0,
-        hw_config: Optional[dict[str, Any]] = None,
-    ) -> Tuple[bool, TrustLevel, list[dict[str, Any]]]:
+        hw_config: dict[str, Any] | None = None,
+    ) -> tuple[bool, TrustLevel, list[dict[str, Any]]]:
         """Return ``(ok, max_trust, violations)``.
 
         * ``ok`` is True when every ID is known, its trust level is at least
@@ -193,7 +189,7 @@ class TrustGate:
                     "required_trust": require_trust.value,
                 })
 
-            actual: Optional[float]
+            actual: float | None
             if cid in values:
                 actual = values[cid]
             elif hw_config is not None:

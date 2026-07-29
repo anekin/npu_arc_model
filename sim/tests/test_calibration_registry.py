@@ -19,7 +19,6 @@ import sys
 from pathlib import Path
 
 import pytest
-
 from calibration.registry import CalibrationRegistry
 from calibration.schema import CalibrationError, CalibrationStatus, TrustLevel
 
@@ -124,6 +123,7 @@ def _run_calibrate_script(*, cwd: Path | None = None, env: dict | None = None) -
         env=env or os.environ,
         capture_output=True,
         text=True,
+        check=False,
     )
 
 
@@ -167,6 +167,7 @@ except CalibrationError as e:
 """],
         capture_output=True,
         text=True,
+        check=False,
     )
     assert result.returncode == 2
     assert "missing_checksum_manifest" in result.stdout
