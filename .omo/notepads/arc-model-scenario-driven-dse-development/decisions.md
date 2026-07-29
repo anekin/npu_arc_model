@@ -294,3 +294,12 @@
 - **Context**: `dse_scenario.py` preflight is used by existing CLI/helpers expecting `'scenario'`, `'bottleneck'`, etc.
 - **Decision**: Add `scenario_model`, `compiled_scenario`, `design_space`, `manifest` keys; keep legacy keys unchanged.
 - **Consequences**: Backward compatibility preserved; preflight and real search now share the same `Scenario` model.
+
+## 2026-07-30 – Todo 16 decisions
+
+1. **Legacy CLI preserved as default**: `design_space_explorer.py` without `--scenario` continues to produce Todo-1 v1 output. `--scenario`, `--space`, `--seed`, and `--result-schema v2` are opt-in.
+2. **Mutual exclusivity**: `--scenario` is rejected when combined with `--quick`, `--cv-model`, `--model-spec`, or `--batch-m`; `--replay` is similarly isolated.
+3. **Pareto hard gates**: Keep `COMPLETE`, `NO_CPU_FALLBACK`, `CAPACITY_FIT`, `QUALITY_GATE`, `POWER_THERMAL`, `TERMINAL_COMPLETION`, `AUTHORITATIVE`. Drop `P99_DEADLINE` because `deadline_miss_count` already captures deadline violations and absolute P99 latency is not comparable across workload types.
+4. **Replay bundle determinism**: Canonical payload (`inputs.json` + `result.json` + `coverage.json`) is byte-identical for the same commit/input/seed. `metadata.json` holds only non-deterministic info. Bundle directories refuse to overwrite existing payload files.
+5. **PPA proxy for scenario DSE**: When evaluating design points for non-LLM workloads, use a fixed qwen2.5-3b decode trace as the PPA proxy. Scenario temporal metrics come from `ScenarioRunner`; PPA values provide area/power/throughput context only.
+6. **Deterministic axis ordering**: `DesignSpace` sorts axes and defaults by name so that JSON round-tripping cannot change point enumeration order.

@@ -432,3 +432,11 @@
 - Reason codes are centralized in `dse_axes.yaml` with human-readable text, not inline in code or grep/label matching.
 - `DesignPoint` identity includes hardware config, scenario ref, workload ref, and temporal axes so any design-axis change changes the ID.
 - `CoverageManifest` validates count invariants only after outcomes are recorded; the manifest is the single place where generated/evaluated/pruned/failed/successful/filtered counts converge.
+
+## 2026-07-30 – Todo 16 implementation
+
+- Hard-gate `P99_DEADLINE` compared absolute `p99_latency_s` (end-to-end job latency from `ScenarioMetrics`) against scenario deadline. This is semantically wrong for decode/VLA workloads and rejected every realistic point. Replaced by the existing `TERMINAL_COMPLETION` gate which checks `deadline_miss_count == 0` and `drop_count == 0`.
+- `DesignSpace` iterated axes in dict insertion order. Because replay bundles serialize inputs with canonical JSON (sorted keys), the axis order changes on reload, which changed design-point generation order and broke byte-identical replay digests. Fixed by sorting axes and defaults by name inside `DesignSpace`.
+- Default Pareto objective `completed_throughput_hz` did not exist on `EngineMetrics`. Added it as an optional field so the default objective set can be populated by future scenario runners; missing values are treated as worst-case during dominance.
+- `Scenario` schema lacked a `metadata` field, which is needed for fixture tracking and per-scenario objective overrides. Added it as `Dict[str, Any]` with default `{}`.
+- Legacy `evaluate_config` relies on module-level globals (`_CV_MODEL`, `_LLM_TRACE`, `_NUM_LAYERS`). `ScenarioDseRunner` now sets these to a deterministic qwen2.5-3b proxy trace before each PPA call so scenario runs are independent of CLI global state.

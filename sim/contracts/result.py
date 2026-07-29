@@ -104,6 +104,7 @@ class EngineMetrics(BaseModel):
     efficiency_tok_per_mm2: float = Field(default=0.0)
 
     # Optional per-engine drill-down
+    completed_throughput_hz: Optional[float] = Field(default=None)
     mac_count: Optional[int] = Field(default=None, description="Total MAC operations")
     op_count: Optional[int] = Field(default=None, description="Total arithmetic operations (2× MAC)")
     total_cycles: Optional[int] = Field(default=None)
@@ -121,9 +122,9 @@ class EngineMetrics(BaseModel):
     deadline_miss_count: Optional[int] = Field(default=None)
     drop_count: Optional[int] = Field(default=None)
 
-    # Memory
     memory_footprint_gib: Optional[float] = Field(default=None)
     spill_bytes: Optional[int] = Field(default=None)
+    energy_joules: Optional[float] = Field(default=None)
 
 
 class CalibrationRef(BaseModel):
@@ -195,6 +196,11 @@ class DesignSpaceResultV2(BaseModel):
     input_digest: str = Field(default="", description="SHA-256 of input config")
     workload_digest: str = Field(default="", description="SHA-256 of workload spec")
     calibration_digest: str = Field(default="", description="SHA-256 of calibration params")
+
+    frontier_design_point_ids: list[str] = Field(
+        default_factory=list,
+        description="IDs of design points on the Pareto frontier",
+    )
 
 
 # ── Release recommendation gate ───────────────────────────────────────────────

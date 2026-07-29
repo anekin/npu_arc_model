@@ -71,9 +71,9 @@ class DesignSpace:
         self.axes_config = axes_config
         self.base_config = base_config
         self.mode = mode
-        self.axes = build_axes(axes_config)
+        self.axes = dict(sorted(build_axes(axes_config).items()))
         self.constraints = build_constraints(axes_config)
-        self.defaults = axes_config.get("defaults", {})
+        self.defaults = dict(sorted(axes_config.get("defaults", {}).items()))
         self.reason_codes = axes_config.get("reason_codes", {})
 
     def generate(self) -> List[DesignPoint]:

@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Dict, Any, List, Tuple
 
 sys.path.insert(0, str(Path(__file__).parent))
+from contracts.errors import ConfigError
 from engine.ppa_model import AreaModel, PowerModel, PPA
 from engine.mac_engine import create_engine
 from model_specs import get_spec, all_aliases
@@ -639,6 +640,228 @@ def _build_v2_output(
     return dsr.model_dump()
 
 
+def _resolve_scenario(name: str) -> "Scenario":
+    """Resolve a scenario name to a ``scenarios.schema.Scenario``."""
+    from scenarios.schema import Scenario, WorkloadClass, ArrivalPattern, ArrivalMode, QueuePolicy
+    from workloads.catalog import load_all_fixtures
+
+    try:
+        from dse_scenario import load_scenario, _build_scenario_model
+        data = load_scenario(name)
+        if data is not None:
+            return _build_scenario_model(name, data)
+    except Exception:
+        pass
+
+    alias_map = {
+        "embodied_compact_vla": "smolvla-class",
+        "embodied_continuous_vla": "pi0-class",
+        "embodied_openvla_baseline": "openvla-baseline",
+        "embodied_openvla_oft": "openvla-oft",
+        "embodied_openvla_fast": "openvla-fast",
+        "embodied_helix_multirate": "helix-multirate",
+        "embodied_physical_ai_multijob": "physical-ai-multijob",
+        "cv_yolov8n": "cv-yolov8n",
+        "cv_vit_b16": "cv-vit-b16",
+        "llm_qwen25_3b": "llm-qwen25-3b",
+    }
+    fixture_name = alias_map.get(name)
+    if fixture_name is None:
+        fixture_name = name
+
+    fixtures = load_all_fixtures()
+    fixture = fixtures.get(fixture_name)
+    if fixture is None:
+        available = ", ".join(sorted(fixtures.keys()))
+        raise ConfigError(f"unknown scenario {name!r}; available fixtures: {available}", field_path="scenario")
+
+    return Scenario(
+        name=name,
+        description=f"Scenario derived from workload fixture {fixture_name}",
+        workload_ref=fixture.name,
+        classes=[
+            WorkloadClass(
+                id="inference",
+                arrival=ArrivalPattern(mode=ArrivalMode.PERIODIC, period_ms=10.0, count=100),
+                work_ms=1.0,
+                relative_deadline_ms=10.0,
+                queue_policy=QueuePolicy.FIFO,
+                queue_capacity=64,
+                resource_requirements={"compute": 1},
+            ),
+        ],
+        compute_capacity=1,
+        memory_available_bytes=8_000_000_000,
+        max_inflight_jobs=128,
+        max_bandwidth_fraction=1.0,
+        preemption_enabled=True,
+        metadata={"fixture_name": fixture_name, "fixture_version": fixture.version},
+    )
+
+
+def _run_scenario_dse(args) -> int:
+    """Run scenario-driven DSE and optionally write a replay bundle."""
+    from dse.runner import DseRunConfig, ScenarioDseRunner
+    from dse.serialization import write_replay_bundle
+    from dse.space import load_design_space_from_yaml
+
+    scenario = _resolve_scenario(args.scenario)
+    mode = args.space.replace("-", "_")
+    if mode not in {"full", "ci_all_axes"}:
+        raise ConfigError(f"unknown space mode {args.space!r}; use 'full' or 'ci-all-axes'", field_path="space")
+
+    design_space = load_design_space_from_yaml(
+        scenario,
+        SIM_DIR / "config" / "dse_axes.yaml",
+        mode=mode,
+    )
+    generation_result = design_space.generate_with_exclusions()
+    print(f"Scenario DSE: {len(generation_result.points)} design points ({args.space})")
+
+    run_config = DseRunConfig(
+        scenario=scenario,
+        design_space=design_space,
+        seed=args.seed,
+        allow_partial=args.allow_partial,
+    )
+    runner = ScenarioDseRunner(run_config)
+    result_set, manifest, frontier = runner.run(generation_result)
+
+    print(f"  evaluated={result_set.summary.evaluated} "
+          f"complete={result_set.summary.complete} "
+          f"failed={result_set.summary.failed} "
+          f"frontier={len(frontier)}")
+
+    print(f"\n{'='*90}")
+    print(f"  Pareto frontier ({len(frontier)} points)")
+    print(f"  {'design_point_id':<66} {'tok/s':>8} {'area':>8} {'power':>8}")
+    print(f"  {'-'*90}")
+    for p in frontier[:15]:
+        m = p.result.metrics
+        print(f"  {p.result.design_point_id:<66} "
+              f"{m.tok_per_s:>7.1f} {m.area_mm2:>7.1f} {m.power_w:>7.1f}")
+
+    if args.output:
+        out_path = Path(args.output) if args.output.startswith("/") else SIM_DIR / args.output
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+
+        result_schema = getattr(args, "result_schema", "v2")
+        if result_schema in ("legacy", "v1"):
+            raise ConfigError(
+                "legacy result schema is not supported for --scenario mode; use --result-schema v2",
+                field_path="result_schema",
+            )
+
+        if args.replay or out_path.suffix == "":
+            git_commit = ""
+            try:
+                import subprocess
+                git_commit = subprocess.check_output(
+                    ["git", "rev-parse", "HEAD"], cwd=SIM_DIR, text=True
+                ).strip()
+            except Exception:
+                pass
+
+            write_replay_bundle(
+                out_path,
+                result_set=result_set,
+                manifest=manifest,
+                scenario_dict=scenario.model_dump(mode="json"),
+                axes_dict=dict(design_space.axes_config),
+                seed=args.seed,
+                run_config={
+                    "allow_partial": args.allow_partial,
+                    "space": args.space,
+                    "measurement_count": run_config.measurement_count,
+                    "warmup_count": run_config.warmup_count,
+                },
+                generation_result=generation_result,
+                command=" ".join(sys.argv),
+                git_commit=git_commit,
+            )
+            print(f"\n  Replay bundle saved to {out_path}")
+        else:
+            with open(out_path, "w") as f:
+                json.dump(result_set.model_dump(mode="json"), f, indent=2)
+            print(f"\n  Saved to {out_path}")
+
+    return 0
+
+
+def _run_replay(args) -> int:
+    """Replay a bundle and verify the canonical payload digest matches."""
+    from dse.serialization import read_replay_bundle, replay_bundle_canonical_digest
+    from dse.runner import DseRunConfig, ScenarioDseRunner
+    from dse.space import DesignSpace
+    from scenarios.schema import Scenario
+
+    bundle_path = Path(args.replay)
+    original = read_replay_bundle(bundle_path)
+    inputs = original["inputs"]
+
+    scenario = Scenario.model_validate(inputs["scenario"])
+    axes_dict = inputs["axes"]
+    seed = inputs["seed"]
+    run_cfg = inputs.get("run_config", {})
+    mode = run_cfg.get("space", "ci-all-axes").replace("-", "_")
+
+    design_space = DesignSpace(scenario, axes_config=axes_dict, mode=mode)
+    generation_result = design_space.generate_with_exclusions()
+
+    expected_ids = {p["design_point_id"] for p in inputs["design_points"]}
+    actual_ids = {p.design_point_id for p in generation_result.points}
+    if expected_ids != actual_ids:
+        raise ConfigError(
+            f"replay design-point ID set mismatch: "
+            f"missing={expected_ids - actual_ids}, extra={actual_ids - expected_ids}",
+            field_path="replay",
+        )
+
+    run_config = DseRunConfig(
+        scenario=scenario,
+        design_space=design_space,
+        seed=seed,
+        allow_partial=run_cfg.get("allow_partial", False),
+    )
+    runner = ScenarioDseRunner(run_config)
+    result_set, manifest, _frontier = runner.run(generation_result)
+
+    original_digest = replay_bundle_canonical_digest(bundle_path)
+
+    from contracts.identity import canonical_json_bytes
+
+    new_inputs = {
+        "schema_version": "1",
+        "scenario": scenario.model_dump(mode="json"),
+        "axes": axes_dict,
+        "seed": seed,
+        "run_config": run_cfg,
+        "design_points": [
+            {
+                "design_point_id": p.design_point_id,
+                "scenario_ref": p.scenario_ref,
+                "workload_ref": p.workload_ref,
+                "axis_values": p.axis_values,
+                "hardware_config": p.hardware_config,
+            }
+            for p in generation_result.points
+        ],
+    }
+    inputs_bytes = canonical_json_bytes(new_inputs)
+    result_bytes = canonical_json_bytes(result_set.model_dump(mode="json"))
+    coverage_bytes = canonical_json_bytes(manifest.to_dict())
+    new_digest = __import__("hashlib").sha256(inputs_bytes + result_bytes + coverage_bytes).hexdigest()
+
+    if new_digest != original_digest:
+        raise ConfigError(
+            f"replay digest mismatch: original={original_digest}, replay={new_digest}",
+            field_path="replay",
+        )
+
+    print(f"Replay verified: canonical payload digest {new_digest}")
+    return 0
+
+
 def main():
     import argparse
     parser = argparse.ArgumentParser()
@@ -657,9 +880,37 @@ def main():
                         help="LLM model spec alias for DSE")
     parser.add_argument("--batch-m", type=int, choices=[1, 2], default=None,
                         help="Batch M dimension for attention ops (1 or 2)")
-    parser.add_argument("--result-schema", choices=["v1", "v2"], default="v1",
+    parser.add_argument("--result-schema", choices=["legacy", "v1", "v2"], default="v1",
                         help="Output schema version (default: v1 legacy)")
+    parser.add_argument("--scenario", default=None,
+                        help="Scenario-driven DSE scenario name")
+    parser.add_argument("--space", default="ci-all-axes",
+                        help="Scenario DSE space mode: full or ci-all-axes")
+    parser.add_argument("--seed", type=int, default=0,
+                        help="Deterministic seed for scenario-driven DSE")
+    parser.add_argument("--replay", default=None,
+                        help="Replay a bundle directory and verify digest")
     args = parser.parse_args()
+
+    if args.replay:
+        if args.scenario or args.cv_model or args.model_spec is not None or args.batch_m is not None:
+            parser.error("--replay is mutually exclusive with --scenario/--cv-model/--model-spec/--batch-m")
+        try:
+            sys.exit(_run_replay(args))
+        except Exception as exc:
+            print(f"Replay failed: {exc}", file=sys.stderr)
+            sys.exit(1)
+
+    if args.scenario:
+        if args.quick:
+            parser.error("--scenario is mutually exclusive with --quick")
+        if args.cv_model or args.model_spec is not None or args.batch_m is not None:
+            parser.error("--scenario is mutually exclusive with --cv-model/--model-spec/--batch-m")
+        try:
+            sys.exit(_run_scenario_dse(args))
+        except Exception as exc:
+            print(f"Scenario DSE failed: {exc}", file=sys.stderr)
+            sys.exit(1)
 
     if args.cv_model and (args.model_spec is not None or args.batch_m is not None):
         parser.error("--cv-model is mutually exclusive with --model-spec and --batch-m")

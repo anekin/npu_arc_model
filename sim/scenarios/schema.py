@@ -202,6 +202,7 @@ class Scenario(BaseModel):
     max_inflight_jobs: int = Field(default=128, ge=1)
     max_bandwidth_fraction: float = Field(default=1.0, gt=0.0, le=1.0)
     preemption_enabled: bool = Field(default=True)
+    metadata: Dict[str, Any] = Field(default_factory=dict)
 
     @field_validator("name")
     @classmethod
