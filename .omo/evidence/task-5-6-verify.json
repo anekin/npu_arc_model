@@ -1,0 +1,43 @@
+........................................................................ [  5%]
+........................................................................ [ 11%]
+........................................................................ [ 17%]
+........................................................................ [ 23%]
+........................................................................ [ 29%]
+........................................................................ [ 35%]
+........................................................................ [ 40%]
+........................................................................ [ 46%]
+........................................................................ [ 52%]
+........................................................................ [ 58%]
+........................................................................ [ 64%]
+........................................................................ [ 70%]
+........................................................................ [ 76%]
+........................................................................ [ 81%]
+........................................................................ [ 87%]
+........................................................................ [ 93%]
+........................................................................ [ 99%]
+.......                                                                  [100%]
+=============================== warnings summary ===============================
+sim/tests/test_engine_physical_invariants.py: 32 warnings
+  /home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engine_physical_invariants.py:176: DeprecationWarning: EngineResult.ops is deprecated; use mac_count instead
+    assert result.ops == expected_macs, (
+
+sim/tests/test_engine_physical_invariants.py: 16 warnings
+  /home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engine_physical_invariants.py:192: DeprecationWarning: EngineResult.ops is deprecated; use mac_count instead
+    assert result.ops >= expected_macs, (
+
+sim/tests/test_engine_physical_invariants.py::TestBasicInvariants::test_small_square_gemm[systolic]
+sim/tests/test_engine_physical_invariants.py::TestBasicInvariants::test_small_square_gemm[block]
+sim/tests/test_engine_physical_invariants.py::TestBasicInvariants::test_small_square_gemm[os_systolic]
+sim/tests/test_engine_physical_invariants.py::TestBasicInvariants::test_small_square_gemm[input_stationary]
+sim/tests/test_engine_physical_invariants.py::TestBasicInvariants::test_small_square_gemm[tensor_core]
+sim/tests/test_engine_physical_invariants.py::TestBasicInvariants::test_small_square_gemm[wmma]
+sim/tests/test_engine_physical_invariants.py::TestBasicInvariants::test_small_square_gemm[gmma]
+sim/tests/test_engine_physical_invariants.py::TestBasicInvariants::test_small_square_gemm[fsa]
+  /home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engine_physical_invariants.py:522: DeprecationWarning: EngineResult.ops is deprecated; use mac_count instead
+    assert result.ops == 64 * 64 * 64
+
+sim/tests/test_engine_invalid_inputs.py: 24 warnings
+  /home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engine_invalid_inputs.py:232: DeprecationWarning: EngineResult.ops is deprecated; use mac_count instead
+    assert result.ops >= M * K * N
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html

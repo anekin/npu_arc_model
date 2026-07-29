@@ -1,0 +1,39 @@
+schema_version: "1.0"
+model_name: "CaduceusCore NPU Arc Model"
+repository: "https://github.com/caduceuscore/npu_arc_model"
+
+profiles:
+  experimental:
+    status: available
+    description: Exploratory results with explicit trust tags.
+
+  decision_grade:
+    status: blocked
+    reason: >
+      Current calibration registry ranks several decision-driving parameters
+      (gmma_pipeline_scale, tensor_core_descriptor_overhead, block_sparsity_penalty)
+      at T0/T1. No run can reach decision-grade trust until those parameters are
+      promoted to T2+ through measured evidence.
+
+current_recommendations: []
+
+pending_claims:
+  - id: C-2026-07-30-block-64-lpddr5
+    description: Block 64x64 engine on LPDDR5 is Pareto-optimal for dense GEMM at 1 GHz.
+    status: pending_evidence
+    required_evidence:
+      - block_sparsity_penalty promoted to T2
+      - tensor_core_descriptor_overhead promoted to T2
+
+archive_policy:
+  artifact_root: "artifacts/releases"
+  required_files:
+    - manifest.json
+    - SHA256SUMS
+  overwrite_policy: never
+
+historical_reports:
+  paths:
+    - reports/dse-engine-model-bugs-2026-07-27.md
+    - reports/dse-engine-model-bugs-postfix-2026-07-27.md
+  policy: append_only

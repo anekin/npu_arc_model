@@ -476,3 +476,24 @@
 - Current configured values place most ranking-driving parameters at T0/T1, so decision-grade mode fails as designed until additional measured evidence is provided.
 - `power_density_12nm` is configured at 0.5 W/mm² while the published proxy range is ~0.05–0.30 W/mm²; this honest mismatch keeps all points exploratory until the power model is recalibrated.
 - Scenario-driven DSE tests must set small `measurement_count`/`warmup_count` on the scenario; defaults (50/5) create ~65 arrivals per class and slow CI by two orders of magnitude.
+
+## 2026-07-30 — Todo 18: full-matrix acceptance, document migration, release evidence
+
+- Implemented the full acceptance matrix (`sim/validation/scenario_matrix.py`) covering all 8 canonical engines, M boundaries (1,2,3,15,16,17,63,64,65,128,1024), frequencies (800/1000/1200 MHz), 4 memory tiers, and embodied-AI axes.
+- Added verification scripts:
+  - `scripts/verify_evidence_ledger.py` checks every plan todo/F1-F4 has evidence and reports non-zero exit evidence.
+  - `scripts/verify_scope.py` enforces forbidden dependencies, historical-report immutability, no staged ultraresearch sources, and manifest binding.
+  - `scripts/verify_model_integrity.py` runs AST checks (utilization clamps, legacy bandwidth reads), registry checks, and focused counterexamples.
+- Added `scripts/release_gate.py` with `--profile {experimental,decision-grade}` and `--clean-checkout`. Maps experimental → exploratory trust mode for the DSE runner.
+- Added pytest coverage:
+  - `sim/tests/test_scenario_acceptance.py` happy path + 7 mutation regression tests.
+  - `sim/tests/test_evidence_ledger.py`, `test_scope_gate.py`, `test_model_integrity_gate.py`.
+- Migrated docs:
+  - `docs/model-trust-and-release.md` defines T0-T3 parameter trust, run trust levels, experimental vs decision-grade profiles, artifact layout, and mutation-test contract.
+  - `docs/publication-manifest.yaml` declares decision-grade `blocked` and lists pending claims requiring T2+ evidence.
+  - `reports/README.md` explains append-only historical reports and generated artifact files.
+- Qualified existing README/engine-guide/arc_vs_func/mxu-perf-calibration claims with trust-level caveats; no dated historical report content was modified.
+- Release gate results:
+  - `experimental` profile passes for `lpddr5_3b` / `ci-all-axes` and writes content-addressed artifacts.
+  - `decision-grade` profile fails because current calibration keeps decision-driving parameters at T0/T1, as designed.
+

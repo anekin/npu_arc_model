@@ -133,7 +133,7 @@ Arc Model                         Func Model
 
 ## 六、两者的性能数据对比
 
-以 Qwen2.5-3B 为例：
+以 Qwen2.5-3B 为例。以下 Func Model 数字为**早期模拟估算**，尚未经过 RTL 回溯或硅后校准：
 
 | 指标 | Arc Model（公式） | Func Model（模拟） | 差异来源 |
 |------|:---:|:---:|------|
@@ -142,7 +142,7 @@ Arc Model                         Func Model
 | TTFT | ❌ 未实现 | ~320ms | 含固件启动 + 第一个 token |
 | MXU util | 0.26% | ~22%(prefill)/~0.2%(decode) | Arc 只算 decode M=1 |
 
-**结论**：Arc Model 的快是以忽略实现细节为代价的。Func Model 的性能数据才是给客户看的真实数字。
+**结论**：Arc Model 的快是以忽略实现细节为代价的。Func Model 的性能数据在通过 RTL/硅后验证前，同样是估算而非最终交付数字。
 
 ---
 

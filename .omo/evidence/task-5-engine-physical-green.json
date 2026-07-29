@@ -1,0 +1,126 @@
+........................................................................ [  9%]
+........................................................................ [ 18%]
+........................................................................ [ 27%]
+........................................................................ [ 36%]
+........................................................................ [ 45%]
+........................................................................ [ 54%]
+........................................................................ [ 63%]
+........................................................................ [ 72%]
+........................................................................ [ 81%]
+................................FFFFFFFFFFFFFF.F........................ [ 90%]
+........................................................................ [ 99%]
+......                                                                   [100%]
+=================================== FAILURES ===================================
+_____ TestBandwidthSaturation.test_bandwidth_saturation[4-110-72-systolic] _____
+sim/tests/test_engine_physical_invariants.py:365: in test_bandwidth_saturation
+    assert valid, f"{engine_type}: {msg}"
+E   AssertionError: systolic: At 819.2 GB/s, total_cycles=531 is 13175.0% above compute floor 4 — should saturate within 5.0%
+E   assert False
+______ TestBandwidthSaturation.test_bandwidth_saturation[4-110-72-block] _______
+sim/tests/test_engine_physical_invariants.py:365: in test_bandwidth_saturation
+    assert valid, f"{engine_type}: {msg}"
+E   AssertionError: block: At 819.2 GB/s, total_cycles=1088 is 27100.0% above compute floor 4 — should saturate within 5.0%
+E   assert False
+___ TestBandwidthSaturation.test_bandwidth_saturation[4-110-72-os_systolic] ____
+sim/tests/test_engine_physical_invariants.py:365: in test_bandwidth_saturation
+    assert valid, f"{engine_type}: {msg}"
+E   AssertionError: os_systolic: At 819.2 GB/s, total_cycles=32 is 700.0% above compute floor 4 — should saturate within 5.0%
+E   assert False
+_ TestBandwidthSaturation.test_bandwidth_saturation[4-110-72-input_stationary] _
+sim/tests/test_engine_physical_invariants.py:365: in test_bandwidth_saturation
+    assert valid, f"{engine_type}: {msg}"
+E   AssertionError: input_stationary: At 819.2 GB/s, total_cycles=275 is 6775.0% above compute floor 4 — should saturate within 5.0%
+E   assert False
+___ TestBandwidthSaturation.test_bandwidth_saturation[4-110-72-tensor_core] ____
+sim/tests/test_engine_physical_invariants.py:365: in test_bandwidth_saturation
+    assert valid, f"{engine_type}: {msg}"
+E   AssertionError: tensor_core: At 819.2 GB/s, total_cycles=145 is 3525.0% above compute floor 4 — should saturate within 5.0%
+E   assert False
+_______ TestBandwidthSaturation.test_bandwidth_saturation[4-110-72-wmma] _______
+sim/tests/test_engine_physical_invariants.py:365: in test_bandwidth_saturation
+    assert valid, f"{engine_type}: {msg}"
+E   AssertionError: wmma: At 819.2 GB/s, total_cycles=52819 is 1320375.0% above compute floor 4 — should saturate within 5.0%
+E   assert False
+_______ TestBandwidthSaturation.test_bandwidth_saturation[4-110-72-gmma] _______
+sim/tests/test_engine_physical_invariants.py:365: in test_bandwidth_saturation
+    assert valid, f"{engine_type}: {msg}"
+E   AssertionError: gmma: At 819.2 GB/s, total_cycles=28 is 600.0% above compute floor 4 — should saturate within 5.0%
+E   assert False
+_______ TestBandwidthSaturation.test_bandwidth_saturation[4-110-72-fsa] ________
+sim/tests/test_engine_physical_invariants.py:365: in test_bandwidth_saturation
+    assert valid, f"{engine_type}: {msg}"
+E   AssertionError: fsa: At 819.2 GB/s, total_cycles=528 is 13100.0% above compute floor 4 — should saturate within 5.0%
+E   assert False
+_____ TestBandwidthSaturation.test_bandwidth_saturation[64-64-64-systolic] _____
+sim/tests/test_engine_physical_invariants.py:365: in test_bandwidth_saturation
+    assert valid, f"{engine_type}: {msg}"
+E   AssertionError: systolic: At 819.2 GB/s, total_cycles=200 is 525.0% above compute floor 32 — should saturate within 5.0%
+E   assert False
+______ TestBandwidthSaturation.test_bandwidth_saturation[64-64-64-block] _______
+sim/tests/test_engine_physical_invariants.py:365: in test_bandwidth_saturation
+    assert valid, f"{engine_type}: {msg}"
+E   AssertionError: block: At 819.2 GB/s, total_cycles=4352 is 13500.0% above compute floor 32 — should saturate within 5.0%
+E   assert False
+___ TestBandwidthSaturation.test_bandwidth_saturation[64-64-64-os_systolic] ____
+sim/tests/test_engine_physical_invariants.py:365: in test_bandwidth_saturation
+    assert valid, f"{engine_type}: {msg}"
+E   AssertionError: os_systolic: At 819.2 GB/s, total_cycles=68 is 112.5% above compute floor 32 — should saturate within 5.0%
+E   assert False
+_ TestBandwidthSaturation.test_bandwidth_saturation[64-64-64-input_stationary] _
+sim/tests/test_engine_physical_invariants.py:365: in test_bandwidth_saturation
+    assert valid, f"{engine_type}: {msg}"
+E   AssertionError: input_stationary: At 819.2 GB/s, total_cycles=137 is 328.1% above compute floor 32 — should saturate within 5.0%
+E   assert False
+___ TestBandwidthSaturation.test_bandwidth_saturation[64-64-64-tensor_core] ____
+sim/tests/test_engine_physical_invariants.py:365: in test_bandwidth_saturation
+    assert valid, f"{engine_type}: {msg}"
+E   AssertionError: tensor_core: At 819.2 GB/s, total_cycles=199 is 521.9% above compute floor 32 — should saturate within 5.0%
+E   assert False
+_______ TestBandwidthSaturation.test_bandwidth_saturation[64-64-64-wmma] _______
+sim/tests/test_engine_physical_invariants.py:365: in test_bandwidth_saturation
+    assert valid, f"{engine_type}: {msg}"
+E   AssertionError: wmma: At 819.2 GB/s, total_cycles=106120 is 331525.0% above compute floor 32 — should saturate within 5.0%
+E   assert False
+_______ TestBandwidthSaturation.test_bandwidth_saturation[64-64-64-fsa] ________
+sim/tests/test_engine_physical_invariants.py:365: in test_bandwidth_saturation
+    assert valid, f"{engine_type}: {msg}"
+E   AssertionError: fsa: At 819.2 GB/s, total_cycles=588 is 1737.5% above compute floor 32 — should saturate within 5.0%
+E   assert False
+=============================== warnings summary ===============================
+sim/tests/test_engine_physical_invariants.py: 32 warnings
+  /home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engine_physical_invariants.py:176: DeprecationWarning: EngineResult.ops is deprecated; use mac_count instead
+    assert result.ops == expected_macs, (
+
+sim/tests/test_engine_physical_invariants.py: 16 warnings
+  /home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engine_physical_invariants.py:192: DeprecationWarning: EngineResult.ops is deprecated; use mac_count instead
+    assert result.ops >= expected_macs, (
+
+sim/tests/test_engine_physical_invariants.py::TestBasicInvariants::test_small_square_gemm[systolic]
+sim/tests/test_engine_physical_invariants.py::TestBasicInvariants::test_small_square_gemm[block]
+sim/tests/test_engine_physical_invariants.py::TestBasicInvariants::test_small_square_gemm[os_systolic]
+sim/tests/test_engine_physical_invariants.py::TestBasicInvariants::test_small_square_gemm[input_stationary]
+sim/tests/test_engine_physical_invariants.py::TestBasicInvariants::test_small_square_gemm[tensor_core]
+sim/tests/test_engine_physical_invariants.py::TestBasicInvariants::test_small_square_gemm[wmma]
+sim/tests/test_engine_physical_invariants.py::TestBasicInvariants::test_small_square_gemm[gmma]
+sim/tests/test_engine_physical_invariants.py::TestBasicInvariants::test_small_square_gemm[fsa]
+  /home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engine_physical_invariants.py:459: DeprecationWarning: EngineResult.ops is deprecated; use mac_count instead
+    assert result.ops == 64 * 64 * 64
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED sim/tests/test_engine_physical_invariants.py::TestBandwidthSaturation::test_bandwidth_saturation[4-110-72-systolic]
+FAILED sim/tests/test_engine_physical_invariants.py::TestBandwidthSaturation::test_bandwidth_saturation[4-110-72-block]
+FAILED sim/tests/test_engine_physical_invariants.py::TestBandwidthSaturation::test_bandwidth_saturation[4-110-72-os_systolic]
+FAILED sim/tests/test_engine_physical_invariants.py::TestBandwidthSaturation::test_bandwidth_saturation[4-110-72-input_stationary]
+FAILED sim/tests/test_engine_physical_invariants.py::TestBandwidthSaturation::test_bandwidth_saturation[4-110-72-tensor_core]
+FAILED sim/tests/test_engine_physical_invariants.py::TestBandwidthSaturation::test_bandwidth_saturation[4-110-72-wmma]
+FAILED sim/tests/test_engine_physical_invariants.py::TestBandwidthSaturation::test_bandwidth_saturation[4-110-72-gmma]
+FAILED sim/tests/test_engine_physical_invariants.py::TestBandwidthSaturation::test_bandwidth_saturation[4-110-72-fsa]
+FAILED sim/tests/test_engine_physical_invariants.py::TestBandwidthSaturation::test_bandwidth_saturation[64-64-64-systolic]
+FAILED sim/tests/test_engine_physical_invariants.py::TestBandwidthSaturation::test_bandwidth_saturation[64-64-64-block]
+FAILED sim/tests/test_engine_physical_invariants.py::TestBandwidthSaturation::test_bandwidth_saturation[64-64-64-os_systolic]
+FAILED sim/tests/test_engine_physical_invariants.py::TestBandwidthSaturation::test_bandwidth_saturation[64-64-64-input_stationary]
+FAILED sim/tests/test_engine_physical_invariants.py::TestBandwidthSaturation::test_bandwidth_saturation[64-64-64-tensor_core]
+FAILED sim/tests/test_engine_physical_invariants.py::TestBandwidthSaturation::test_bandwidth_saturation[64-64-64-wmma]
+FAILED sim/tests/test_engine_physical_invariants.py::TestBandwidthSaturation::test_bandwidth_saturation[64-64-64-fsa]
+EXIT=1

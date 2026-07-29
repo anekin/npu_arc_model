@@ -55,11 +55,13 @@ Phase 2:  交叉校验    → 对比已知产品（TPUv1/RK1828/Eyeriss）
 | **PE 面积校准** | TPUv1 ISCA 2017 die-shot 为主锚点 | [`references/area_sources.md`](references/area_sources.md) |
 | **DRAM 效率** | 0.85 — conservative sequential decode baseline (per-bank refresh ~3.6%, extra from controller scheduling/command bus/bank conflicts) | 详见 contracts/hardware.py MemoryConfig |
 | **量化方案** | per-block (g=128) INT4 | cos_sim > 0.99，比 per-channel 稳定 0.014 |
-| **SRAM 灵敏度** | LPDDR5 场景：4-6MB sweet spot；3D DRAM 场景：512KB 足够 | DSE 扫描结果 |
-| **过程节点** | TSMC 12nm（面积 = 7nm 基线 × 2.94） | 用户指定 |
-| **BW-面积耦合** | On-chip 3D DRAM BW = area × 7.5 GB/s/mm² | RK1828 验证 |
+| **SRAM 灵敏度** | LPDDR5 场景：4-6MB sweet spot（**探索性结论，待 T2+ 证据**）；3D DRAM 场景：512KB 足够（**理想驻留假设**） | DSE 扫描结果 |
+| **过程节点** | TSMC 12nm（面积 = 7nm 基线 × 2.94，**几何缩放近似，非实测密度比**） | 用户指定 |
+| **BW-面积耦合** | On-chip 3D DRAM BW = area × 7.5 GB/s/mm²（**基于 RK1828 的外推，未绑定硅实现**） | RK1828 验证 |
 
-### 1.4 双场景技术路线
+### 1.4 双场景技术路线（探索性估算）
+
+> 以下数值为 Arc Model 在**当前校准假设**下的估算，包含 T0/T1 参数；在 `decision-grade` 证据补齐前，不应用作产品承诺。
 
 | | Scenario A (低成本) | Scenario B (高性能) |
 |:---|:---|:---|
@@ -67,9 +69,9 @@ Phase 2:  交叉校验    → 对比已知产品（TPUv1/RK1828/Eyeriss）
 | 模型 | Qwen2.5-3B INT4 | Qwen2.5-7B INT4 |
 | seq_len | 128 (chat) | 1024 (VLM/VLA) |
 | 引擎 | block 64×128 (8.2 TOPS) | block 32×1536 (49 TOPS) |
-| 面积 @12nm | 61mm² | 66mm² |
-| Decode | 23 tok/s | 148 tok/s |
-| TTFT | 45ms ✓ | 160ms ✓ |
+| 面积 @12nm | 61mm²（估算） | 66mm²（估算） |
+| Decode | 23 tok/s（估算） | 148 tok/s（估算） |
+| TTFT | 45ms（估算） | 160ms（估算） |
 | 详细报告 | [`reports/arch-report-A-lpddr5-3b.md`](reports/arch-report-A-lpddr5-3b.md) | [`reports/arch-report-B-3ddram-7b.md`](reports/arch-report-B-3ddram-7b.md) |
 
 ---
@@ -296,13 +298,15 @@ Config: 场景/参数定义               Firmware: RISC-V 微码
 
 ---
 
-## 七、关键洞见
+## 七、关键洞见（探索性结论）
 
-1. **SRAM 不是常数，是 DSE 中最关键的性能杠杆** — 在 LPDDR5 内存墙下，FSA 省下 PE 面积可全部转为 SRAM（192 tok/s），block PE 过大无空间加 SRAM（永远 41 tok/s）
+> 本节洞见来自当前 Arc Model 的解析估算，部分驱动参数仍处于 T0/T1。详见 [`docs/model-trust-and-release.md`](docs/model-trust-and-release.md) 了解信任等级与发布边界。
 
-2. **TTFT 约束可覆盖 BW 瓶颈的阵列建议** — 即使 decode 是 BW 瓶颈，长 seq_len 的 prefill 可能是 compute 瓶颈。seq_len=1024 需要 72 TOPS，BW 逻辑推荐 16 TOPS 是错的
+1. **SRAM 不是常数，是 DSE 中最关键的性能杠杆** — 在 LPDDR5 内存墙下，FSA 省下 PE 面积可全部转为 SRAM（**192 tok/s 为估算**），block PE 过大无空间加 SRAM（**41 tok/s 为估算**）
 
-3. **On-chip 3D DRAM 下 SRAM 零性能影响** — 权重常驻、无 K-tiling、KV 4µs/layer。512KB 即可，8MB 是 LPDDR5 习惯的延续
+2. **TTFT 约束可覆盖 BW 瓶颈的阵列建议** — 即使 decode 是 BW 瓶颈，长 seq_len 的 prefill 可能是 compute 瓶颈。seq_len=1024 需要 **估算** 72 TOPS，BW 逻辑推荐 16 TOPS 是错的
+
+3. **On-chip 3D DRAM 下 SRAM 零性能影响** — 权重常驻、无 K-tiling、KV 4µs/layer（**理想假设**）。512KB 即可，8MB 是 LPDDR5 习惯的延续
 
 4. **FSA 在低 BW 赢，block 在高 BW 赢** — 引擎选择不取决于引擎本身，取决于带宽场景。LPDDR5→FSA（面积优先），3D DRAM→block（宽阵列无 pipeline 惩罚）
 

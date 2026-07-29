@@ -1,0 +1,809 @@
+........................................................................ [  9%]
+........................................................................ [ 18%]
+........................................................................ [ 27%]
+........................................................................ [ 36%]
+........................................................................ [ 45%]
+........................................................................ [ 54%]
+........................................................................ [ 63%]
+........................................................................ [ 72%]
+........................................................................ [ 81%]
+................................FFFFFFFFFFFFFF.F........................ [ 90%]
+.......................................................F................ [ 99%]
+......                                                                   [100%]
+=================================== FAILURES ===================================
+_____ TestBandwidthSaturation.test_bandwidth_saturation[4-110-72-systolic] _____
+
+self = <sim.tests.test_engine_physical_invariants.TestBandwidthSaturation object at 0x7f6886db3fa0>
+engine_type = 'systolic', M = 4, K = 110, N = 72
+
+    @pytest.mark.parametrize("engine_type", ENGINE_TYPES)
+    @pytest.mark.parametrize("M,K,N", [
+        (4, 110, 72),
+        (64, 64, 64),
+    ])
+    def test_bandwidth_saturation(self, engine_type: str,
+                                  M: int, K: int, N: int) -> None:
+        """As BW increases, total_cycles must approach compute floor."""
+        # Use LPDDR, HBM, and a very high BW tier to check saturation
+        bw_points: List[Tuple[float, str]] = [
+            (51.2, "LPDDR5"),
+            (204.8, "HBM_MID"),
+            (819.2, "HBM3"),
+        ]
+        results: Dict[float, int] = {}
+        compute_floor = compute_lower_bound(
+            mac_count(M, K, N), oracle_peak_macs()
+        )
+    
+        for gbps, _label in bw_points:
+            # Build external-DRAM config (no on-chip)
+            cfg = build_config(engine_type, gbps)
+            try:
+                engine = create_engine(cfg)
+                result = engine.estimate(M, K, N)
+                results[gbps] = result.total_cycles
+            except Exception:
+                results[gbps] = -1
+    
+        # Filter out failed configs
+        clean = {k: v for k, v in results.items() if v > 0}
+        if len(clean) < 2:
+            pytest.skip(f"{engine_type}: not enough valid BW configs")
+    
+        valid, msg = validate_bandwidth_monotonic(clean, compute_floor)
+>       assert valid, f"{engine_type}: {msg}"
+E       AssertionError: systolic: At 819.2 GB/s, total_cycles=531 is 13175.0% above compute floor 4 — should saturate within 5.0%
+E       assert False
+
+sim/tests/test_engine_physical_invariants.py:365: AssertionError
+______ TestBandwidthSaturation.test_bandwidth_saturation[4-110-72-block] _______
+
+self = <sim.tests.test_engine_physical_invariants.TestBandwidthSaturation object at 0x7f6886dd8250>
+engine_type = 'block', M = 4, K = 110, N = 72
+
+    @pytest.mark.parametrize("engine_type", ENGINE_TYPES)
+    @pytest.mark.parametrize("M,K,N", [
+        (4, 110, 72),
+        (64, 64, 64),
+    ])
+    def test_bandwidth_saturation(self, engine_type: str,
+                                  M: int, K: int, N: int) -> None:
+        """As BW increases, total_cycles must approach compute floor."""
+        # Use LPDDR, HBM, and a very high BW tier to check saturation
+        bw_points: List[Tuple[float, str]] = [
+            (51.2, "LPDDR5"),
+            (204.8, "HBM_MID"),
+            (819.2, "HBM3"),
+        ]
+        results: Dict[float, int] = {}
+        compute_floor = compute_lower_bound(
+            mac_count(M, K, N), oracle_peak_macs()
+        )
+    
+        for gbps, _label in bw_points:
+            # Build external-DRAM config (no on-chip)
+            cfg = build_config(engine_type, gbps)
+            try:
+                engine = create_engine(cfg)
+                result = engine.estimate(M, K, N)
+                results[gbps] = result.total_cycles
+            except Exception:
+                results[gbps] = -1
+    
+        # Filter out failed configs
+        clean = {k: v for k, v in results.items() if v > 0}
+        if len(clean) < 2:
+            pytest.skip(f"{engine_type}: not enough valid BW configs")
+    
+        valid, msg = validate_bandwidth_monotonic(clean, compute_floor)
+>       assert valid, f"{engine_type}: {msg}"
+E       AssertionError: block: At 819.2 GB/s, total_cycles=1088 is 27100.0% above compute floor 4 — should saturate within 5.0%
+E       assert False
+
+sim/tests/test_engine_physical_invariants.py:365: AssertionError
+___ TestBandwidthSaturation.test_bandwidth_saturation[4-110-72-os_systolic] ____
+
+self = <sim.tests.test_engine_physical_invariants.TestBandwidthSaturation object at 0x7f6886dd8910>
+engine_type = 'os_systolic', M = 4, K = 110, N = 72
+
+    @pytest.mark.parametrize("engine_type", ENGINE_TYPES)
+    @pytest.mark.parametrize("M,K,N", [
+        (4, 110, 72),
+        (64, 64, 64),
+    ])
+    def test_bandwidth_saturation(self, engine_type: str,
+                                  M: int, K: int, N: int) -> None:
+        """As BW increases, total_cycles must approach compute floor."""
+        # Use LPDDR, HBM, and a very high BW tier to check saturation
+        bw_points: List[Tuple[float, str]] = [
+            (51.2, "LPDDR5"),
+            (204.8, "HBM_MID"),
+            (819.2, "HBM3"),
+        ]
+        results: Dict[float, int] = {}
+        compute_floor = compute_lower_bound(
+            mac_count(M, K, N), oracle_peak_macs()
+        )
+    
+        for gbps, _label in bw_points:
+            # Build external-DRAM config (no on-chip)
+            cfg = build_config(engine_type, gbps)
+            try:
+                engine = create_engine(cfg)
+                result = engine.estimate(M, K, N)
+                results[gbps] = result.total_cycles
+            except Exception:
+                results[gbps] = -1
+    
+        # Filter out failed configs
+        clean = {k: v for k, v in results.items() if v > 0}
+        if len(clean) < 2:
+            pytest.skip(f"{engine_type}: not enough valid BW configs")
+    
+        valid, msg = validate_bandwidth_monotonic(clean, compute_floor)
+>       assert valid, f"{engine_type}: {msg}"
+E       AssertionError: os_systolic: At 819.2 GB/s, total_cycles=32 is 700.0% above compute floor 4 — should saturate within 5.0%
+E       assert False
+
+sim/tests/test_engine_physical_invariants.py:365: AssertionError
+_ TestBandwidthSaturation.test_bandwidth_saturation[4-110-72-input_stationary] _
+
+self = <sim.tests.test_engine_physical_invariants.TestBandwidthSaturation object at 0x7f6886dd89d0>
+engine_type = 'input_stationary', M = 4, K = 110, N = 72
+
+    @pytest.mark.parametrize("engine_type", ENGINE_TYPES)
+    @pytest.mark.parametrize("M,K,N", [
+        (4, 110, 72),
+        (64, 64, 64),
+    ])
+    def test_bandwidth_saturation(self, engine_type: str,
+                                  M: int, K: int, N: int) -> None:
+        """As BW increases, total_cycles must approach compute floor."""
+        # Use LPDDR, HBM, and a very high BW tier to check saturation
+        bw_points: List[Tuple[float, str]] = [
+            (51.2, "LPDDR5"),
+            (204.8, "HBM_MID"),
+            (819.2, "HBM3"),
+        ]
+        results: Dict[float, int] = {}
+        compute_floor = compute_lower_bound(
+            mac_count(M, K, N), oracle_peak_macs()
+        )
+    
+        for gbps, _label in bw_points:
+            # Build external-DRAM config (no on-chip)
+            cfg = build_config(engine_type, gbps)
+            try:
+                engine = create_engine(cfg)
+                result = engine.estimate(M, K, N)
+                results[gbps] = result.total_cycles
+            except Exception:
+                results[gbps] = -1
+    
+        # Filter out failed configs
+        clean = {k: v for k, v in results.items() if v > 0}
+        if len(clean) < 2:
+            pytest.skip(f"{engine_type}: not enough valid BW configs")
+    
+        valid, msg = validate_bandwidth_monotonic(clean, compute_floor)
+>       assert valid, f"{engine_type}: {msg}"
+E       AssertionError: input_stationary: At 819.2 GB/s, total_cycles=275 is 6775.0% above compute floor 4 — should saturate within 5.0%
+E       assert False
+
+sim/tests/test_engine_physical_invariants.py:365: AssertionError
+___ TestBandwidthSaturation.test_bandwidth_saturation[4-110-72-tensor_core] ____
+
+self = <sim.tests.test_engine_physical_invariants.TestBandwidthSaturation object at 0x7f6886dd8a90>
+engine_type = 'tensor_core', M = 4, K = 110, N = 72
+
+    @pytest.mark.parametrize("engine_type", ENGINE_TYPES)
+    @pytest.mark.parametrize("M,K,N", [
+        (4, 110, 72),
+        (64, 64, 64),
+    ])
+    def test_bandwidth_saturation(self, engine_type: str,
+                                  M: int, K: int, N: int) -> None:
+        """As BW increases, total_cycles must approach compute floor."""
+        # Use LPDDR, HBM, and a very high BW tier to check saturation
+        bw_points: List[Tuple[float, str]] = [
+            (51.2, "LPDDR5"),
+            (204.8, "HBM_MID"),
+            (819.2, "HBM3"),
+        ]
+        results: Dict[float, int] = {}
+        compute_floor = compute_lower_bound(
+            mac_count(M, K, N), oracle_peak_macs()
+        )
+    
+        for gbps, _label in bw_points:
+            # Build external-DRAM config (no on-chip)
+            cfg = build_config(engine_type, gbps)
+            try:
+                engine = create_engine(cfg)
+                result = engine.estimate(M, K, N)
+                results[gbps] = result.total_cycles
+            except Exception:
+                results[gbps] = -1
+    
+        # Filter out failed configs
+        clean = {k: v for k, v in results.items() if v > 0}
+        if len(clean) < 2:
+            pytest.skip(f"{engine_type}: not enough valid BW configs")
+    
+        valid, msg = validate_bandwidth_monotonic(clean, compute_floor)
+>       assert valid, f"{engine_type}: {msg}"
+E       AssertionError: tensor_core: At 819.2 GB/s, total_cycles=142 is 3450.0% above compute floor 4 — should saturate within 5.0%
+E       assert False
+
+sim/tests/test_engine_physical_invariants.py:365: AssertionError
+_______ TestBandwidthSaturation.test_bandwidth_saturation[4-110-72-wmma] _______
+
+self = <sim.tests.test_engine_physical_invariants.TestBandwidthSaturation object at 0x7f6886dd8b50>
+engine_type = 'wmma', M = 4, K = 110, N = 72
+
+    @pytest.mark.parametrize("engine_type", ENGINE_TYPES)
+    @pytest.mark.parametrize("M,K,N", [
+        (4, 110, 72),
+        (64, 64, 64),
+    ])
+    def test_bandwidth_saturation(self, engine_type: str,
+                                  M: int, K: int, N: int) -> None:
+        """As BW increases, total_cycles must approach compute floor."""
+        # Use LPDDR, HBM, and a very high BW tier to check saturation
+        bw_points: List[Tuple[float, str]] = [
+            (51.2, "LPDDR5"),
+            (204.8, "HBM_MID"),
+            (819.2, "HBM3"),
+        ]
+        results: Dict[float, int] = {}
+        compute_floor = compute_lower_bound(
+            mac_count(M, K, N), oracle_peak_macs()
+        )
+    
+        for gbps, _label in bw_points:
+            # Build external-DRAM config (no on-chip)
+            cfg = build_config(engine_type, gbps)
+            try:
+                engine = create_engine(cfg)
+                result = engine.estimate(M, K, N)
+                results[gbps] = result.total_cycles
+            except Exception:
+                results[gbps] = -1
+    
+        # Filter out failed configs
+        clean = {k: v for k, v in results.items() if v > 0}
+        if len(clean) < 2:
+            pytest.skip(f"{engine_type}: not enough valid BW configs")
+    
+        valid, msg = validate_bandwidth_monotonic(clean, compute_floor)
+>       assert valid, f"{engine_type}: {msg}"
+E       AssertionError: wmma: At 819.2 GB/s, total_cycles=52819 is 1320375.0% above compute floor 4 — should saturate within 5.0%
+E       assert False
+
+sim/tests/test_engine_physical_invariants.py:365: AssertionError
+_______ TestBandwidthSaturation.test_bandwidth_saturation[4-110-72-gmma] _______
+
+self = <sim.tests.test_engine_physical_invariants.TestBandwidthSaturation object at 0x7f6886dd8c10>
+engine_type = 'gmma', M = 4, K = 110, N = 72
+
+    @pytest.mark.parametrize("engine_type", ENGINE_TYPES)
+    @pytest.mark.parametrize("M,K,N", [
+        (4, 110, 72),
+        (64, 64, 64),
+    ])
+    def test_bandwidth_saturation(self, engine_type: str,
+                                  M: int, K: int, N: int) -> None:
+        """As BW increases, total_cycles must approach compute floor."""
+        # Use LPDDR, HBM, and a very high BW tier to check saturation
+        bw_points: List[Tuple[float, str]] = [
+            (51.2, "LPDDR5"),
+            (204.8, "HBM_MID"),
+            (819.2, "HBM3"),
+        ]
+        results: Dict[float, int] = {}
+        compute_floor = compute_lower_bound(
+            mac_count(M, K, N), oracle_peak_macs()
+        )
+    
+        for gbps, _label in bw_points:
+            # Build external-DRAM config (no on-chip)
+            cfg = build_config(engine_type, gbps)
+            try:
+                engine = create_engine(cfg)
+                result = engine.estimate(M, K, N)
+                results[gbps] = result.total_cycles
+            except Exception:
+                results[gbps] = -1
+    
+        # Filter out failed configs
+        clean = {k: v for k, v in results.items() if v > 0}
+        if len(clean) < 2:
+            pytest.skip(f"{engine_type}: not enough valid BW configs")
+    
+        valid, msg = validate_bandwidth_monotonic(clean, compute_floor)
+>       assert valid, f"{engine_type}: {msg}"
+E       AssertionError: gmma: At 819.2 GB/s, total_cycles=28 is 600.0% above compute floor 4 — should saturate within 5.0%
+E       assert False
+
+sim/tests/test_engine_physical_invariants.py:365: AssertionError
+_______ TestBandwidthSaturation.test_bandwidth_saturation[4-110-72-fsa] ________
+
+self = <sim.tests.test_engine_physical_invariants.TestBandwidthSaturation object at 0x7f6886dd8cd0>
+engine_type = 'fsa', M = 4, K = 110, N = 72
+
+    @pytest.mark.parametrize("engine_type", ENGINE_TYPES)
+    @pytest.mark.parametrize("M,K,N", [
+        (4, 110, 72),
+        (64, 64, 64),
+    ])
+    def test_bandwidth_saturation(self, engine_type: str,
+                                  M: int, K: int, N: int) -> None:
+        """As BW increases, total_cycles must approach compute floor."""
+        # Use LPDDR, HBM, and a very high BW tier to check saturation
+        bw_points: List[Tuple[float, str]] = [
+            (51.2, "LPDDR5"),
+            (204.8, "HBM_MID"),
+            (819.2, "HBM3"),
+        ]
+        results: Dict[float, int] = {}
+        compute_floor = compute_lower_bound(
+            mac_count(M, K, N), oracle_peak_macs()
+        )
+    
+        for gbps, _label in bw_points:
+            # Build external-DRAM config (no on-chip)
+            cfg = build_config(engine_type, gbps)
+            try:
+                engine = create_engine(cfg)
+                result = engine.estimate(M, K, N)
+                results[gbps] = result.total_cycles
+            except Exception:
+                results[gbps] = -1
+    
+        # Filter out failed configs
+        clean = {k: v for k, v in results.items() if v > 0}
+        if len(clean) < 2:
+            pytest.skip(f"{engine_type}: not enough valid BW configs")
+    
+        valid, msg = validate_bandwidth_monotonic(clean, compute_floor)
+>       assert valid, f"{engine_type}: {msg}"
+E       AssertionError: fsa: At 819.2 GB/s, total_cycles=528 is 13100.0% above compute floor 4 — should saturate within 5.0%
+E       assert False
+
+sim/tests/test_engine_physical_invariants.py:365: AssertionError
+_____ TestBandwidthSaturation.test_bandwidth_saturation[64-64-64-systolic] _____
+
+self = <sim.tests.test_engine_physical_invariants.TestBandwidthSaturation object at 0x7f6886dd8d90>
+engine_type = 'systolic', M = 64, K = 64, N = 64
+
+    @pytest.mark.parametrize("engine_type", ENGINE_TYPES)
+    @pytest.mark.parametrize("M,K,N", [
+        (4, 110, 72),
+        (64, 64, 64),
+    ])
+    def test_bandwidth_saturation(self, engine_type: str,
+                                  M: int, K: int, N: int) -> None:
+        """As BW increases, total_cycles must approach compute floor."""
+        # Use LPDDR, HBM, and a very high BW tier to check saturation
+        bw_points: List[Tuple[float, str]] = [
+            (51.2, "LPDDR5"),
+            (204.8, "HBM_MID"),
+            (819.2, "HBM3"),
+        ]
+        results: Dict[float, int] = {}
+        compute_floor = compute_lower_bound(
+            mac_count(M, K, N), oracle_peak_macs()
+        )
+    
+        for gbps, _label in bw_points:
+            # Build external-DRAM config (no on-chip)
+            cfg = build_config(engine_type, gbps)
+            try:
+                engine = create_engine(cfg)
+                result = engine.estimate(M, K, N)
+                results[gbps] = result.total_cycles
+            except Exception:
+                results[gbps] = -1
+    
+        # Filter out failed configs
+        clean = {k: v for k, v in results.items() if v > 0}
+        if len(clean) < 2:
+            pytest.skip(f"{engine_type}: not enough valid BW configs")
+    
+        valid, msg = validate_bandwidth_monotonic(clean, compute_floor)
+>       assert valid, f"{engine_type}: {msg}"
+E       AssertionError: systolic: At 819.2 GB/s, total_cycles=200 is 525.0% above compute floor 32 — should saturate within 5.0%
+E       assert False
+
+sim/tests/test_engine_physical_invariants.py:365: AssertionError
+______ TestBandwidthSaturation.test_bandwidth_saturation[64-64-64-block] _______
+
+self = <sim.tests.test_engine_physical_invariants.TestBandwidthSaturation object at 0x7f6886dd8e50>
+engine_type = 'block', M = 64, K = 64, N = 64
+
+    @pytest.mark.parametrize("engine_type", ENGINE_TYPES)
+    @pytest.mark.parametrize("M,K,N", [
+        (4, 110, 72),
+        (64, 64, 64),
+    ])
+    def test_bandwidth_saturation(self, engine_type: str,
+                                  M: int, K: int, N: int) -> None:
+        """As BW increases, total_cycles must approach compute floor."""
+        # Use LPDDR, HBM, and a very high BW tier to check saturation
+        bw_points: List[Tuple[float, str]] = [
+            (51.2, "LPDDR5"),
+            (204.8, "HBM_MID"),
+            (819.2, "HBM3"),
+        ]
+        results: Dict[float, int] = {}
+        compute_floor = compute_lower_bound(
+            mac_count(M, K, N), oracle_peak_macs()
+        )
+    
+        for gbps, _label in bw_points:
+            # Build external-DRAM config (no on-chip)
+            cfg = build_config(engine_type, gbps)
+            try:
+                engine = create_engine(cfg)
+                result = engine.estimate(M, K, N)
+                results[gbps] = result.total_cycles
+            except Exception:
+                results[gbps] = -1
+    
+        # Filter out failed configs
+        clean = {k: v for k, v in results.items() if v > 0}
+        if len(clean) < 2:
+            pytest.skip(f"{engine_type}: not enough valid BW configs")
+    
+        valid, msg = validate_bandwidth_monotonic(clean, compute_floor)
+>       assert valid, f"{engine_type}: {msg}"
+E       AssertionError: block: At 819.2 GB/s, total_cycles=4352 is 13500.0% above compute floor 32 — should saturate within 5.0%
+E       assert False
+
+sim/tests/test_engine_physical_invariants.py:365: AssertionError
+___ TestBandwidthSaturation.test_bandwidth_saturation[64-64-64-os_systolic] ____
+
+self = <sim.tests.test_engine_physical_invariants.TestBandwidthSaturation object at 0x7f6886dd8f10>
+engine_type = 'os_systolic', M = 64, K = 64, N = 64
+
+    @pytest.mark.parametrize("engine_type", ENGINE_TYPES)
+    @pytest.mark.parametrize("M,K,N", [
+        (4, 110, 72),
+        (64, 64, 64),
+    ])
+    def test_bandwidth_saturation(self, engine_type: str,
+                                  M: int, K: int, N: int) -> None:
+        """As BW increases, total_cycles must approach compute floor."""
+        # Use LPDDR, HBM, and a very high BW tier to check saturation
+        bw_points: List[Tuple[float, str]] = [
+            (51.2, "LPDDR5"),
+            (204.8, "HBM_MID"),
+            (819.2, "HBM3"),
+        ]
+        results: Dict[float, int] = {}
+        compute_floor = compute_lower_bound(
+            mac_count(M, K, N), oracle_peak_macs()
+        )
+    
+        for gbps, _label in bw_points:
+            # Build external-DRAM config (no on-chip)
+            cfg = build_config(engine_type, gbps)
+            try:
+                engine = create_engine(cfg)
+                result = engine.estimate(M, K, N)
+                results[gbps] = result.total_cycles
+            except Exception:
+                results[gbps] = -1
+    
+        # Filter out failed configs
+        clean = {k: v for k, v in results.items() if v > 0}
+        if len(clean) < 2:
+            pytest.skip(f"{engine_type}: not enough valid BW configs")
+    
+        valid, msg = validate_bandwidth_monotonic(clean, compute_floor)
+>       assert valid, f"{engine_type}: {msg}"
+E       AssertionError: os_systolic: At 819.2 GB/s, total_cycles=68 is 112.5% above compute floor 32 — should saturate within 5.0%
+E       assert False
+
+sim/tests/test_engine_physical_invariants.py:365: AssertionError
+_ TestBandwidthSaturation.test_bandwidth_saturation[64-64-64-input_stationary] _
+
+self = <sim.tests.test_engine_physical_invariants.TestBandwidthSaturation object at 0x7f6886dd8fd0>
+engine_type = 'input_stationary', M = 64, K = 64, N = 64
+
+    @pytest.mark.parametrize("engine_type", ENGINE_TYPES)
+    @pytest.mark.parametrize("M,K,N", [
+        (4, 110, 72),
+        (64, 64, 64),
+    ])
+    def test_bandwidth_saturation(self, engine_type: str,
+                                  M: int, K: int, N: int) -> None:
+        """As BW increases, total_cycles must approach compute floor."""
+        # Use LPDDR, HBM, and a very high BW tier to check saturation
+        bw_points: List[Tuple[float, str]] = [
+            (51.2, "LPDDR5"),
+            (204.8, "HBM_MID"),
+            (819.2, "HBM3"),
+        ]
+        results: Dict[float, int] = {}
+        compute_floor = compute_lower_bound(
+            mac_count(M, K, N), oracle_peak_macs()
+        )
+    
+        for gbps, _label in bw_points:
+            # Build external-DRAM config (no on-chip)
+            cfg = build_config(engine_type, gbps)
+            try:
+                engine = create_engine(cfg)
+                result = engine.estimate(M, K, N)
+                results[gbps] = result.total_cycles
+            except Exception:
+                results[gbps] = -1
+    
+        # Filter out failed configs
+        clean = {k: v for k, v in results.items() if v > 0}
+        if len(clean) < 2:
+            pytest.skip(f"{engine_type}: not enough valid BW configs")
+    
+        valid, msg = validate_bandwidth_monotonic(clean, compute_floor)
+>       assert valid, f"{engine_type}: {msg}"
+E       AssertionError: input_stationary: At 819.2 GB/s, total_cycles=137 is 328.1% above compute floor 32 — should saturate within 5.0%
+E       assert False
+
+sim/tests/test_engine_physical_invariants.py:365: AssertionError
+___ TestBandwidthSaturation.test_bandwidth_saturation[64-64-64-tensor_core] ____
+
+self = <sim.tests.test_engine_physical_invariants.TestBandwidthSaturation object at 0x7f6886dd9090>
+engine_type = 'tensor_core', M = 64, K = 64, N = 64
+
+    @pytest.mark.parametrize("engine_type", ENGINE_TYPES)
+    @pytest.mark.parametrize("M,K,N", [
+        (4, 110, 72),
+        (64, 64, 64),
+    ])
+    def test_bandwidth_saturation(self, engine_type: str,
+                                  M: int, K: int, N: int) -> None:
+        """As BW increases, total_cycles must approach compute floor."""
+        # Use LPDDR, HBM, and a very high BW tier to check saturation
+        bw_points: List[Tuple[float, str]] = [
+            (51.2, "LPDDR5"),
+            (204.8, "HBM_MID"),
+            (819.2, "HBM3"),
+        ]
+        results: Dict[float, int] = {}
+        compute_floor = compute_lower_bound(
+            mac_count(M, K, N), oracle_peak_macs()
+        )
+    
+        for gbps, _label in bw_points:
+            # Build external-DRAM config (no on-chip)
+            cfg = build_config(engine_type, gbps)
+            try:
+                engine = create_engine(cfg)
+                result = engine.estimate(M, K, N)
+                results[gbps] = result.total_cycles
+            except Exception:
+                results[gbps] = -1
+    
+        # Filter out failed configs
+        clean = {k: v for k, v in results.items() if v > 0}
+        if len(clean) < 2:
+            pytest.skip(f"{engine_type}: not enough valid BW configs")
+    
+        valid, msg = validate_bandwidth_monotonic(clean, compute_floor)
+>       assert valid, f"{engine_type}: {msg}"
+E       AssertionError: tensor_core: At 819.2 GB/s, total_cycles=199 is 521.9% above compute floor 32 — should saturate within 5.0%
+E       assert False
+
+sim/tests/test_engine_physical_invariants.py:365: AssertionError
+_______ TestBandwidthSaturation.test_bandwidth_saturation[64-64-64-wmma] _______
+
+self = <sim.tests.test_engine_physical_invariants.TestBandwidthSaturation object at 0x7f6886dd9150>
+engine_type = 'wmma', M = 64, K = 64, N = 64
+
+    @pytest.mark.parametrize("engine_type", ENGINE_TYPES)
+    @pytest.mark.parametrize("M,K,N", [
+        (4, 110, 72),
+        (64, 64, 64),
+    ])
+    def test_bandwidth_saturation(self, engine_type: str,
+                                  M: int, K: int, N: int) -> None:
+        """As BW increases, total_cycles must approach compute floor."""
+        # Use LPDDR, HBM, and a very high BW tier to check saturation
+        bw_points: List[Tuple[float, str]] = [
+            (51.2, "LPDDR5"),
+            (204.8, "HBM_MID"),
+            (819.2, "HBM3"),
+        ]
+        results: Dict[float, int] = {}
+        compute_floor = compute_lower_bound(
+            mac_count(M, K, N), oracle_peak_macs()
+        )
+    
+        for gbps, _label in bw_points:
+            # Build external-DRAM config (no on-chip)
+            cfg = build_config(engine_type, gbps)
+            try:
+                engine = create_engine(cfg)
+                result = engine.estimate(M, K, N)
+                results[gbps] = result.total_cycles
+            except Exception:
+                results[gbps] = -1
+    
+        # Filter out failed configs
+        clean = {k: v for k, v in results.items() if v > 0}
+        if len(clean) < 2:
+            pytest.skip(f"{engine_type}: not enough valid BW configs")
+    
+        valid, msg = validate_bandwidth_monotonic(clean, compute_floor)
+>       assert valid, f"{engine_type}: {msg}"
+E       AssertionError: wmma: At 819.2 GB/s, total_cycles=106120 is 331525.0% above compute floor 32 — should saturate within 5.0%
+E       assert False
+
+sim/tests/test_engine_physical_invariants.py:365: AssertionError
+_______ TestBandwidthSaturation.test_bandwidth_saturation[64-64-64-fsa] ________
+
+self = <sim.tests.test_engine_physical_invariants.TestBandwidthSaturation object at 0x7f6886db3f10>
+engine_type = 'fsa', M = 64, K = 64, N = 64
+
+    @pytest.mark.parametrize("engine_type", ENGINE_TYPES)
+    @pytest.mark.parametrize("M,K,N", [
+        (4, 110, 72),
+        (64, 64, 64),
+    ])
+    def test_bandwidth_saturation(self, engine_type: str,
+                                  M: int, K: int, N: int) -> None:
+        """As BW increases, total_cycles must approach compute floor."""
+        # Use LPDDR, HBM, and a very high BW tier to check saturation
+        bw_points: List[Tuple[float, str]] = [
+            (51.2, "LPDDR5"),
+            (204.8, "HBM_MID"),
+            (819.2, "HBM3"),
+        ]
+        results: Dict[float, int] = {}
+        compute_floor = compute_lower_bound(
+            mac_count(M, K, N), oracle_peak_macs()
+        )
+    
+        for gbps, _label in bw_points:
+            # Build external-DRAM config (no on-chip)
+            cfg = build_config(engine_type, gbps)
+            try:
+                engine = create_engine(cfg)
+                result = engine.estimate(M, K, N)
+                results[gbps] = result.total_cycles
+            except Exception:
+                results[gbps] = -1
+    
+        # Filter out failed configs
+        clean = {k: v for k, v in results.items() if v > 0}
+        if len(clean) < 2:
+            pytest.skip(f"{engine_type}: not enough valid BW configs")
+    
+        valid, msg = validate_bandwidth_monotonic(clean, compute_floor)
+>       assert valid, f"{engine_type}: {msg}"
+E       AssertionError: fsa: At 819.2 GB/s, total_cycles=588 is 1737.5% above compute floor 32 — should saturate within 5.0%
+E       assert False
+
+sim/tests/test_engine_physical_invariants.py:365: AssertionError
+___________________________ test_tensor_core_decode ____________________________
+
+    def test_tensor_core_decode():
+        """TensorCore 64×16×16 sub-tiles fragment large GEMM vs monolithic Block."""
+        M, K, N = 1, 11008, 2048
+    
+        tc = create_engine(_engine_config("tensor_core"))
+        block = create_engine(_engine_config("block"))
+    
+        r_tc = tc.estimate(M, K, N)
+        r_block = block.estimate(M, K, N)
+    
+        tc_tok_s = _tok_s(r_tc)
+        block_tok_s = _tok_s(r_block)
+    
+        assert r_tc.total_cycles > r_block.total_cycles, (
+            f"TensorCore total_cycles ({r_tc.total_cycles}) should exceed "
+            f"BlockEngine ({r_block.total_cycles}) due to sub-tile fragmentation"
+        )
+    
+        assert tc_tok_s < block_tok_s, (
+            f"TensorCore tok/s ({tc_tok_s:.1f}) should be below "
+            f"BlockEngine ({block_tok_s:.1f}) for large K/N decode"
+        )
+    
+        # Sanity: model uses the expected 64×16×16 sub-tile geometry.
+>       assert r_tc.details.get("subtile_size") == "64×16×16"
+E       AssertionError: assert '64x16x16' == '64×16×16'
+E         
+E         - 64×16×16
+E         ?   ^  ^
+E         + 64x16x16
+E         ?   ^  ^
+
+sim/tests/test_engines.py:155: AssertionError
+=============================== warnings summary ===============================
+sim/tests/test_engine_physical_invariants.py: 32 warnings
+  /home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engine_physical_invariants.py:176: DeprecationWarning: EngineResult.ops is deprecated; use mac_count instead
+    assert result.ops == expected_macs, (
+
+sim/tests/test_engine_physical_invariants.py: 16 warnings
+  /home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engine_physical_invariants.py:192: DeprecationWarning: EngineResult.ops is deprecated; use mac_count instead
+    assert result.ops >= expected_macs, (
+
+sim/tests/test_engine_physical_invariants.py::TestBasicInvariants::test_small_square_gemm[systolic]
+sim/tests/test_engine_physical_invariants.py::TestBasicInvariants::test_small_square_gemm[block]
+sim/tests/test_engine_physical_invariants.py::TestBasicInvariants::test_small_square_gemm[os_systolic]
+sim/tests/test_engine_physical_invariants.py::TestBasicInvariants::test_small_square_gemm[input_stationary]
+sim/tests/test_engine_physical_invariants.py::TestBasicInvariants::test_small_square_gemm[tensor_core]
+sim/tests/test_engine_physical_invariants.py::TestBasicInvariants::test_small_square_gemm[wmma]
+sim/tests/test_engine_physical_invariants.py::TestBasicInvariants::test_small_square_gemm[gmma]
+sim/tests/test_engine_physical_invariants.py::TestBasicInvariants::test_small_square_gemm[fsa]
+  /home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engine_physical_invariants.py:459: DeprecationWarning: EngineResult.ops is deprecated; use mac_count instead
+    assert result.ops == 64 * 64 * 64
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED sim/tests/test_engine_physical_invariants.py::TestBandwidthSaturation::test_bandwidth_saturation[4-110-72-systolic]
+FAILED sim/tests/test_engine_physical_invariants.py::TestBandwidthSaturation::test_bandwidth_saturation[4-110-72-block]
+FAILED sim/tests/test_engine_physical_invariants.py::TestBandwidthSaturation::test_bandwidth_saturation[4-110-72-os_systolic]
+FAILED sim/tests/test_engine_physical_invariants.py::TestBandwidthSaturation::test_bandwidth_saturation[4-110-72-input_stationary]
+FAILED sim/tests/test_engine_physical_invariants.py::TestBandwidthSaturation::test_bandwidth_saturation[4-110-72-tensor_core]
+FAILED sim/tests/test_engine_physical_invariants.py::TestBandwidthSaturation::test_bandwidth_saturation[4-110-72-wmma]
+FAILED sim/tests/test_engine_physical_invariants.py::TestBandwidthSaturation::test_bandwidth_saturation[4-110-72-gmma]
+FAILED sim/tests/test_engine_physical_invariants.py::TestBandwidthSaturation::test_bandwidth_saturation[4-110-72-fsa]
+FAILED sim/tests/test_engine_physical_invariants.py::TestBandwidthSaturation::test_bandwidth_saturation[64-64-64-systolic]
+FAILED sim/tests/test_engine_physical_invariants.py::TestBandwidthSaturation::test_bandwidth_saturation[64-64-64-block]
+FAILED sim/tests/test_engine_physical_invariants.py::TestBandwidthSaturation::test_bandwidth_saturation[64-64-64-os_systolic]
+FAILED sim/tests/test_engine_physical_invariants.py::TestBandwidthSaturation::test_bandwidth_saturation[64-64-64-input_stationary]
+FAILED sim/tests/test_engine_physical_invariants.py::TestBandwidthSaturation::test_bandwidth_saturation[64-64-64-tensor_core]
+FAILED sim/tests/test_engine_physical_invariants.py::TestBandwidthSaturation::test_bandwidth_saturation[64-64-64-wmma]
+FAILED sim/tests/test_engine_physical_invariants.py::TestBandwidthSaturation::test_bandwidth_saturation[64-64-64-fsa]
+FAILED sim/tests/test_engines.py::test_tensor_core_decode - AssertionError: a...
+============================= test session starts ==============================
+platform linux -- Python 3.10.12, pytest-9.0.3, pluggy-1.6.0
+rootdir: /home/prj/zhengs/caduceuscore/npu_arc_model
+configfile: pytest.ini (WARNING: ignoring pytest config in pyproject.toml!)
+plugins: anyio-4.13.0
+collected 1 item
+
+sim/tests/test_engines.py F                                              [100%]
+
+=================================== FAILURES ===================================
+___________________________ test_tensor_core_decode ____________________________
+
+    def test_tensor_core_decode():
+        """TensorCore 64×16×16 sub-tiles fragment large GEMM vs monolithic Block."""
+        M, K, N = 1, 11008, 2048
+    
+        tc = create_engine(_engine_config("tensor_core"))
+        block = create_engine(_engine_config("block"))
+    
+        r_tc = tc.estimate(M, K, N)
+        r_block = block.estimate(M, K, N)
+    
+        tc_tok_s = _tok_s(r_tc)
+        block_tok_s = _tok_s(r_block)
+    
+        assert r_tc.total_cycles > r_block.total_cycles, (
+            f"TensorCore total_cycles ({r_tc.total_cycles}) should exceed "
+            f"BlockEngine ({r_block.total_cycles}) due to sub-tile fragmentation"
+        )
+    
+        assert tc_tok_s < block_tok_s, (
+            f"TensorCore tok/s ({tc_tok_s:.1f}) should be below "
+            f"BlockEngine ({block_tok_s:.1f}) for large K/N decode"
+        )
+    
+        # Sanity: model uses the expected 64×16×16 sub-tile geometry.
+>       assert r_tc.details.get("subtile_size") == "64×16×16"
+E       AssertionError: assert '64x16x16' == '64×16×16'
+E         
+E         - 64×16×16
+E         ?   ^  ^
+E         + 64x16x16
+E         ?   ^  ^
+
+sim/tests/test_engines.py:155: AssertionError
+=========================== short test summary info ============================
+FAILED sim/tests/test_engines.py::test_tensor_core_decode - AssertionError: a...
+============================== 1 failed in 0.06s ===============================

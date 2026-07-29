@@ -4,6 +4,8 @@
 > 所有性能数据来自自研 Python simulator，3B LLM FFN_down GEMM (M=1, K=11008, N=2048)，INT4 精度。
 > 性能数据 commit: `02683a9f49bc2df299d31f4af8c1446d99101fce`。
 > 本文基于修正后的 Arc Model DSE v2；引擎模型修复后所有 63 个回归测试通过。
+>
+> ⚠️ **信任声明**: 本指南中的数值与"推荐"结论均为当前模型校准下的估算。部分关键参数（`gmma_pipeline_scale`、`tensor_core_descriptor_overhead`、`block_sparsity_penalty` 等）仍为 T0/T1，尚未达到 `decision-grade` 发布标准。详见 [`docs/model-trust-and-release.md`](docs/model-trust-and-release.md)。
 
 ---
 
@@ -128,7 +130,7 @@
 | CV 性能 | MobileNetV3-Small **677.9 FPS**（64×64 INT4）|
 | 功耗 | **~9.6 W** |
 
-**一句话：** ✅ **推荐引擎。** Block 64×64 在 28.2 mm² 实现 DRAM 瓶颈下的最高性能（2,540 tok/s 单 GEMM / 21.586 tok/s npu_sim 完整模型），全并行广播架构消除了 pipeline 开销和 DMA 碎片问题，且 LLM/CV 双栈验证通过。广播效率是核心优势，DRAM 带宽是唯一瓶颈。带宽翻倍性能即可翻倍。
+**一句话：** ✅ **当前模型下的首选引擎（探索性）。** Block 64×64 在 28.2 mm² 实现 DRAM 瓶颈下的最高性能（2,540 tok/s 单 GEMM / 21.586 tok/s npu_sim 完整模型），全并行广播架构消除了 pipeline 开销和 DMA 碎片问题，且 LLM/CV 双栈验证通过。广播效率是核心优势，DRAM 带宽是当前估算的唯一瓶颈。带宽翻倍性能即可翻倍——但该结论依赖当前 T1 带宽/面积假设，未达 `decision-grade`。
 
 ---
 

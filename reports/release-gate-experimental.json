@@ -1,0 +1,8 @@
+{
+  "profile": "experimental",
+  "scenario": "lpddr5_3b",
+  "space": "ci-all-axes",
+  "verdict": "PASS",
+  "artifacts_dir": "/home/prj/zhengs/caduceuscore/npu_arc_model/artifacts/releases/e531c15bfb8efe09",
+  "run_id": "e531c15bfb8efe09"
+}

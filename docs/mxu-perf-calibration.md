@@ -47,6 +47,8 @@ The MXUModel includes DMA and DRAM bandwidth overhead (tile weight/activation st
 
 For accurate calibration, use the per-tile cycle formula in `analyze_perf.py` (which matches RTL exactly) rather than the DMA-aware MXUModel for module-level cycle prediction.
 
+> ⚠️ **适用范围**: 本报告仅验证模块级 MXU 的 cycle 行为，不覆盖系统级 DMA/调度/内存层级。系统级预测需结合 `docs/model-trust-and-release.md` 中的信任等级评估。
+
 ## Module-Level Back-to-Back Behavior (MX-P13 / MX-P14)
 
 The back-to-back cases MX-P13 and MX-P14 are executed with `+repeat=10` in `tb_mxu_perf.v`.  The testbench inserts a deterministic **4-cycle GAP** between consecutive operations:

@@ -335,3 +335,31 @@
    - Context: The previous script fell back to an analytic expected value when raw RTL evidence was missing.
    - Decision: `calibrate_mxu_model.py` now raises `CalibrationError` and exits non-zero on missing/duplicate/corrupted raw data.
    - Consequences: Calibration conclusions can no longer be silently derived from the same model they are supposed to validate.
+
+## Todo 18 — Release and trust-level framework
+
+1. **Acceptance matrix enumerates required axes lazily**
+   - Context: Scenario-driven DSE must cover engine, M, frequency, memory tier, and embodied-AI axes without generating invalid combinations eagerly.
+   - Decision: `sim/validation/scenario_matrix.py` returns a lazy matrix with per-entry `MatrixCategory` (valid/invalid-schema/invalid-physical/etc.) and mapping helpers to real DSE axes.
+   - Consequences: Coverage manifests can compare requested axes against generated points; invalid categories are counted but not evaluated.
+
+2. **Release gate profiles are explicit and profile-specific**
+   - Context: Exploratory results must be publishable for discussion, but decision-grade rankings require measured evidence.
+   - Decision: `scripts/release_gate.py` supports `experimental` (T0/T1 allowed, no authoritative result) and `decision-grade` (all ranking parameters T2+ and in range) profiles.
+   - Consequences: `experimental` can pass today; `decision-grade` intentionally fails until calibration upgrades.
+
+3. **Decision-grade artifacts require a clean worktree**
+   - Context: Content-addressed release bundles must reproduce from a known commit.
+   - Decision: The gate refuses to generate decision-grade artifacts when the worktree is dirty.
+   - Consequences: Decision-grade runs must be committed first, preventing accidental releases from unreviewed changes.
+
+4. **Model-integrity verifier fails open on known pre-existing issues**
+   - Context: `sim/cv/conv_mapper.py` contains a `min(..., 1.0)` utilization clamp and legacy `bandwidth_bytes_per_cycle` reads exist in mxu/vector/dram models.
+   - Decision: The verifier reports these violations but does not silence them; they are recorded as known issues rather than blocking Todo 18.
+   - Consequences: Future work can address the clamp and legacy reads with targeted refactor evidence.
+
+5. **Historical reports remain append-only**
+   - Context: Dated bug reports are part of the permanent record.
+   - Decision: `scripts/verify_scope.py` treats `reports/dse-engine-model-bugs-2026-07-27.md` and its postfix as immutable and rejects any diff against them.
+   - Consequences: Findings are preserved exactly as written; new analysis goes into new files.
+

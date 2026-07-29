@@ -1,0 +1,24 @@
+{
+  "verdict": "FAIL",
+  "violations": [
+    "sim/cv/conv_mapper.py:151: min(..., 1.0) clamp",
+    "sim/models/mxu.py:49: legacy bandwidth_bytes_per_cycle read",
+    "sim/models/vector.py:42: legacy bandwidth_bytes_per_cycle read",
+    "sim/models/dram.py:5: legacy bandwidth_bytes_per_cycle read",
+    "sim/models/dram.py:50: legacy bandwidth_bytes_per_cycle read"
+  ],
+  "utilization_clamps": [
+    "sim/cv/conv_mapper.py:151: min(..., 1.0) clamp"
+  ],
+  "legacy_unit_reads": [
+    "sim/models/mxu.py:49: legacy bandwidth_bytes_per_cycle read",
+    "sim/models/vector.py:42: legacy bandwidth_bytes_per_cycle read",
+    "sim/models/dram.py:5: legacy bandwidth_bytes_per_cycle read",
+    "sim/models/dram.py:50: legacy bandwidth_bytes_per_cycle read"
+  ],
+  "diagnostic_skips": [],
+  "duplicate_registries": [],
+  "unregistered_constants": [],
+  "fail_open_paths": [],
+  "utilization_bound_violations": []
+}

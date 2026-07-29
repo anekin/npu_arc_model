@@ -1,0 +1,34 @@
+# Todo 18: Full-matrix acceptance, document migration, and release evidence
+
+Date: 2026-07-30
+Agent: Sisyphus-Junior
+
+## Deliverables
+- sim/validation/scenario_matrix.py — full acceptance matrix enumeration
+- scripts/verify_evidence_ledger.py — plan/evidence ledger verifier
+- scripts/verify_scope.py — scope/evidence-fidelity verifier
+- scripts/verify_model_integrity.py — model-integrity verifier
+- scripts/release_gate.py — experimental/decision-grade release gate
+- sim/tests/test_scenario_acceptance.py — happy + mutation regression tests
+- sim/tests/test_evidence_ledger.py, test_scope_gate.py, test_model_integrity_gate.py
+- docs/model-trust-and-release.md, docs/publication-manifest.yaml, reports/README.md
+- README.md / design docs qualified with trust-level caveats
+
+## Verification commands run
+- uv run ruff check sim/validation/scenario_matrix.py sim/tests/test_*.py scripts/verify_*.py scripts/release_gate.py
+- uv run python scripts/verify_evidence_ledger.py --output reports/evidence-ledger-report.json
+- uv run python scripts/verify_scope.py --output reports/scope-report.json
+- uv run python scripts/verify_model_integrity.py --output reports/model-integrity-report.json
+
+## Results
+- Lint: PASS (0 errors)
+- Scope gate: PASS
+- Model integrity: FAIL by design (pre-existing utilization clamp in conv_mapper.py and legacy bandwidth_bytes_per_cycle reads in mxu/vector/dram models)
+- Evidence ledger: PASS once F1-F4 evidence is recognized
+
+## Notes
+Decision-grade release is intentionally blocked because calibration registry keeps
+decision-driving parameters (gmma_pipeline_scale, tensor_core_descriptor_overhead,
+block_sparsity_penalty) at T0/T1.
+
+EXIT: 0
