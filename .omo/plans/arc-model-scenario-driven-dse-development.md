@@ -399,7 +399,7 @@ Critical path: `1 → (2,3) → 4 → (5,6) → 7 → (8 → 12, 10 → 11) → 
 
   **Commit**: YES | `refactor(engine): centralize registry and result contracts` | `sim/engine/registry.py`, `sim/engine/mac_engine.py`, `sim/npu_sim.py`, `sim/design_space_explorer.py`, `sim/tests/test_engine_result_contract.py`, `sim/tests/test_engine_instantiate.py`, `sim/tests/test_dse_coverage.py`
 
-- [ ] 5. 修复 Systolic、OS、GMMA、TensorCore 的物理公式
+- [x] 5. 修复 Systolic、OS、GMMA、TensorCore 的物理公式
 
   **What to do**:
   1. `systolic_engine.py` 统一 M mapping，使 M=2→3 不再出现 total latency 下降；decode/prefill 只作为 workload 语义，不作为两个不连续硬件公式的隐藏阈值。
@@ -445,7 +445,7 @@ Critical path: `1 → (2,3) → 4 → (5,6) → 7 → (8 → 12, 10 → 11) → 
 
   **Commit**: YES | `fix(engine): enforce physical timing bounds across batch shapes` | `sim/engine/systolic_engine.py`, `sim/engine/os_systolic_engine.py`, `sim/engine/gmma_engine.py`, `sim/engine/tensor_core_engine.py`, 必要时其他被 invariant 证实有问题的 engine 文件
 
-- [ ] 6. 修复跨频率与跨带宽的端到端单位传播
+- [x] 6. 修复跨频率与跨带宽的端到端单位传播
 
   **What to do**:
   1. 删除 DSE `tok_s_from_layer` 的 1000 MHz 常数和 CV `1e9/cycles` 常数，统一使用 `units.py`。

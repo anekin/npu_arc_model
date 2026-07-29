@@ -92,7 +92,7 @@
       "plan_name": "arc-model-scenario-driven-dse-development",
       "status": "active",
       "started_at": "2026-07-29T14:26:47.478Z",
-      "updated_at": "2026-07-29T15:46:49.728Z",
+      "updated_at": "2026-07-29T17:01:23.032Z",
       "session_ids": [
         "opencode:ses_053ba6068ffeyiIpkBUK0ulwPN"
       ],
@@ -126,6 +126,30 @@
           "status": "completed",
           "ended_at": "2026-07-29T15:46:49.728Z",
           "elapsed_ms": 91666
+        },
+        "todo:5": {
+          "task_key": "todo:5",
+          "task_label": "5",
+          "task_title": "修复 Systolic、OS、GMMA、TensorCore 的物理公式",
+          "session_id": "opencode:ses_0515b5ed1ffeTMJK1315kL6xCG",
+          "agent": "Sisyphus-Junior",
+          "category": "unspecified-high",
+          "updated_at": "2026-07-29T17:01:23.032Z",
+          "started_at": "2026-07-29T16:50:18.827Z",
+          "status": "completed",
+          "ended_at": "2026-07-29T17:01:23.032Z",
+          "elapsed_ms": 664205
+        },
+        "todo:4": {
+          "task_key": "todo:4",
+          "task_label": "4",
+          "task_title": "统一 engine registry、result、输入和 diagnostic 契约",
+          "session_id": "opencode:ses_0515ae8d7ffeAXzTruUwGE0t7H",
+          "agent": "Sisyphus-Junior",
+          "category": "unspecified-high",
+          "started_at": "2026-07-29T16:54:55.573Z",
+          "status": "running",
+          "updated_at": "2026-07-29T17:00:26.865Z"
         }
       }
     }
@@ -133,7 +157,7 @@
   "active_plan": "/home/prj/zhengs/caduceuscore/npu_arc_model/.omo/plans/arc-model-scenario-driven-dse-development.md",
   "started_at": "2026-07-29T14:26:47.478Z",
   "status": "active",
-  "updated_at": "2026-07-29T15:46:49.728Z",
+  "updated_at": "2026-07-29T17:01:23.032Z",
   "session_ids": [
     "opencode:ses_053ba6068ffeyiIpkBUK0ulwPN"
   ],
@@ -167,6 +191,30 @@
       "status": "completed",
       "ended_at": "2026-07-29T15:46:49.728Z",
       "elapsed_ms": 91666
+    },
+    "todo:5": {
+      "task_key": "todo:5",
+      "task_label": "5",
+      "task_title": "修复 Systolic、OS、GMMA、TensorCore 的物理公式",
+      "session_id": "opencode:ses_0515b5ed1ffeTMJK1315kL6xCG",
+      "agent": "Sisyphus-Junior",
+      "category": "unspecified-high",
+      "updated_at": "2026-07-29T17:01:23.032Z",
+      "started_at": "2026-07-29T16:50:18.827Z",
+      "status": "completed",
+      "ended_at": "2026-07-29T17:01:23.032Z",
+      "elapsed_ms": 664205
+    },
+    "todo:4": {
+      "task_key": "todo:4",
+      "task_label": "4",
+      "task_title": "统一 engine registry、result、输入和 diagnostic 契约",
+      "session_id": "opencode:ses_0515ae8d7ffeAXzTruUwGE0t7H",
+      "agent": "Sisyphus-Junior",
+      "category": "unspecified-high",
+      "started_at": "2026-07-29T16:54:55.573Z",
+      "status": "running",
+      "updated_at": "2026-07-29T17:00:26.865Z"
     }
   },
   "agent": "atlas"

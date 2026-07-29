@@ -248,3 +248,27 @@
 - `_build_v2_output` is a module-level helper (not a method) to keep DSE main() readable.
 - Trust propagation: `--allow-partial` → top-level `trust_level=non_authoritative` + per-result `trust_level=non_authoritative`.
 - Evidence captured to `.omo/evidence/task-9-result-determinism.json` and `.omo/evidence/task-9-result-negative.json`.
+
+## Todo 7: Versioned Declarative Workload Graph and Operator Registry (2026-07-30)
+
+### What was done
+- Created `sim/workloads/` package with four core modules and three test suites (89 tests).
+- **schema.py** — `WorkloadGraphV1`, `TensorSpec`, `NodeSpec`, `SymbolicDim`, `WorkloadProvenance`: Pydantic v2 with `extra='forbid'`, stable IDs, DAG validation via Kahn topological sort, tensor shape validation (int or named symbol), layout/precision enums, alias validation.
+- **dimensions.py** — `DimensionBindings` frozen dataclass with 8 canonical fields (`request_batch`, `active_sequences`, `token_block`, `image_count`, `action_horizon`, `flow_steps`, `resident_models`, `inflight_jobs`), each bound to named symbolic axis, extra bindings dict for non-canonical symbols, edge batch value sets from plan acceptance criteria.
+- **operators.py** — `OperatorRegistry` with `OperatorDisposition` enum (MODELED, EXPLICITLY_FREE_OR_FUSED, UNSUPPORTED). 17 modeled ops (gemm, softmax, layernorm, conv, etc.), 5 free/fused ops (reshape, concat, reduce_mean, shape, transpose — all carry fused_into), 6 unsupported ops (gather, batch_norm, upsample, etc.). Unregistered ops = unsupported (fail-closed, no "profile_required" default).
+- **validate.py** — `validate_graph_dag()`, `validate_dimensions()`, `validate_operators()`, `validate_tensor_lifetime()`, `validate_all()` comprehensive pre-execution gate.
+- **Tests**: `test_workload_schema.py` (37 tests), `test_dimension_semantics.py` (25 tests), `test_operator_registry.py` (27 tests) — 89 tests total, 0 skip/xfail.
+- Evidence captured to `.omo/evidence/task-7-workload-graph.json` and `.omo/evidence/task-7-workload-negative.txt`.
+
+### Key findings
+- **Pydantic `AfterValidator` and booleans**: Pydantic v2 coerces `bool → int` BEFORE `AfterValidator` runs (same as Todo 2 finding), so `isinstance(v, bool)` checks in `AfterValidator` never fire. Solution: `@field_validator(mode="before")` on `shape` field to reject bools at the boundary.
+- **Self-loop detection**: A node that produces AND consumes the same tensor creates a self-loop (e.g. `n0 outputs t_out, n0 inputs t_out`). Kahn's algorithm skips self-edges (`prod_node != node.node_id`), so self-loops need explicit detection before the topological sort.
+- **Pydantic wraps `ConfigError` in `ValidationError`**: `model_validator` raises that are subclasses of `ValueError` get wrapped by Pydantic's `ValidationError`. Tests must expect `ValueError` (common ancestor) rather than the specific `ConfigError` type.
+- **Shape validation**: `ShapeElement = int | str` works well for mixed fixed and symbolic shapes. Pydantic's Union type coercion handles both cleanly.
+
+### Technical decisions
+- `WorkloadGraphV1` model_validator runs DAG + referential integrity checks at construction (fail-early).
+- DAG detection uses Kahn's algorithm with explicit self-loop pre-check, not just topological sort.
+- `DimensionBindings` is a frozen dataclass (immutable), not a Pydantic model — dimensions are simple key-value pairs, not a validated schema.
+- Free/fused ops MUST record `fused_into` (enforced at `OperatorEntry.__post_init__`).
+- Unregistered ops default to `UNSUPPORTED` — no `profile_required` or `unknown` escape hatch.

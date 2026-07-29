@@ -102,3 +102,25 @@
 **What**: `--result-schema v1` (default) produces the existing legacy JSON untouched. `--result-schema v2` produces the new schema. No breaking change for existing consumers.
 **Why**: The plan explicitly requires legacy CLI default output to remain unchanged (Must NOT touch Todo 1 snapshots). This is the safest migration path.
 **Alternatives**: Could have made v2 the default with a `--legacy` flag, but that would break every existing test and downstream consumer immediately.
+
+## Todo 7: Workload Graph and Operator Registry (2026-07-30)
+
+### Decision 20: DimensionBindings is a frozen dataclass, not Pydantic model
+**What**: `DimensionBindings` uses `@dataclass(frozen=True)` instead of `pydantic.BaseModel`.
+**Why**: Dimensions are simple key-value mappings (symbolic_name → positive_int), not a validated schema. A frozen dataclass is immutable, has minimal overhead, and avoids Pydantic's coercion overhead. The `__post_init__` provides validation (positive int, no zero, no shadowing).
+**Alternatives**: Could have used `BaseModel` with `frozen=True`, but dataclass is simpler and the validation needs are minimal.
+
+### Decision 21: OperatorRegistry uses OperatorDisposition enum, not separate boolean flags
+**What**: `OperatorDisposition` has exactly three values: MODELED, EXPLICITLY_FREE_OR_FUSED, UNSUPPORTED. No `profile_required` or `unknown`.
+**Why**: The plan explicitly requires no `profile_required`/`unknown` default, and free/fused ops must carry `fused_into` for auditability. An enum with three values is exhaustive — any op type maps to exactly one disposition.
+**Alternatives**: Could have used `is_modeled`/`is_free`/`is_unsupported` boolean fields on each entry, but the enum is clearer, exhaustive, and prevents contradictory flags.
+
+### Decision 22: Graph validation runs at construction (model_validator), not as separate step
+**What**: `WorkloadGraphV1.@model_validator(mode="after")` runs DAG, ID uniqueness, tensor reference, and alias validation at Pydantic construction time.
+**Why**: Fail-early is better than post-construction validation. An invalid graph should never exist in memory. The explicit `validate_*()` functions in `validate.py` provide the same checks for contexts that want to validate without re-constructing (e.g. adapter code that modifies graphs in-place).
+**Alternatives**: Could have required explicit `graph.validate()` call before use, but that creates a window where invalid graphs can be passed around.
+
+### Decision 23: Shape elements are `int | str` Union, not a ShapeElement wrapper type
+**What**: A shape is `List[Union[int, str]]` — a fixed int dim or a named symbolic string.
+**Why**: This is the simplest representation that captures both fixed and symbolic dimensions. Pydantic's Union handles coercion, and the validator ensures positive ints and non-empty strings.
+**Alternatives**: A `ShapeElement` discriminated union or a `FixedDim(int)` / `SymbolicDim(str)` wrapper would be more type-safe but adds unnecessary indirection for the current use case.
