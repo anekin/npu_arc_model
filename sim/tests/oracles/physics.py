@@ -161,11 +161,15 @@ def validate_bandwidth_monotonic(
     bw_results: Dict[float, int],
     compute_floor: int,
     tolerance_pct: float = 5.0,
+    require_saturation: bool = True,
 ) -> Tuple[bool, str]:
     """Bandwidth increase must not increase total_cycles.
 
     As bandwidth grows, DMA shrinks. Total cycles should approach
-    the compute floor and then saturate there (within tolerance).
+    the compute floor and then saturate there (within tolerance_pct).
+
+    Set *require_saturation* to False to skip the saturation-floor check
+    (useful for tiny matrices where engine overhead >> compute floor).
     """
     sorted_bws = sorted(bw_results.keys())
     for i in range(len(sorted_bws) - 1):
@@ -178,6 +182,10 @@ def validate_bandwidth_monotonic(
                 f"BW {bw_lo}→{bw_hi} GB/s: total_cycles increased "
                 f"({cycles_lo} → {cycles_hi}) — violates monotonicity"
             )
+    if not require_saturation:
+        return True, (
+            f"BW-monotonic, highest-BW {bw_results[sorted_bws[-1]]:,}c"
+        )
     # Check saturation near compute floor
     highest_bw = sorted_bws[-1]
     if bw_results[highest_bw] > 0 and compute_floor > 0:
@@ -190,7 +198,7 @@ def validate_bandwidth_monotonic(
             )
     return True, (
         f"BW-monotonic, highest-BW {bw_results[highest_bw]:,}c "
-        f"vs floor {compute_floor:,}c"
+        f"vs floor {compute_floor:,}c (tol {tolerance_pct}%)"
     )
 
 
