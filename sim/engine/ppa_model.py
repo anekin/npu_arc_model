@@ -1,12 +1,25 @@
 """PPA 模型 — 面积/功耗/性能 综合评估"""
 
+from __future__ import annotations
+
 from dataclasses import dataclass, field
-from typing import Any, Dict
+from typing import Any, Dict, Tuple
+
+from contracts.errors import ConfigError
+from contracts.hardware import DEFAULT_NODE_SCALE_PROVENANCE
+from models.memory_backend import (
+    MemoryAccessPattern,
+    MemoryBackend,
+    MemoryRequest,
+    MemoryTopology,
+)
+from models.onchip_dram import Parametric3DMemoryBackend
 
 
 @dataclass
 class PPA:
     """Performance, Power, Area"""
+
     tok_s: float
     area_mm2: float
     power_w: float
@@ -25,17 +38,31 @@ class PPA:
                 f"{self.power_w:.1f}W, {self.efficiency_tok_per_watt:.1f}tok/W)")
 
 
+def _node_scale_factor(process_node_nm: float) -> float:
+    """Return area scale factor relative to the 7nm baseline.
+
+    Uses the TSMC density ratio correction: 12FFC is an optical shrink of
+    16FFC, not true 12nm geometry.  The density ratio 91.2/33.8 = 2.70×
+    replaces the old geometric scaling (12/7)² = 2.94×.
+    """
+    if process_node_nm == 12.0:
+        return 2.70
+    # Fall back to conventional geometric scaling for other nodes; 7nm = 1.0.
+    return (process_node_nm / 7.0) ** 2
+
+
 class AreaModel:
     """面积估算模型 — 基于配置参数。
 
     PE 面积基线来自公开论文/产品数据，详见 references/area_sources.md。
-    所有基线以 7nm 为参考节点，运行时按 (process/7nm)^2 缩放。
+    所有基线以 7nm 为参考节点，运行时按密度比缩放（12nm 使用 2.70×，
+    不是旧版的 (12/7)² = 2.94×）。
     """
 
     def __init__(self, config: Dict[str, Any]):
         am = config.get("area_model", {})
         node = float(am.get("process_node_nm", am.get("process_node", 7.0)))
-        self.node_scale = (node / 7.0) ** 2  # area scales with node^2
+        self.node_scale = _node_scale_factor(node)
 
         # ── PE 面积基线 @7nm (128×128 array) ──
         # 来源: TPUv1 ISCA 2017 die-shot 反推，见 references/area_sources.md
@@ -56,8 +83,10 @@ class AreaModel:
         self.dram_phy = float(am.get("dram_phy_area_mm2", 5.0)) * self.node_scale
         self.crossbar = float(am.get("crossbar_area_mm2", 1.0)) * self.node_scale
         self.dma_per_ch = float(am.get("dma_channels_area_per_channel_mm2", 0.5)) * self.node_scale
-        # TSV area overhead for 3D-stacked DRAM (keep-out zones + SerDes + redundancy)
-        # ~10% of total die for HBM2/3-class stacking at 500 GB/s, per industry rule-of-thumb
+
+        # Legacy fixed-percentage TSV overhead is replaced by the parametric
+        # memory backend below.  Keep the constant for backward-compatible
+        # config parsing only.
         self.tsv_overhead_pct = float(am.get("tsv_overhead_pct", 0.10))
 
         # CV-specific hardware units
@@ -65,7 +94,71 @@ class AreaModel:
         self.pool2d = float(am.get("pool2d_mm2", 0.05))                   # fixed cost
         self.conv_sfu = float(am.get("conv_sfu_mm2", 0.10))               # fixed cost
 
-    def estimate(self, config: Dict[str, Any], engine_type: str) -> float:
+        # Parametric memory backend for memory-dependent area/power.
+        self._memory_backend: MemoryBackend = Parametric3DMemoryBackend()
+
+    def _memory_type(self, config: Dict[str, Any]) -> str:
+        """Classify memory subsystem as on_chip_3d_dram, hbm, or lpddr."""
+        onchip = config.get("on_chip_memory", {})
+        if float(onchip.get("capacity_gb", 0)) > 0:
+            return "on_chip_3d_dram"
+        mem_type = str(config.get("memory", {}).get("type", "LPDDR5-6400")).lower()
+        if "hbm3" in mem_type:
+            return "hbm3"
+        if "hbm2e" in mem_type or "hbm2" in mem_type:
+            return "hbm2e"
+        if "lpddr5x" in mem_type:
+            return "lpddr5x"
+        return "lpddr5"
+
+    def _memory_area_estimate(self, config: Dict[str, Any]) -> Dict[str, float]:
+        """Estimate memory-die, PHY, TSV, and package area using the backend.
+
+        Returns a dict with memory_die_area_mm2, interface_area_mm2,
+        dram_phy_area_mm2, package_area_mm2, tsv_area_mm2.
+        """
+        mem_type = self._memory_type(config)
+        onchip = config.get("on_chip_memory", {})
+        memory = config.get("memory", {})
+
+        if mem_type == "on_chip_3d_dram":
+            capacity_gb = float(onchip.get("capacity_gb", 0))
+            bandwidth_gbps = float(onchip.get("bandwidth_gbps", 500.0))
+            include_phy = False
+            include_tsv = True
+        else:
+            capacity_gb = float(memory.get("capacity_gb", 32.0))
+            bandwidth_gbps = float(memory.get("bandwidth_gbps", 51.2))
+            include_phy = True
+            include_tsv = mem_type in {"hbm2e", "hbm3"}
+
+        topology = MemoryTopology(
+            tier=mem_type,  # type: ignore[arg-type]
+            process_node_nm=12.0,
+            include_phy=include_phy,
+            include_tsv=include_tsv,
+            include_package=True,
+        )
+        request = MemoryRequest(
+            topology=topology,
+            capacity_gb=capacity_gb,
+            bandwidth_gbps=bandwidth_gbps,
+            access=MemoryAccessPattern(
+                read_bytes=0,
+                write_bytes=0,
+                active_time_seconds=1e-6,
+            ),
+        )
+        response = self._memory_backend.estimate(request)
+        return {
+            "memory_die_area_mm2": response.memory_die_area_mm2,
+            "interface_area_mm2": response.interface_area_mm2,
+            "dram_phy_area_mm2": response.components.get("phy_area_mm2", 0.0),
+            "package_area_mm2": response.components.get("package_area_mm2", 0.0),
+            "tsv_area_mm2": response.components.get("tsv_area_mm2", 0.0),
+        }
+
+    def estimate(self, config: Dict[str, Any], engine_type: str) -> Dict[str, float]:
         """估算总面积"""
         mac = config.get("mac_engine", {})
         H = int(mac.get("array_height", 128))
@@ -75,7 +168,7 @@ class AreaModel:
         # PE array
         engine_area_map = {
             "systolic": self.systolic_pe_baseline,
-            "os_systolic": self.block_pe_baseline,
+            "os_systolic": self.os_pe_baseline,
             "block": self.block_pe_baseline,
             "tensor_core": self.tensor_core_pe_baseline,
             "wmma": self.wmma_pe_baseline,
@@ -101,17 +194,16 @@ class AreaModel:
 
         dma_area = self.dma + (dma_channels - 2) * self.dma_per_ch
 
-        # DRAM PHY: skip if on-chip memory used (no external DDR interface)
-        # PCIe: still needed even with on-chip memory (host communication)
-        onchip = config.get("on_chip_memory", {})
-        if float(onchip.get("capacity_gb", 0)) > 0:
-            dram_phy_area = 0  # on-chip 3D DRAM doesn't need DDR PHY
-            pcie_area = self.pcie  # host interface still required
-        else:
-            mem = config.get("memory", {})
-            dram_width = int(mem.get("dram_width_bits", 64))
-            dram_phy_area = self.dram_phy * (dram_width / 64)
-            pcie_area = self.pcie
+        # PCIe is always present (host interface).
+        pcie_area = self.pcie
+
+        # Memory subsystem area: on-chip 3D DRAM has no external PHY;
+        # HBM keeps PHY + TSV + package; LPDDR keeps PHY + package, no TSV.
+        memory = self._memory_area_estimate(config)
+        memory_die_area = memory["memory_die_area_mm2"]
+        dram_phy_area = memory["dram_phy_area_mm2"]
+        tsv_area = memory["tsv_area_mm2"]
+        package_area = memory["package_area_mm2"]
 
         # CV hardware units
         im2col_feeder_area = self.im2col_feeder * scale     # scales with array size
@@ -120,14 +212,15 @@ class AreaModel:
 
         total = (pe_area + self.sfu + self.riscv + pcie_area +
                  self.crossbar + l1 + l2 + dma_area + dram_phy_area +
+                 memory_die_area + tsv_area + package_area +
                  im2col_feeder_area + pool2d_area + conv_sfu_area)
-
-        # TSV overhead for 3D-stacked memory
-        if float(onchip.get("capacity_gb", 0)) > 0:
-            total *= (1.0 + self.tsv_overhead_pct)
 
         return {
             "total_mm2": round(total, 1),
+            "memory_die_area_mm2": memory_die_area,
+            "dram_phy_area_mm2": dram_phy_area,
+            "tsv_area_mm2": tsv_area,
+            "package_area_mm2": package_area,
             "im2col_feeder_mm2": im2col_feeder_area,
             "pool2d_mm2": pool2d_area,
             "conv_sfu_mm2": conv_sfu_area,
@@ -142,6 +235,60 @@ class PowerModel:
         self.logic_power_density = 0.5   # W/mm²
         self.sram_power_density = 0.1    # W/mm²
         self.dram_phy_power = 3.0        # W (fixed overhead)
+        self._memory_backend: MemoryBackend = Parametric3DMemoryBackend()
+
+    def _memory_type(self, config: Dict[str, Any]) -> str:
+        onchip = config.get("on_chip_memory", {})
+        if float(onchip.get("capacity_gb", 0)) > 0:
+            return "on_chip_3d_dram"
+        mem_type = str(config.get("memory", {}).get("type", "LPDDR5-6400")).lower()
+        if "hbm3" in mem_type:
+            return "hbm3"
+        if "hbm2e" in mem_type or "hbm2" in mem_type:
+            return "hbm2e"
+        if "lpddr5x" in mem_type:
+            return "lpddr5x"
+        return "lpddr5"
+
+    def _memory_power_estimate(self, area_model: AreaModel, config: Dict[str, Any]) -> float:
+        """Return memory-related static + active power proxy."""
+        mem_type = self._memory_type(config)
+        onchip = config.get("on_chip_memory", {})
+        memory = config.get("memory", {})
+
+        if mem_type == "on_chip_3d_dram":
+            capacity_gb = float(onchip.get("capacity_gb", 0))
+            bandwidth_gbps = float(onchip.get("bandwidth_gbps", 500.0))
+            include_phy = False
+            include_tsv = True
+        else:
+            capacity_gb = float(memory.get("capacity_gb", 32.0))
+            bandwidth_gbps = float(memory.get("bandwidth_gbps", 51.2))
+            include_phy = True
+            include_tsv = mem_type in {"hbm2e", "hbm3"}
+
+        topology = MemoryTopology(
+            tier=mem_type,  # type: ignore[arg-type]
+            process_node_nm=12.0,
+            include_phy=include_phy,
+            include_tsv=include_tsv,
+            include_package=True,
+        )
+        # Use a nominal 1% bandwidth utilization for the power proxy.
+        bytes_per_s = bandwidth_gbps * 1e9 * 0.01
+        active_time = 1.0
+        request = MemoryRequest(
+            topology=topology,
+            capacity_gb=capacity_gb,
+            bandwidth_gbps=bandwidth_gbps,
+            access=MemoryAccessPattern(
+                read_bytes=int(bytes_per_s * active_time * 0.5),
+                write_bytes=int(bytes_per_s * active_time * 0.5),
+                active_time_seconds=active_time,
+            ),
+        )
+        response = self._memory_backend.estimate(request)
+        return response.static_power_w + response.active_power_w
 
     def estimate(self, area_model: AreaModel, config: Dict[str, Any],
                  engine_type: str) -> float:
@@ -155,7 +302,7 @@ class PowerModel:
         # Logic power
         engine_area_map = {
             "systolic": area_model.systolic_pe_baseline,
-            "os_systolic": area_model.block_pe_baseline,
+            "os_systolic": area_model.os_pe_baseline,
             "block": area_model.block_pe_baseline,
             "tensor_core": area_model.tensor_core_pe_baseline,
             "wmma": area_model.wmma_pe_baseline,
@@ -174,10 +321,12 @@ class PowerModel:
         sram_mm2 = sram_kb * area_model.l1_per_kb  # rough
         sram_power = sram_mm2 * self.sram_power_density
 
-        # DRAM bandwidth proportional power
-        mem = config.get("memory", {})
-        bw_ratio = float(mem.get("bandwidth_gbps", 51.2)) / 51.2
-        dram_power = self.dram_phy_power * bw_ratio
+        # DRAM PHY fixed overhead for external memory; on-chip has no PHY.
+        mem_type = self._memory_type(config)
+        dram_phy_power = 0.0 if mem_type == "on_chip_3d_dram" else self.dram_phy_power
+
+        # DRAM bandwidth proportional power via parametric backend proxy.
+        mem_power = self._memory_power_estimate(area_model, config)
 
         # CV unit power
         cv_area = area_model.estimate(config, engine_type)
@@ -185,6 +334,6 @@ class PowerModel:
         pool2d_power = cv_area["pool2d_mm2"] * 0.5           # combinational logic
         conv_sfu_power = cv_area["conv_sfu_mm2"] * 0.3       # LUT + control
 
-        total = (logic_power + sram_power + dram_power + 2.0  # +2W misc
+        total = (logic_power + sram_power + dram_phy_power + mem_power + 2.0  # +2W misc
                  + im2col_power + pool2d_power + conv_sfu_power)
         return round(total, 1)

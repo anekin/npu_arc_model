@@ -335,3 +335,31 @@
 - Added `sim/tests/test_memory_residency.py` covering tier selection, priority ordering, capacity conservation, cross-engine digest identity, and negative paths.
 - Integrated the plan into `sim/engine/mac_engine.py`, `sim/engine/block_engine.py`, `sim/engine/registry.py`, `sim/models/kv_cache.py`, `sim/models/dma.py`, `sim/cv/cv_sim.py`, and `sim/npu_sim.py`.
 - Targeted memory tests pass; full suite is blocked by 3 unrelated failures in `sim/tests/test_workload_catalog.py` (Todo 12 fixtures not fully populated).
+
+## Todo 11: Parametric 3D DRAM PPA/Energy Backend (2026-07-30)
+
+### What was done
+- Created `sim/models/memory_backend.py` — abstract `MemoryBackend` protocol with `MemoryRequest`/`MemoryResponse` Pydantic v2 models (`extra='forbid'`), `MemoryTopology`, `MemoryAccessPattern`, `ValidityEnvelope`, and `validate_component_manifest` helper.
+- Created `sim/models/onchip_dram.py` — `Parametric3DMemoryBackend` with monotonic memory-die area vs capacity, monotonic TSV/interface area vs bandwidth/lane, leakage ∝ capacity, dynamic energy ∝ read/write bytes, active power = energy/time, and out-of-range parameters marked exploratory (`engineering_assumption`, T0).
+- Created `sim/config/memory_macros.yaml` — parameter table where every entry carries `value/unit/provenance/source/status/range`; all defaults tagged `engineering_assumption` with T0/T1 trust levels.
+- Created `sim/tests/oracles/ppa.py` — independent closed-form PPA/energy oracle recomputing 3D/HBM/LPDDR component costs without importing `models.onchip_dram` or `engine.ppa_model`.
+- Created `sim/tests/test_memory_backend.py` — protocol conformance tests plus a `FakeMemoryBackend` proving substitutability.
+- Created `sim/tests/test_memory_ppa.py` — monotonicity, energy, invalid/extrapolation, oracle-reproduction, and component-manifest tests.
+- Updated `sim/engine/ppa_model.py`:
+  - Replaced `(node/7)^2` with density-ratio `_node_scale_factor`: 12nm → **2.70×** (not 2.94×).
+  - Fixed OS-specific area baseline consumption: `os_systolic` now maps to `self.os_pe_baseline`.
+  - Distinguishes `on_chip_3d_dram` (no external PHY), `hbm2e`/`hbm3` (PHY+TSV+package), and `lpddr5`/`lpddr5x` (PHY+package, no TSV).
+  - Integrated `Parametric3DMemoryBackend` for memory-die/interface area and memory power proxy.
+
+### Key findings
+- The old `ppa_model.py` applied a flat `tsv_overhead_pct` to the entire die area whenever on-chip capacity > 0, which is a fixed-percentage TSV cost rather than a capacity/bandwidth-aware component cost. The new backend makes TSV area proportional to bandwidth.
+- On-chip 3D DRAM must NOT include an external DRAM PHY; the backend raises `ConfigError` if `include_phy=True` for `tier='on_chip_3d_dram'`.
+- HBM retains PHY + TSV + package; LPDDR retains PHY + package but no TSV.
+- The 2.70× density ratio at 12nm reduces area estimates compared with the old 2.94× geometric factor.
+- All 0.1/5/16 GB × 100/500/1000 GB/s sweep points produce distinct, oracle-reproducible PPA numbers.
+- Full test suite passes after the changes.
+
+### Evidence
+- `.omo/evidence/task-11-3d-dram-macro.json` — `pytest -k "monotonic or energy or substitute"` passes.
+- `.omo/evidence/task-11-3d-dram-negative.json` — `pytest -k "invalid or extrapolat or rejects"` passes.
+- `.omo/evidence/task-11-full-pytest.json` — full `pytest -q` passes.

@@ -492,7 +492,7 @@ Critical path: `1 → (2,3) → 4 → (5,6) → 7 → (8 → 12, 10 → 11) → 
 
   **Commit**: YES | `fix(units): propagate frequency and bandwidth consistently` | `sim/design_space_explorer.py`, `sim/npu_sim.py`, `sim/engine/mac_engine.py`, `sim/models/dram.py`, `sim/models/dma.py`, `sim/models/kv_cache.py`, `sim/engine/ppa_model.py`, `sim/tests/test_frequency_bandwidth_scaling.py`
 
-- [ ] 7. 实现版本化 declarative workload graph 与 fail-closed operator registry
+- [x] 7. 实现版本化 declarative workload graph 与 fail-closed operator registry
 
   **What to do**:
   1. 新建 `sim/workloads/schema.py`，定义 `WorkloadGraphV1`、`TensorSpec`、`NodeSpec`、`SymbolicDim`、`Provenance`：
@@ -541,7 +541,7 @@ Critical path: `1 → (2,3) → 4 → (5,6) → 7 → (8 → 12, 10 → 11) → 
 
   **Commit**: YES | `feat(workload): add versioned graph and operator contracts` | `sim/workloads/__init__.py`, `sim/workloads/schema.py`, `sim/workloads/dimensions.py`, `sim/workloads/operators.py`, `sim/workloads/validate.py`, `sim/tests/test_workload_schema.py`, `sim/tests/test_dimension_semantics.py`, `sim/tests/test_operator_registry.py`
 
-- [ ] 8. 实现 JSON/ONNX adapters 与 legacy trace lowering
+- [x] 8. 实现 JSON/ONNX adapters 与 legacy trace lowering
 
   **What to do**:
   1. 新建 `sim/workloads/json_adapter.py`，canonical JSON 采用排序键、稳定 float/enum 表示、schema version 和 digest。
@@ -589,7 +589,7 @@ Critical path: `1 → (2,3) → 4 → (5,6) → 7 → (8 → 12, 10 → 11) → 
 
   **Commit**: YES | `feat(workload): add json onnx and legacy adapters` | `sim/workloads/json_adapter.py`, `sim/workloads/onnx_adapter.py`, `sim/workloads/legacy_adapter.py`, `sim/cv/onnx_importer.py`, `sim/cv/cv_trace.py`, `sim/cv/cv_sim.py`, `sim/tests/fixtures/tiny_mixed_ops.onnx`, `sim/tests/test_workload_adapters.py`
 
-- [ ] 9. 实现 result schema v2、稳定 design-point ID 与 legacy projection
+- [x] 9. 实现 result schema v2、稳定 design-point ID 与 legacy projection
 
   **What to do**:
   1. 新建 `sim/contracts/result.py`，定义：
@@ -634,7 +634,7 @@ Critical path: `1 → (2,3) → 4 → (5,6) → 7 → (8 → 12, 10 → 11) → 
 
   **Commit**: YES | `feat(result): add stable v2 identities and legacy projection` | `sim/contracts/result.py`, `sim/contracts/identity.py`, `sim/contracts/legacy_result.py`, `sim/tests/test_result_schema.py`, `sim/tests/test_result_identity.py`
 
-- [ ] 10. 实现统一 memory hierarchy、residency 与 spill
+- [x] 10. 实现统一 memory hierarchy、residency 与 spill
 
   **What to do**:
   1. 新建 `sim/models/memory_hierarchy.py`，定义 typed tier、capacity、read/write bandwidth、latency、alignment、reserve fraction。
@@ -727,7 +727,7 @@ Critical path: `1 → (2,3) → 4 → (5,6) → 7 → (8 → 12, 10 → 11) → 
 
   **Commit**: YES | `feat(ppa): add parametric 3d memory backend` | `sim/models/memory_backend.py`, `sim/models/onchip_dram.py`, `sim/engine/ppa_model.py`, `sim/config/memory_macros.yaml`, `sim/tests/oracles/ppa.py`, `sim/tests/test_memory_backend.py`, `sim/tests/test_memory_ppa.py`
 
-- [ ] 12. 建立 LLM、CV、VLA 与 Physical-AI 可执行 fixtures
+- [x] 12. 建立 LLM、CV、VLA 与 Physical-AI 可执行 fixtures
 
   **What to do**:
   1. 创建 `sim/config/workloads/` 下 source-pinned、schema-valid 的 fixtures：

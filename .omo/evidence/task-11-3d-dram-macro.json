@@ -1,0 +1,13 @@
+Downloading ruff (10.9MiB)
+Downloading numpy (16.1MiB)
+Downloading onnx (18.2MiB)
+Downloading ml-dtypes (4.8MiB)
+ Downloaded ml-dtypes
+ Downloaded ruff
+ Downloaded numpy
+ Downloaded onnx
+warning: Failed to hardlink files; falling back to full copy. This may lead to degraded performance.
+         If the cache and target directories are on different filesystems, hardlinking may not be supported.
+         If this is intentional, set `export UV_LINK_MODE=copy` or use `--link-mode=copy` to suppress this warning.
+Installed 17 packages in 57.60s
+...................                                                      [100%]

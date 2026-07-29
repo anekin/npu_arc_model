@@ -1,0 +1,124 @@
+# Parametric 3D DRAM PPA macro table
+#
+# Every parameter carries provenance (source, trust_level, calibration_range,
+# reference_uri) and status.  Uncalibrated defaults are tagged
+# `engineering_assumption` and must NOT be reported as authoritative.
+
+process_node_nm: 12.0
+
+memory_die_area_per_gb_mm2:
+  value: 2.5
+  unit: mm2/GB
+  provenance:
+    source: Conservative 3D DRAM cell-area rule-of-thumb; uncalibrated
+    trust_level: T0
+    calibration_range: 1.0–4.0 mm2/GB
+    reference_uri: .omo/plans/arc-model-ppa-corrections.md
+  status: engineering_assumption
+  range:
+    min: 1.0
+    max: 4.0
+
+tsv_area_per_gbps_mm2:
+  value: 0.02
+  unit: mm2/GB/s
+  provenance:
+    source: Industry rule-of-thumb for TSV keep-out + SerDes area
+    trust_level: T1
+    calibration_range: 0.01–0.05 mm2/GB/s
+    reference_uri: .omo/plans/arc-model-ppa-corrections.md#修正-5
+  status: engineering_assumption
+  range:
+    min: 0.01
+    max: 0.05
+
+phy_area_fixed_mm2:
+  value: 5.0
+  unit: mm2
+  provenance:
+    source: External DRAM PHY area placeholder; scales with node
+    trust_level: T1
+    calibration_range: 3.0–8.0 mm2
+    reference_uri: .omo/plans/arc-model-ppa-corrections.md#修正-5
+  status: engineering_assumption
+  range:
+    min: 3.0
+    max: 8.0
+
+package_area_fixed_mm2:
+  value: 2.0
+  unit: mm2
+  provenance:
+    source: Package/interposer overhead placeholder
+    trust_level: T0
+    calibration_range: 1.0–4.0 mm2
+    reference_uri: .omo/plans/arc-model-ppa-corrections.md
+  status: engineering_assumption
+  range:
+    min: 1.0
+    max: 4.0
+
+leakage_power_per_gb_w:
+  value: 0.05
+  unit: W/GB
+  provenance:
+    source: DRAM retention leakage rule-of-thumb; uncalibrated
+    trust_level: T0
+    calibration_range: 0.02–0.10 W/GB
+    reference_uri: .omo/plans/arc-model-ppa-corrections.md
+  status: engineering_assumption
+  range:
+    min: 0.02
+    max: 0.10
+
+read_energy_per_byte_j:
+  value: 2.0e-12
+  unit: J/byte
+  provenance:
+    source: 3D DRAM access energy rule-of-thumb; uncalibrated
+    trust_level: T0
+    calibration_range: 1e-12–5e-12 J/byte
+    reference_uri: .omo/plans/arc-model-ppa-corrections.md
+  status: engineering_assumption
+  range:
+    min: 1.0e-12
+    max: 5.0e-12
+
+write_energy_per_byte_j:
+  value: 3.0e-12
+  unit: J/byte
+  provenance:
+    source: 3D DRAM write energy rule-of-thumb; uncalibrated
+    trust_level: T0
+    calibration_range: 1e-12–6e-12 J/byte
+    reference_uri: .omo/plans/arc-model-ppa-corrections.md
+  status: engineering_assumption
+  range:
+    min: 1.0e-12
+    max: 6.0e-12
+
+access_latency_ns:
+  value: 10.0
+  unit: ns
+  provenance:
+    source: On-chip 3D DRAM latency placeholder
+    trust_level: T0
+    calibration_range: 5–30 ns
+    reference_uri: .omo/plans/arc-model-ppa-corrections.md
+  status: engineering_assumption
+  range:
+    min: 5.0
+    max: 30.0
+
+thermal_proxy_per_w_per_mm2_c:
+  value: 0.5
+  unit: C/(W/mm2)
+  provenance:
+    source: Thermal proxy scaling factor; uncalibrated
+    trust_level: T0
+    calibration_range: 0.2–1.0
+    reference_uri: .omo/plans/arc-model-ppa-corrections.md
+  status: engineering_assumption
+  range:
+    min: 0.2
+    max: 1.0

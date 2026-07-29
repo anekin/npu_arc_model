@@ -193,3 +193,35 @@
 **What**: Every engine in `engine.registry` receives the same `MemoryAccessPlan` for a given workload graph and config, and the plan digest is identical regardless of which engine produces it.
 **Why**: Residency is a property of the workload/config, not the execution engine. Divergent digests would imply engine-specific memory policies, which we do not want.
 **Alternatives**: Could have let each engine build a partial plan, but the acceptance criteria require a unified plan.
+
+## Todo 11: Parametric 3D DRAM PPA/Energy Backend (2026-07-30)
+
+### Decision 37: MemoryBackend as an ABC with Pydantic v2 request/response models
+**What**: `MemoryBackend` is an abstract base class with `estimate(MemoryRequest) -> MemoryResponse` and `validity_envelope` property. Request/response/topology/access models use Pydantic v2 with `extra='forbid'`.
+**Why**: The plan requires a replaceable protocol. An ABC is inspectable via `isinstance` and subclass checks, while Pydantic models enforce the schema at the boundary. `extra='forbid'` prevents silent field-name drift between backends.
+**Alternatives**: Could have used `typing.Protocol`, but an ABC allows shared helper methods (e.g., validity merging) while still supporting structural substitution.
+
+### Decision 38: Parametric backend anchors macro values at 12nm
+**What**: `memory_macros.yaml` values (e.g., 2.5 mm2/GB, 0.02 mm2/GB/s, 5.0 mm2 PHY) are 12nm-equivalent numbers. `ppa_model.py` scales them to the target node via the 2.70× density ratio.
+**Why**: The memory backend is a 12nm-focused macro. Expressing macros at a single reference node keeps the table simple and avoids double-scaling when `ppa_model.py` already applies node scaling.
+**Alternatives**: Could have stored per-node macro tables, but that would be premature without calibration data.
+
+### Decision 39: TSV area is bandwidth-proportional, not a fixed die-percentage
+**What**: TSV/interface area = `bandwidth_gbps * tsv_area_per_gbps_mm2`. It is only added for tiers that require TSV (`on_chip_3d_dram`, `hbm2e`, `hbm3`).
+**Why**: The plan explicitly forbids a fixed 10% TSV cost for all capacity/bandwidth. Bandwidth-proportional TSV area captures the physical intuition that more lanes/TSVs are needed for higher bandwidth.
+**Alternatives**: Could have made TSV area also capacity-dependent (more stacks → more TSVs), but the first-order driver is interface bandwidth.
+
+### Decision 40: Out-of-range parameters stay exploratory, never authoritative
+**What**: `Parametric3DMemoryBackend` marks any request outside the calibration envelope with `validity.status='engineering_assumption'` and `trust_level='T0'`, even when inside the envelope.
+**Why**: The macro is uncalibrated; being inside the sweep range does not make the estimate authoritative. This prevents the DSE from reporting uncalibrated points as signoff-quality.
+**Alternatives**: Could have set `status='calibrated_estimate'` inside the range, but that would mislabel engineering assumptions.
+
+### Decision 41: Independent oracle mirrors backend formulas without importing it
+**What**: `tests/oracles/ppa.py` recomputes area/energy/power with its own constants and component-manifest rules; it does not import `models.onchip_dram` or `engine.ppa_model`.
+**Why**: The plan requires an independent oracle. Reusing production estimators would allow a shared bug to pass the test.
+**Alternatives**: Could have shared the YAML macro table, but the oracle's purpose is to verify the closed-form math, not the config loader.
+
+### Decision 42: ppa_model.py memory area uses the backend, but legacy total_mm2 shape is preserved
+**What**: `AreaModel.estimate()` returns a dict with the same keys as before plus memory-component breakdown keys. The `total_mm2` field remains the scalar used by DSE.
+**Why**: Keeps `design_space_explorer.py` and other callers unchanged while improving the physical fidelity of the memory component.
+**Alternatives**: Could have returned a `MemoryResponse` directly, but that would require modifying callers outside the listed scope.
