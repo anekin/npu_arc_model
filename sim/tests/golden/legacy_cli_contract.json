@@ -1,0 +1,181 @@
+{
+  "_meta": {
+    "description": "Legacy CLI contract golden — frozen historical baseline for arc-model-scenario-driven-dse-development Todo 1.",
+    "purpose": "Captures public CLI commands, flags, exit codes, JSON top-level fields, and units. Does NOT freeze known-incorrect numeric frequency values.",
+    "frozen_at_commit": "94ac75159dbc4a3bcb5c3bc1715923eec7e6ad05",
+    "lock_digest": "ce33a246885fb5620a61ecd2b5d8aa773d4503c3a99a9c5b1ecb56fabfe8b288",
+    "config_digest": "d3ad177cd825b7ef6342bc0f53402e61e5d4438267ae4112d7e6aca041a08217"
+  },
+  "historical_params": {
+    "process_node": "12nm",
+    "node_scale": {
+      "value": 2.94,
+      "formula": "(12/7)^2",
+      "note": "This is the pre-correction baseline; will be corrected to 2.70x density ratio in Todo 11 per arc-model-ppa-corrections.md."
+    },
+    "dram_efficiency": 0.85,
+    "dram_efficiency_note": "Conservative baseline (85% per-bank effective); per-bank refresh only 3.6% (JEDEC tRFCpb=140ns/tREFI=3900ns). README previously claimed 75% — that claim has been falsified."
+  },
+  "npu_sim_cli": {
+    "entrypoint": "sim/npu_sim.py",
+    "exit_code_success": 0,
+    "flags": {
+      "--engine": {
+        "type": "choice",
+        "choices": ["systolic", "os_systolic", "block", "tensor_core", "wmma", "gmma", "input_stationary"],
+        "description": "Override engine type (ignores config)"
+      },
+      "--dram": {
+        "type": "choice",
+        "choices": ["25", "50", "100", "200", "460", "819"],
+        "description": "Override DRAM bandwidth in GB/s"
+      },
+      "--array": {
+        "type": "string",
+        "format": "HxW (e.g. 128x256)",
+        "description": "Override array dimensions"
+      },
+      "--freq": {
+        "type": "integer",
+        "unit": "MHz",
+        "description": "Override frequency in MHz"
+      },
+      "--precision": {
+        "type": "choice",
+        "choices": [2, 4, 8],
+        "unit": "bits",
+        "description": "Override weight precision bits"
+      },
+      "--weight-cache": {
+        "type": "boolean_flag",
+        "description": "Enable weight cache (PE dual register)"
+      },
+      "--json": {
+        "type": "boolean_flag",
+        "description": "Output JSON to stdout"
+      },
+      "--list-engines": {
+        "type": "boolean_flag",
+        "description": "List available engines and exit"
+      },
+      "--list-dram": {
+        "type": "boolean_flag",
+        "description": "List DRAM bandwidth presets and exit"
+      },
+      "--isa": {
+        "type": "boolean_flag",
+        "description": "Use ISA instruction mode (L2 interface)"
+      },
+      "--config": {
+        "type": "string",
+        "default": "config/npu_config.yaml",
+        "description": "Path to config YAML"
+      },
+      "--prefill": {
+        "type": "integer",
+        "default": 128,
+        "description": "Prefill prompt length"
+      },
+      "--output": {
+        "type": "string",
+        "description": "Output JSON to file"
+      }
+    }
+  },
+  "npu_sim_json_output": {
+    "description": "Output structure when --json flag is used.",
+    "top_level_keys": ["decode", "prefill"],
+    "decode": {
+      "keys": ["engine_type", "array_height", "array_width", "per_token_us", "tok_per_s", "breakdown"],
+      "engine_type": {"type": "string", "values": ["systolic", "os_systolic", "block", "tensor_core", "wmma", "gmma", "input_stationary"]},
+      "array_height": {"type": "integer", "unit": "PE rows"},
+      "array_width": {"type": "integer", "unit": "PE columns"},
+      "per_token_us": {"type": "float", "unit": "microseconds"},
+      "tok_per_s": {"type": "float", "unit": "tokens per second"},
+      "breakdown": {"type": "object", "unit": "microseconds", "keys": ["KV Cache", "MXU", "DMA (stall)", "noc_latency", "SFU", "Vector", "noc_contention"]}
+    },
+    "prefill": {
+      "keys": ["prompt_len", "total_ms", "breakdown"],
+      "prompt_len": {"type": "integer", "unit": "tokens"},
+      "total_ms": {"type": "float", "unit": "milliseconds"},
+      "breakdown": {"type": "object", "unit": "milliseconds", "keys": ["MXU", "DMA (stall)", "noc_latency", "KV Cache", "SFU", "noc_contention"]}
+    }
+  },
+  "design_space_explorer_cli": {
+    "entrypoint": "sim/design_space_explorer.py",
+    "exit_code_success": 0,
+    "flags": {
+      "--quick": {
+        "type": "boolean_flag",
+        "description": "Quick mode: 3 engines × key configs (36 configs)"
+      },
+      "--allow-partial": {
+        "type": "boolean_flag",
+        "description": "Keep valid results when some configurations fail"
+      },
+      "--output": {
+        "type": "string",
+        "description": "Output JSON file path"
+      },
+      "--top": {
+        "type": "integer",
+        "default": 20,
+        "description": "Show top N results"
+      },
+      "--cv-model": {
+        "type": "choice",
+        "choices": ["mobilenetv3-small", "yolov8n", "vit-b16", "resnet18", "resnet50"],
+        "description": "Run CV design-space exploration"
+      },
+      "--model-spec": {
+        "type": "choice",
+        "choices": ["qwen2.5-1.5b", "qwen2.5-3b", "qwen2.5-7b", "qwen3-8b", "gemma-4-12b"],
+        "description": "LLM model spec alias for DSE"
+      },
+      "--batch-m": {
+        "type": "choice",
+        "choices": [1, 2],
+        "description": "Batch M dimension for attention ops (1 or 2)"
+      }
+    }
+  },
+  "dse_json_output": {
+    "description": "Output structure when --output flag writes JSON.",
+    "top_level_keys": ["cv_model", "model_spec", "batch_m", "total_configs", "valid_results", "generated", "evaluated", "filtered_by_area", "errors", "error_details", "pareto_frontier", "top_results"],
+    "fields": {
+      "cv_model": {"type": "string|null", "unit": null},
+      "model_spec": {"type": "string", "unit": null},
+      "batch_m": {"type": "integer", "unit": null},
+      "total_configs": {"type": "integer", "unit": "count"},
+      "valid_results": {"type": "integer", "unit": "count"},
+      "generated": {"type": "integer", "unit": "count"},
+      "evaluated": {"type": "integer", "unit": "count"},
+      "filtered_by_area": {"type": "integer", "unit": "count"},
+      "errors": {"type": "integer", "unit": "count"},
+      "error_details": {"type": "array", "unit": null},
+      "pareto_frontier": {
+        "type": "array",
+        "item_schema": {
+          "label": {"type": "string"},
+          "tok_s": {"type": "float", "unit": "tokens per second"},
+          "area_mm2": {"type": "float", "unit": "mm^2"},
+          "power_w": {"type": "float", "unit": "watts"}
+        }
+      },
+      "top_results": {
+        "type": "array",
+        "item_schema": {
+          "label": {"type": "string"},
+          "tok_s": {"type": "float", "unit": "tokens per second"},
+          "area_mm2": {"type": "float", "unit": "mm^2"},
+          "power_w": {"type": "float", "unit": "watts"}
+        }
+      }
+    }
+  },
+  "known_limitations": {
+    "63_test_pass": "63 passed proves only the historical bug set was fixed. It does NOT prove correctness across frequency, batch, memory hierarchy, or high-utilization scenarios.",
+    "frequency_override": "The --freq flag does NOT actually propagate to computed values in the current legacy code. Output is identical at 800/1000/1200 MHz. This is a known bug to be fixed in Todo 6.",
+    "node_scale_294": "The 2.94x area scale factor is the pre-correction baseline using geometric (12/7)^2. It will be corrected to 2.70x density ratio in Todo 11."
+  }
+}

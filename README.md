@@ -310,15 +310,29 @@ Config: 场景/参数定义               Firmware: RISC-V 微码
 
 ---
 
-## 八、DSE 引擎模型 Bug 修复复现
+## 八、历史基线与适用范围声明
 
-本仓库包含 2026-07-28 完成的 DSE 引擎模型 bug 修复完整证据链。在任何机器上 clone 后可直接复现。
+> ⚠️ **重要**: 以下"63 passed"与 2026-07-28 postfix 证据**仅证明历史 bug 集合已修复** — 不证明跨频率、batch、内存层级或高利用率场景下的物理正确性。
 
-### 8.1 环境要求
+已知未验证/待修复问题领域：
+- **频率传播**: `--freq` flag 目前的覆盖不改变输出，多频点行为待 Todo 6 修复
+- **Batch 边界**: M=2→3 等递增场景的 total latency 反向下降（Systolic）、OS M scaling 错误 — 待 Todo 5 修复
+- **内存层级**: 3D DRAM 未进入搜索空间，capacity>0 全驻留假设不成立 — 待 Todo 10/11 修复
+- **利用率上限**: 当前引擎不保证 `utilization <= 1` — 待 Todo 3/5 修复
+
+### 8.1 自动复现环境 (uv)
 
 ```bash
-python3 --version  # >= 3.10
-python3 -m pip install pytest  # 其他依赖均为标准库
+python3 --version  # >= 3.10, < 3.13
+
+# 安装 uv（如未安装）
+pip install uv
+
+# 从 lock 文件精确复现环境
+uv sync --frozen
+
+# 运行全部测试
+uv run pytest -q
 ```
 
 ### 8.2 Clone 与复现
@@ -326,25 +340,42 @@ python3 -m pip install pytest  # 其他依赖均为标准库
 ```bash
 git clone git@github.com:anekin/npu_arc_model.git
 cd npu_arc_model
+uv sync --frozen
 
-# 1. 一键运行全部回归测试（仓库根目录，无需手动 PYTHONPATH）
-python3 -m pytest -q
-# 期望: 63 passed, 0 failed
+# 1. 一键运行全部回归测试
+uv run pytest -q
+# 期望: 63 passed, 0 failed (历史 bug 集 — 非物理正确性证明)
 
 # 2. 快速 DSE 回归（36 configs）
-python3 sim/design_space_explorer.py --quick --output /tmp/dse_quick.json
+uv run python sim/design_space_explorer.py --quick --output /tmp/dse_quick.json
 # 期望: exit 0, errors=0
 
 # 3. 全量 DSE 回归（13,440 configs）
-python3 sim/design_space_explorer.py --output /tmp/dse_full.json
+uv run python sim/design_space_explorer.py --output /tmp/dse_full.json
 # 期望: exit 0, errors=0
 
 # 4. 端到端 CLI 基准
-python3 sim/npu_sim.py --engine systolic --json | python3 -c "import sys,json; print(json.load(sys.stdin)['decode']['tok_per_s'])"
+uv run python sim/npu_sim.py --engine systolic --json | python3 -c "import sys,json; print(json.load(sys.stdin)['decode']['tok_per_s'])"
 # 期望: ~10.15 tok/s
-python3 sim/npu_sim.py --json | python3 -c "import sys,json; print(json.load(sys.stdin)['decode']['tok_per_s'])"
+uv run python sim/npu_sim.py --json | python3 -c "import sys,json; print(json.load(sys.stdin)['decode']['tok_per_s'])"
 # 期望: ~21.59 tok/s
 ```
+
+### 8.3 基线溯源
+
+以下信息记录了 `arc-model-scenario-driven-dse-development` 计划的基线点：
+
+| 项目 | 值 |
+|:---|:---|
+| **计划** | `.omo/plans/arc-model-scenario-driven-dse-development.md` |
+| **基线 Commit** | `94ac75159dbc4a3bcb5c3bc1715923eec7e6ad05` (chore(research): add embodied AI source materials) |
+| **lock digest** | `ce33a246885fb5620a61ecd2b5d8aa773d4503c3a99a9c5b1ecb56fabfe8b288` |
+| **config digest** | `d3ad177cd825b7ef6342bc0f53402e61e5d4438267ae4112d7e6aca041a08217` (`sim/config/npu_config.yaml`) |
+| **process_node** | 12nm (TSMC 12FFC) |
+| **node_scale** | 2.94× = (12/7)² — **此几何换算将在 Todo 11 中修正为密度比 2.70×** |
+| **dram_efficiency** | 0.85 — conservative baseline；README 中 75% 声称已被证伪（待 Todo 6 统一清理） |
+| **Python** | >=3.10,<3.13 (via `pyproject.toml`) |
+| **复现命令** | `uv sync --frozen && uv run pytest -q` |
 
 ### 8.3 复现证据链
 

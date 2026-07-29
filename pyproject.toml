@@ -1,0 +1,81 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["sim"]
+
+[project]
+name = "npu-arc-model"
+version = "0.1.0"
+description = "CaduceusCore NPU architecture design-space exploration model"
+requires-python = ">=3.10,<3.13"
+readme = "README.md"
+license = { text = "Proprietary" }
+
+dependencies = [
+    "numpy>=1.24,<3",
+    "pyyaml>=6.0",
+    "pydantic>=2.0,<3",
+    "onnx>=1.15",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.11",
+]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 120
+
+[tool.ruff.lint]
+# Enable a conservative set: catch bugs without noisy style enforcement
+select = [
+    "E",     # pycodestyle errors
+    "F",     # pyflakes
+    "W",     # pycodestyle warnings
+    "I",     # isort
+    "N",     # pep8-naming
+    "UP",    # pyupgrade
+    "B",     # flake8-bugbear
+    "C4",    # flake8-comprehensions
+    "SIM",   # flake8-simplify
+]
+ignore = [
+    "E501",  # line too long (handled by formatter)
+    "N818",  # exception name should end with 'Error'
+]
+exclude = [
+    ".git",
+    ".venv",
+    "__pycache__",
+    ".omo",
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["sim"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.basedpyright]
+typeCheckingMode = "basic"
+include = ["sim"]
+exclude = ["**/__pycache__", ".venv", ".git", ".omo"]
+reportMissingTypeStubs = false
+reportMissingImports = false
+
+[tool.pytest.ini_options]
+testpaths = ["sim/tests"]
+pythonpath = ["sim"]
+addopts = "-p no:cacheprovider -q"
+markers = [
+    "baseline: historical baseline snapshot tests (Todo 1)",
+    "snapshot: structural snapshot of legacy CLI output",
+    "clean: clean environment verification",
+    "missing_lock: negative-path test for missing lock file",
+    "missing_fixture: negative-path test for missing test fixtures",
+]
