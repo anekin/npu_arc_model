@@ -225,3 +225,45 @@
 **What**: `AreaModel.estimate()` returns a dict with the same keys as before plus memory-component breakdown keys. The `total_mm2` field remains the scalar used by DSE.
 **Why**: Keeps `design_space_explorer.py` and other callers unchanged while improving the physical fidelity of the memory component.
 **Alternatives**: Could have returned a `MemoryResponse` directly, but that would require modifying callers outside the listed scope.
+
+## Todo 13: Deterministic Scheduler Kernel and Legacy Engine Adapters (2026-07-30)
+
+### Decision 43: Scheduler kernel uses integer picoseconds and explicit phase ordering
+**What**: `DiscreteEventKernel` stores time as `int` picoseconds, converts cycles via `ceil(cycles * 1_000_000 / freq_mhz)`, and orders events by `(time_ps, phase, insertion_sequence)` with phases `RELEASE < ARRIVAL < TIMER < DISPATCH`.
+**Why**: Float time accumulates rounding error across millions of events and causes non-deterministic tie-breaking. Ceiling cycle conversion guarantees no event completes before its minimum cycle count, and explicit phases make policy decisions reproducible under simultaneous events.
+**Alternatives**: Could have kept float nanoseconds and used tolerance-based equality, but that would make event ordering path-dependent.
+
+### Decision 44: Event queue supports cancellation and stable insertion sequence
+**What**: `EventQueue` entries carry a monotonic `_seq` counter; `cancel(job_id)` removes the entry before dispatch; the counter is not reused so cancelled jobs do not perturb deterministic ordering of remaining jobs.
+**Why**: Preemption tests and future timer-cancel paths require the ability to retract a scheduled event without changing the relative order of other events.
+**Alternatives**: Could have marked events as dead and skipped them at dispatch, but removing them eagerly keeps the queue compact and avoids phantom dispatches.
+
+### Decision 45: Resources expose capacity, bounded FIFO, and byte-server abstractions
+**What**: `CapacityResource` grants up to N simultaneous jobs; `BoundedFIFO` is a capacity-1 resource with queue-full semantics; `ByteServer` models bandwidth as work-conserving service with equal-share or strict-priority QoS and recomputes virtual finish times when membership changes.
+**Why**: The legacy engine needs only capacity/overlap and FIFO latency today, but scenario-driven DSE will need byte-accurate memory and interconnect modeling tomorrow. A single resource taxonomy keeps the kernel general.
+**Alternatives**: Could have built separate per-device classes, but a common `Resource` ABC lets the kernel treat MXU, DMA, NoC, and memory controllers uniformly.
+
+### Decision 46: Policies separate service class, EDF, and deterministic tie-break
+**What**: `SchedulingPolicy` orders ready jobs first by service class priority, then earliest deadline, then release time, then stable job ID.
+**Why**: Mixed-criticality workloads (LLM prefill/decode, CV frame deadlines, control loop) need priority preemption; within a class, EDF is optimal for deadline miss rate; tie-breaks must be reproducible regardless of insertion order.
+**Alternatives**: Random or insertion-order tie-breaking would make golden traces unstable.
+
+### Decision 47: Admission controller rejects instead of silently degrading
+**What**: `AdmissionController` checks memory budget, context/inflight limits, peak bandwidth, and lower-priority blocking before accepting a job; violations raise `AdmissionError`.
+**Why**: Scenario-driven DSE must know when a configuration cannot meet a workload, rather than observing a mysteriously lower throughput.
+**Alternatives**: Could have queued rejected jobs indefinitely, but that would mask overload and break latency contracts.
+
+### Decision 48: Legacy engine adapters delegate to the new kernel while preserving public API
+**What**: `CoreTimeline` and `MultiCoreTimeline` keep their existing method signatures and add `_current_cycle` getter/setter aliases; internally they use `DiscreteEventKernel` and `ByteServer`.
+**Why**: `npu_sim.py` and existing tests call `timeline._current_cycle` and `timeline.add_dma_parallel()` directly. Rewriting all callers is out of scope; delegation gives deterministic semantics with minimal surface change.
+**Alternatives**: Could have introduced a new v2 timeline and migrated callers, but that would be a multi-file refactor beyond Todo 13.
+
+### Decision 49: Fixed 70% FIFO overlap heuristic removed from pipeline simulation
+**What**: `MultiCoreTimeline.simulate_pipeline` now accumulates FIFO transfer latency from a `ByteServer`-derived `fifo_transfer_ps` instead of multiplying total FIFO overhead by 0.3.
+**Why**: The 0.3 factor was an uncalibrated magic number. A deterministic byte server grounds the overlap estimate in FIFO width, latency, and activation size.
+**Alternatives**: Could have kept 0.3 for numerical continuity, but that would leave the new scheduler delegating to a hand-waved constant.
+
+### Decision 50: Stable job IDs required for canonical metrics under shuffled input order
+**What**: All scheduler tests assign deterministic job IDs; the policy's final tie-break is job ID rather than insertion sequence.
+**Why**: DSE will enumerate scenarios in varying orders. If two jobs have identical priority and deadline, their scheduling order must not depend on Python dict iteration order.
+**Alternatives**: Could have used insertion sequence as the final tie-break, but that makes metrics order-dependent.

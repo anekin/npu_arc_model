@@ -1,0 +1,4 @@
+systolic tok/s:
+13.2341
+block tok/s:
+21.586

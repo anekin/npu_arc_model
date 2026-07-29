@@ -1,0 +1,35 @@
+{
+  "task": 13,
+  "description": "Implement deterministic scheduler kernel and legacy engine adapters",
+  "timestamp": "2026-07-29T19:06:17.099970+00:00",
+  "verification": {
+    "scheduler_tests": "all passed (6 files)",
+    "full_suite": "passed (no failures)",
+    "cli_baselines": {
+      "systolic_tok_per_s": 13.2341,
+      "block_tok_per_s": 21.586
+    }
+  },
+  "files_changed": [
+    "sim/scheduler/events.py",
+    "sim/scheduler/kernel.py",
+    "sim/scheduler/resources.py",
+    "sim/scheduler/queues.py",
+    "sim/scheduler/policies.py",
+    "sim/scheduler/admission.py",
+    "sim/engine/timeline.py",
+    "sim/engine/multicore.py",
+    "sim/tests/oracles/scheduler.py",
+    "sim/tests/test_scheduler_events.py",
+    "sim/tests/test_scheduler_kernel.py",
+    "sim/tests/test_scheduler_resources.py",
+    "sim/tests/test_scheduler_queues.py",
+    "sim/tests/test_scheduler_policies.py",
+    "sim/tests/test_scheduler_admission.py"
+  ],
+  "evidence_files": [
+    ".omo/evidence/task-13-scheduler-tests.txt",
+    ".omo/evidence/task-13-cli-baseline.txt",
+    ".omo/evidence/task-13-full-suite.txt"
+  ]
+}

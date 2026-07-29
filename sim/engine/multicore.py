@@ -4,6 +4,11 @@
 - independent: N 核各自处理不同 token（数据并行）
 - pipeline: 核间 FIFO 流水线（层间流水线并行）
 - shared_l2: 共享 L2 SRAM，Crossbar/NoC 仲裁
+
+This module is a legacy adapter over ``scheduler.kernel.DiscreteEventKernel``
+and ``scheduler.resources.ByteServer``.  The fixed 70% FIFO-overlap heuristic
+has been removed; FIFO transfer time is computed deterministically from the
+FIFO byte server.
 """
 
 import math
@@ -11,6 +16,8 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
 from engine.timeline import CoreTimeline, TimelineEvent, breakdown_events
+from scheduler.kernel import DiscreteEventKernel, JobState
+from scheduler.resources import ByteServer
 
 
 @dataclass
@@ -67,11 +74,14 @@ class CrossbarConfig:
 
 
 class MultiCoreTimeline:
-    """N 核时间轴，管理核间交互。
+    """N 核时间轴，管理核间交互.
 
     每个核有自己的 CoreTimeline，额外追踪:
     - FIFO 传输延迟（激活值传递）
     - Crossbar 仲裁延迟（共享资源竞争）
+
+    The pipeline-mode FIFO overhead is now computed with a deterministic byte
+    server rather than a fixed 70% overlap assumption.
     """
 
     def __init__(self, num_cores: int, fifo: FIFOConfig = None,
@@ -84,7 +94,7 @@ class MultiCoreTimeline:
     # ── FIFO 延迟计算 ───────────────────────────────────────────
 
     def fifo_transfer_cycles(self, num_elements: int, element_bytes: int = 2) -> int:
-        """计算通过 FIFO 传输 num_elements 的延迟。
+        """计算通过 FIFO 传输 num_elements 的延迟.
 
         Args:
             num_elements: BF16 元素数量（激活值）
@@ -95,6 +105,12 @@ class MultiCoreTimeline:
         total_bytes = num_elements * element_bytes
         transfer_cycles = math.ceil(total_bytes / bytes_per_cycle)
         return transfer_cycles + self.fifo.latency_cycles
+
+    def fifo_transfer_ps(self, num_elements: int, element_bytes: int = 2,
+                         frequency_mhz: int = 1000) -> int:
+        """FIFO transfer latency in picoseconds via the scheduler kernel."""
+        cycles = self.fifo_transfer_cycles(num_elements, element_bytes)
+        return DiscreteEventKernel(frequency_mhz).cycles_to_ps(cycles)
 
     # ── NoC Crossbar ─────────────────────────────────────────────
 
@@ -144,7 +160,7 @@ class MultiCoreTimeline:
                           layer_assignments: List[List[int]],
                           per_layer_cycles: List[int],
                           activation_size: int = 2560) -> Dict:
-        """流水线并行: 核心 N 处理 Layer N，核间 FIFO 传递激活。
+        """流水线并行: 核心 N 处理 Layer N，核间 FIFO 传递激活.
 
         Args:
             layer_assignments: [[0,1,...], [14,15,...]] — 每核负责的层
@@ -154,43 +170,43 @@ class MultiCoreTimeline:
         Returns:
             {core_id: total_cycles, fifo_overhead: cycles, ...}
         """
-        total_cycles = 0
-        core_progress = [0] * self.num_cores  # 每核当前已分配 cycles
-        fifo_overhead = 0
+        frequency_mhz = self.cores[0]._kernel.frequency_mhz if self.cores else 1000
+        kernel = DiscreteEventKernel(frequency_mhz)
+        core_progress = [0] * self.num_cores
+        fifo_overhead_ps = 0
 
-        # Simplified: layers form a pipeline, FIFO after each layer
         num_layers = sum(len(la) for la in layer_assignments)
         for layer_idx in range(num_layers):
             core_id = layer_idx % self.num_cores
             cycles = (per_layer_cycles[layer_idx]
                       if layer_idx < len(per_layer_cycles) else 1000)
+            work_ps = kernel.cycles_to_ps(cycles)
+            core_progress[core_id] = max(core_progress[core_id], kernel.now_ps) + work_ps
+            kernel.now_ps = max(core_progress)
 
-            # Execute on this core
-            core_progress[core_id] += cycles
-
-            # FIFO: if next layer is on different core, transfer activation
+            # FIFO: if next layer is on different core, transfer activation.
             next_core = (layer_idx + 1) % self.num_cores
             if next_core != core_id and layer_idx < num_layers - 1:
-                fifo_cycles = self.fifo_transfer_cycles(activation_size)
-                fifo_overhead += fifo_cycles
+                fifo_ps = self.fifo_transfer_ps(activation_size, frequency_mhz=frequency_mhz)
+                fifo_overhead_ps += fifo_ps
+                # FIFO transfer blocks the producing core.
+                core_progress[core_id] += fifo_ps
+                kernel.now_ps = max(core_progress)
 
-        # Total = max(core_progress) + fifo overhead (partial overlap)
-        max_core = max(core_progress) if core_progress else 0
-        # FIFO overhead: ~70% hidden behind compute in pipeline (empirical estimate)
-        effective_fifo = int(fifo_overhead * 0.3)  # 0.3 = 30% exposed / 70% hidden
-        total_cycles = max_core + effective_fifo
+        max_core_ps = max(core_progress) if core_progress else 0
+        max_core_cycles = kernel.cycles_to_ps(max_core_ps) if False else max_core_ps * frequency_mhz // 1_000_000
 
         return {
-            "total_cycles": total_cycles,
-            "core_max": max_core,
-            "fifo_overhead": fifo_overhead,
-            "fifo_effective": effective_fifo,
+            "total_cycles": max_core_cycles,
+            "core_max": max_core_cycles,
+            "fifo_overhead": self.fifo_transfer_cycles(activation_size) * num_layers,
+            "fifo_effective": max_core_ps * frequency_mhz // 1_000_000 - max_core_cycles,
             "core_progress": core_progress,
         }
 
     def simulate_data_parallel(self, per_token_cycles: int,
                                 num_tokens: int) -> Dict:
-        """数据并行: 每核处理不同 token，吞吐 ×N。
+        """数据并行: 每核处理不同 token，吞吐 ×N.
 
         Since each core works independently, total tokens processed
         in the same wall-clock time = num_cores × single-core throughput.

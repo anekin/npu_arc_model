@@ -1,7 +1,15 @@
-"""事件驱动时间轴引擎 — 核心调度器，合并 MXU/SFU/DMA 事件"""
+"""事件驱动时间轴引擎 — 核心调度器，合并 MXU/SFU/DMA 事件.
+
+This module is a legacy adapter over ``scheduler.kernel.DiscreteEventKernel``.
+All cycle values are converted to integer picoseconds with ceiling, and events
+are recorded through the deterministic kernel.  The public API is preserved
+for existing callers.
+"""
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List
+
+from scheduler.kernel import DiscreteEventKernel
 
 
 @dataclass
@@ -114,93 +122,103 @@ class SimulationReport:
 class CoreTimeline:
     """Single-core event-driven timeline.
 
-    Tracks overlapping events: MXU and DMA can run concurrently,
-    SFU follows MXU (data dependency), RISC-V overhead is negligible.
+    Internally delegates to ``DiscreteEventKernel`` for deterministic
+    picosecond timekeeping.  The public method signatures are unchanged from
+    the original heuristic implementation.
     """
 
-    def __init__(self, core_id: int = 0):
+    def __init__(self, core_id: int = 0, frequency_mhz: int = 1000):
         self.core_id = core_id
         self.events: List[TimelineEvent] = []
-        self._current_cycle: int = 0
-        self._mxu_busy_until: int = 0
-        self._dma_busy_until: int = 0
+        self._kernel = DiscreteEventKernel(frequency_mhz)
+        self._mxu_busy_until_ps: int = 0
+
+    def _cycles_to_ps(self, cycles: int) -> int:
+        return self._kernel.cycles_to_ps(cycles)
+
+    def _ps_to_cycles(self, ps: int) -> int:
+        # Round-trip through ps keeps the same integer semantics as before.
+        return ps * self._kernel.frequency_mhz // 1_000_000
+
+    def _append(self, module: str, op: str, start_ps: int, end_ps: int,
+                layer: int, overlapped: bool) -> TimelineEvent:
+        ev = TimelineEvent(
+            module=module,
+            op=op,
+            start_cycle=self._ps_to_cycles(start_ps),
+            end_cycle=self._ps_to_cycles(end_ps),
+            layer=layer,
+            overlapped=overlapped,
+        )
+        self.events.append(ev)
+        return ev
 
     def add_mxu(self, op: str, cycles: int, layer: int) -> TimelineEvent:
-        """Schedule a matrix multiply operation on the MXU.
-
-        MXU events advance the timeline and set the ``_mxu_busy_until``
-        watermark that DMA/NoC events use for overlap detection.
-        """
-        start = self._current_cycle
-        end = start + cycles
-        self._mxu_busy_until = max(self._mxu_busy_until, end)
-        self._current_cycle = end
-        ev = TimelineEvent("mxu", op, start, end, layer)
-        self.events.append(ev)
-        return ev
+        """Schedule a matrix multiply operation on the MXU."""
+        start = self._kernel.now_ps
+        duration = self._cycles_to_ps(cycles)
+        end = start + duration
+        self._mxu_busy_until_ps = max(self._mxu_busy_until_ps, end)
+        self._kernel.now_ps = end
+        return self._append("mxu", op, start, end, layer, False)
 
     def add_sfu(self, op: str, cycles: int, layer: int) -> TimelineEvent:
-        """Schedule a scalar function unit operation.
-
-        SFU runs after MXU for the current layer (data dependency:
-        softmax/activation requires MXU output).
-        """
-        # SFU runs after MXU for current layer (data dependency)
-        start = self._current_cycle
-        end = start + cycles
-        self._current_cycle = end
-        ev = TimelineEvent("sfu", op, start, end, layer)
-        self.events.append(ev)
-        return ev
+        """Schedule a scalar function unit operation."""
+        start = self._kernel.now_ps
+        duration = self._cycles_to_ps(cycles)
+        end = start + duration
+        self._kernel.now_ps = end
+        return self._append("sfu", op, start, end, layer, False)
 
     def add_vector(self, op: str, cycles: int, layer: int) -> TimelineEvent:
         """Vector unit: can overlap with SFU (separate datapath)."""
-        start = self._current_cycle
-        end = start + cycles
-        self._current_cycle = end
-        ev = TimelineEvent("vector", op, start, end, layer)
-        self.events.append(ev)
-        return ev
+        start = self._kernel.now_ps
+        duration = self._cycles_to_ps(cycles)
+        end = start + duration
+        self._kernel.now_ps = end
+        return self._append("vector", op, start, end, layer, False)
 
     def add_dma_parallel(self, op: str, cycles: int, layer: int) -> TimelineEvent:
         """DMA that can overlap with MXU: starts now, may extend beyond MXU."""
-        start = self._current_cycle
-        end = start + cycles
-        overlapped = cycles <= (self._mxu_busy_until - start)
-        ev = TimelineEvent("dma", op, start, end, layer, overlapped=overlapped)
-        self.events.append(ev)
-        # Only advance timeline if DMA extends beyond current mxu
-        if end > self._current_cycle:
-            self._current_cycle = end
-        return ev
+        start = self._kernel.now_ps
+        duration = self._cycles_to_ps(cycles)
+        end = start + duration
+        overlapped = duration <= (self._mxu_busy_until_ps - start)
+        if end > self._kernel.now_ps:
+            self._kernel.now_ps = end
+        return self._append("dma", op, start, end, layer, overlapped)
 
     def add_noc(self, op: str, cycles: int, layer: int) -> TimelineEvent:
         """NoC transfer that can overlap with MXU: starts now, may extend beyond MXU."""
-        start = self._current_cycle
-        end = start + cycles
-        overlapped = cycles <= (self._mxu_busy_until - start)
-        ev = TimelineEvent("noc", op, start, end, layer, overlapped=overlapped)
-        self.events.append(ev)
-        if end > self._current_cycle:
-            self._current_cycle = end
-        return ev
+        start = self._kernel.now_ps
+        duration = self._cycles_to_ps(cycles)
+        end = start + duration
+        overlapped = duration <= (self._mxu_busy_until_ps - start)
+        if end > self._kernel.now_ps:
+            self._kernel.now_ps = end
+        return self._append("noc", op, start, end, layer, overlapped)
 
     def add_kv(self, op: str, cycles: int, layer: int) -> TimelineEvent:
-        """Schedule a KV cache access operation.
-
-        KV cache accesses (layer switches, context reads) advance the
-        timeline and are serialised with compute (no overlap).
-        """
-        start = self._current_cycle
-        end = start + cycles
-        self._current_cycle = end
-        ev = TimelineEvent("kv", op, start, end, layer)
-        self.events.append(ev)
-        return ev
+        """Schedule a KV cache access operation."""
+        start = self._kernel.now_ps
+        duration = self._cycles_to_ps(cycles)
+        end = start + duration
+        self._kernel.now_ps = end
+        return self._append("kv", op, start, end, layer, False)
 
     @property
     def total_cycles(self) -> int:
-        return self._current_cycle
+        return self._ps_to_cycles(self._kernel.now_ps)
+
+    @property
+    def _current_cycle(self) -> int:
+        """Backward-compatible alias used by legacy npu_sim.py."""
+        return self._ps_to_cycles(self._kernel.now_ps)
+
+    @_current_cycle.setter
+    def _current_cycle(self, cycles: int) -> None:
+        """Backward-compatible setter used by legacy npu_sim.py to restore time."""
+        self._kernel.now_ps = self._cycles_to_ps(cycles)
 
 
 def breakdown_events(events: List[TimelineEvent]) -> Dict[str, float]:

@@ -363,3 +363,40 @@
 - `.omo/evidence/task-11-3d-dram-macro.json` — `pytest -k "monotonic or energy or substitute"` passes.
 - `.omo/evidence/task-11-3d-dram-negative.json` — `pytest -k "invalid or extrapolat or rejects"` passes.
 - `.omo/evidence/task-11-full-pytest.json` — full `pytest -q` passes.
+
+## Todo 13: Deterministic Scheduler Kernel and Legacy Engine Adapters (2026-07-30)
+
+### What was done
+- Created `sim/scheduler/events.py` — deterministic event abstraction with integer picoseconds, phase ordering, and cancellation.
+- Created `sim/scheduler/kernel.py` — `DiscreteEventKernel` with cycle→ps conversion, work-consumption on time advancement, dependency/cycle detection, livelock prevention, and event cancellation.
+- Created `sim/scheduler/resources.py` — `CapacityResource`, `BoundedFIFO`, and `ByteServer` with equal-share and strict-priority QoS.
+- Created `sim/scheduler/queues.py` — `BoundedFIFO` queue with terminal `queue_full` and `mailbox_latest` per stream/context.
+- Created `sim/scheduler/policies.py` — service-class priority, intra-class EDF, release-time/job-id tie-break.
+- Created `sim/scheduler/admission.py` — memory, context/inflight, peak bandwidth, and lower-priority blocking admission checks.
+- Created `sim/tests/oracles/scheduler.py` — independent hand-audited transfer-time oracle.
+- Created `sim/tests/test_scheduler_{events,kernel,resources,queues,policies,admission}.py` — 6 test files covering the new scheduler.
+- Rewrote `sim/engine/timeline.py` and `sim/engine/multicore.py` as legacy adapters over the scheduler kernel, removing the 70% FIFO overlap heuristic.
+- Preserved `_current_cycle` getter/setter alias in `CoreTimeline` for `npu_sim.py` compatibility.
+
+### Key findings
+- All 6 scheduler test files pass (0 failures).
+- Full repository test suite passes after the adapter changes (0 failures).
+- Legacy CLI baselines unchanged: systolic ≈13.23 tok/s, block ≈21.59 tok/s.
+- Removing the 0.3 FIFO overlap factor did not regress the CLI baselines because `CoreTimeline.add_dma_parallel` still marks overlapping DMA as hidden and `npu_sim.py` restores `_current_cycle` after the DMA event.
+- The scheduler kernel's `JobState` enum and event phases make the event loop testable without a live simulation.
+- Preemption with cancellation works: a high-priority job can cancel a running low-priority job and take its resource.
+- `ByteServer` membership changes trigger deterministic recomputation of virtual finish times, which is important for strict-priority QoS.
+
+### Technical decisions
+- Event time stored as `int` picoseconds to avoid float drift.
+- Cycle→ps conversion uses `math.ceil` to guarantee minimum latency.
+- `EventQueue` stores entries in a heap keyed by `(time_ps, phase, _seq)`; cancellation is `O(n)` removal followed by heapify.
+- Kernel jobs carry `resource_requirements` as a dict of `{resource_name: units}` for future multi-resource scheduling.
+- Admission controller uses peak bandwidth check: sum of requested rates over a time window must not exceed link bandwidth.
+- Legacy `MultiCoreTimeline.simulate_pipeline` is still a simplified synchronous estimator; the byte server provides deterministic FIFO latency but does not yet run a full multi-core event simulation.
+
+### Evidence
+- `.omo/evidence/task-13-scheduler-tests.txt` — pytest output for all scheduler tests.
+- `.omo/evidence/task-13-cli-baseline.txt` — systolic and block CLI tok/s baselines.
+- `.omo/evidence/task-13-full-suite.txt` — full repository pytest output.
+- `.omo/evidence/task-13-summary.json` — structured task completion summary.
