@@ -91,20 +91,20 @@ class FSAEngine(MACEngine):
         utilization = mac_count / (peak * total_cycles) if total_cycles > 0 else 0
 
         raw_dma = (K * N * self.w_bits // 8 + M * K * self.a_bits // 8)
-        raw_dma_cycles = math.ceil(raw_dma / self.eff_bw) if self.eff_bw > 0 else 0
+        raw_dma_cycles = math.ceil(raw_dma / self.bw_raw) if self.bw_raw > 0 else 0
         ideal_cycles = math.ceil(mac_count / peak) if peak > 0 else 0
 
         return EngineResult(
             compute_cycles=int(compute_cycles),
             dma_cycles=int(dma_cycles),
             total_cycles=int(total_cycles),
-            utilization=min(utilization, 1.0),
+            utilization=utilization,
             mac_count=mac_count,
             op_count=op_count,
             ideal_compute_cycles=ideal_cycles,
             raw_dma_cycles=raw_dma_cycles,
             num_tiles=total_tiles,
-            weight_bytes=int(effective_weight_bytes),
+            weight_bytes=weight_bytes,  # always report total weight bytes
             bottleneck="compute" if compute_cycles >= dma_cycles else "dma",
             details={
                 "tiles_k": tiles_k,
@@ -118,11 +118,22 @@ class FSAEngine(MACEngine):
         )
 
     def estimate_weight_cache_pair(self, M: int, K: int, N: int) -> EngineResult:
-        """FFN gate+up weight-cache: load gate weights, reuse for up."""
-        # Same as single estimate but with shared weight load
+        """FFN gate+up weight-cache: two matmuls with shared activation load."""
         r = self.estimate(M, K, N)
-        r.details["weight_cache"] = True
-        return r
+        return EngineResult(
+            compute_cycles=2 * r.compute_cycles,
+            dma_cycles=2 * r.dma_cycles,
+            total_cycles=2 * r.total_cycles,
+            utilization=r.utilization,
+            mac_count=2 * r.mac_count,
+            op_count=2 * r.op_count,
+            ideal_compute_cycles=2 * r.ideal_compute_cycles,
+            raw_dma_cycles=r.raw_dma_cycles,  # extra weights need same floor
+            num_tiles=r.num_tiles,
+            weight_bytes=2 * r.weight_bytes,
+            bottleneck=r.bottleneck,
+            details={**r.details, "weight_cache": True},
+        )
 
     def estimate_attention(
         self, seq_q: int, seq_kv: int, head_dim: int,
@@ -183,7 +194,7 @@ class FSAEngine(MACEngine):
             compute_cycles=int(total_compute),
             dma_cycles=int(dma_cycles),
             total_cycles=int(total_cycles),
-            utilization=min(utilization, 1.0),
+            utilization=utilization,
             mac_count=mac_count,
             op_count=op_count,
             ideal_compute_cycles=ideal_cycles,

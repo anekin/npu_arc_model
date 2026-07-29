@@ -106,17 +106,19 @@ class GMMAEngine(MACEngine):
         tma_exposed_dma_val = per_tile_dma_val * (1 - self.TMA_OVERLAP)
         tma_hidden_dma_val = per_tile_dma_val * self.TMA_OVERLAP
 
-        # Enforce physical raw-DMA floor: TMA overlap cannot make total
-        # cycles smaller than the raw byte-transfer time.
-        total_cycles = max(total_compute, total_dma)
+        # Enforce all three physical floors: compute, DMA ceil, raw DMA.
+        raw_dma_bytes = K * N * self.w_bits // 8 + M * K * self.a_bits // 8
+        raw_dma_floor = math.ceil(raw_dma_bytes / self.bw_raw) if self.bw_raw > 0 else 0
+        total_dma_ceil = math.ceil(total_dma)
+
         total_macs = M * K * N
         ideal = math.ceil(total_macs / self.peak_macs_per_cycle)
+
+        total_cycles = max(int(total_compute), ideal, raw_dma_floor, total_dma_ceil)
         util = ideal / total_cycles if total_cycles > 0 else 0.0
 
         compute_cycles = int(total_compute)
-        dma_cycles = int(total_dma)
-        raw_dma = (K * N * self.w_bits // 8 + M * K * self.a_bits // 8)
-        raw_dma_floor = math.ceil(raw_dma / self.eff_bw) if self.eff_bw > 0 else 0
+        dma_cycles = total_dma_ceil
 
         return EngineResult(
             compute_cycles=compute_cycles,
@@ -180,12 +182,16 @@ class GMMAEngine(MACEngine):
         total_macs = M * K * N * 2
         total_weight_bytes = total_tiles * (dual_weight_bytes + tile_act_bytes)
         ideal = math.ceil(total_macs / self.peak_macs_per_cycle)
+
+        raw_dma_bytes = (K * N * self.w_bits // 8 + M * K * self.a_bits // 8) * 2
+        raw_dma_floor = math.ceil(raw_dma_bytes / self.bw_raw) if self.bw_raw > 0 else 0
+        total_dma_ceil = math.ceil(total_tiles * per_tile_dma_raw)
+
+        total = max(total, ideal, raw_dma_floor, total_dma_ceil)
         util = ideal / total if total > 0 else 0.0
 
         compute_cycles = int(per_tile_compute * total_tiles)
-        dma_cycles = int(total - compute_cycles)
-        raw_dma = (K * N * self.w_bits // 8 + M * K * self.a_bits // 8) * 2
-        raw_dma_floor = math.ceil(raw_dma / self.eff_bw) if self.eff_bw > 0 else 0
+        dma_cycles = total_dma_ceil
 
         return EngineResult(
             compute_cycles=compute_cycles,

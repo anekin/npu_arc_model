@@ -67,53 +67,72 @@ class TensorCoreEngine(MACEngine):
 
     def estimate(self, M: int, K: int, N: int,
                  weight_preloaded: bool = False) -> EngineResult:
-        """TC-style GEMM estimate with 64×16×16 sub-tile fragmentation."""
+        """TC-style GEMM estimate with 64x16x16 sub-tile fragmentation."""
         sub_K = math.ceil(K / self.SUBTILE_K)
         sub_M = math.ceil(M / self.SUBTILE_M)
         sub_N = math.ceil(N / self.SUBTILE_N)
         total_invocations = sub_K * sub_M * sub_N
 
-        # Per-sub-tile data movement
-        tile_weight_bytes = math.ceil(
+        last_k = K - (sub_K - 1) * self.SUBTILE_K
+        if last_k <= 0:
+            last_k = self.SUBTILE_K
+        last_m = M - (sub_M - 1) * self.SUBTILE_M
+        if last_m <= 0:
+            last_m = self.SUBTILE_M
+        last_n = N - (sub_N - 1) * self.SUBTILE_N
+        if last_n <= 0:
+            last_n = self.SUBTILE_N
+
+        full_weight_bytes = math.ceil(
             self.SUBTILE_K * self.SUBTILE_N * self.w_bits / 8
         )
-        M_eff = min(M, self.SUBTILE_M)
-        tile_act_bytes = math.ceil(
-            M_eff * self.SUBTILE_K * self.a_bits / 8
+        full_act_bytes = math.ceil(
+            self.SUBTILE_M * self.SUBTILE_K * self.a_bits / 8
         )
+        full_payload = (full_weight_bytes + full_act_bytes) / self.eff_bw
 
         num_tcs = self.num_tcs
         waves = math.ceil(total_invocations / num_tcs)
 
-        # Per wave: all TCs fire in parallel and share the DRAM bus
         per_wave_compute = self.per_subtile_compute
-
-        per_wave_payload_cycles = (
-            num_tcs * (tile_weight_bytes + tile_act_bytes) / self.eff_bw
-        )
-
+        per_wave_payload_cycles = num_tcs * full_payload
         descriptor_cycles_per_wave = num_tcs * self.descriptor_overhead_cycles
 
         invocations_last = total_invocations - num_tcs * (waves - 1)
         active_tcs = invocations_last
+
+        last_wave_weight_bytes = 0
+        last_wave_act_bytes = 0
+        for i in range(invocations_last):
+            global_idx = num_tcs * (waves - 1) + i
+            n_idx = global_idx % sub_N
+            k_idx = (global_idx // sub_N) % sub_K
+            m_idx = global_idx // (sub_N * sub_K)
+            m_eff = last_m if m_idx == sub_M - 1 else self.SUBTILE_M
+            k_eff = last_k if k_idx == sub_K - 1 else self.SUBTILE_K
+            n_eff = last_n if n_idx == sub_N - 1 else self.SUBTILE_N
+            last_wave_weight_bytes += math.ceil(
+                k_eff * n_eff * self.w_bits / 8
+            )
+            last_wave_act_bytes += math.ceil(
+                m_eff * k_eff * self.a_bits / 8
+            )
+
+        last_wave_payload = (last_wave_weight_bytes + last_wave_act_bytes) / self.eff_bw
         last_wave_descriptor = active_tcs * self.descriptor_overhead_cycles
         total_descriptor_cycles = (
             descriptor_cycles_per_wave * (waves - 1) + last_wave_descriptor
         )
 
         per_wave_dma = per_wave_payload_cycles + descriptor_cycles_per_wave
-
-        # Double-buffering: overlap DMA of wave N+1 with compute of wave N
         bottleneck = max(per_wave_compute, per_wave_dma)
 
         if waves == 1:
-            last_wave_payload = active_tcs * (tile_weight_bytes + tile_act_bytes) / self.eff_bw
             total = int(last_wave_payload + last_wave_descriptor + per_wave_compute)
         elif active_tcs == num_tcs:
             first_cold = per_wave_dma + per_wave_compute
             total = int(first_cold + (waves - 1) * bottleneck)
         else:
-            last_wave_payload = active_tcs * (tile_weight_bytes + tile_act_bytes) / self.eff_bw
             last_wave_dma_total = last_wave_payload + last_wave_descriptor
             total = int(
                 per_wave_dma + per_wave_compute
@@ -122,7 +141,10 @@ class TensorCoreEngine(MACEngine):
             )
 
         total_macs = M * K * N
-        total_weight_bytes = total_invocations * (tile_weight_bytes + tile_act_bytes)
+        total_weight_bytes = (
+            (waves - 1) * num_tcs * (full_weight_bytes + full_act_bytes)
+            + last_wave_weight_bytes + last_wave_act_bytes
+        )
         ideal = math.ceil(total_macs / self.peak_macs_per_cycle)
         util = ideal / total if total > 0 else 0.0
 
@@ -158,64 +180,77 @@ class TensorCoreEngine(MACEngine):
                 "per_subtile_compute": per_wave_compute,
                 "descriptor_cycles_per_wave": descriptor_cycles_per_wave,
                 "total_descriptor_cycles": total_descriptor_cycles,
-                "subtile_size": f"{self.SUBTILE_K}×{self.SUBTILE_M}×{self.SUBTILE_N}",
+                "subtile_size": f"{self.SUBTILE_K}x{self.SUBTILE_M}x{self.SUBTILE_N}",
             },
         )
 
     def estimate_weight_cache_pair(self, M: int, K: int, N: int) -> EngineResult:
-        """Gate+Up with Tensor Core weight cache.
-
-        TC can keep both gate and up weights in registers while reusing the
-        same activation slice for a given K sub-tile.  This saves one activation
-        load per sub-tile vs. two separate GEMMs.
-        """
+        """Gate+Up with TC weight cache — partial-tile-aware."""
         sub_K = math.ceil(K / self.SUBTILE_K)
         sub_M = math.ceil(M / self.SUBTILE_M)
         sub_N = math.ceil(N / self.SUBTILE_N)
         total_invocations = sub_K * sub_M * sub_N
 
-        tile_weight_bytes = math.ceil(
+        last_k = K - (sub_K - 1) * self.SUBTILE_K
+        if last_k <= 0:
+            last_k = self.SUBTILE_K
+        last_m = M - (sub_M - 1) * self.SUBTILE_M
+        if last_m <= 0:
+            last_m = self.SUBTILE_M
+        last_n = N - (sub_N - 1) * self.SUBTILE_N
+        if last_n <= 0:
+            last_n = self.SUBTILE_N
+
+        full_weight_bytes = math.ceil(
             self.SUBTILE_K * self.SUBTILE_N * self.w_bits / 8
         )
-        M_eff = min(M, self.SUBTILE_M)
-        tile_act_bytes = math.ceil(
-            M_eff * self.SUBTILE_K * self.a_bits / 8
+        full_act_bytes = math.ceil(
+            self.SUBTILE_M * self.SUBTILE_K * self.a_bits / 8
         )
-
-        # Load both gate+up weights, one activation slice per K sub-tile
-        dual_weight_bytes = 2 * tile_weight_bytes
-        per_subtile_payload = (dual_weight_bytes + tile_act_bytes) / self.eff_bw
-
-        # Compute gate then up sequentially on the same TC
-        per_subtile_compute = 2 * self.per_subtile_compute
+        full_payload = (2 * full_weight_bytes + full_act_bytes) / self.eff_bw
 
         num_tcs = self.num_tcs
         waves = math.ceil(total_invocations / num_tcs)
 
-        per_wave_payload_cycles = num_tcs * per_subtile_payload
-        per_wave_compute = per_subtile_compute
-
+        per_wave_compute = 2 * self.per_subtile_compute
+        per_wave_payload_cycles = num_tcs * full_payload
         descriptor_cycles_per_wave = num_tcs * self.descriptor_overhead_cycles
 
         invocations_last = total_invocations - num_tcs * (waves - 1)
         active_tcs = invocations_last
+
+        last_wave_weight_bytes = 0
+        last_wave_act_bytes = 0
+        for i in range(invocations_last):
+            global_idx = num_tcs * (waves - 1) + i
+            n_idx = global_idx % sub_N
+            k_idx = (global_idx // sub_N) % sub_K
+            m_idx = global_idx // (sub_N * sub_K)
+            m_eff = last_m if m_idx == sub_M - 1 else self.SUBTILE_M
+            k_eff = last_k if k_idx == sub_K - 1 else self.SUBTILE_K
+            n_eff = last_n if n_idx == sub_N - 1 else self.SUBTILE_N
+            last_wave_weight_bytes += math.ceil(
+                k_eff * n_eff * self.w_bits / 8
+            )
+            last_wave_act_bytes += math.ceil(
+                m_eff * k_eff * self.a_bits / 8
+            )
+
+        last_wave_payload = (2 * last_wave_weight_bytes + last_wave_act_bytes) / self.eff_bw
         last_wave_descriptor = active_tcs * self.descriptor_overhead_cycles
         total_descriptor_cycles = (
             descriptor_cycles_per_wave * (waves - 1) + last_wave_descriptor
         )
 
         per_wave_dma = per_wave_payload_cycles + descriptor_cycles_per_wave
-
         bottleneck = max(per_wave_compute, per_wave_dma)
 
         if waves == 1:
-            last_wave_payload = active_tcs * per_subtile_payload
             total = int(last_wave_payload + last_wave_descriptor + per_wave_compute)
         elif active_tcs == num_tcs:
             first_cold = per_wave_dma + per_wave_compute
             total = int(first_cold + (waves - 1) * bottleneck)
         else:
-            last_wave_payload = active_tcs * per_subtile_payload
             last_wave_dma_total = last_wave_payload + last_wave_descriptor
             total = int(
                 per_wave_dma + per_wave_compute
@@ -224,12 +259,14 @@ class TensorCoreEngine(MACEngine):
             )
 
         total_macs = M * K * N * 2
-        total_weight_bytes = total_invocations * (dual_weight_bytes + tile_act_bytes)
+        total_weight_bytes = (
+            (waves - 1) * num_tcs * (2 * full_weight_bytes + full_act_bytes)
+            + 2 * last_wave_weight_bytes + last_wave_act_bytes
+        )
         ideal = math.ceil(total_macs / self.peak_macs_per_cycle)
         util = ideal / total if total > 0 else 0.0
 
-        # Activation sharing savings vs. two separate estimates
-        activation_savings = total_invocations * tile_act_bytes / self.eff_bw
+        activation_savings = total_invocations * full_act_bytes / self.eff_bw
 
         compute_cycles = waves * per_wave_compute
         dma_cycles = total - compute_cycles

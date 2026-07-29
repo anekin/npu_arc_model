@@ -207,7 +207,7 @@ _REQUIRED_DIAGNOSTICS: Dict[str, Set[str]] = {
                     "raw_dma_cycles", "total_compute_cycles",
                     "bottleneck_reason", "dataflow"},
     "input_stationary": {"per_tile_compute", "per_tile_dma",
-                         "reuse_factor", "K_tiles"},
+                         "K_tiles"},
     "tensor_core": {"sub_K", "sub_M", "sub_N",
                     "total_invocations", "num_tcs", "waves",
                     "per_wave_payload_cycles", "per_wave_dma",

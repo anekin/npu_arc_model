@@ -61,8 +61,8 @@ class BlockEngine(MACEngine):
         total_weight_bytes = K * N * self.w_bits // 8
 
         if self.weight_resident:
-            # ── On-chip 3D DRAM: weights resident, no K-tiling ──
-            # H handles batch (M) dimension. Each PE does K MACs for reduction.
+            # ── On-chip 3D DRAM: weights resident, but activations still
+            #     must be loaded from external DRAM. Respect all physical floors.
             M_tiles = math.ceil(M / self.H)
             N_tiles = math.ceil(N / self.W)
             total_tiles = M_tiles * N_tiles
@@ -76,10 +76,16 @@ class BlockEngine(MACEngine):
             act_bytes = M * K * self.a_bits // 8
             weight_stream_cycles = (total_weight_bytes + act_bytes) / self.on_chip_bw
 
-            raw_dma = (K * N * self.w_bits // 8 + M * K * self.a_bits // 8)
-            raw_dma_cycles = math.ceil(raw_dma / self.on_chip_bw) if self.on_chip_bw > 0 else 0
+            total_macs = M * K * N
             ideal_cycles = math.ceil(total_macs / self.peak_macs_per_cycle)
-            total_cycles = max(total_compute, weight_stream_cycles)
+
+            raw_dma_bytes = K * N * self.w_bits // 8 + M * K * self.a_bits // 8
+            raw_dma_cycles = math.ceil(raw_dma_bytes / self.bw_raw) if self.bw_raw > 0 else 0
+
+            # Activation DMA via external DRAM floor
+            act_dma_ext = math.ceil(act_bytes / self.bw_raw) if self.bw_raw > 0 else 0
+
+            total_cycles = max(total_compute, weight_stream_cycles, ideal_cycles, act_dma_ext)
 
             return EngineResult(
                 compute_cycles=int(total_compute),
