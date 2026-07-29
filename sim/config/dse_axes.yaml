@@ -1,0 +1,257 @@
+# Orthogonal DSE axes for scenario-driven design-space enumeration.
+#
+# Every axis declares an explicit value list and optional provenance.
+# Constraints encode conditional exclusions with typed reason codes.
+# The generator in sim/dse/space.py reads this file and produces
+# DesignPoint candidates; no hard-coded Cartesian loops live in code.
+
+base_config_source: config/design_space.yaml
+
+axes:
+  engine:
+    description: MAC engine architecture
+    values:
+      - systolic
+      - os_systolic
+      - block
+      - tensor_core
+      - wmma
+      - gmma
+      - input_stationary
+      - fsa
+    provenance: engine/registry
+
+  array_height:
+    description: MAC array height
+    values: [64, 128, 256]
+    provenance: design_space/sweep
+
+  array_width:
+    description: MAC array width
+    values: [64, 128, 256, 384]
+    provenance: design_space/sweep
+
+  frequency_mhz:
+    description: Core clock frequency
+    values: [800, 1000, 1200]
+    provenance: design_space/sweep
+
+  weight_precision_bits:
+    description: Weight precision
+    values: [2, 4, 8]
+    provenance: design_space/sweep
+
+  activation_precision_bits:
+    description: Activation precision
+    values: [8, 16]
+    provenance: design_space/sweep
+
+  memory_type:
+    description: External or on-chip memory type
+    values:
+      - lpddr5
+      - lpddr5x
+      - hbm2e
+      - hbm3
+      - on_chip_3d_dram
+    provenance: scenarios/memory_component_rules
+
+  bandwidth_gbps:
+    description: External memory bandwidth in decimal GB/s
+    values: [25.6, 51.2, 102.4, 204.8, 460.0, 819.2]
+    provenance: design_space/sweep
+
+  dram_width_bits:
+    description: External DRAM interface width
+    values: [0, 64, 128, 256, 1024]
+    provenance: design_space/sweep
+
+  sram_l2_kb:
+    description: Shared L2 SRAM capacity in KB
+    values: [512, 1024, 2048, 4096, 8192]
+    provenance: design_space/sweep
+
+  weight_cache:
+    description: PE double-buffered weight cache
+    values: [false, true]
+    provenance: design_space/sweep
+
+  on_chip_capacity_gb:
+    description: On-chip 3D DRAM capacity in GB
+    values: [0, 0.1, 1, 5, 16]
+    provenance: scenarios/onchip_7b
+
+  on_chip_bandwidth_gbps:
+    description: On-chip 3D DRAM bandwidth in GB/s
+    values: [0, 100, 500, 1000]
+    provenance: scenarios/onchip_7b
+
+  queue_policy:
+    description: Global queueing policy for temporal classes
+    values: [fifo, mailbox_latest]
+    provenance: scenarios/schema
+
+  nonpreemptible_quantum_ms:
+    description: Minimum non-preemptible execution slice
+    values: [0.0, 1.0, 5.0, 10.0]
+    provenance: scheduler/policy
+
+  partition:
+    description: Resource partition scheme
+    values: [none, static, dynamic]
+    provenance: scheduler/policy
+
+  request_batch:
+    description: Request batch size
+    values: [1, 2, 4, 8, 16]
+    provenance: workloads/dimensions
+
+  active_sequences:
+    description: Concurrent active sequences (decode)
+    values: [1, 2, 4, 8, 16]
+    provenance: workloads/dimensions
+
+  token_block:
+    description: Token block size for prefill chunking
+    values: [16, 32, 64, 128, 256, 512, 1024]
+    provenance: workloads/dimensions
+
+  image_count:
+    description: Images per inference (VLM/VLA)
+    values: [1, 2, 3, 4]
+    provenance: workloads/dimensions
+
+  action_horizon:
+    description: VLA action horizon
+    values: [8, 10, 25, 50]
+    provenance: workloads/dimensions
+
+  flow_steps:
+    description: Continuous flow-model steps
+    values: [4, 8, 10]
+    provenance: workloads/dimensions
+
+  resident_models:
+    description: Models resident in memory
+    values: [1, 4, 8]
+    provenance: workloads/dimensions
+
+  inflight_jobs:
+    description: Concurrent executing jobs
+    values: [4, 8, 16]
+    provenance: workloads/dimensions
+
+defaults:
+  engine: block
+  array_height: 128
+  array_width: 128
+  frequency_mhz: 1000
+  weight_precision_bits: 4
+  activation_precision_bits: 8
+  memory_type: lpddr5
+  bandwidth_gbps: 51.2
+  dram_width_bits: 64
+  sram_l2_kb: 2048
+  weight_cache: false
+  on_chip_capacity_gb: 0
+  on_chip_bandwidth_gbps: 0
+  queue_policy: fifo
+  nonpreemptible_quantum_ms: 0.0
+  partition: none
+  request_batch: 1
+  active_sequences: 1
+  token_block: 16
+  image_count: 1
+  action_horizon: 8
+  flow_steps: 4
+  resident_models: 1
+  inflight_jobs: 4
+
+constraints:
+  - name: lpddr5_requires_dram_width
+    when:
+      memory_type: [lpddr5]
+    require:
+      dram_width_bits: [64, 128, 256]
+      on_chip_capacity_gb: [0]
+      on_chip_bandwidth_gbps: [0]
+    reason: lpddr5_no_onchip
+
+  - name: lpddr5x_requires_dram_width
+    when:
+      memory_type: [lpddr5x]
+    require:
+      dram_width_bits: [64, 128, 256]
+      on_chip_capacity_gb: [0]
+      on_chip_bandwidth_gbps: [0]
+    reason: lpddr5x_no_onchip
+
+  - name: hbm_requires_1024bit
+    when:
+      memory_type: [hbm2e, hbm3]
+    require:
+      dram_width_bits: [1024]
+      on_chip_capacity_gb: [0]
+      on_chip_bandwidth_gbps: [0]
+    reason: hbm_external_only
+
+  - name: onchip_requires_3d
+    when:
+      memory_type: [on_chip_3d_dram]
+    require:
+      dram_width_bits: [0]
+      on_chip_capacity_gb: [0.1, 1, 5, 16]
+      on_chip_bandwidth_gbps: [100, 500, 1000]
+    reason: onchip_dram_3d
+
+  - name: weight_cache_needs_bandwidth
+    when:
+      weight_cache: [true]
+      engine: [block, gmma, os_systolic]
+    require:
+      bandwidth_gbps: [51.2, 102.4, 204.8, 460.0, 819.2]
+      memory_type: [lpddr5, lpddr5x, hbm2e, hbm3]
+    reason: weight_cache_low_bandwidth
+
+  - name: weight_cache_systolic_only_for_low_bw
+    when:
+      weight_cache: [true]
+      engine: [systolic]
+    require:
+      memory_type: [lpddr5, lpddr5x, hbm2e, hbm3]
+    reason: weight_cache_external_memory
+
+  - name: area_block_os_large
+    when:
+      engine: [block, os_systolic]
+    exclude_combinations:
+      - array_height: [256]
+        array_width: [384]
+    reason: area_exceeds_200mm2
+
+  - name: area_systolic_large
+    when:
+      engine: [systolic]
+    exclude_combinations:
+      - array_height: [256]
+        array_width: [256]
+        frequency_mhz: [1200]
+    reason: area_exceeds_80mm2
+
+  - name: area_tensor_core_wmma_gmma_large
+    when:
+      engine: [tensor_core, wmma, gmma]
+    exclude_combinations:
+      - array_height: [256]
+        array_width: [384]
+    reason: area_exceeds_200mm2
+
+reason_codes:
+  lpddr5_no_onchip: LPDDR5 is external DRAM; on-chip 3D DRAM must be disabled
+  lpddr5x_no_onchip: LPDDR5X is external DRAM; on-chip 3D DRAM must be disabled
+  hbm_external_only: HBM is external stacked memory; on-chip 3D DRAM must be disabled
+  onchip_dram_3d: On-chip 3D DRAM requires positive capacity/bandwidth and no external DRAM PHY
+  weight_cache_low_bandwidth: Weight cache with wide engines needs at least 51.2 GB/s external bandwidth
+  weight_cache_external_memory: Weight cache requires external DRAM-backed memory
+  area_exceeds_200mm2: Array dimensions exceed area budget for this engine class
+  area_exceeds_80mm2: Systolic array dimensions exceed conservative area budget at high frequency

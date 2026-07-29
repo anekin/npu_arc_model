@@ -400,3 +400,35 @@
 - `.omo/evidence/task-13-cli-baseline.txt` — systolic and block CLI tok/s baselines.
 - `.omo/evidence/task-13-full-suite.txt` — full repository pytest output.
 - `.omo/evidence/task-13-summary.json` — structured task completion summary.
+
+## Todo 15: Scenario-to-Space Enumeration, Constraints, and Coverage Manifest (2026-07-30)
+
+### What was done
+- Created `sim/config/dse_axes.yaml` with 25 orthogonal axes (engine, array H/W, frequency, precision, memory type, bandwidth, DRAM width, SRAM, weight cache, on-chip 3D capacity/bandwidth, queue policy, nonpreemptible quantum, partition, and all workload batch dimensions).
+- Declared explicit value lists, provenance, defaults, conditional constraints with reason codes, and human-readable reason-code dictionary.
+- Created `sim/dse/__init__.py` exporting `DesignSpace`, `DesignPoint`, `CoverageManifest`, `AxisCoverage`, `ExclusionRecord`, `GenerationResult`.
+- Created `sim/dse/space.py`:
+  - `DesignSpace` reads axes from YAML, supports `full` and `ci_all_axes` modes.
+  - Constraint engine handles `when`/`require`/`exclude_combinations` with typed reason codes.
+  - `ci_all_axes` uses default + single-axis substitution + deterministic repair; records structured exclusions when a target value is repaired away so nothing is silently omitted.
+  - `DesignPoint` carries normalized hardware config, scenario ref, workload ref, and stable `design_point_id` via `contracts.identity.digest_sha256`.
+- Created `sim/dse/manifest.py`:
+  - `CoverageManifest` tracks per-axis requested/generated/evaluated/successful/pruned/failed/filtered/missing.
+  - Enforces invariants `generated = evaluated + pruned` and `evaluated = successful + filtered + failed`.
+  - Detects duplicate `design_point_id`s and rejects silently missing axis values.
+- Created `sim/tests/test_scenario_space.py` and `sim/tests/test_dse_manifest.py` covering space generation, constraints, determinism under shuffled axis order, all-axes coverage, manifest invariants, omission detection, duplicate ID rejection, and missing-reason rejection.
+- Updated `sim/dse_scenario.py` so `preflight` uses the same `scenarios.schema.Scenario` model and `DesignSpace` generator; returns `scenario_model`, `compiled_scenario`, `design_space`, and `manifest` alongside legacy preflight analysis.
+- Captured evidence to `.omo/evidence/task-15-dse-coverage.json` and `.omo/evidence/task-15-dse-coverage-negative.txt`.
+
+### Key findings
+- Full pytest suite passes after the changes (0 failures).
+- `ci_all_axes` mode generates 66 points from the real `dse_axes.yaml` and covers every requested axis value or records a structured exclusion; `missing_axes` is empty.
+- On-chip 3D DRAM design points are generated with positive capacity/bandwidth; LPDDR5/HBM points correctly have zero on-chip capacity.
+- Shuffling the axis declaration order in the axes config does not change the generated design-point ID set, confirming canonical normalization.
+- Without explicit exclusion tracking during `ci_all_axes` repair, requested values can be silently dropped (e.g., `on_chip_capacity_gb=1` repaired to 0 under LPDDR5). Recording repair-driven exclusions closes this gap.
+
+### Technical decisions
+- Declarative axes live in YAML; the generator has no hard-coded Cartesian loops.
+- Reason codes are centralized in `dse_axes.yaml` with human-readable text, not inline in code or grep/label matching.
+- `DesignPoint` identity includes hardware config, scenario ref, workload ref, and temporal axes so any design-axis change changes the ID.
+- `CoverageManifest` validates count invariants only after outcomes are recorded; the manifest is the single place where generated/evaluated/pruned/failed/successful/filtered counts converge.

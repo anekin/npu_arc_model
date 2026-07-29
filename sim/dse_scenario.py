@@ -19,6 +19,11 @@ from enum import Enum
 
 import yaml
 
+from dse.manifest import CoverageManifest
+from dse.space import DesignSpace, load_design_space_from_yaml
+from scenarios.compiler import compile_scenario
+from scenarios.schema import ArrivalMode, ArrivalPattern, QueuePolicy, Scenario, WorkloadClass
+
 SIM_DIR = Path(__file__).parent
 
 
@@ -78,6 +83,66 @@ CRITICAL_FIELDS = {
         "validate": lambda v: isinstance(v, (int, float)) and 1 < v < 100,
     },
 }
+
+
+_MODEL_TO_WORKLOAD_REF = {
+    "qwen2.5-3b": "llm-qwen25-3b",
+    "qwen2.5-7b": None,
+}
+
+
+def _map_model_to_workload_ref(model_name: Optional[str]) -> Optional[str]:
+    """Return the workload fixture reference for a legacy model name."""
+    if not model_name:
+        return None
+    return _MODEL_TO_WORKLOAD_REF.get(model_name.lower(), None)
+
+
+def _build_scenario_model(scenario_name: str, data: Dict[str, Any]) -> Scenario:
+    """Convert a legacy scenarios.yaml entry into a ``scenarios.schema.Scenario``."""
+    mem = data.get("memory", {})
+    memory_type = mem.get("type", "lpddr5")
+    onchip_capacity = float(mem.get("capacity_gb", 0))
+
+    if memory_type == "on_chip_3d_dram" and onchip_capacity > 0:
+        memory_available_bytes = int(onchip_capacity * 1e9)
+    else:
+        memory_available_bytes = int(data.get("memory_available_bytes", 8_000_000_000))
+
+    constraints = data.get("constraints", {})
+    ttft_ms = constraints.get("ttft_ms_max", data.get("ttft_ms_max", 200))
+    seq_len = int(data.get("seq_len", 128))
+    model_params_gb = float(data.get("model_params_gb", 1.5))
+
+    work_ms = max(1.0, ttft_ms / 20.0)
+    period_ms = max(1.0, work_ms * 2.0)
+
+    return Scenario(
+        name=scenario_name,
+        description=data.get("description", ""),
+        workload_ref=_map_model_to_workload_ref(data.get("model")),
+        classes=[
+            WorkloadClass(
+                id="inference",
+                arrival=ArrivalPattern(mode=ArrivalMode.PERIODIC, period_ms=period_ms, count=100),
+                work_ms=work_ms,
+                relative_deadline_ms=float(ttft_ms),
+                queue_policy=QueuePolicy.FIFO,
+                queue_capacity=1000,
+                resource_requirements={"compute": 1},
+                metadata={
+                    "seq_len": seq_len,
+                    "model_params_gb": model_params_gb,
+                    "memory_type": memory_type,
+                },
+            ),
+        ],
+        compute_capacity=1,
+        memory_available_bytes=memory_available_bytes,
+        max_inflight_jobs=int(data.get("max_inflight_jobs", 128)),
+        max_bandwidth_fraction=1.0,
+        preemption_enabled=True,
+    )
 
 
 def check_requirements(scenario_name: str, config: Dict[str, Any] = None) -> Dict[str, Any]:
@@ -399,10 +464,18 @@ def validate_components(scenario: Dict, config: Dict[str, Any]) -> List[str]:
 
 def preflight(scenario_name: str, config: Dict[str, Any]) -> Dict[str, Any]:
     """Run full Phase 0 pre-sweep analysis on a scenario + config.
-    
+
+    Preflight now uses the same ``scenarios.schema.Scenario`` model and
+    ``dse.space.DesignSpace`` generator that drives real search, removing the
+    old fork that only analyzed without producing a design space.
+
     Returns:
         {
-            'scenario': scenario dict,
+            'scenario': legacy scenario dict (backward compat),
+            'scenario_model': scenarios.schema.Scenario instance,
+            'compiled_scenario': scenarios.compiler.CompiledScenario,
+            'design_space': dse.space.DesignSpace instance,
+            'manifest': dse.manifest.CoverageManifest,
             'bottleneck': predict_bottleneck output,
             'component_warnings': list of issues found,
             'recommendations': list of pre-sweep recommendations,
@@ -412,13 +485,28 @@ def preflight(scenario_name: str, config: Dict[str, Any]) -> Dict[str, Any]:
     if not scenario:
         return {"error": f"Scenario '{scenario_name}' not found. "
                 f"Available: {list_scenarios()}"}
-    
+
+    scenario_model = _build_scenario_model(scenario_name, scenario)
+    compiled_scenario = compile_scenario(scenario_model)
+
+    design_space = load_design_space_from_yaml(
+        scenario_model,
+        SIM_DIR / "config" / "dse_axes.yaml",
+        mode="ci_all_axes",
+    )
+    generation_result = design_space.generate_with_exclusions()
+    manifest = CoverageManifest(
+        design_space.axes,
+        generation_result.points,
+        generation_result.exclusions,
+    )
+    for point in generation_result.points:
+        manifest.record_success(point)
+
     bottleneck = predict_bottleneck(scenario)
     component_warnings = validate_components(scenario, config)
-    
+
     recommendations = []
-    
-    # SRAM recommendation based on bottleneck + bandwidth regime
     if "BANDWIDTH BOTTLENECK" in (bottleneck.get('conclusion', [''])[0]):
         bw_actual = bottleneck.get('effective_bw_gbps', 0)
         if bw_actual >= 200:
@@ -434,8 +522,7 @@ def preflight(scenario_name: str, config: Dict[str, Any]) -> Dict[str, Any]:
             )
     else:
         recommendations.append("SRAM: 512KB-1MB likely sufficient. Start sweep from 512KB.")
-    
-    # Array dimension recommendation
+
     ttft_min = bottleneck.get('ttft_min_tops_needed', 0)
     sl = bottleneck.get('seq_len', 128)
     if ttft_min > 16:
@@ -447,9 +534,13 @@ def preflight(scenario_name: str, config: Dict[str, Any]) -> Dict[str, Any]:
         recommendations.append("Array: BW-limited → oversizing array wastes area. Prefer smaller array (≤16 TOPS).")
     elif "COMPUTE BOTTLENECK" in (bottleneck.get('conclusion', [''])[0]):
         recommendations.append("Array: compute-limited → increase array size or frequency.")
-    
+
     return {
         "scenario": scenario,
+        "scenario_model": scenario_model,
+        "compiled_scenario": compiled_scenario,
+        "design_space": design_space,
+        "manifest": manifest,
         "bottleneck": bottleneck,
         "component_warnings": component_warnings,
         "recommendations": recommendations,

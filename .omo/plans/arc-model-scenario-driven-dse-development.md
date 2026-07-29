@@ -680,7 +680,7 @@ Critical path: `1 → (2,3) → 4 → (5,6) → 7 → (8 → 12, 10 → 11) → 
 
   **Commit**: YES | `feat(memory): unify hierarchy residency and spill planning` | `sim/models/memory_hierarchy.py`, `sim/models/residency.py`, `sim/engine/mac_engine.py`, `sim/engine/block_engine.py`, 其他 engine integration files, `sim/models/kv_cache.py`, `sim/cv/cv_sim.py`, `sim/npu_sim.py`, `sim/tests/oracles/memory.py`, `sim/tests/test_memory_residency.py`
 
-- [ ] 11. 实现可替换参数化 3D DRAM PPA/energy backend
+- [x] 11. 实现可替换参数化 3D DRAM PPA/energy backend
 
   **What to do**:
   1. 新建 `sim/models/memory_backend.py` protocol，输入 topology/capacity/bandwidth/access/read-write mix/activity，输出 latency/area/static power/dynamic energy/thermal proxy/validity envelope。
@@ -778,7 +778,7 @@ Critical path: `1 → (2,3) → 4 → (5,6) → 7 → (8 → 12, 10 → 11) → 
 
   **Commit**: YES | `feat(workload): add embodied and physical-ai fixture catalog` | `sim/workloads/catalog.py`, `sim/config/workloads/*.yaml`, `sim/config/embodied-physical-ai-requirements.example.yaml`, `sim/tests/golden/workload_catalog.json`, `sim/tests/test_workload_catalog.py`
 
-- [ ] 13. 实现确定性事件、资源竞争、队列与抢占执行器
+- [x] 13. 实现确定性事件、资源竞争、队列与抢占执行器
 
   **What to do**:
   1. 新建 `sim/scheduler/events.py`、`kernel.py`，内部时间统一 integer picoseconds；cycle→ps 使用向上取整。事件顺序固定 `(time_ps, phase, insertion_sequence)`，同一时刻依次 release、arrival/timer、dispatch。
@@ -828,7 +828,7 @@ Critical path: `1 → (2,3) → 4 → (5,6) → 7 → (8 → 12, 10 → 11) → 
 
   **Commit**: YES | `feat(scheduler): add deterministic contention and policy kernel` | `sim/scheduler/__init__.py`, `events.py`, `kernel.py`, `resources.py`, `queues.py`, `policies.py`, `admission.py`, `sim/engine/timeline.py`, `sim/engine/multicore.py`, `sim/tests/test_scheduler_*.py`
 
-- [ ] 14. 实现 P50/P99、deadline、高利用率、过载与恢复验收
+- [x] 14. 实现 P50/P99、deadline、高利用率、过载与恢复验收
 
   **What to do**:
   1. 新建 `sim/scheduler/metrics.py`：
@@ -882,7 +882,7 @@ Critical path: `1 → (2,3) → 4 → (5,6) → 7 → (8 → 12, 10 → 11) → 
 
   **Commit**: YES | `feat(scenarios): add deterministic tail-latency and overload metrics` | `sim/scheduler/metrics.py`, `sim/scenarios/__init__.py`, `sim/scenarios/schema.py`, `sim/scenarios/compiler.py`, `sim/scenario_runner.py`, `sim/config/temporal_scenarios.yaml`, `sim/tests/test_scheduler_metrics.py`, `sim/tests/test_scheduler_stability.py`, `sim/tests/test_temporal_scenarios.py`
 
-- [ ] 15. 实现 scenario-to-space 枚举、约束与 coverage manifest
+- [x] 15. 实现 scenario-to-space 枚举、约束与 coverage manifest
 
   **What to do**:
   1. 新建 `sim/dse/space.py` 和 `sim/config/dse_axes.yaml`，从 scenario 选择/约束轴而不是硬编码 Cartesian loops。

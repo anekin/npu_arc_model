@@ -267,3 +267,30 @@
 **What**: All scheduler tests assign deterministic job IDs; the policy's final tie-break is job ID rather than insertion sequence.
 **Why**: DSE will enumerate scenarios in varying orders. If two jobs have identical priority and deadline, their scheduling order must not depend on Python dict iteration order.
 **Alternatives**: Could have used insertion sequence as the final tie-break, but that makes metrics order-dependent.
+
+## Todo 15 Decisions (2026-07-30)
+
+### Decision: Declarative axis + constraint YAML
+- **Context**: Need to enumerate a scenario-driven design space without hard-coded Cartesian loops and with explicit exclusion reasons.
+- **Decision**: Store all axes, defaults, constraints, and reason codes in `sim/config/dse_axes.yaml`. `DesignSpace` parses and generates combinations generically.
+- **Consequences**: Adding a new axis or constraint requires only YAML edits; no generator code changes. Risk: YAML syntax errors are caught at load time via `ConfigError`.
+
+### Decision: Two generation modes
+- **Context**: Full factorial across 25 axes is impractical for CI; a small coverage set is needed.
+- **Decision**: Provide `full` (all valid combinations) and `ci_all_axes` (deterministic small set touching every requested value or recording an exclusion).
+- **Consequences**: CI stays fast (~66 points); exploratory search can use `full` or future adaptive modes.
+
+### Decision: Repair + exclusion tracking for ci_all_axes
+- **Context**: Single-axis substitution from defaults can violate constraints; silently repairing values away would leave requested values uncovered.
+- **Decision**: `_repair` returns change records; `_ci_all_axes_combinations` emits an `ExclusionRecord` whenever the target value is overwritten.
+- **Consequences**: Coverage manifest remains complete and audit-able.
+
+### Decision: Manifest owns invariants and duplicate-ID detection
+- **Context**: Need to enforce `generated = evaluated + pruned` and `evaluated = successful + filtered + failed`, plus detect duplicate IDs and silent omissions.
+- **Decision**: `CoverageManifest` tracks per-axis sets and total counts; `validate()` reports any violation.
+- **Consequences**: Tests can directly assert completeness and invariants; silent generator bugs surface as `CoverageError`.
+
+### Decision: Keep legacy preflight dict keys while adding Scenario model
+- **Context**: `dse_scenario.py` preflight is used by existing CLI/helpers expecting `'scenario'`, `'bottleneck'`, etc.
+- **Decision**: Add `scenario_model`, `compiled_scenario`, `design_space`, `manifest` keys; keep legacy keys unchanged.
+- **Consequences**: Backward compatibility preserved; preflight and real search now share the same `Scenario` model.
