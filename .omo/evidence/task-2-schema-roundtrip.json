@@ -1,0 +1,13 @@
+=== Roundtrip/conversion tests ===
+============================= test session starts ==============================
+platform linux -- Python 3.10.12, pytest-9.0.3, pluggy-1.6.0
+rootdir: /home/prj/zhengs/caduceuscore/npu_arc_model
+configfile: pytest.ini (WARNING: ignoring pytest config in pyproject.toml!)
+plugins: anyio-4.13.0
+collected 65 items / 32 deselected / 33 selected
+
+sim/tests/test_contract_schema.py ............                           [ 36%]
+sim/tests/test_units.py .....................                            [100%]
+
+====================== 33 passed, 32 deselected in 0.13s =======================
+EXIT: 0

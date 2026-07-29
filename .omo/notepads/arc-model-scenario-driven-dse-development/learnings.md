@@ -23,6 +23,27 @@
 - Historical baseline records `node_scale=2.94x` (to be corrected to 2.70x in Todo 11)
 - Pytest markers in both `pytest.ini` and `pyproject.toml` for resilience
 
+## Todo 2: Schema v2, Units, Errors and Migrations (2026-07-29)
+
+### What was done
+- Created `sim/contracts/units.py` with canonical conversions: bytes/cycle = BW_gbps × 1000 / freq_mhz
+- Created `sim/contracts/errors.py` with 6 typed error classes (ConfigError, SchemaVersionError, etc.)
+- Created `sim/contracts/hardware.py` with Pydantic v2 BaseModel schema: v2 key `mac_engine`, `extra='forbid'`, `Provenance` field on all physical params
+- Created `sim/contracts/migrations.py`: v1→v2 pure migration (mxu→mac_engine rename, bandwidth_bytes_per_cycle → computed), v2→legacy projection with LossReport
+- Updated `sim/config/npu_config.py` with typed ConfigError for non-mapping YAML, invalid version, bool-as-int, non-finite numbers
+- Created `sim/tests/test_units.py` (33 tests) and `sim/tests/test_contract_schema.py` (32 tests) — 65 tests total, 0 skip/xfail
+
+### Key findings
+- Pydantic v2's `AfterValidator` runs AFTER type coercion — `True` → `1.0` before the bool check fires. Solution: use `@field_validator(mode="before")` for bool rejection.
+- Pydantic's `model_validate()` with `extra='forbid'` was too strict for real YAML files that have legacy sections (optimizations, sfu, vector, kv_cache, etc.). Tests strip non-v2 sections before validation.
+- `bandwidth_gbps * 1000 / frequency_mhz` formula verified: 51.2 GB/s at 800/1000/1200 MHz → 64/51.2/42.666 bytes/cycle respectively.
+- Wall-time round-trip error < 1e-12 for all frequency/bandwidth combinations.
+
+### Technical decisions
+- `HardwareConfigV2` auto-defaults `version="2"` when missing — ergonomic for programmatic construction.
+- `migrate_v1_to_v2` is pure (deep copies input), with structured ConflictError for inconsistent mxu/mac_engine.
+- PPA provenance defaults initialized in `hardware.py` per `.omo/plans/arc-model-ppa-corrections.md` (dram_efficiency T1, node_scale 2.70× T1, block/systolic 2.0× T1, GMMA pipeline T0).
+
 ## Todo 3: Physical Invariant Red Matrix (2026-07-29)
 
 ### What was done
