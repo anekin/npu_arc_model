@@ -1,0 +1,37 @@
+{
+  "task": "Todo 2 — Refactor AreaModel: SRAM via bitcell table, logic via node_scale",
+  "timestamp": "2026-07-30",
+  "config": "12nm block 128x128, L1=512KB, L2=2048KB, LPDDR5",
+  "sram_area_mm2": {
+    "l1_new_bitcell": 0.775946,
+    "l1_old_legacy_model": 2.7648,
+    "l1_difference_pct": -71.93,
+    "l2_new_bitcell": 2.855482,
+    "l2_old_legacy_model": 8.2944,
+    "l2_difference_pct": -65.57,
+    "note": "Legacy model geometrically scaled a fixed mm2/KB constant, overestimating SRAM area ~3-10x; refactor replaces it with foundry bitcell data."
+  },
+  "total_area_mm2": {
+    "new_total": 119.1,
+    "old_total_if_only_sram_replaced": 126.5,
+    "difference_pct": -5.87
+  },
+  "cross_node_l1_512kb_mm2": {
+    "7.0nm": 0.283116,
+    "12.0nm": 0.775946,
+    "22.0nm": 0.96469,
+    "28.0nm": 1.331692
+  },
+  "cross_node_monotonic_7_12_22_28": true,
+  "power_model": {
+    "sram_mm2_in_power_model": 3.631428,
+    "matches_area_model_l1_plus_l2": true
+  },
+  "verification": {
+    "pytest_engine_invariants": "passed",
+    "pytest_engine_contract": "passed",
+    "pytest_bitcell_table": "passed",
+    "ruff": "All checks passed",
+    "basedpyright": "0 errors, 0 warnings, 0 notes"
+  }
+}

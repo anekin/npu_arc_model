@@ -173,7 +173,7 @@ Note: C3 (Todos 10-12) functionally benefits from C2 (Todos 6-9), but can execut
 
   **Commit**: YES | `feat(contracts): add SRAM bitcell area lookup table` | `sim/contracts/bitcell.py`, `sim/tests/test_bitcell_table.py`, `references/area_sources.md`, `scripts/p0_c1_sram_calibration_gate.py`
 
-- [ ] 2. 重构 AreaModel — SRAM 走 bitcell，logic 走 node_scale
+- [x] 2. 重构 AreaModel — SRAM 走 bitcell，logic 走 node_scale
 
   **What to do**:
   1. 修改 `sim/engine/ppa_model.py:88-89`：`self.l1_per_kb` / `self.l2_per_kb` 不再乘以 `node_scale`，改为存储 `process_node` 并在 `estimate()` 中动态调用 `BitcellTable`。

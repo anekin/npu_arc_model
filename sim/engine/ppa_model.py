@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from contracts.bitcell import BitcellTable, sram_area_mm2
 from models.memory_backend import (
     MemoryAccessPattern,
     MemoryBackend,
@@ -61,8 +62,8 @@ class AreaModel:
 
     def __init__(self, config: dict[str, Any]):
         am = config.get("area_model", {})
-        node = float(am.get("process_node_nm", am.get("process_node", 7.0)))
-        self.node_scale = _node_scale_factor(node)
+        self.process_node_nm = float(am.get("process_node_nm", am.get("process_node", 7.0)))
+        self.node_scale = _node_scale_factor(self.process_node_nm)
 
         # ── PE 面积基线 @7nm (128×128 array) ──
         # 来源: TPUv1 ISCA 2017 die-shot 反推，见 references/area_sources.md
@@ -85,8 +86,18 @@ class AreaModel:
             float(am.get("fsa_pe_area_mm2", 2.2)) * self.node_scale
         )  # 1.1× systolic (CMP + Split overhead)
         self.sfu = float(am.get("sfu_area_mm2", 1.5)) * self.node_scale
-        self.l1_per_kb = float(am.get("l1_sram_per_kb_mm2", 0.002)) * self.node_scale
-        self.l2_per_kb = float(am.get("l2_sram_per_kb_mm2", 0.0015)) * self.node_scale
+
+        # SRAM area is now derived from the foundry bitcell table, not from
+        # fixed mm²/KB constants.  l1_per_kb / l2_per_kb are kept as legacy
+        # fallback values (unchanged, NOT node-scaled) for backward-compatible
+        # config parsing and any downstream code that still reads them.
+        # DEPRECATED: do not use for new area calculations.
+        self.l1_per_kb = float(am.get("l1_sram_per_kb_mm2", 0.002))
+        self.l2_per_kb = float(am.get("l2_sram_per_kb_mm2", 0.0015))
+        self.l1_overhead = float(am.get("l1_overhead", 1.5))
+        self.l2_overhead = float(am.get("l2_overhead", 1.3))
+        self._bitcell_table = BitcellTable()
+
         self.dma = float(am.get("dma_area_mm2", 1.0)) * self.node_scale
         self.riscv = float(am.get("riscv_area_mm2", 1.0)) * self.node_scale
         self.pcie = float(am.get("pcie_area_mm2", 2.0)) * self.node_scale
@@ -189,10 +200,22 @@ class AreaModel:
         pe_base = engine_area_map.get(engine_type, self.block_pe_baseline)
         pe_area = pe_base * scale
 
-        # SRAM
+        # SRAM — derived from foundry bitcell table, not legacy mm²/KB constants.
         sram = config.get("sram", {})
-        l1 = float(sram.get("l1_per_core_kb", 512)) * self.l1_per_kb
-        l2 = float(sram.get("l2_shared_kb", 2048)) * self.l2_per_kb
+        l1_kb = float(sram.get("l1_per_core_kb", 512))
+        l2_kb = float(sram.get("l2_shared_kb", 2048))
+        l1 = sram_area_mm2(
+            size_bytes=int(l1_kb * 1024),
+            node_nm=self.process_node_nm,
+            overhead=self.l1_overhead,
+            table=self._bitcell_table,
+        )
+        l2 = sram_area_mm2(
+            size_bytes=int(l2_kb * 1024),
+            node_nm=self.process_node_nm,
+            overhead=self.l2_overhead,
+            table=self._bitcell_table,
+        )
 
         # DMA channels
         dma_cfg = config.get("dma", {})
@@ -337,10 +360,21 @@ class PowerModel:
 
         logic_power = logic_mm2 * self.logic_power_density * freq_scale
 
-        # SRAM power
+        # SRAM power — use the same bitcell-derived area as AreaModel.
         sram = config.get("sram", {})
-        sram_kb = float(sram.get("l1_per_core_kb", 512)) + float(sram.get("l2_shared_kb", 2048))
-        sram_mm2 = sram_kb * area_model.l1_per_kb  # rough
+        l1_kb = float(sram.get("l1_per_core_kb", 512))
+        l2_kb = float(sram.get("l2_shared_kb", 2048))
+        sram_mm2 = sram_area_mm2(
+            size_bytes=int(l1_kb * 1024),
+            node_nm=area_model.process_node_nm,
+            overhead=area_model.l1_overhead,
+            table=area_model._bitcell_table,
+        ) + sram_area_mm2(
+            size_bytes=int(l2_kb * 1024),
+            node_nm=area_model.process_node_nm,
+            overhead=area_model.l2_overhead,
+            table=area_model._bitcell_table,
+        )
         sram_power = sram_mm2 * self.sram_power_density
 
         # DRAM PHY fixed overhead for external memory; on-chip has no PHY.

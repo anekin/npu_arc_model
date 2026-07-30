@@ -21,3 +21,41 @@
 - Should we add interpolated nodes (e.g. 16nm = 16FFC) via (node/7)² scaling from the 7nm baseline?
 - The peripheral overhead should eventually become a function of capacity (not a fixed multiplier).
 - Samsung/Intel bitcell data would be needed for multi-foundry scenarios.
+
+# Todo 2 — Refactor AreaModel: SRAM via bitcell table, logic via node_scale
+
+**Date:** 2026-07-30
+
+## What was done
+
+- Modified `sim/engine/ppa_model.py` `AreaModel.__init__`:
+  - Stored `self.process_node_nm` (float) from config.
+  - Kept `self.l1_per_kb` / `self.l2_per_kb` as legacy fallback values (no longer multiplied by `node_scale`).
+  - Added `self._bitcell_table: BitcellTable` and config-driven `l1_overhead` (default 1.5) / `l2_overhead` (default 1.3).
+  - Preserved all logic-area baselines (PE variants, SFU, DMA, PCIe, DRAM PHY, crossbar, RISC-V) multiplied by `node_scale`.
+- Modified `AreaModel.estimate()` to compute L1/L2 SRAM area via `sram_area_mm2()` from `sim.contracts.bitcell`.
+- Modified `PowerModel.estimate()` to compute SRAM area via `sram_area_mm2()` instead of the legacy `area_model.l1_per_kb`.
+- Added deprecation comment for `l1_per_kb` / `l2_per_kb` to document the legacy fallback path.
+
+## Verification
+
+- `uv run pytest sim/tests/test_engine_physical_invariants.py sim/tests/test_engine_result_contract.py -q` — passed.
+- `uv run ruff check sim/engine/ppa_model.py` — All checks passed.
+- `uv run basedpyright sim/engine/ppa_model.py` — 0 errors, 0 warnings, 0 notes.
+- `uv run pytest sim/tests/test_bitcell_table.py -q` — passed.
+- Manual comparison captured in `.omo/evidence/task-2-engine-selection-p0-areamodel.json`.
+- Negative/legacy path captured in `.omo/evidence/task-2-engine-selection-p0-areamodel-negative.txt`.
+
+## Key findings
+
+1. **SRAM area drops sharply** — 12nm 512KB L1 is now ~0.776 mm² vs the old geometrically-scaled model ~2.76 mm² (-72%). This matches Todo 1's finding that the old model overestimated SRAM area by ~10× at 7nm and ~3× at 28nm.
+2. **Total area impact is modest** — for a 12nm block 128×128 + 512KB L1 + 2MB L2 + LPDDR5 config, total area changes from ~126.5 mm² to ~119.1 mm² (-5.9%). The task's "<5%" expectation appears to refer to total configuration area, not SRAM area alone; the exact number depends on array size and memory subsystem selection.
+3. **Cross-node monotonicity holds** — 512KB L1 area is strictly ordered 7nm (0.283) < 12nm (0.776) < 22nm (0.965) < 28nm (1.332), as required.
+4. **PowerModel stays consistent with AreaModel** — both now use the same bitcell-derived L1/L2 areas; derived SRAM mm² in power equals L1+L2 area.
+5. **Legacy configs still parse** — `process_node`, `l1_sram_per_kb_mm2`, and `l2_sram_per_kb_mm2` are retained as backward-compatible fallback keys. Unknown nodes (e.g., 14nm) raise `ConfigError` because they are absent from the bitcell table.
+
+## Open questions
+
+- The exact "<5% total area difference" target is configuration-dependent. For smaller logic footprints (e.g., block 64×128), the SRAM refactor impact on total area will be proportionally larger.
+- Should we expose `l1_overhead` / `l2_overhead` in `sim/config/design_space.yaml` for sensitivity sweeps?
+- When interpolated nodes (e.g., 16nm) are added, `AreaModel` will need a fallback strategy or a broader bitcell table.

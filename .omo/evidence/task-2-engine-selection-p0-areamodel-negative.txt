@@ -1,0 +1,6 @@
+Negative path: unknown process node (14nm) raises ConfigError in AreaModel.estimate().
+Legacy config keys ('process_node', 'l1_sram_per_kb_mm2', 'l2_sram_per_kb_mm2')
+still parse and the fallback values are preserved without node scaling.
+
+ConfigError message preview:
+  Unknown process node 14.0nm — bitcell area not in table. Known nodes: [7.0, 12.0, 22.0, 28.0]
