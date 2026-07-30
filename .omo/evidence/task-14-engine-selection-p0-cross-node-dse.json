@@ -1,0 +1,255 @@
+{
+  "task": "14",
+  "description": "Cross-node DSE engine ranking matrix (FIXED - process_node propagation)",
+  "date": "2026-07-30",
+  "fix": {
+    "file": "sim/dse/runner.py",
+    "method": "_evaluate_ppa",
+    "root_cause": "AreaModel constructed from base_cfg (7nm) instead of point.hardware_config",
+    "fix": "Merge point.hardware_config.area_model.process_node into base_cfg before AreaModel init"
+  },
+  "scenarios": {
+    "lpddr5_3b": {
+      "28": {
+        "total_engines": 1,
+        "ranking": [
+          {
+            "engine": "block",
+            "best_tok_s": 20.8,
+            "area_mm2": 261.4,
+            "min_area": 261.4,
+            "power_w": 51.3,
+            "count": 1,
+            "rank": 1
+          }
+        ]
+      },
+      "22": {
+        "total_engines": 1,
+        "ranking": [
+          {
+            "engine": "block",
+            "best_tok_s": 20.8,
+            "area_mm2": 195.4,
+            "min_area": 195.4,
+            "power_w": 34.3,
+            "count": 1,
+            "rank": 1
+          }
+        ]
+      },
+      "12": {
+        "total_engines": 1,
+        "ranking": [
+          {
+            "engine": "block",
+            "best_tok_s": 20.8,
+            "area_mm2": 119.1,
+            "min_area": 119.1,
+            "power_w": 14.4,
+            "count": 1,
+            "rank": 1
+          }
+        ]
+      },
+      "7": {
+        "total_engines": 8,
+        "ranking": [
+          {
+            "engine": "block",
+            "best_tok_s": 36.6,
+            "area_mm2": 99.0,
+            "min_area": 16.2,
+            "power_w": 9.5,
+            "count": 54,
+            "rank": 1
+          },
+          {
+            "engine": "os_systolic",
+            "best_tok_s": 31.8,
+            "area_mm2": 99.0,
+            "min_area": 99.0,
+            "power_w": 9.5,
+            "count": 1,
+            "rank": 2
+          },
+          {
+            "engine": "systolic",
+            "best_tok_s": 22.0,
+            "area_mm2": 97.0,
+            "min_area": 97.0,
+            "power_w": 8.5,
+            "count": 1,
+            "rank": 3
+          },
+          {
+            "engine": "gmma",
+            "best_tok_s": 20.8,
+            "area_mm2": 102.0,
+            "min_area": 102.0,
+            "power_w": 11.0,
+            "count": 1,
+            "rank": 4
+          },
+          {
+            "engine": "fsa",
+            "best_tok_s": 20.5,
+            "area_mm2": 97.2,
+            "min_area": 97.2,
+            "power_w": 8.6,
+            "count": 1,
+            "rank": 5
+          },
+          {
+            "engine": "input_stationary",
+            "best_tok_s": 11.1,
+            "area_mm2": 99.0,
+            "min_area": 99.0,
+            "power_w": 9.5,
+            "count": 1,
+            "rank": 6
+          },
+          {
+            "engine": "tensor_core",
+            "best_tok_s": 9.9,
+            "area_mm2": 99.0,
+            "min_area": 99.0,
+            "power_w": 9.5,
+            "count": 1,
+            "rank": 7
+          },
+          {
+            "engine": "wmma",
+            "best_tok_s": 0.1,
+            "area_mm2": 101.0,
+            "min_area": 101.0,
+            "power_w": 10.5,
+            "count": 1,
+            "rank": 8
+          }
+        ]
+      }
+    },
+    "onchip_7b": {
+      "28": {
+        "total_engines": 1,
+        "ranking": [
+          {
+            "engine": "block",
+            "best_tok_s": 50.3,
+            "area_mm2": 261.4,
+            "min_area": 261.4,
+            "power_w": 51.3,
+            "count": 1,
+            "rank": 1
+          }
+        ]
+      },
+      "22": {
+        "total_engines": 1,
+        "ranking": [
+          {
+            "engine": "block",
+            "best_tok_s": 50.3,
+            "area_mm2": 195.4,
+            "min_area": 195.4,
+            "power_w": 34.3,
+            "count": 1,
+            "rank": 1
+          }
+        ]
+      },
+      "12": {
+        "total_engines": 1,
+        "ranking": [
+          {
+            "engine": "block",
+            "best_tok_s": 50.3,
+            "area_mm2": 119.1,
+            "min_area": 119.1,
+            "power_w": 14.5,
+            "count": 1,
+            "rank": 1
+          }
+        ]
+      },
+      "7": {
+        "total_engines": 8,
+        "ranking": [
+          {
+            "engine": "os_systolic",
+            "best_tok_s": 310.9,
+            "area_mm2": 99.0,
+            "min_area": 99.0,
+            "power_w": 9.6,
+            "count": 1,
+            "rank": 1
+          },
+          {
+            "engine": "gmma",
+            "best_tok_s": 203.5,
+            "area_mm2": 102.0,
+            "min_area": 102.0,
+            "power_w": 11.1,
+            "count": 1,
+            "rank": 2
+          },
+          {
+            "engine": "block",
+            "best_tok_s": 131.4,
+            "area_mm2": 107.0,
+            "min_area": 16.2,
+            "power_w": 13.6,
+            "count": 53,
+            "rank": 3
+          },
+          {
+            "engine": "input_stationary",
+            "best_tok_s": 108.1,
+            "area_mm2": 99.0,
+            "min_area": 99.0,
+            "power_w": 9.6,
+            "count": 1,
+            "rank": 4
+          },
+          {
+            "engine": "tensor_core",
+            "best_tok_s": 48.2,
+            "area_mm2": 99.0,
+            "min_area": 99.0,
+            "power_w": 9.6,
+            "count": 1,
+            "rank": 5
+          },
+          {
+            "engine": "fsa",
+            "best_tok_s": 26.4,
+            "area_mm2": 97.2,
+            "min_area": 97.2,
+            "power_w": 8.7,
+            "count": 1,
+            "rank": 6
+          },
+          {
+            "engine": "systolic",
+            "best_tok_s": 26.4,
+            "area_mm2": 97.0,
+            "min_area": 97.0,
+            "power_w": 8.6,
+            "count": 1,
+            "rank": 7
+          },
+          {
+            "engine": "wmma",
+            "best_tok_s": 0.1,
+            "area_mm2": 101.0,
+            "min_area": 101.0,
+            "power_w": 10.6,
+            "count": 1,
+            "rank": 8
+          }
+        ]
+      }
+    }
+  }
+}

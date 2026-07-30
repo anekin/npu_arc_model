@@ -575,7 +575,7 @@ Note: C3 (Todos 10-12) functionally benefits from C2 (Todos 6-9), but can execut
 
   **Commit**: YES | `feat(dse): add process_node as scannable DSE axis` | `sim/config/dse_axes.yaml`, `sim/dse/hardware_builder.py`, `sim/config/design_space.yaml`
 
-- [ ] 14. 运行跨节点 DSE 并生成引擎排名矩阵
+- [x] 14. 运行跨节点 DSE 并生成引擎排名矩阵
 
   **What to do**:
   1. 对 lpddr5_3b 场景以 `--space ci-all-axes` 运行跨 4 node 的 DSE（Todo 13 加入后自动跨 node）。

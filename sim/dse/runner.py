@@ -204,6 +204,15 @@ class ScenarioDseRunner:
 
             base_path = SIM_DIR / "config" / "design_space.yaml"
             base_cfg = yaml.safe_load(base_path.read_text(encoding="utf-8"))
+
+            # Merge the design point's process_node so cross-node DSE uses the
+            # correct area model parameters instead of always defaulting to 7nm.
+            point_node = (
+                point.hardware_config.get("area_model", {}).get("process_node")
+            )
+            if point_node is not None:
+                base_cfg.setdefault("area_model", {})["process_node"] = point_node
+
             area_model = AreaModel(base_cfg)
             power_model = PowerModel(base_cfg)
 

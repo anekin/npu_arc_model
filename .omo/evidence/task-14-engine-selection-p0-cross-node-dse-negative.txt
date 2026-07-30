@@ -1,0 +1,20 @@
+=== Todo 14 Negative Path Evidence (Re-run with Fix) ===
+
+## Fix Verified
+
+
+## Area Monotonicity Check
+lpddr5_3b block areas: 7nm=99 12nm=119 22nm=195 28nm=261
+  PASS: monotonic (28 > 22 > 12 > 7)
+onchip_7b block areas: 7nm=107 12nm=119 22nm=195 28nm=261
+  PASS: monotonic (28 > 22 > 12 > 7)
+
+## Coverage Gaps
+SPARSE: lpddr5_3b @ 28nm — only 1 engine(s): ['block']
+SPARSE: lpddr5_3b @ 22nm — only 1 engine(s): ['block']
+SPARSE: lpddr5_3b @ 12nm — only 1 engine(s): ['block']
+SPARSE: onchip_7b @ 28nm — only 1 engine(s): ['block']
+SPARSE: onchip_7b @ 22nm — only 1 engine(s): ['block']
+SPARSE: onchip_7b @ 12nm — only 1 engine(s): ['block']
+
+=== End Negative Path ===

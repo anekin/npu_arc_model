@@ -536,3 +536,109 @@ The empty frontier was caused by the AUTHORITATIVE hard gate in `sim/dse/pareto.
 - `completed_throughput_hz` was previously unset in all scenario-DSE results; should a regression test assert it is always populated for complete results?
 - The `os_systolic` winner at high BW uses a 128×128 array in the current `ci-all-axes` space. Would a larger array dimension (Todo 13 process_node axis) change the winner?
 - With process_node now in the DSE axis, `build_hardware_config` propagates it to `area_model.process_node`. Is there any downstream code that reads `area_model["process_node_nm"]` specifically instead of `area_model["process_node"]`? (AreaModel.__init__ checks `process_node_nm` first, then falls back to `process_node`.)
+
+
+# Todo 14 — Cross-node DSE + Engine Ranking Matrix
+
+**Date:** 2026-07-30
+
+## What was done
+
+- Ran scenario-driven DSE for `lpddr5_3b` (51.2 GB/s) across 4 process nodes: 64 design points, 3 Pareto-frontier points.
+- Ran scenario-driven DSE for `onchip_7b` (500 GB/s) across 4 process nodes: 63 design points, 6 Pareto-frontier points.
+- Generated structured ranking matrix: scenario × node × engine → best tok/s, area_mm2, ranking.
+- Generated Markdown report with summary table, ranking matrix, and key assumption verification.
+- Evidence files created:
+  - `.omo/evidence/dse-lpddr5_3b-cross-node-ci.json`
+  - `.omo/evidence/dse-onchip_7b-cross-node-ci.json`
+  - `.omo/evidence/task-14-engine-selection-p0-cross-node-dse.json`
+  - `.omo/evidence/task-14-engine-selection-p0-cross-node-dse.md`
+  - `.omo/evidence/task-14-engine-selection-p0-cross-node-dse-negative.txt`
+
+## Key findings
+
+1. **ci-all-axes provides sparse cross-node coverage.** With process_node=7 as default, varying to 28/22/12nm produces exactly 1 design point per non-default node (all block engine, 128×128, 1000MHz, INT4, 2048KB L2). Only at 7nm do all 8 engines appear. This satisfies the acceptance criteria (≥1 engine per node) but limits cross-node comparison depth.
+
+2. **CRITICAL BUG: process_node NOT propagated to area computation in DSE runner.** The DSE runner's `_evaluate_ppa()` method (runner.py:207) instantiates `AreaModel(base_cfg)` using the base `design_space.yaml` config (process_node=7nm), NOT `point.hardware_config` (which carries the axis-derived `area_model.process_node` value). The `AreaModel.estimate()` method then uses `self.process_node_nm` (always 7nm) for SRAM bitcell lookups and logic-area scaling. **All design points across 28/22/12/7nm are evaluated with 7nm area parameters** — the `area_mm2` values are identical across nodes for the same engine config.
+
+3. **CalibrationRef correctly records the intended node.** The second `AreaModel(point.hardware_config)` on line 321 correctly reads the axis-derived process_node, so `result.calibration.process_node_nm` is 28.0/22.0/12.0/7.0 as expected. But this `AreaModel` instance is only used for calibration metadata, not for area computation.
+
+4. **5.1 — Low BW (lpddr5_3b) nominal winner is block at all nodes.** At 7nm, block (36.6 tok/s) beats os_systolic (31.8 tok/s). At 28/22/12nm, only block exists in the sparse coverage set. Conclusion: block nominally wins, but since all nodes share 7nm physics, this is not a true cross-node comparison.
+
+5. **5.2 — High BW (onchip_7b) nominal winner varies.** At 7nm, os_systolic (310.9 tok/s) wins decisively. At 28/22/12nm, only block exists (50.3 tok/s). The apparent inconsistency is an artifact of sparse coverage + the process_node propagation bug.
+
+6. **5.3 — 28nm area/efficiency differences can't be measured.** Since all nodes use 7nm area parameters, the area ratio 7nm/28nm is trivially 1.0× for all engines. The bitcell table and node_scale factor predict 16× area scaling from 7nm to 28nm, but this is never exercised by the DSE runner.
+
+## Verification
+
+- `uv run pytest sim/tests/test_dse_space.py sim/tests/test_dse_coverage.py -q` — 15 passed.
+- Both DSE CLI commands exited 0.
+- Ranking matrix JSON is valid.
+- All 5 evidence files present and non-empty.
+
+## Open questions
+
+- Should `_evaluate_ppa()` be fixed to use `AreaModel(point.hardware_config)` instead of `AreaModel(base_cfg)`? This is likely a 1-line fix with significant impact on cross-node PPA accuracy. **→ FIXED in follow-up (see below).**
+- Should the cross-node DSE be re-run after the fix with a richer coverage mode (e.g., specifically targeting process_node × engine pairs)?
+- Is the `ci-all-axes` mode sufficient for cross-node analysis, or should a dedicated "cross-node matrix" mode be added that systematically evaluates all engine types at each node?
+
+
+# Todo 14 Follow-up — Fix process_node propagation + Re-run
+
+**Date:** 2026-07-30
+
+## What was done
+
+- **Fix:** Modified `sim/dse/runner.py:_evaluate_ppa()` (line ~205-216) to merge the design point's
+  `process_node` from `point.hardware_config["area_model"]["process_node"]` into `base_cfg`
+  before constructing `AreaModel` and `PowerModel`. Previously, `AreaModel(base_cfg)` always
+  used the base `design_space.yaml` default (process_node=7), making all cross-node results
+  use 7nm area physics.
+- **Test:** Added 5 new tests in `sim/tests/test_dse_space.py::TestAreaModelProcessNodePropagation`:
+  node_scale propagation for 28nm (16.0), 12nm (2.70), 7nm (1.0), default (7nm), and
+  cross-node area monotonicity (28nm > 7nm).
+- **Re-ran DSE:** Both lpddr5_3b and onchip_7b re-evaluated with fixed process_node propagation.
+
+## Key findings (post-fix)
+
+1. **Area now varies correctly across nodes.** For block 128×128 with 512KB L1 + 2048KB L2:
+   - 7nm: **99.0 mm²**
+   - 12nm: **119.1 mm²** (1.20×)
+   - 22nm: **195.4 mm²** (1.97×)
+   - 28nm: **261.4 mm²** (2.64×)
+
+   Area is strictly monotonic (28 > 22 > 12 > 7). The overall ratio (2.64× from 7nm to 28nm)
+   is a blend of logic-area geometric scaling (16×) and SRAM sub-quadratic bitcell scaling (~3.4×).
+
+2. **Power model also scales with area** — power follows area × power_density, giving
+   9.5 W (7nm) → 14.4 W (12nm) → 34.3 W (22nm) → 51.3 W (28nm).
+
+3. **Tok/s is unchanged across nodes** — the performance model does not depend on process_node.
+   Only area and power change. This is expected: clock frequency, array dimensions, and memory
+   bandwidth determine tok/s, not the silicon node.
+
+4. **Cross-node engine comparison is still limited** — ci-all-axes produces only 1 non-7nm
+   design point (block engine with default config). For meaningful cross-node engine ranking
+   (e.g., "does os_systolic beat block at 28nm?"), a richer coverage mode is needed.
+
+5. **The fix is minimal (8 lines added to runner.py).** The change only merges `process_node`
+   into the local `base_cfg` dict; `AreaModel.__init__` already supports `process_node` key.
+   No changes to AreaModel, PowerModel, or design_space.yaml were needed.
+
+## Verification
+
+- `uv run pytest sim/tests/test_dse_space.py sim/tests/test_dse_coverage.py -q` — **20 passed**
+  (12 original + 3 CI-mode + 5 new propagation tests)
+- `uv run ruff check sim/dse/runner.py sim/tests/test_dse_space.py` — All checks passed
+- Both DSE CLI commands exited 0
+- Area monotonicity verified: 28nm > 22nm > 12nm > 7nm for block engine in both scenarios
+
+## Open questions
+
+- Should the `ci-all-axes` mode systematically cross process_node × engine_type to enable
+  meaningful per-node engine comparison?
+- Should power model be refactored to use per-node power density estimates instead of scaling
+  from area? (Currently power ≈ area × power_density, which is a first-order approximation.)
+- The block engine's 2.64× area ratio from 7nm to 28nm is dominated by logic (16×) dampened
+  by SRAM (~3.4×). For SRAM-light engines with larger PE arrays, the ratio should approach
+  16×. This should be verified with a wider coverage sweep.

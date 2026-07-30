@@ -232,6 +232,91 @@ class TestBuildHardwareConfigNode:
         assert cfg["area_model"]["process_node"] == 28
 
 
+# ── AreaModel process_node propagation tests ──────────────────────────────────
+
+
+class TestAreaModelProcessNodePropagation:
+    """_evaluate_ppa merges the design point's process_node into the config
+    used to construct AreaModel, so cross-node DSE uses correct area physics."""
+
+    def test_merged_config_28nm_propagates_node_scale(self, sram_base_config):
+        """AreaModel built from config with process_node=28 gets node_scale=16."""
+        from copy import deepcopy
+
+        from engine.ppa_model import AreaModel
+
+        cfg = deepcopy(sram_base_config)
+        cfg["area_model"]["process_node"] = 28
+        am = AreaModel(cfg)
+        assert am.process_node_nm == 28.0
+        assert am.node_scale == 16.0  # (28/7)^2
+
+    def test_merged_config_7nm_propagates_node_scale(self, sram_base_config):
+        """AreaModel built from config with process_node=7 gets node_scale=1."""
+        from copy import deepcopy
+
+        from engine.ppa_model import AreaModel
+
+        cfg = deepcopy(sram_base_config)
+        cfg["area_model"]["process_node"] = 7
+        am = AreaModel(cfg)
+        assert am.process_node_nm == 7.0
+        assert am.node_scale == 1.0
+
+    def test_merged_config_12nm_propagates_node_scale(self, sram_base_config):
+        """AreaModel gets node_scale=2.70 (density ratio) for 12nm."""
+        from copy import deepcopy
+
+        from engine.ppa_model import AreaModel
+
+        cfg = deepcopy(sram_base_config)
+        cfg["area_model"]["process_node"] = 12
+        am = AreaModel(cfg)
+        assert am.process_node_nm == 12.0
+        assert am.node_scale == 2.70
+
+    def test_default_without_point_node_stays_7nm(self, sram_base_config):
+        """Without an override, AreaModel defaults to process_node=7."""
+        from engine.ppa_model import AreaModel
+
+        am = AreaModel(sram_base_config)
+        assert am.process_node_nm == 7.0
+        assert am.node_scale == 1.0
+
+    def test_28nm_area_greater_than_7nm_for_same_config(self, sram_base_config):
+        """28nm produces larger area than 7nm for the same block engine config."""
+        from copy import deepcopy
+
+        from engine.ppa_model import AreaModel
+
+        cfg_28 = deepcopy(sram_base_config)
+        cfg_28["area_model"]["process_node"] = 28
+        cfg_28["mac_engine"] = {"type": "block", "array_height": 128, "array_width": 128,
+                                "frequency_mhz": 1000, "weight_precision_bits": 4,
+                                "activation_precision_bits": 8, "dataflow": "weight_stationary",
+                                "double_buffer": True, "ops_per_mac": 2}
+        cfg_28["memory"] = {"type": "LPDDR5-6400", "bandwidth_gbps": 51.2, "dram_efficiency": 0.85,
+                            "dram_width_bits": 64}
+        cfg_28["sram"] = {"l2_shared_kb": 2048, "l1_per_core_kb": 512}
+        cfg_28["on_chip_memory"] = {"capacity_gb": 0, "bandwidth_gbps": 0}
+        cfg_28["optimizations"] = {"weight_cache": False}
+
+        cfg_7 = deepcopy(cfg_28)
+        cfg_7["area_model"]["process_node"] = 7
+
+        am28 = AreaModel(cfg_28)
+        am7 = AreaModel(cfg_7)
+
+        area28 = am28.estimate(cfg_28, "block")["total_mm2"]
+        area7 = am7.estimate(cfg_7, "block")["total_mm2"]
+
+        assert area28 > area7, f"28nm area ({area28:.1f}) must exceed 7nm area ({area7:.1f})"
+        ratio = area28 / area7
+        # SRAM uses sub-quadratic bitcell scaling (~3.4× from 7nm to 28nm),
+        # logic uses node_scale=16×. The total ratio is a blend — >2.0 is expected.
+        assert ratio > 2.0, f"28nm area should exceed 7nm (got {ratio:.1f}x)"
+
+
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 
