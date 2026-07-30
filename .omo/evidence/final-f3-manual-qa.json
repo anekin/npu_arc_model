@@ -875,6 +875,6 @@
   "errors": 0,
   "replay_digest_match": true,
   "experimental_gate": "pass",
-  "artifacts_dir": "/tmp/arc-release-__r2l62z/npu_arc_model/artifacts/releases/fd375149bf4843f5",
-  "run_id": "fd375149bf4843f5"
+  "artifacts_dir": "/tmp/arc-release-mgg0ss3_/npu_arc_model/artifacts/releases/62f792c9336f6ac6",
+  "run_id": "62f792c9336f6ac6"
 }

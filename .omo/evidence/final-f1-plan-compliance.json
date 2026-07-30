@@ -142,7 +142,7 @@
     {
       "id": "4",
       "title": "统一 engine registry、result、输入和 diagnostic 契约",
-      "checked": false,
+      "checked": true,
       "evidence_files": [
         {
           "path": ".omo/evidence/task-4-engine-contract-negative.txt",
@@ -1019,7 +1019,7 @@
     {
       "id": "18",
       "title": "完成全矩阵验收、文档迁移和发布证据",
-      "checked": false,
+      "checked": true,
       "evidence_files": [
         {
           "path": ".omo/evidence/task-18-acceptance-release.txt",
@@ -1063,12 +1063,12 @@
     {
       "id": "F1",
       "title": "Plan compliance audit",
-      "checked": false,
+      "checked": true,
       "evidence_files": [
         {
           "path": ".omo/evidence/final-f1-plan-compliance.json",
-          "digest": "a3b204205f15b838b602393b078d3c0d070bc03526b88fc511867703bd807d28",
-          "size_bytes": 37927,
+          "digest": "8f09bde2679285a659b236b2ce3da11c26e7bbee2f420d97b505811c201d8393",
+          "size_bytes": 38245,
           "is_json": true,
           "exit_code": 0,
           "test_counts": null,
@@ -1091,7 +1091,7 @@
     {
       "id": "F2",
       "title": "Code quality and model-integrity review",
-      "checked": false,
+      "checked": true,
       "evidence_files": [
         {
           "path": ".omo/evidence/final-f2-code-quality.json",
@@ -1115,8 +1115,8 @@
         },
         {
           "path": ".omo/evidence/final-f2-code-quality.txt",
-          "digest": "b9c2730c0be0721225392da5b7fe185178c6b7585c8f4c6c69ba438ff9a2acb8",
-          "size_bytes": 7021,
+          "digest": "fc844f41c82de466b9895982e6f2e1163b4006750bfca5cd03a2b20aa8209a47",
+          "size_bytes": 3728,
           "is_json": false,
           "test_counts": {},
           "exit_code": 0,
@@ -1128,11 +1128,11 @@
     {
       "id": "F3",
       "title": "Real CLI/scenario/replay QA",
-      "checked": false,
+      "checked": true,
       "evidence_files": [
         {
           "path": ".omo/evidence/final-f3-manual-qa.json",
-          "digest": "e4beb8e90e8e427f6eb1be7a58f53730577998a016075ec7aa66af3f878624a3",
+          "digest": "d7eb4de1e6f3337304dacf4a0e7363d37c55e5bc33073b078739f262366bd3c9",
           "size_bytes": 16933,
           "is_json": true,
           "exit_code": 0,
@@ -1145,7 +1145,7 @@
     {
       "id": "F4",
       "title": "Scope and evidence fidelity",
-      "checked": false,
+      "checked": true,
       "evidence_files": [
         {
           "path": ".omo/evidence/final-f4-scope-fidelity.json",
