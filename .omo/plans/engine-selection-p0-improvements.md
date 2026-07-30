@@ -642,7 +642,7 @@ Note: C3 (Todos 10-12) functionally benefits from C2 (Todos 6-9), but can execut
 ## Final verification wave
 > Runs in parallel after ALL todos. ALL must APPROVE. Surface results and wait for the user's explicit okay before declaring complete.
 
-- [ ] F1. Plan compliance audit
+- [x] F1. Plan compliance audit
 
   Verify every Todo 1–15 acceptance criterion against actual files/evidence/commits.
 
@@ -655,7 +655,7 @@ Note: C3 (Todos 10-12) functionally benefits from C2 (Todos 6-9), but can execut
 
   **APPROVE iff** exit 0、Todos/F1-F4 schema 可解析、Todo 1–15 每项有匹配 commit/evidence、all blocking skipped/xfail=0。
 
-- [ ] F2. Code quality and model-integrity review
+- [x] F2. Code quality and model-integrity review
 
   ```bash
   uv run ruff format --check . > .omo/evidence/final-p0-f2-code-quality.txt 2>&1
@@ -670,7 +670,7 @@ Note: C3 (Todos 10-12) functionally benefits from C2 (Todos 6-9), but can execut
 
   **APPROVE iff** 全部命令 exit 0、blocking skip/xfail=0、verifier output `verdict=PASS`。
 
-- [ ] F3. Real CLI/scenario/replay QA
+- [x] F3. Real CLI/scenario/replay QA
 
   ```bash
   uv run python scripts/release_gate.py \
@@ -684,7 +684,7 @@ Note: C3 (Todos 10-12) functionally benefits from C2 (Todos 6-9), but can execut
 
   **APPROVE iff** exit 0、`legacy_failures=[]`、`workload_failures=[]`、`coverage.missing=[]`、`errors=0`、`experimental_gate=pass`。
 
-- [ ] F4. Scope and evidence fidelity
+- [x] F4. Scope and evidence fidelity
 
   ```bash
   uv run python scripts/verify_scope.py \
