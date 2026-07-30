@@ -10,6 +10,7 @@ Input-stationary: 激活常驻 PE，权重流式穿过。
 import math
 
 from engine.mac_engine import EngineResult, MACEngine
+from models.memory_backend import AccessType
 
 
 class InputStationaryEngine(MACEngine):
@@ -34,7 +35,9 @@ class InputStationaryEngine(MACEngine):
 
         tile_weight_bytes = math.ceil(K * min(N, self.W) * self.w_bits / 8)
         full_act_bytes = math.ceil(self.H * K * self.a_bits / 8)
-        per_tile_dma = (tile_weight_bytes + full_act_bytes) / self.eff_bw
+        per_tile_dma = self._dma_cycles(
+            tile_weight_bytes + full_act_bytes, AccessType.SEQUENTIAL
+        )
 
         bottleneck = max(per_tile_compute, per_tile_dma)
         first_cold = per_tile_dma + per_tile_compute
@@ -81,7 +84,9 @@ class InputStationaryEngine(MACEngine):
 
         tile_weight_bytes = math.ceil(K * min(N, self.W) * self.w_bits / 8)
         full_act_bytes = math.ceil(self.H * K * self.a_bits / 8)
-        per_tile_dma = (2 * tile_weight_bytes + full_act_bytes) / self.eff_bw
+        per_tile_dma = self._dma_cycles(
+            2 * tile_weight_bytes + full_act_bytes, AccessType.SEQUENTIAL
+        )
 
         bottleneck = max(per_tile_compute_pair, per_tile_dma)
         first_cold = per_tile_dma + per_tile_compute_pair
@@ -93,7 +98,7 @@ class InputStationaryEngine(MACEngine):
         ideal = math.ceil(total_macs / self.peak_macs_per_cycle)
         util = ideal / total if total > 0 else 0.0
 
-        activation_savings = total_tiles * full_act_bytes / self.eff_bw
+        activation_savings = total_tiles * self._dma_cycles(full_act_bytes, AccessType.SEQUENTIAL)
         raw_dma = (K * N * self.w_bits // 8 + M * K * self.a_bits // 8) * 2
         raw_dma_cycles = math.ceil(raw_dma / self.eff_bw) if self.eff_bw > 0 else 0
 

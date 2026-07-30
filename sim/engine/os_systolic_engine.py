@@ -12,6 +12,7 @@ import math
 
 from engine.block_engine import BROADCAST_SYNC_CYCLES, _accumulate_cycles
 from engine.mac_engine import EngineResult, MACEngine
+from models.memory_backend import AccessType
 
 
 class OutputStationaryEngine(MACEngine):
@@ -42,10 +43,10 @@ class OutputStationaryEngine(MACEngine):
 
         total_weight_bytes = K * N * self.w_bits // 8
         weight_dram_eff = self._dram_eff_for_bytes(total_weight_bytes)
-        weight_dma_cycles = 0 if weight_dram_eff <= 0 else total_weight_bytes / (self.eff_bw * weight_dram_eff)
+        weight_dma_cycles = 0 if weight_dram_eff <= 0 else total_weight_bytes / (self.eff_bw_weight * weight_dram_eff)
 
         act_bytes = M * K * self.a_bits // 8
-        act_dma_cycles = act_bytes / self.eff_bw
+        act_dma_cycles = self._dma_cycles(act_bytes, AccessType.SEQUENTIAL)
         total_dma_cycles = weight_dma_cycles + act_dma_cycles
 
         raw_dma_bytes = K * N * self.w_bits // 8 + M * K * self.a_bits // 8
@@ -113,10 +114,10 @@ class OutputStationaryEngine(MACEngine):
         # Aggregated external-DRAM accounting (matching BlockEngine external DRAM)
         total_weight_bytes = 2 * K * N * self.w_bits // 8  # gate+up
         weight_dram_eff = self._dram_eff_for_bytes(total_weight_bytes)
-        weight_dma_cycles = 0 if weight_dram_eff <= 0 else total_weight_bytes / (self.eff_bw * weight_dram_eff)
+        weight_dma_cycles = 0 if weight_dram_eff <= 0 else total_weight_bytes / (self.eff_bw_weight * weight_dram_eff)
 
         act_bytes = M * K * self.a_bits // 8
-        act_dma_cycles = act_bytes / self.eff_bw
+        act_dma_cycles = self._dma_cycles(act_bytes, AccessType.SEQUENTIAL)
         total_dma_cycles = weight_dma_cycles + act_dma_cycles
         raw_dma_cycles = int(total_dma_cycles)
 
@@ -133,7 +134,7 @@ class OutputStationaryEngine(MACEngine):
         util = ideal / total_cycles if total_cycles > 0 else 0.0
 
         # Activation savings: one activation load shared between gate+up per tile
-        activation_savings = M * K * self.a_bits // 8 / self.eff_bw
+        activation_savings = self._dma_cycles(M * K * self.a_bits // 8, AccessType.SEQUENTIAL)
 
         if total_dma_cycles > total_compute_cycles:
             bottleneck = "dma"

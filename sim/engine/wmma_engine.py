@@ -14,6 +14,7 @@
 import math
 
 from engine.mac_engine import EngineResult, MACEngine
+from models.memory_backend import AccessType
 
 
 class WMMAEngine(MACEngine):
@@ -90,7 +91,8 @@ class WMMAEngine(MACEngine):
         per_tile_weight_bytes = weight_multiplier * math.ceil(self.H * self.W * self.w_bits / 8)
         per_tile_act_bytes = math.ceil(M * self.H * self.a_bits / 8)
         per_tile_dma = (
-            fragments_per_tile * self.DMA_STARTUP_CYCLES + (per_tile_weight_bytes + per_tile_act_bytes) / self.eff_bw
+            fragments_per_tile * self.DMA_STARTUP_CYCLES
+            + self._dma_cycles(per_tile_weight_bytes + per_tile_act_bytes, AccessType.SEQUENTIAL)
         )
 
         per_tile_compute = fragments_per_tile * per_frag_compute
@@ -98,7 +100,7 @@ class WMMAEngine(MACEngine):
         # Per-fragment DMA: startup overhead + fraction of tile bytes
         per_frag_dma = (
             self.DMA_STARTUP_CYCLES
-            + (per_tile_weight_bytes + per_tile_act_bytes) / max(fragments_per_tile, 1) / self.eff_bw
+            + (per_tile_weight_bytes + per_tile_act_bytes) / max(fragments_per_tile, 1) / self.eff_bw_weight
         )
 
         # Double-buffered pipeline across tiles.

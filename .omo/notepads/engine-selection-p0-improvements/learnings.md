@@ -211,6 +211,52 @@
 3. **Default access_type is SEQUENTIAL** — all existing callers that omit the new field continue to work unchanged. Only sites that need RANDOM (future KV cache DRAM modeling) need to pass `access_type=AccessType.RANDOM` explicitly.
 4. **The test file validates at the schema level, not the integration level** — creation-site tests verify that the ppa_model pattern defaults to SEQUENTIAL. Full integration with pattern-based DRAM efficiency (mac_engine/compiler/kv_cache pathways) belongs in Todo 7.
 
+# Todo 7 — Pattern-based DRAM efficiency audit + implementation
+
+**Date:** 2026-07-30
+
+## Audit of existing DRAM efficiency helpers in `sim/engine/mac_engine.py`
+
+### `_dram_eff_for_bytes(transfer_bytes: int) -> float` (lines ~190–207)
+
+**Purpose:** Compute a DRAM utilization factor for *sequential* weight loads.  The helper assumes the transfer is a contiguous bulk read (cf. `AccessType.SEQUENTIAL`) and models how much of the weight working set fits in the weight portion of L2 SRAM (`self.wbuf_kb = l2_shared_kb * 0.6`).
+
+**Formula:**
+- `transfer_bytes <= 0` → `1.0` (no-op)
+- `weight_mb <= wbuf_mb` → `0.0` (fully cached; caller should skip DRAM)
+- otherwise `0.55 + 0.40 * (wbuf_mb / weight_mb) / (0.3 + wbuf_mb / weight_mb)`
+
+**Value range:**
+- `{0.0}` when the weight tile fits in the weight buffer
+- `(0.55, 0.92]` for partially cached / large sequential transfers (asymptote ≈ 0.95 when weight_mb ≪ wbuf_mb)
+
+**Relationship to new model:** This helper stays intact.  After Todo 7 it is used *only* inside the sequential weight path if an engine wants a per-transfer cache scaling factor.  The new sequential baseline efficiency is `dram_efficiency` (default 0.90), applied before this helper, so the final effective bytes/cycle for a large weight transfer is `bw_raw * dram_efficiency * _dram_eff_for_bytes(...)`.
+
+### `_kv_dram_efficiency(kv_bytes: int) -> float` (lines ~209–216)
+
+**Purpose:** Compute a DRAM utilization factor for *random* KV cache reads.  The helper models the SRAM-resident KV fraction using the KV portion of L2 SRAM (`self.kvbuf_kb = l2_shared_kb * 0.4`).
+
+**Formula:**
+- `kv_bytes <= 0` → `1.0` (no-op)
+- `ratio = kvbuf_mb / max(kv_mb, 0.001)`
+- `0.55 + 0.40 * ratio / (0.3 + ratio)`
+
+**Value range:**
+- `(0.55, 0.92]` for typical KV working sets (asymptote ≈ 0.95 when kv_mb ≪ kvbuf_mb)
+- Returns `1.0` for zero-byte corner cases
+
+**Relationship to new model:** This helper stays intact and is multiplied into the *random* KV bandwidth baseline.  The new random bandwidth efficiency is `dram_efficiency_random_bw` (default 0.50), so the final effective bytes/cycle for KV reads is `bw_raw * dram_efficiency_random_bw * _kv_dram_efficiency(kv_bytes) * bw_multiplier`.  The additional `random_latency_penalty_cycles` (default 40) is added only on KV misses, independent of bandwidth.
+
+## Design decisions for Todo 7
+
+1. **No silent duplication.** `_dram_eff_for_bytes()` and `_kv_dram_efficiency()` are kept unchanged.  The new pattern-based layer introduces `dram_efficiency_random_bw` and `random_latency_penalty_cycles` config parameters; the old `dram_efficiency` is re-documented as the *sequential* baseline.
+2. **Two effective bandwidths in `mac_engine.py`.**
+   - `eff_bw_weight = bw_raw * dram_efficiency * bw_multiplier` — used for weight and activation reads (`AccessType.SEQUENTIAL`).
+   - `eff_bw_kv_base = bw_raw * dram_efficiency_random_bw * bw_multiplier` — used for KV reads (`AccessType.RANDOM`), multiplied at call time by `_kv_dram_efficiency(kv_bytes)`.
+3. **Per-call DMA helper.** A new `MACEngine._dma_cycles()` helper takes `AccessType` and, for random accesses, the KV byte count and hit flag.  This is the single place where random latency penalty is applied, ensuring it is added only on KV miss.
+4. **`sim/models/dma.py` also understands `AccessType`.** `DMAModel.estimate_transfer()` accepts an optional `access_type` argument (default `SEQUENTIAL`) and applies the same sequential/random efficiency split, so callers outside the engine family (golden executor, NPU sim, param sweep) can opt into pattern-aware DMA.
+5. **Backward compatibility.** `dram_efficiency` remains a valid config key.  `self.eff_bw` is retained as an alias to `self.eff_bw_weight` so that any code path that has not yet been migrated continues to see the same sequential value.
+
 ## Open questions
 
 - Should `mac_engine.py`, `compiler.py`, and `kv_cache.py` be refactored to create `MemoryAccessPattern` objects directly (for Todo 7 integration), or should the pattern-based DRAM efficiency layer accept `AccessType` from the caller independently?

@@ -12,6 +12,7 @@
 import math
 
 from engine.mac_engine import EngineResult, MACEngine
+from models.memory_backend import AccessType
 
 # Realistic broadcast-pipeline constants for BlockEngine.
 # Block engine broadcasts weights + activations to all PEs simultaneously
@@ -71,11 +72,11 @@ class BlockEngine(MACEngine):
 
         # SRAM efficiency
         weight_dram_eff = self._dram_eff_for_bytes(total_weight_bytes)
-        weight_dma_cycles = 0 if weight_dram_eff <= 0 else total_weight_bytes / (self.eff_bw * weight_dram_eff)
+        weight_dma_cycles = 0 if weight_dram_eff <= 0 else total_weight_bytes / (self.eff_bw_weight * weight_dram_eff)
 
         # Activation DMA: per-token (one activation load per M pass)
         act_bytes_per_token = K * self.a_bits // 8
-        act_dma_cycles = M * act_bytes_per_token / self.eff_bw
+        act_dma_cycles = M * self._dma_cycles(act_bytes_per_token, AccessType.SEQUENTIAL)
 
         total_dma_cycles = M_tiles * weight_dma_cycles + act_dma_cycles
 
@@ -136,11 +137,10 @@ class BlockEngine(MACEngine):
 
         # Weight cache: load gate+up weights once per M-tile
         total_weight_bytes = per_pass_tiles * dual_weight_bytes
-        total_act_bytes = M * per_pass_tiles * tile_act_per_token
 
         # DMA: weight loaded once, activation loaded per token
-        weight_dma_cycles = total_weight_bytes / self.eff_bw
-        act_dma_cycles = total_act_bytes / self.eff_bw
+        weight_dma_cycles = self._dma_cycles(total_weight_bytes, AccessType.SEQUENTIAL)
+        act_dma_cycles = M * self._dma_cycles(per_pass_tiles * tile_act_per_token, AccessType.SEQUENTIAL)
         total_dma_cycles = M_tiles * weight_dma_cycles + act_dma_cycles
 
         # Compute: M sequential passes, each processing gate+up
@@ -154,7 +154,7 @@ class BlockEngine(MACEngine):
         util = ideal / total_cycles if total_cycles > 0 else 0.0
 
         # Savings: one activation load saved per token (no separate gate+up loads).
-        activation_savings = M * per_pass_tiles * tile_act_per_token / self.eff_bw
+        activation_savings = M * self._dma_cycles(per_pass_tiles * tile_act_per_token, AccessType.SEQUENTIAL)
         raw_dma = (K * N * self.w_bits // 8 + M * K * self.a_bits // 8) * 2
         raw_dma_cycles = math.ceil(raw_dma / self.eff_bw) if self.eff_bw > 0 else 0
 

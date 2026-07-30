@@ -17,6 +17,7 @@ import math
 from typing import Any
 
 from engine.mac_engine import EngineResult, MACEngine
+from models.memory_backend import AccessType
 
 
 class GMMAEngine(MACEngine):
@@ -85,9 +86,9 @@ class GMMAEngine(MACEngine):
 
         # SRAM efficiency
         weight_dram_eff = self._dram_eff_for_bytes(total_weight_bytes)
-        weight_dma_cycles = 0 if weight_dram_eff <= 0 else total_weight_bytes / (self.eff_bw * weight_dram_eff)
+        weight_dma_cycles = 0 if weight_dram_eff <= 0 else total_weight_bytes / (self.eff_bw_weight * weight_dram_eff)
 
-        act_dma_cycles = act_bytes / self.eff_bw
+        act_dma_cycles = self._dma_cycles(act_bytes, AccessType.SEQUENTIAL)
         total_dma = weight_dma_cycles + act_dma_cycles
 
         # TMA overlap — only for diagnostics; total_cycles uses raw DMA floor
@@ -154,7 +155,9 @@ class GMMAEngine(MACEngine):
 
         # Dual weights (gate + up) but shared activations.
         dual_weight_bytes = 2 * tile_weight_bytes
-        per_tile_dma_raw = (dual_weight_bytes + tile_act_bytes) / self.eff_bw
+        per_tile_dma_raw = self._dma_cycles(
+            dual_weight_bytes + tile_act_bytes, AccessType.SEQUENTIAL
+        )
         tma_exposed_dma = per_tile_dma_raw * (1 - self.TMA_OVERLAP)
         tma_hidden_dma = per_tile_dma_raw * self.TMA_OVERLAP
 

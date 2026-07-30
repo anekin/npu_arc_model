@@ -1,0 +1,38 @@
+{
+  "sequential_weight_dma_cycles_for_1mb": 24094.12,
+  "random_kv_dma_cycles_for_1mb": 48750.31,
+  "sequential_less_than_random": true,
+  "dma_model_sequential_1mb": 28196,
+  "dma_model_random_1mb": 45101,
+  "config": {
+    "dram_efficiency": 0.85,
+    "dram_efficiency_random_bw": 0.5,
+    "random_latency_penalty_cycles": 40
+  },
+  "verification_commands": {
+    "test_engine_physical_invariants": {
+      "command": "uv run pytest sim/tests/test_engine_physical_invariants.py -q",
+      "returncode": 0,
+      "stdout": "........................................................................ [  9%]\n........................................................................ [ 18%]\n........................................................................ [ 28%]\n........................................................................ [ 37%]\n........................................................................ [ 46%]\n........................................................................ [ 56%]\n........................................................................ [ 65%]\n........................................................................ [ 74%]\n........................................................................ [ 84%]\n........................................................................ [ 93%]\n.................................................                        [100%]\n=============================== warnings summary ===============================\nsim/tests/test_engine_physical_invariants.py: 32 warnings\n  /home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engine_physical_invariants.py:165: DeprecationWarning: EngineResult.ops is deprecated; use mac_count instead\n    assert result.ops == expected_macs, f\"{engine_type}: ops={result.ops}, expected mac_count={expected_macs}\"\n\nsim/tests/test_engine_physical_invariants.py: 16 warnings\n  /home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engine_physical_invariants.py:180: DeprecationWarning: EngineResult.ops is deprecated; use mac_count instead\n    assert result.ops >= expected_macs, f\"{engine_type} cache-pair: ops={result.ops}, expected \u2265 {expected_macs}\"\n\nsim/tests/test_engine_physical_invariants.py::TestBasicInvariants::test_small_square_gemm[systolic]\nsim/tests/test_engine_physical_invariants.py::TestBasicInvariants::test_small_square_gemm[block]\nsim/tests/test_engine_physical_invariants.py::TestBasicInvariants::test_small_square_gemm[os_systolic]\nsim/tests/test_engine_physical_invariants.py::TestBasicInvariants::test_small_square_gemm[input_stationary]\nsim/tests/test_engine_physical_invariants.py::TestBasicInvariants::test_small_square_gemm[tensor_core]\nsim/tests/test_engine_physical_invariants.py::TestBasicInvariants::test_small_square_gemm[wmma]\nsim/tests/test_engine_physical_invariants.py::TestBasicInvariants::test_small_square_gemm[gmma]\nsim/tests/test_engine_physical_invariants.py::TestBasicInvariants::test_small_square_gemm[fsa]\n  /home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engine_physical_invariants.py:489: DeprecationWarning: EngineResult.ops is deprecated; use mac_count instead\n    assert result.ops == 64 * 64 * 64\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html",
+      "stderr": ""
+    },
+    "test_memory_access_pattern": {
+      "command": "uv run pytest sim/tests/test_memory_access_pattern.py -q",
+      "returncode": 0,
+      "stdout": "...................                                                      [100%]",
+      "stderr": ""
+    },
+    "ruff_check": {
+      "command": "uv run ruff check sim/engine/mac_engine.py sim/models/dma.py sim/contracts/hardware.py sim/engine/*.py",
+      "returncode": 0,
+      "stdout": "All checks passed!",
+      "stderr": ""
+    },
+    "basedpyright": {
+      "command": "uv run basedpyright sim/engine/mac_engine.py sim/models/dma.py sim/contracts/hardware.py",
+      "returncode": 0,
+      "stdout": "0 errors, 0 warnings, 0 notes",
+      "stderr": ""
+    }
+  }
+}

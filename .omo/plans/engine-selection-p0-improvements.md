@@ -341,7 +341,7 @@ Note: C3 (Todos 10-12) functionally benefits from C2 (Todos 6-9), but can execut
 
   **Commit**: YES | `feat(memory): add access_type to MemoryAccessPattern` | `sim/models/memory_backend.py`, `sim/engine/mac_engine.py`, `sim/models/kv_cache.py`, `sim/tests/test_memory_access_pattern.py`
 
-- [ ] 7. 实现基于访问模式的 DRAM 效率，并审计已有函数
+- [x] 7. 实现基于访问模式的 DRAM 效率，并审计已有函数
 
   **What to do**:
   1. 先审计 `sim/engine/mac_engine.py:184` 的 `_dram_eff_for_bytes()` 和 L200 的 `_kv_dram_efficiency()`——这两个函数已实现基于 SRAM 驻留率的动态效率，返回 [0.55, 0.92]。文档化它们的职责，确保新模式不与其静默重复或冲突。

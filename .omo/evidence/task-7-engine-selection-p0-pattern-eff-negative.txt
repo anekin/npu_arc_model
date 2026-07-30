@@ -1,0 +1,9 @@
+Negative-path evidence for Todo 7 pattern-based DRAM efficiency
+
+KV miss random cycles: 48750.31
+KV hit random cycles:  48710.31
+Penalty applied only on miss: 40.00 cycles (expected 40.0)
+Penalty correctly skipped on hit: True
+
+Invalid access_type rejected: True
+Validation error excerpt: 1 validation error for MemoryAccessPattern

@@ -14,6 +14,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from contracts.units import bandwidth_gbps_to_bytes_per_cycle as _bw2bpc
+from models.memory_backend import AccessType
 from models.memory_hierarchy import build_hierarchy_from_config
 from models.residency import MemoryAccessPlan, build_memory_access_plan
 from workloads.schema import WorkloadGraphV1
@@ -147,11 +148,16 @@ class MACEngine(ABC):
         mem = config.get("memory", {})
         bw_gbps = float(mem.get("bandwidth_gbps", 51.2))
         self.bw_raw = _bw2bpc(bw_gbps, self.f_mhz)
-        self.dram_efficiency = float(mem.get("dram_efficiency", 0.85))
+        self.dram_efficiency = float(mem.get("dram_efficiency", 0.90))
+        self.dram_efficiency_random_bw = float(mem.get("dram_efficiency_random_bw", 0.50))
+        self.random_latency_penalty_cycles = int(mem.get("random_latency_penalty_cycles", 40))
         opts = config.get("optimizations", {})
         self.bw_multiplier = float(opts.get("dma_bw_multiplier", 1.0))
 
-        self.eff_bw = self.bw_raw * self.dram_efficiency * self.bw_multiplier
+        self.eff_bw_weight = self.bw_raw * self.dram_efficiency * self.bw_multiplier
+        self.eff_bw_kv = self.bw_raw * self.dram_efficiency_random_bw * self.bw_multiplier
+        # Deprecated alias retained for callers that have not migrated to access_type.
+        self.eff_bw = self.eff_bw_weight
 
         # SRAM: 60% weight buffer, 40% KV tile buffer
         sram = config.get("sram", {})
@@ -182,10 +188,12 @@ class MACEngine(ABC):
             fastest = plan.fastest_allocated_tier("weight")
             if fastest is not None:
                 tier = plan.hierarchy.get_tier(fastest)
-                self.eff_bw = _bw2bpc(tier.effective_read_bw_gbps(), self.f_mhz)
+                self.eff_bw_weight = _bw2bpc(tier.effective_read_bw_gbps(), self.f_mhz)
+                self.eff_bw = self.eff_bw_weight
                 return
 
-        self.eff_bw = self.bw_raw * self.dram_efficiency * self.bw_multiplier
+        self.eff_bw_weight = self.bw_raw * self.dram_efficiency * self.bw_multiplier
+        self.eff_bw = self.eff_bw_weight
 
     def _dram_eff_for_bytes(self, transfer_bytes: int) -> float:
         """DRAM utilization factor for a given transfer size (sequential access).
@@ -214,6 +222,32 @@ class MACEngine(ABC):
         kv_mb = kv_bytes / (1024 * 1024.0)
         ratio = kvbuf_mb / max(kv_mb, 0.001)
         return 0.55 + 0.40 * ratio / (0.3 + ratio)
+
+    def _kv_eff_bw(self, kv_bytes: int) -> float:
+        """Effective bytes/cycle for random KV reads including _kv_dram_efficiency."""
+        return self.eff_bw_kv * self._kv_dram_efficiency(kv_bytes)
+
+    def _dma_cycles(
+        self,
+        size_bytes: int,
+        access_type: AccessType,
+        *,
+        kv_bytes: int = 0,
+        is_hit: bool = False,
+    ) -> float:
+        """DMA cycles for a transfer using pattern-aware effective bandwidth.
+
+        Sequential accesses (weights/activations) use eff_bw_weight.
+        Random accesses (KV cache) use eff_bw_kv * _kv_dram_efficiency(kv_bytes)
+        and add random_latency_penalty_cycles only on miss.
+        """
+        if size_bytes <= 0:
+            return 0.0
+        if access_type == AccessType.RANDOM:
+            eff_bw = self._kv_eff_bw(kv_bytes)
+            penalty = 0 if is_hit else self.random_latency_penalty_cycles
+            return size_bytes / eff_bw + penalty if eff_bw > 0 else 0.0
+        return size_bytes / self.eff_bw_weight if self.eff_bw_weight > 0 else 0.0
 
     @property
     def peak_macs_per_cycle(self) -> float:

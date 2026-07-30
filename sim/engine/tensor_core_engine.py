@@ -17,6 +17,7 @@ import math
 from typing import Any
 
 from engine.mac_engine import EngineResult, MACEngine
+from models.memory_backend import AccessType
 
 
 class TensorCoreEngine(MACEngine):
@@ -78,7 +79,9 @@ class TensorCoreEngine(MACEngine):
 
         full_weight_bytes = math.ceil(self.SUBTILE_K * self.SUBTILE_N * self.w_bits / 8)
         full_act_bytes = math.ceil(self.SUBTILE_M * self.SUBTILE_K * self.a_bits / 8)
-        full_payload = (full_weight_bytes + full_act_bytes) / self.eff_bw
+        full_payload = self._dma_cycles(
+            full_weight_bytes + full_act_bytes, AccessType.SEQUENTIAL
+        )
 
         num_tcs = self.num_tcs
         waves = math.ceil(total_invocations / num_tcs)
@@ -103,7 +106,9 @@ class TensorCoreEngine(MACEngine):
             last_wave_weight_bytes += math.ceil(k_eff * n_eff * self.w_bits / 8)
             last_wave_act_bytes += math.ceil(m_eff * k_eff * self.a_bits / 8)
 
-        last_wave_payload = (last_wave_weight_bytes + last_wave_act_bytes) / self.eff_bw
+        last_wave_payload = self._dma_cycles(
+            last_wave_weight_bytes + last_wave_act_bytes, AccessType.SEQUENTIAL
+        )
         last_wave_descriptor = active_tcs * self.descriptor_overhead_cycles
         total_descriptor_cycles = descriptor_cycles_per_wave * (waves - 1) + last_wave_descriptor
 
@@ -183,7 +188,9 @@ class TensorCoreEngine(MACEngine):
 
         full_weight_bytes = math.ceil(self.SUBTILE_K * self.SUBTILE_N * self.w_bits / 8)
         full_act_bytes = math.ceil(self.SUBTILE_M * self.SUBTILE_K * self.a_bits / 8)
-        full_payload = (2 * full_weight_bytes + full_act_bytes) / self.eff_bw
+        full_payload = self._dma_cycles(
+            2 * full_weight_bytes + full_act_bytes, AccessType.SEQUENTIAL
+        )
 
         num_tcs = self.num_tcs
         waves = math.ceil(total_invocations / num_tcs)
@@ -208,7 +215,9 @@ class TensorCoreEngine(MACEngine):
             last_wave_weight_bytes += math.ceil(k_eff * n_eff * self.w_bits / 8)
             last_wave_act_bytes += math.ceil(m_eff * k_eff * self.a_bits / 8)
 
-        last_wave_payload = (2 * last_wave_weight_bytes + last_wave_act_bytes) / self.eff_bw
+        last_wave_payload = self._dma_cycles(
+            2 * last_wave_weight_bytes + last_wave_act_bytes, AccessType.SEQUENTIAL
+        )
         last_wave_descriptor = active_tcs * self.descriptor_overhead_cycles
         total_descriptor_cycles = descriptor_cycles_per_wave * (waves - 1) + last_wave_descriptor
 
@@ -235,7 +244,7 @@ class TensorCoreEngine(MACEngine):
         ideal = math.ceil(total_macs / self.peak_macs_per_cycle)
         util = ideal / total if total > 0 else 0.0
 
-        activation_savings = total_invocations * full_act_bytes / self.eff_bw
+        activation_savings = total_invocations * self._dma_cycles(full_act_bytes, AccessType.SEQUENTIAL)
 
         compute_cycles = waves * per_wave_compute
         dma_cycles = total - compute_cycles

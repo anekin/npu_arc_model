@@ -92,6 +92,16 @@ def _nonnegative_float(v: Any) -> float:
     return n
 
 
+def _nonnegative_int(v: Any) -> int:
+    """Coerce to int and reject negative values."""
+    if isinstance(v, bool):
+        raise ValueError("bool value is not allowed as integer")
+    n = int(v)
+    if n < 0:
+        raise ValueError(f"must be non-negative, got {n}")
+    return n
+
+
 def _isfinite(v: float) -> bool:
     """Return True if v is finite (not NaN or Inf)."""
     import math
@@ -100,6 +110,7 @@ def _isfinite(v: float) -> bool:
 
 
 PositiveInt = Annotated[int, AfterValidator(_positive_int)]
+NonNegativeInt = Annotated[int, AfterValidator(_nonnegative_int)]
 PositiveFloat = Annotated[float, AfterValidator(_positive_float)]
 NonNegativeFloat = Annotated[float, AfterValidator(_nonnegative_float)]
 
@@ -159,9 +170,26 @@ class MemoryConfig(BaseModel):
     dram_efficiency: Annotated[float, Field(ge=0.0, le=1.0)] = Field(
         default=0.85,
         description=(
-            "Per-bank refresh only ~3.6% (tRFCpb=140ns / tREFI=3900ns @ 16Gb LPDDR5); "
+            "Per-bank refresh only ~3.6% (JEDEC tRFCpb=140ns/tREFI=3900ns @ 16Gb LPDDR5); "
             "extra overhead from controller scheduling/command bus/bank conflicts. "
-            "0.85 is a conservative value for sequential decode."
+            "After Todo 7 this field serves as the sequential-access baseline "
+            "(weights and activations, AccessType.SEQUENTIAL)."
+        ),
+    )
+    dram_efficiency_random_bw: Annotated[float, Field(ge=0.0, le=1.0)] = Field(
+        default=0.50,
+        description=(
+            "Random-access bandwidth efficiency for KV cache reads (AccessType.RANDOM). "
+            "Lower than dram_efficiency because scattered token positions cause "
+            "row-buffer conflicts and poor burst utilization. "
+            "Final random eff. BW = bw_raw * dram_efficiency_random_bw * _kv_dram_efficiency(kv_bytes)."
+        ),
+    )
+    random_latency_penalty_cycles: NonNegativeInt = Field(
+        default=40,
+        description=(
+            "Extra fixed latency (cycles) added on each random KV cache miss, "
+            "independent of bandwidth.  Not added on SRAM hit."
         ),
     )
     dram_width_bits: PositiveInt = Field(default=64)
@@ -263,11 +291,32 @@ DEFAULT_DRAM_EFFICIENCY_PROVENANCE = Provenance(
     source=(
         "per-bank refresh ~3.6% (JEDEC tRFCpb=140ns/tREFI=3900ns); "
         "extra from controller scheduling/command bus/bank conflicts; "
-        "0.85 is conservative sequential decode value"
+        "0.85 is conservative sequential decode value; "
+        "after Todo 7 this is the sequential-access baseline"
     ),
     trust_level=TrustLevel.T1,
     calibration_range="0.80–0.90",
     reference_uri=".omo/plans/arc-model-ppa-corrections.md#修正-1",
+)
+
+DEFAULT_DRAM_EFFICIENCY_RANDOM_BW_PROVENANCE = Provenance(
+    source=(
+        "Random KV cache access: scattered token positions cause row-buffer misses; "
+        "0.50 is an architectural rule-of-thumb for LPDDR5 random-access effective BW"
+    ),
+    trust_level=TrustLevel.T0,
+    calibration_range="0.40–0.60",
+    reference_uri=".omo/plans/engine-selection-p0-improvements.md",
+)
+
+DEFAULT_RANDOM_LATENCY_PENALTY_PROVENANCE = Provenance(
+    source=(
+        "Row-buffer miss / precharge-activate latency proxy for LPDDR5 random access; "
+        "independent of bandwidth, applied only on KV miss"
+    ),
+    trust_level=TrustLevel.T0,
+    calibration_range="30–60 cycles",
+    reference_uri=".omo/plans/engine-selection-p0-improvements.md",
 )
 
 DEFAULT_NODE_SCALE_PROVENANCE = Provenance(

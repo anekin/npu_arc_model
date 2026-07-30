@@ -14,6 +14,7 @@ import math
 from typing import Any
 
 from engine.mac_engine import EngineResult, MACEngine
+from models.memory_backend import AccessType
 
 
 class FSAEngine(MACEngine):
@@ -76,7 +77,10 @@ class FSAEngine(MACEngine):
         effective_weight_bytes = 0 if dram_eff <= 0 else weight_bytes
 
         dma_total_bytes = effective_weight_bytes + act_bytes
-        dma_cycles = max(dma_total_bytes / (self.eff_bw * max(dram_eff, 0.01)), compute_cycles * 0.05)
+        dma_cycles = max(
+            self._dma_cycles(dma_total_bytes, AccessType.SEQUENTIAL) / max(dram_eff, 0.01),
+            compute_cycles * 0.05,
+        )
 
         total_cycles = max(compute_cycles, dma_cycles)
         peak = self.peak_macs_per_cycle
@@ -172,17 +176,20 @@ class FSAEngine(MACEngine):
 
         # DMA for K, V, Q loading
         elem_bytes = self.a_bits // 8
-        dma_bytes = (
-            num_kv_heads * seq_kv * head_dim * elem_bytes * 2  # K + V
-            + num_heads * seq_q * head_dim * elem_bytes  # Q
+        kv_dma_bytes = num_kv_heads * seq_kv * head_dim * elem_bytes * 2  # K + V
+        q_dma_bytes = num_heads * seq_q * head_dim * elem_bytes  # Q
+        dma_cycles = (
+            self._dma_cycles(kv_dma_bytes, AccessType.RANDOM, kv_bytes=kv_dma_bytes)
+            + self._dma_cycles(q_dma_bytes, AccessType.SEQUENTIAL)
         )
-        dma_cycles = dma_bytes / self.eff_bw if self.eff_bw > 0 else 0
 
         total_cycles = max(total_compute, int(dma_cycles))
         peak = self.peak_macs_per_cycle
         utilization = mac_count / (peak * max(total_cycles, 1)) if total_cycles > 0 else 0
 
-        raw_dma_cycles = math.ceil(dma_bytes / self.eff_bw) if self.eff_bw > 0 else 0
+        raw_dma_cycles = (
+            math.ceil((kv_dma_bytes + q_dma_bytes) / self.eff_bw) if self.eff_bw > 0 else 0
+        )
         ideal_cycles = math.ceil(mac_count / peak) if peak > 0 else 0
 
         return EngineResult(

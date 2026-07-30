@@ -84,7 +84,9 @@ memory:
   type: LPDDR5-6400
   bandwidth_gbps: 51.2
   bandwidth_bytes_per_cycle: 51.2  # 51.2 GB/s @ 1GHz = 51.2 bytes/cycle
-  dram_efficiency: 0.85             # 85% effective BW (refresh + row conflicts)
+  dram_efficiency: 0.85             # sequential baseline: weights / activations
+  dram_efficiency_random_bw: 0.50   # random KV cache read bandwidth efficiency
+  random_latency_penalty_cycles: 40 # extra latency per KV miss, independent of BW
   tRC_cycles: 48
   tRAS_cycles: 42
   refresh_overhead_percent: 3.0    # 约 3% 时间花在刷新

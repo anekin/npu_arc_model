@@ -4,6 +4,8 @@ import math
 from dataclasses import dataclass
 from typing import Any
 
+from models.memory_backend import AccessType
+
 # Priority lookup for fixed_priority arbitration: higher value = higher priority.
 _REQUEST_TYPE_PRIORITY: dict[str, int] = {
     "weight_load": 2,
@@ -69,12 +71,24 @@ class DMAModel:
         bw_gbps = float(mem.get("bandwidth_gbps", 51.2))
         self.bw_bytes_per_cycle = _bw2bpc(bw_gbps, freq_mhz)
 
+        dram_eff = float(mem.get("dram_efficiency", 0.85))
+        dram_eff_random = float(mem.get("dram_efficiency_random_bw", 0.50))
+        self.random_latency_penalty_cycles = int(mem.get("random_latency_penalty_cycles", 40))
+        self.eff_bw_weight = self.bw_bytes_per_cycle * dram_eff
+        self.eff_bw_kv = self.bw_bytes_per_cycle * dram_eff_random
+
         self.memory_access_plan = memory_access_plan
 
-    def estimate_transfer(self, size_bytes: int, direction: str = "load") -> int:
+    def estimate_transfer(
+        self,
+        size_bytes: int,
+        direction: str = "load",
+        access_type: AccessType = AccessType.SEQUENTIAL,
+    ) -> int:
         """Estimate cycles for a single DMA transfer.
 
         direction: 'load' (DRAM→SRAM) or 'store' (SRAM→DRAM)
+        access_type: sequential (weights/activations) or random (KV cache).
 
         Returns total cycles including descriptor overhead.
         """
@@ -84,13 +98,19 @@ class DMAModel:
         # Number of bursts
         num_bursts = math.ceil(size_bytes / self.burst_size)
 
-        # Transfer time: bytes / bandwidth
-        transfer_cycles = size_bytes / self.bw_bytes_per_cycle
+        if access_type == AccessType.RANDOM:
+            eff_bw = self.eff_bw_kv
+            latency_penalty = self.random_latency_penalty_cycles
+        else:
+            eff_bw = self.eff_bw_weight
+            latency_penalty = 0
+
+        transfer_cycles = size_bytes / eff_bw if eff_bw > 0 else 0
 
         # Burst overhead: one cycle per burst for address handshake
         burst_overhead = num_bursts
 
-        total = self.descriptor_overhead + transfer_cycles + burst_overhead
+        total = self.descriptor_overhead + transfer_cycles + burst_overhead + latency_penalty
         return int(math.ceil(total))
 
     def estimate_weight_load(self, K: int, N: int, weight_bits: int = 4) -> int:

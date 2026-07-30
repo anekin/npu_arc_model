@@ -3,6 +3,7 @@
 import math
 
 from engine.mac_engine import EngineResult, MACEngine
+from models.memory_backend import AccessType
 
 
 class SystolicEngine(MACEngine):
@@ -38,7 +39,9 @@ class SystolicEngine(MACEngine):
         per_tile_compute = self._per_ktile_compute(M)
         pipeline_fill = self.H + self.W
         pipeline_drain = per_tile_compute - pipeline_fill
-        per_tile_dma = (tile_weight_bytes + tile_act_bytes) / self.eff_bw
+        per_tile_dma = self._dma_cycles(
+            tile_weight_bytes + tile_act_bytes, AccessType.SEQUENTIAL
+        )
 
         bottleneck_per_tile = max(per_tile_compute, per_tile_dma)
         first_tile_cold = per_tile_dma + per_tile_compute
@@ -93,7 +96,9 @@ class SystolicEngine(MACEngine):
 
         dual_weight_bytes = 2 * math.ceil(self.H * self.W * self.w_bits / 8)
         dual_act_bytes = math.ceil(M * self.H * self.a_bits / 8)
-        dual_dma = (dual_weight_bytes + dual_act_bytes) / self.eff_bw
+        dual_dma = self._dma_cycles(
+            dual_weight_bytes + dual_act_bytes, AccessType.SEQUENTIAL
+        )
 
         per_matm_drain = M + self.W
         dual_compute = 2 * per_matm_drain + 1
