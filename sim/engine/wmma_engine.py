@@ -90,9 +90,8 @@ class WMMAEngine(MACEngine):
 
         per_tile_weight_bytes = weight_multiplier * math.ceil(self.H * self.W * self.w_bits / 8)
         per_tile_act_bytes = math.ceil(M * self.H * self.a_bits / 8)
-        per_tile_dma = (
-            fragments_per_tile * self.DMA_STARTUP_CYCLES
-            + self._dma_cycles(per_tile_weight_bytes + per_tile_act_bytes, AccessType.SEQUENTIAL)
+        per_tile_dma = fragments_per_tile * self.DMA_STARTUP_CYCLES + self._dma_cycles(
+            per_tile_weight_bytes + per_tile_act_bytes, AccessType.SEQUENTIAL
         )
 
         per_tile_compute = fragments_per_tile * per_frag_compute

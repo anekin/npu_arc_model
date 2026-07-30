@@ -146,8 +146,7 @@ class TestProcessNodeGenerationFull:
         space = DesignSpace(minimal_scenario, axes_config=fix_axes_with_node, mode="full")
         points = space.generate()
         has_8192_new = any(
-            p.axis_values.get("process_node") in (7, 12) and p.axis_values.get("sram_l2_kb") == 8192
-            for p in points
+            p.axis_values.get("process_node") in (7, 12) and p.axis_values.get("sram_l2_kb") == 8192 for p in points
         )
         assert has_8192_new, "12nm and 7nm must allow sram_l2_kb=8192"
 
@@ -178,9 +177,7 @@ class TestProcessNodeGenerationCi:
         # With all other axes fixed, ci_all_axes creates combos by varying each
         # axis against defaults: 4 process_node variants + 5 sram variants,
         # minus 1 duplicate (defaults combo), giving 8 distinct points.
-        assert len(points) == 8, (
-            f"Expected 8 ci_all_axes points, got {len(points)}"
-        )
+        assert len(points) == 8, f"Expected 8 ci_all_axes points, got {len(points)}"
 
 
 # ── hardware_builder process_node propagation tests ───────────────────────────
@@ -223,6 +220,7 @@ class TestBuildHardwareConfigNode:
     def test_preserves_existing_area_model_struct(self, sram_base_config):
         """Existing area_model structure is preserved during propagation."""
         from copy import deepcopy
+
         base = deepcopy(sram_base_config)
         combo = _fixed_combo()
         combo["process_node"] = 28
@@ -291,12 +289,23 @@ class TestAreaModelProcessNodePropagation:
 
         cfg_28 = deepcopy(sram_base_config)
         cfg_28["area_model"]["process_node"] = 28
-        cfg_28["mac_engine"] = {"type": "block", "array_height": 128, "array_width": 128,
-                                "frequency_mhz": 1000, "weight_precision_bits": 4,
-                                "activation_precision_bits": 8, "dataflow": "weight_stationary",
-                                "double_buffer": True, "ops_per_mac": 2}
-        cfg_28["memory"] = {"type": "LPDDR5-6400", "bandwidth_gbps": 51.2, "dram_efficiency": 0.85,
-                            "dram_width_bits": 64}
+        cfg_28["mac_engine"] = {
+            "type": "block",
+            "array_height": 128,
+            "array_width": 128,
+            "frequency_mhz": 1000,
+            "weight_precision_bits": 4,
+            "activation_precision_bits": 8,
+            "dataflow": "weight_stationary",
+            "double_buffer": True,
+            "ops_per_mac": 2,
+        }
+        cfg_28["memory"] = {
+            "type": "LPDDR5-6400",
+            "bandwidth_gbps": 51.2,
+            "dram_efficiency": 0.85,
+            "dram_width_bits": 64,
+        }
         cfg_28["sram"] = {"l2_shared_kb": 2048, "l1_per_core_kb": 512}
         cfg_28["on_chip_memory"] = {"capacity_gb": 0, "bandwidth_gbps": 0}
         cfg_28["optimizations"] = {"weight_cache": False}

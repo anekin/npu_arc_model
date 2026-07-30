@@ -163,12 +163,12 @@ dram_read_bytes = weight_per_token + kv_cache_per_token
 
 # 新增
 PJ_PER_BIT = {
-    "lpddr5": 7.0,      # 长基板走线
-    "hbm3": 3.5,         # 硅中介层
-    "hbc_tsv": 0.5,      # TSV 垂直直连
+    "lpddr5": 7.0,  # 长基板走线
+    "hbm3": 3.5,  # 硅中介层
+    "hbc_tsv": 0.5,  # TSV 垂直直连
 }
 dram_energy = dram_read_bytes * 8 * PJ_PER_BIT[topology]  # J/token
-compute_energy = total_macs * PJ_PER_MAC                   # J/token
+compute_energy = total_macs * PJ_PER_MAC  # J/token
 energy_per_token = dram_energy + compute_energy
 compute_ratio = compute_energy / energy_per_token
 ```
@@ -224,16 +224,22 @@ HBC 思路: 把低算术强度操作推到内存侧
 ```python
 MEMORY_TOPOLOGIES = {
     "lpddr5_traditional": {
-        "pJ_per_bit": 7.0, "max_bw_gbps": 204.8,
-        "thermal_derating": 1.0, "interconnect_cost_factor": 1.0,
+        "pJ_per_bit": 7.0,
+        "max_bw_gbps": 204.8,
+        "thermal_derating": 1.0,
+        "interconnect_cost_factor": 1.0,
     },
     "hbc_3d_stack": {
-        "pJ_per_bit": 0.5, "max_bw_gbps": 133000,
-        "thermal_derating": 0.6, "interconnect_cost_factor": 1.5,
+        "pJ_per_bit": 0.5,
+        "max_bw_gbps": 133000,
+        "thermal_derating": 0.6,
+        "interconnect_cost_factor": 1.5,
     },
     "hbm3_interposer": {
-        "pJ_per_bit": 3.5, "max_bw_gbps": 819,
-        "thermal_derating": 0.9, "interconnect_cost_factor": 3.0,
+        "pJ_per_bit": 3.5,
+        "max_bw_gbps": 819,
+        "thermal_derating": 0.9,
+        "interconnect_cost_factor": 3.0,
     },
 }
 ```
@@ -246,10 +252,7 @@ MEMORY_TOPOLOGIES = {
 
 ```python
 total_cost = (
-    silicon_area * cost_per_mm2 +
-    dram_capacity * cost_per_gb +
-    interconnect_cost(topology) +
-    substrate_cost(topology)
+    silicon_area * cost_per_mm2 + dram_capacity * cost_per_gb + interconnect_cost(topology) + substrate_cost(topology)
 )
 ```
 

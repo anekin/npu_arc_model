@@ -178,18 +178,15 @@ class FSAEngine(MACEngine):
         elem_bytes = self.a_bits // 8
         kv_dma_bytes = num_kv_heads * seq_kv * head_dim * elem_bytes * 2  # K + V
         q_dma_bytes = num_heads * seq_q * head_dim * elem_bytes  # Q
-        dma_cycles = (
-            self._dma_cycles(kv_dma_bytes, AccessType.RANDOM, kv_bytes=kv_dma_bytes)
-            + self._dma_cycles(q_dma_bytes, AccessType.SEQUENTIAL)
+        dma_cycles = self._dma_cycles(kv_dma_bytes, AccessType.RANDOM, kv_bytes=kv_dma_bytes) + self._dma_cycles(
+            q_dma_bytes, AccessType.SEQUENTIAL
         )
 
         total_cycles = max(total_compute, int(dma_cycles))
         peak = self.peak_macs_per_cycle
         utilization = mac_count / (peak * max(total_cycles, 1)) if total_cycles > 0 else 0
 
-        raw_dma_cycles = (
-            math.ceil((kv_dma_bytes + q_dma_bytes) / self.eff_bw) if self.eff_bw > 0 else 0
-        )
+        raw_dma_cycles = math.ceil((kv_dma_bytes + q_dma_bytes) / self.eff_bw) if self.eff_bw > 0 else 0
         ideal_cycles = math.ceil(mac_count / peak) if peak > 0 else 0
 
         return EngineResult(

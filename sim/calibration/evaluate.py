@@ -70,9 +70,7 @@ def calibration_ids_for_design_point(hw_config: dict[str, Any]) -> set[str]:
     engine_type = (hw_config.get("mac_engine", {}).get("type", "block")).lower()
 
     area_model = hw_config.get("area_model", {})
-    process_node = float(
-        area_model.get("process_node_nm", area_model.get("process_node", 7.0))
-    )
+    process_node = float(area_model.get("process_node_nm", area_model.get("process_node", 7.0)))
     node_suffix = _node_id_suffix(process_node)
     ids.add(f"systolic_pe_area_{node_suffix}nm")
     if engine_type in {"block", "os_systolic", "input_stationary", "tensor_core", "wmma", "gmma", "fsa"}:

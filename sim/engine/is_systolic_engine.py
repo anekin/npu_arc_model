@@ -35,9 +35,7 @@ class InputStationaryEngine(MACEngine):
 
         tile_weight_bytes = math.ceil(K * min(N, self.W) * self.w_bits / 8)
         full_act_bytes = math.ceil(self.H * K * self.a_bits / 8)
-        per_tile_dma = self._dma_cycles(
-            tile_weight_bytes + full_act_bytes, AccessType.SEQUENTIAL
-        )
+        per_tile_dma = self._dma_cycles(tile_weight_bytes + full_act_bytes, AccessType.SEQUENTIAL)
 
         bottleneck = max(per_tile_compute, per_tile_dma)
         first_cold = per_tile_dma + per_tile_compute
@@ -84,9 +82,7 @@ class InputStationaryEngine(MACEngine):
 
         tile_weight_bytes = math.ceil(K * min(N, self.W) * self.w_bits / 8)
         full_act_bytes = math.ceil(self.H * K * self.a_bits / 8)
-        per_tile_dma = self._dma_cycles(
-            2 * tile_weight_bytes + full_act_bytes, AccessType.SEQUENTIAL
-        )
+        per_tile_dma = self._dma_cycles(2 * tile_weight_bytes + full_act_bytes, AccessType.SEQUENTIAL)
 
         bottleneck = max(per_tile_compute_pair, per_tile_dma)
         first_cold = per_tile_dma + per_tile_compute_pair

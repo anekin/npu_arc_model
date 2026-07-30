@@ -141,16 +141,12 @@ class TestEngineCreationSites:
     def test_engine_area_pattern_is_sequential(self):
         """Area estimate MemoryAccessPattern uses SEQUENTIAL."""
         pat = MemoryAccessPattern(read_bytes=0, write_bytes=0, active_time_seconds=1e-6)
-        assert pat.access_type == AccessType.SEQUENTIAL, (
-            "Area estimate pattern should default to SEQUENTIAL"
-        )
+        assert pat.access_type == AccessType.SEQUENTIAL, "Area estimate pattern should default to SEQUENTIAL"
 
     def test_engine_power_pattern_is_sequential(self):
         """Power estimate MemoryAccessPattern uses SEQUENTIAL."""
         pat = MemoryAccessPattern(read_bytes=100, write_bytes=100)
-        assert pat.access_type == AccessType.SEQUENTIAL, (
-            "Power estimate pattern should default to SEQUENTIAL"
-        )
+        assert pat.access_type == AccessType.SEQUENTIAL, "Power estimate pattern should default to SEQUENTIAL"
 
     def test_ppa_model_creates_sequential(self):
         """ppamodel._memory_area_estimate creates pattern with SEQUENTIAL access type."""

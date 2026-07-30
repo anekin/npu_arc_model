@@ -87,7 +87,7 @@ class TestSramAreaMm2:
     @pytest.mark.parametrize(
         ("size_bytes", "node_nm", "overhead"),
         [
-            (4 * 1024, 7.0, 1.5),   # L1 @7nm
+            (4 * 1024, 7.0, 1.5),  # L1 @7nm
             (4 * 1024, 12.0, 1.5),  # L1 @12nm
             (2 * 1024 * 1024, 7.0, 1.3),  # L2 @7nm
             (2 * 1024 * 1024, 28.0, 1.3),  # L2 @28nm

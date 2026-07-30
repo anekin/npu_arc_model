@@ -155,9 +155,7 @@ class GMMAEngine(MACEngine):
 
         # Dual weights (gate + up) but shared activations.
         dual_weight_bytes = 2 * tile_weight_bytes
-        per_tile_dma_raw = self._dma_cycles(
-            dual_weight_bytes + tile_act_bytes, AccessType.SEQUENTIAL
-        )
+        per_tile_dma_raw = self._dma_cycles(dual_weight_bytes + tile_act_bytes, AccessType.SEQUENTIAL)
         tma_exposed_dma = per_tile_dma_raw * (1 - self.TMA_OVERLAP)
         tma_hidden_dma = per_tile_dma_raw * self.TMA_OVERLAP
 

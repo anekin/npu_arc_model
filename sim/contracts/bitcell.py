@@ -106,8 +106,7 @@ class BitcellTable:
         """
         if node_nm not in self._entries:
             raise ConfigError(
-                f"Unknown process node {node_nm}nm — bitcell area not in table. "
-                f"Known nodes: {sorted(_KNOWN_NODES)}",
+                f"Unknown process node {node_nm}nm — bitcell area not in table. Known nodes: {sorted(_KNOWN_NODES)}",
                 field_path="process_node_nm",
                 value=node_nm,
             )
@@ -153,9 +152,7 @@ def sram_area_mm2(
         If *size_bytes* is not positive.
     """
     if size_bytes <= 0:
-        raise ValueError(
-            f"size_bytes must be positive, got {size_bytes}"
-        )
+        raise ValueError(f"size_bytes must be positive, got {size_bytes}")
 
     if not isinstance(overhead, (int, float)):
         raise ConfigError(

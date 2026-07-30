@@ -34,7 +34,7 @@ from contracts.bitcell import BitcellTable, sram_area_mm2  # noqa: E402
 
 # ── Tolerance ─────────────────────────────────────────────────────────────
 EXTERNAL_TOLERANCE = 0.30  # ±30 % — halt if exceeded
-OLD_MODEL_WARN = 0.30      # >30 % divergence from old model → warning only
+OLD_MODEL_WARN = 0.30  # >30 % divergence from old model → warning only
 
 # ── External reference points ─────────────────────────────────────────────
 # Each reference pairs a known chip (process node + SRAM capacity) with an
@@ -176,9 +176,7 @@ def _check_old_model(
         )
     else:
         result["status"] = "WARN"
-        result["reason"] = (
-            f"Bitcell area is {((1.0 - ratio) * 100):.1f}% smaller than old model"
-        )
+        result["reason"] = f"Bitcell area is {((1.0 - ratio) * 100):.1f}% smaller than old model"
 
     return result
 

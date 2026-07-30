@@ -1,0 +1,45 @@
+300 files already formatted
+All checks passed!
+/home/prj/zhengs/caduceuscore/npu_arc_model/sim/cv/traces/sd_unet_trace.py
+  /home/prj/zhengs/caduceuscore/npu_arc_model/sim/cv/traces/sd_unet_trace.py:96:5 - warning: Expression value is unused (reportUnusedExpression)
+  /home/prj/zhengs/caduceuscore/npu_arc_model/sim/cv/traces/sd_unet_trace.py:113:5 - warning: Expression value is unused (reportUnusedExpression)
+/home/prj/zhengs/caduceuscore/npu_arc_model/sim/models/sfu.py
+  /home/prj/zhengs/caduceuscore/npu_arc_model/sim/models/sfu.py:92:9 - warning: Expression value is unused (reportUnusedExpression)
+/home/prj/zhengs/caduceuscore/npu_arc_model/sim/sw_overhead_eval.py
+  /home/prj/zhengs/caduceuscore/npu_arc_model/sim/sw_overhead_eval.py:55:5 - warning: Expression value is unused (reportUnusedExpression)
+0 errors, 4 warnings, 0 notes
+........................................................................ [  7%]
+........................................................................ [ 15%]
+........................................................................ [ 22%]
+........................................................................ [ 30%]
+........................................................................ [ 37%]
+........................................................................ [ 45%]
+........................................................................ [ 52%]
+........................................................................ [ 60%]
+........................................................................ [ 67%]
+........................................................................ [ 75%]
+........................................................................ [ 83%]
+........................................................................ [ 90%]
+........................................................................ [ 98%]
+.................                                                        [100%]
+=============================== warnings summary ===============================
+sim/tests/test_engine_physical_invariants.py: 32 warnings
+  /home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engine_physical_invariants.py:165: DeprecationWarning: EngineResult.ops is deprecated; use mac_count instead
+    assert result.ops == expected_macs, f"{engine_type}: ops={result.ops}, expected mac_count={expected_macs}"
+
+sim/tests/test_engine_physical_invariants.py: 16 warnings
+  /home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engine_physical_invariants.py:180: DeprecationWarning: EngineResult.ops is deprecated; use mac_count instead
+    assert result.ops >= expected_macs, f"{engine_type} cache-pair: ops={result.ops}, expected ≥ {expected_macs}"
+
+sim/tests/test_engine_physical_invariants.py::TestBasicInvariants::test_small_square_gemm[systolic]
+sim/tests/test_engine_physical_invariants.py::TestBasicInvariants::test_small_square_gemm[block]
+sim/tests/test_engine_physical_invariants.py::TestBasicInvariants::test_small_square_gemm[os_systolic]
+sim/tests/test_engine_physical_invariants.py::TestBasicInvariants::test_small_square_gemm[input_stationary]
+sim/tests/test_engine_physical_invariants.py::TestBasicInvariants::test_small_square_gemm[tensor_core]
+sim/tests/test_engine_physical_invariants.py::TestBasicInvariants::test_small_square_gemm[wmma]
+sim/tests/test_engine_physical_invariants.py::TestBasicInvariants::test_small_square_gemm[gmma]
+sim/tests/test_engine_physical_invariants.py::TestBasicInvariants::test_small_square_gemm[fsa]
+  /home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engine_physical_invariants.py:489: DeprecationWarning: EngineResult.ops is deprecated; use mac_count instead
+    assert result.ops == 64 * 64 * 64
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html

@@ -92,9 +92,7 @@ class TestTotalAreaMonotonic:
     def test_total_area_decreases_with_node(self, engine_type: str) -> None:
         """Given identical config, area(28nm) > area(22nm) > area(12nm) > area(7nm)."""
         areas: dict[float, float] = {
-            node: AreaModel(_base_config(node)).estimate(_base_config(node), engine_type)[
-                "total_mm2"
-            ]
+            node: AreaModel(_base_config(node)).estimate(_base_config(node), engine_type)["total_mm2"]
             for node in NODES_NM
         }
 
@@ -154,8 +152,7 @@ class TestRelativeRatioDirection:
             diffs[node] = area_heavy - area_light
 
         assert diffs[28.0] > diffs[22.0] > diffs[12.0] > diffs[7.0], (
-            f"{engine_type}: SRAM-heavy absolute disadvantage did not grow "
-            f"monotonically at older nodes: {diffs}"
+            f"{engine_type}: SRAM-heavy absolute disadvantage did not grow monotonically at older nodes: {diffs}"
         )
 
 
@@ -171,15 +168,11 @@ class TestNodeScaleReference:
             (28.0, 16.0),
         ],
     )
-    def test_oracle_node_scale_matches_ppa_model(
-        self, process_node_nm: float, expected: float
-    ) -> None:
+    def test_oracle_node_scale_matches_ppa_model(self, process_node_nm: float, expected: float) -> None:
         """``_node_scale`` must equal ``engine.ppa_model._node_scale_factor``."""
         from engine.ppa_model import _node_scale_factor
         from tests.oracles.ppa import _node_scale
 
         assert _node_scale(process_node_nm) == pytest.approx(expected, rel=1e-9)
         assert _node_scale_factor(process_node_nm) == pytest.approx(expected, rel=1e-9)
-        assert _node_scale(process_node_nm) == pytest.approx(
-            _node_scale_factor(process_node_nm), rel=1e-9
-        )
+        assert _node_scale(process_node_nm) == pytest.approx(_node_scale_factor(process_node_nm), rel=1e-9)

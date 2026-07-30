@@ -207,9 +207,7 @@ class ScenarioDseRunner:
 
             # Merge the design point's process_node so cross-node DSE uses the
             # correct area model parameters instead of always defaulting to 7nm.
-            point_node = (
-                point.hardware_config.get("area_model", {}).get("process_node")
-            )
+            point_node = point.hardware_config.get("area_model", {}).get("process_node")
             if point_node is not None:
                 base_cfg.setdefault("area_model", {})["process_node"] = point_node
 

@@ -288,9 +288,7 @@ class TestEngineAccessTypeRouting:
         calls = _recorded_dma_call_types(engine, "estimate", 8, 64, 64)
 
         assert len(calls) > 0, f"{engine_type} should call _dma_cycles during estimate()"
-        assert all(a == AccessType.SEQUENTIAL for a in calls), (
-            f"{engine_type} used non-sequential access: {calls}"
-        )
+        assert all(a == AccessType.SEQUENTIAL for a in calls), f"{engine_type} used non-sequential access: {calls}"
 
     @pytest.mark.parametrize("engine_type", _ENGINE_TYPES)
     @pytest.mark.parametrize("freq_mhz", _FREQS_MHZ)

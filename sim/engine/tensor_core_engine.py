@@ -79,9 +79,7 @@ class TensorCoreEngine(MACEngine):
 
         full_weight_bytes = math.ceil(self.SUBTILE_K * self.SUBTILE_N * self.w_bits / 8)
         full_act_bytes = math.ceil(self.SUBTILE_M * self.SUBTILE_K * self.a_bits / 8)
-        full_payload = self._dma_cycles(
-            full_weight_bytes + full_act_bytes, AccessType.SEQUENTIAL
-        )
+        full_payload = self._dma_cycles(full_weight_bytes + full_act_bytes, AccessType.SEQUENTIAL)
 
         num_tcs = self.num_tcs
         waves = math.ceil(total_invocations / num_tcs)
@@ -106,9 +104,7 @@ class TensorCoreEngine(MACEngine):
             last_wave_weight_bytes += math.ceil(k_eff * n_eff * self.w_bits / 8)
             last_wave_act_bytes += math.ceil(m_eff * k_eff * self.a_bits / 8)
 
-        last_wave_payload = self._dma_cycles(
-            last_wave_weight_bytes + last_wave_act_bytes, AccessType.SEQUENTIAL
-        )
+        last_wave_payload = self._dma_cycles(last_wave_weight_bytes + last_wave_act_bytes, AccessType.SEQUENTIAL)
         last_wave_descriptor = active_tcs * self.descriptor_overhead_cycles
         total_descriptor_cycles = descriptor_cycles_per_wave * (waves - 1) + last_wave_descriptor
 
@@ -188,9 +184,7 @@ class TensorCoreEngine(MACEngine):
 
         full_weight_bytes = math.ceil(self.SUBTILE_K * self.SUBTILE_N * self.w_bits / 8)
         full_act_bytes = math.ceil(self.SUBTILE_M * self.SUBTILE_K * self.a_bits / 8)
-        full_payload = self._dma_cycles(
-            2 * full_weight_bytes + full_act_bytes, AccessType.SEQUENTIAL
-        )
+        full_payload = self._dma_cycles(2 * full_weight_bytes + full_act_bytes, AccessType.SEQUENTIAL)
 
         num_tcs = self.num_tcs
         waves = math.ceil(total_invocations / num_tcs)
@@ -215,9 +209,7 @@ class TensorCoreEngine(MACEngine):
             last_wave_weight_bytes += math.ceil(k_eff * n_eff * self.w_bits / 8)
             last_wave_act_bytes += math.ceil(m_eff * k_eff * self.a_bits / 8)
 
-        last_wave_payload = self._dma_cycles(
-            2 * last_wave_weight_bytes + last_wave_act_bytes, AccessType.SEQUENTIAL
-        )
+        last_wave_payload = self._dma_cycles(2 * last_wave_weight_bytes + last_wave_act_bytes, AccessType.SEQUENTIAL)
         last_wave_descriptor = active_tcs * self.descriptor_overhead_cycles
         total_descriptor_cycles = descriptor_cycles_per_wave * (waves - 1) + last_wave_descriptor
 
