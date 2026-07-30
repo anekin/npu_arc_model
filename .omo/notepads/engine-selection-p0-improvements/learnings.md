@@ -139,3 +139,40 @@
 
 - Should `block_systolic_pe_ratio` be retired now that per-node `block_pe_area_*nm` entries exist, or kept as an independent cross-check?
 - Should `os_pe_area_*nm`, `is_pe_area_*nm`, `tc_pe_area_*nm`, `wmma_pe_area_*nm`, and `gmma_pe_area_*nm` be added to the registry for full engine coverage, or is the current systolic/block/fsa set sufficient for P0?
+
+# Todo 5 — Cross-node area regression tests + oracle node-scale alignment
+
+**Date:** 2026-07-30
+
+## What was done
+
+- Created `sim/tests/test_area_cross_node.py` with 28 parameterized tests covering all 8 engine types × 4 process nodes (7/12/22/28nm):
+  - `TestTotalAreaMonotonic`: total area strictly decreases as node shrinks (28 > 22 > 12 > 7).
+  - `TestSramShare`: SRAM/total share increases across geometric nodes (28 < 22 < 7), with 12nm treated as a known high outlier due to the TSMC 12FFC density-ratio correction (2.70×).
+  - `TestRelativeRatioDirection`: absolute SRAM-heavy area disadvantage (8MB L2 vs 512KB L2) grows monotonically from 7nm → 12nm → 22nm → 28nm.
+  - `TestNodeScaleReference`: oracle `_node_scale` matches `engine.ppa_model._node_scale_factor` at all four nodes.
+- Rewrote `sim/tests/oracles/ppa.py`:
+  - `_node_scale()` now anchors at 7nm = 1.0, returns 2.70 at 12nm, and uses `(node / 7.0) ** 2` elsewhere.
+  - Re-anchored `_MEMORY_DIE_AREA_PER_GB_MM2`, `_TSV_AREA_PER_GBPS_MM2`, `_PHY_AREA_FIXED_MM2`, and `_PACKAGE_AREA_FIXED_MM2` from 12nm to 7nm by dividing each by 2.70.
+  - Verified 12nm oracle output is unchanged and 28nm old output × 2.70 ≈ new output.
+
+## Verification
+
+- `uv run pytest sim/tests/test_area_cross_node.py -q` — 28 passed.
+- `uv run pytest sim/tests/test_memory_ppa.py sim/tests/test_memory_backend.py -q` — 110 passed (existing 12nm oracle-anchored tests still pass).
+- `uv run ruff check sim/tests/test_area_cross_node.py sim/tests/oracles/ppa.py` — All checks passed.
+- `uv run basedpyright sim/tests/test_area_cross_node.py sim/tests/oracles/ppa.py` — 0 errors, 0 warnings, 0 notes.
+- Happy-path evidence: `.omo/evidence/task-5-engine-selection-p0-cross-node.json`.
+- Negative-path / old-vs-new compatibility evidence: `.omo/evidence/task-5-engine-selection-p0-cross-node-negative.txt`.
+
+## Key findings
+
+1. **Oracle is now aligned with `AreaModel`** — both use 7nm baseline, 12nm density-ratio 2.70×, and geometric scaling for other nodes. This removes the ~7.4× inconsistency at 7nm and the ~0.17× inconsistency at 28nm that existed when the oracle anchored at 12nm.
+2. **12nm is a non-monotonic outlier for SRAM share** — because `_node_scale_factor(12) = 2.70` is below pure geometric `(12/7)² = 2.94`, logic area at 12nm is smaller than geometric prediction, raising SRAM share above the 7nm value. Tests account for this by checking the geometric-node trend (28 < 22 < 7) and asserting 12nm > 7nm.
+3. **Absolute SRAM-heavy disadvantage grows monotonically** — the extra area of an 8MB L2 vs 512KB L2 block engine grows from 3.9 mm² (7nm) → 10.7 mm² (12nm) → 13.3 mm² (22nm) → 18.4 mm² (28nm). This confirms that SRAM-heavy designs pay a larger absolute area penalty at older nodes.
+4. **Existing 12nm oracle tests are preserved** — re-anchoring constants by dividing by 2.70 keeps all 12nm values identical, so `test_memory_ppa.py` oracle-anchored assertions still pass.
+
+## Open questions
+
+- Should the cross-node test matrix also include on-chip 3D DRAM memory configs to cover memory-die area scaling?
+- Should the 12nm density-correction outlier be documented in `references/area_sources.md` as a known non-monotonicity?

@@ -1,0 +1,114 @@
+{
+  "task": "Todo 5 \u2014 \u8de8\u8282\u70b9\u9762\u79ef\u56de\u5f52\u6d4b\u8bd5",
+  "verification_commands": {
+    "test_area_cross_node": {
+      "command": "uv run pytest sim/tests/test_area_cross_node.py -q",
+      "returncode": 0,
+      "stdout_last_lines": [
+        "............................                                             [100%]"
+      ],
+      "stderr_last_lines": []
+    },
+    "test_memory_ppa_and_backend": {
+      "command": "uv run pytest sim/tests/test_memory_ppa.py sim/tests/test_memory_backend.py -q",
+      "returncode": 0,
+      "stdout_last_lines": [
+        "........................................................................ [ 61%]",
+        "..............................................                           [100%]"
+      ],
+      "stderr_last_lines": []
+    },
+    "ruff": {
+      "command": "uv run ruff check sim/tests/test_area_cross_node.py sim/tests/oracles/ppa.py",
+      "returncode": 0,
+      "stdout": "All checks passed!",
+      "stderr": ""
+    },
+    "basedpyright": {
+      "command": "uv run basedpyright sim/tests/test_area_cross_node.py sim/tests/oracles/ppa.py",
+      "returncode": 0,
+      "stdout": "0 errors, 0 warnings, 0 notes",
+      "stderr": ""
+    }
+  },
+  "node_scale_reference": {
+    "7.0nm": {
+      "oracle": 1.0,
+      "ppa_model": 1.0
+    },
+    "12.0nm": {
+      "oracle": 2.7,
+      "ppa_model": 2.7
+    },
+    "22.0nm": {
+      "oracle": 9.877551020408163,
+      "ppa_model": 9.877551020408163
+    },
+    "28.0nm": {
+      "oracle": 16.0,
+      "ppa_model": 16.0
+    }
+  },
+  "sample_area_mm2": {
+    "config": "128x128 array, 512KB L1, 2MB L2, LPDDR5-6400 4GB",
+    "matrix": {
+      "systolic": {
+        "7.0nm": 27.0,
+        "12.0nm": 43.7,
+        "22.0nm": 105.6,
+        "28.0nm": 159.4
+      },
+      "block": {
+        "7.0nm": 29.0,
+        "12.0nm": 49.1,
+        "22.0nm": 125.4,
+        "28.0nm": 191.4
+      },
+      "os_systolic": {
+        "7.0nm": 29.0,
+        "12.0nm": 49.1,
+        "22.0nm": 125.4,
+        "28.0nm": 191.4
+      },
+      "input_stationary": {
+        "7.0nm": 29.0,
+        "12.0nm": 49.1,
+        "22.0nm": 125.4,
+        "28.0nm": 191.4
+      },
+      "tensor_core": {
+        "7.0nm": 29.0,
+        "12.0nm": 49.1,
+        "22.0nm": 125.4,
+        "28.0nm": 191.4
+      },
+      "wmma": {
+        "7.0nm": 31.0,
+        "12.0nm": 54.5,
+        "22.0nm": 145.1,
+        "28.0nm": 223.4
+      },
+      "gmma": {
+        "7.0nm": 32.0,
+        "12.0nm": 57.2,
+        "22.0nm": 155.0,
+        "28.0nm": 239.4
+      },
+      "fsa": {
+        "7.0nm": 27.2,
+        "12.0nm": 44.3,
+        "22.0nm": 107.6,
+        "28.0nm": 162.6
+      }
+    }
+  },
+  "sram_heavy_vs_light_mm2_diff": {
+    "config": "block engine, 128x128, 8MB L2 vs 512KB L2",
+    "diffs": {
+      "7.0nm": 3.9,
+      "12.0nm": 10.7,
+      "22.0nm": 13.3,
+      "28.0nm": 18.4
+    }
+  }
+}

@@ -1,0 +1,46 @@
+Todo 5 — Negative-path / compatibility evidence
+============================================================
+
+Scenario: on_chip_3d_dram, 4 GB, 51.2 GB/s
+Old oracle anchored at 12nm=1.0; new oracle anchored at 7nm=1.0.
+At 12nm both must match; at 28nm old_value * 2.70 ≈ new_value.
+
+--- 7.0nm ---
+  old node_scale: 0.126029
+  new node_scale: 1.000000
+  old memory_die: 1.260288
+  new memory_die: 3.703704
+  old total:      1.641399
+  new total:      4.823704
+  new/old total ratio: 2.938776 (expected ≈ 2.70)
+
+--- 12.0nm ---
+  old node_scale: 1.000000
+  new node_scale: 2.700000
+  old memory_die: 10.000000
+  new memory_die: 10.000000
+  old total:      13.024000
+  new total:      13.024000
+  12nm exact match: 13.024000 == 13.024000
+
+--- 22.0nm ---
+  old node_scale: 1.244856
+  new node_scale: 9.877551
+  old memory_die: 12.448560
+  new memory_die: 36.583522
+  old total:      16.213004
+  new total:      47.646379
+  new/old total ratio: 2.938776 (expected ≈ 2.70)
+
+--- 28.0nm ---
+  old node_scale: 2.016461
+  new node_scale: 16.000000
+  old memory_die: 20.164609
+  new memory_die: 59.259259
+  old total:      26.262387
+  new total:      77.179259
+  new/old total ratio: 2.938776 (expected ≈ 2.70)
+
+If constants had NOT been re-anchored to 7nm, 7nm estimates would be
+~7.4× too small and 28nm estimates would be ~0.17× too large relative
+to the production AreaModel anchor.

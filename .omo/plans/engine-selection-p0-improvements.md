@@ -273,7 +273,7 @@ Note: C3 (Todos 10-12) functionally benefits from C2 (Todos 6-9), but can execut
 
   **Commit**: YES | `fix(contracts,calibration): remove non-12nm loss guard and expand calibration params` | `sim/contracts/legacy_result.py`, `references/calibration/parameters.yaml`, `sim/calibration/evaluate.py`, `references/area_sources.md`
 
-- [ ] 5. 跨节点面积回归测试
+- [x] 5. 跨节点面积回归测试
 
   **What to do**:
   1. 新建 `sim/tests/test_area_cross_node.py`，对 4 个节点 × 所有 8 个 engine 验证：

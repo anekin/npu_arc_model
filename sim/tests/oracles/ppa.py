@@ -12,20 +12,23 @@ The oracle models:
 * leakage ∝ capacity;
 * dynamic energy ∝ read/write bytes;
 * active power = energy / time;
-* TSMC 12nm density ratio of 2.70× (not the old 2.94×).
+* TSMC 7nm area baseline with 12FFC density ratio of 2.70× (not the old 2.94×).
 """
 
 from __future__ import annotations
 
 from typing import Literal
 
-NODE_DENSITY_RATIO_12NM = 2.70  # TSMC 12FFC density ratio vs 7nm baseline
+# TSMC 12FFC density ratio vs 7nm baseline.  Oracle constants were originally
+# anchored at 12nm; they are re-anchored to 7nm by dividing by this ratio so
+# that _node_scale(12.0) == 2.70 and _node_scale(7.0) == 1.0.
+_NODE_DENSITY_RATIO_12NM_TO_7NM = 2.70
 
-# Baseline macro parameters @ 12nm (engineering assumptions — see memory_macros.yaml).
-_MEMORY_DIE_AREA_PER_GB_MM2 = 2.5
-_TSV_AREA_PER_GBPS_MM2 = 0.02
-_PHY_AREA_FIXED_MM2 = 5.0
-_PACKAGE_AREA_FIXED_MM2 = 2.0
+# Baseline macro parameters @ 7nm (engineering assumptions — see memory_macros.yaml).
+_MEMORY_DIE_AREA_PER_GB_MM2 = 2.5 / _NODE_DENSITY_RATIO_12NM_TO_7NM
+_TSV_AREA_PER_GBPS_MM2 = 0.02 / _NODE_DENSITY_RATIO_12NM_TO_7NM
+_PHY_AREA_FIXED_MM2 = 5.0 / _NODE_DENSITY_RATIO_12NM_TO_7NM
+_PACKAGE_AREA_FIXED_MM2 = 2.0 / _NODE_DENSITY_RATIO_12NM_TO_7NM
 _LEAKAGE_PER_GB_W = 0.05
 _READ_ENERGY_PER_BYTE_J = 2e-12
 _WRITE_ENERGY_PER_BYTE_J = 3e-12
@@ -56,7 +59,7 @@ def memory_ppa_oracle(
     if active_time_seconds <= 0:
         raise ValueError("active_time_seconds must be positive")
 
-    # Node scale relative to 12nm baseline; oracle anchors at 12nm = 1.0.
+    # Node scale relative to 7nm baseline; oracle anchors at 7nm = 1.0.
     node_scale = _node_scale(process_node_nm)
 
     # Component inclusion depends on tier type.
@@ -100,16 +103,16 @@ def memory_ppa_oracle(
 
 
 def _node_scale(process_node_nm: float) -> float:
-    """Return area scale relative to 12nm baseline.
+    """Return area scale relative to 7nm baseline.
 
-    Uses the density ratio 2.70× for 12nm vs 7nm; other nodes keep the
-    conventional quadratic scaling so the oracle remains closed-form.
+    Mirrors ``engine.ppa_model._node_scale_factor``: 7nm = 1.0, 12nm uses the
+    TSMC 12FFC density ratio 2.70×, and all other nodes use conventional
+    quadratic geometric scaling.
     """
     if process_node_nm == 12.0:
-        return 1.0
-    # 12nm vs 7nm density ratio is 2.70, so area at 7nm = area_at_12nm / 2.70.
-    # Scale = (node / 12nm)^2 adjusted so node=7 gives 1/2.70.
-    return (process_node_nm / 12.0) ** 2 / NODE_DENSITY_RATIO_12NM
+        return 2.70
+    # Fall back to conventional geometric scaling for other nodes; 7nm = 1.0.
+    return (process_node_nm / 7.0) ** 2
 
 
 def _component_flags(
