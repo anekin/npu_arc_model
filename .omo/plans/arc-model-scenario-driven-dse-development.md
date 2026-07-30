@@ -353,7 +353,7 @@ Critical path: `1 → (2,3) → 4 → (5,6) → 7 → (8 → 12, 10 → 11) → 
 
   **Commit**: YES | `test(engine): add independent physical invariant matrix` | `sim/tests/oracles/__init__.py`, `sim/tests/oracles/physics.py`, `sim/tests/test_engine_physical_invariants.py`, `sim/tests/test_engine_invalid_inputs.py`
 
-- [ ] 4. 统一 engine registry、result、输入和 diagnostic 契约
+- [x] 4. 统一 engine registry、result、输入和 diagnostic 契约
 
   **What to do**:
   1. 新建 `sim/engine/registry.py`，以单一 registry 注册全部 8 engine；factory、DSE、npu_sim choices、report iteration 全部从 registry 派生。
@@ -1038,7 +1038,7 @@ Critical path: `1 → (2,3) → 4 → (5,6) → 7 → (8 → 12, 10 → 11) → 
 
   **Commit**: YES | `feat(calibration): bind model parameters to evidence and trust levels` | `sim/calibration/__init__.py`, `sim/calibration/schema.py`, `sim/calibration/registry.py`, `sim/calibration/evaluate.py`, `references/calibration/parameters.yaml`, `references/calibration/raw/README.md`, `references/calibration/raw/SHA256SUMS`, `scripts/calibrate_mxu_model.py`, `sim/tests/test_calibration_registry.py`, `sim/tests/test_calibration_evaluate.py`
 
-- [ ] 18. 完成全矩阵验收、文档迁移和发布证据
+- [x] 18. 完成全矩阵验收、文档迁移和发布证据
 
   **What to do**:
   1. 新建 `sim/validation/scenario_matrix.py` 与 `scripts/release_gate.py`，聚合：
@@ -1110,7 +1110,7 @@ Critical path: `1 → (2,3) → 4 → (5,6) → 7 → (8 → 12, 10 → 11) → 
 
 > Runs in parallel. ALL must return machine-readable `verdict=APPROVE` with exit code 0. Results are surfaced to the user after completion; user acknowledgement is not a technical acceptance dependency.
 
-- [ ] F1. Plan compliance audit
+- [x] F1. Plan compliance audit
 
   Verify every Todo 1–18 acceptance criterion against actual files/evidence/commits; reject missing evidence, skipped blocking tests, stale artifacts, untracked implementation files, or scope substitutions.
 
@@ -1123,7 +1123,7 @@ Critical path: `1 → (2,3) → 4 → (5,6) → 7 → (8 → 12, 10 → 11) → 
 
   **APPROVE iff** exit code 0、Todos/F1-F4 schema 可解析、Todo 1–18 每项有匹配 commit/evidence、所有 recorded commands exit 0、blocking skipped/xfail=0、artifact/config/lock digests 校验通过。
 
-- [ ] F2. Code quality and model-integrity review
+- [x] F2. Code quality and model-integrity review
 
   Review typed boundaries, module size/cohesion, error handling, unit consistency, all engine formulas, residency/PPA conservation, scheduler determinism, security/path handling and legacy adapters；运行：
 
@@ -1141,7 +1141,7 @@ Critical path: `1 → (2,3) → 4 → (5,6) → 7 → (8 → 12, 10 → 11) → 
 
   **APPROVE iff** 全部命令 exit 0、blocking skip/xfail=0，且 verifier 输出 `.omo/evidence/final-f2-code-quality.json` 中 `verdict=APPROVE`、`clamps/unregistered_constants/duplicate_registries/fail_open_paths/legacy_unit_reads/diagnostic_skips=[]`。
 
-- [ ] F3. Real CLI/scenario/replay QA
+- [x] F3. Real CLI/scenario/replay QA
 
   In a clean detached checkout run legacy npu_sim/DSE/model-zoo, every new workload family, ci-all-axes, full shard aggregation, experimental release and replay：
 
@@ -1157,7 +1157,7 @@ Critical path: `1 → (2,3) → 4 → (5,6) → 7 → (8 → 12, 10 → 11) → 
 
   **APPROVE iff** exit 0，结构化结果中 `legacy_failures=[]`、`workload_failures=[]`、`coverage.missing=[]`、`errors=0`、`replay_digest_match=true`、`experimental_gate=pass`，并实际产生可校验 release bundle。
 
-- [ ] F4. Scope and evidence fidelity
+- [x] F4. Scope and evidence fidelity
 
   Audit diff against Must have/Must NOT have：
 

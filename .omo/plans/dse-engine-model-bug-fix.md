@@ -241,7 +241,7 @@ Final wave (after ALL todos, parallel review)
          except Exception as e:
              errors += 1
              engine_type = cfg.get("mac_engine", {}).get("type", "unknown")
-             dims = f"H={cfg.get('mac_engine',{}).get('array_height','?')}xW={cfg.get('mac_engine',{}).get('array_width','?')}"
+             dims = f"H={cfg.get('mac_engine', {}).get('array_height', '?')}xW={cfg.get('mac_engine', {}).get('array_width', '?')}"
              mem_mode = "on_chip" if cfg.get("on_chip_memory", {}).get("capacity_gb", 0) > 0 else "external"
              error_details.append(f"[{engine_type}] {dims} {mem_mode}: {e}")
              print(f"ERROR [{engine_type}] {dims} {mem_mode}: {e}", file=sys.stderr)
@@ -344,12 +344,12 @@ Final wave (after ALL todos, parallel review)
   2. 修改 `sim/engine/systolic_engine.py:82-84`：
      ```python
      # BEFORE:
-     pipeline_drain = self.H + self.H            # line 83: always 2H (WRONG)
+     pipeline_drain = self.H + self.H  # line 83: always 2H (WRONG)
      per_m_tile_compute = pipeline_fill + pipeline_drain  # line 84
 
      # AFTER:
      if M_tiles == 1 and M < self.H:
-         per_m_tile_compute = pipeline_fill + M   # partial tile
+         per_m_tile_compute = pipeline_fill + M  # partial tile
      else:
          per_m_tile_compute = pipeline_fill + self.H  # full tile
      ```
@@ -405,7 +405,9 @@ Final wave (after ALL todos, parallel review)
      ```python
      # 完整公式（复刻 block_engine.py:115-136）：
      total_weight_bytes = K * N * self.w_bits // 8
-     weight_dram_eff = self._dram_eff_for_bytes(total_weight_bytes)  # 注意：函数内部自行做 bytes→MB 转换，不要额外除 1024*1024
+     weight_dram_eff = self._dram_eff_for_bytes(
+         total_weight_bytes
+     )  # 注意：函数内部自行做 bytes→MB 转换，不要额外除 1024*1024
      weight_load_cycles = total_weight_bytes / (self.eff_bw * weight_dram_eff)
      act_bytes_per_token = K * self.a_bits // 8
      act_load_cycles = M * act_bytes_per_token / self.eff_bw
