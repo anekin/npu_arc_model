@@ -643,6 +643,28 @@ The empty frontier was caused by the AUTHORITATIVE hard gate in `sim/dse/pareto.
   by SRAM (~3.4×). For SRAM-light engines with larger PE arrays, the ratio should approach
   16×. This should be verified with a wider coverage sweep.
 
+# F1 — Fix verify_evidence_ledger.py false positive in _extract_test_counts()
+
+**Date:** 2026-07-30
+
+## What was done
+
+- Fixed a regex false positive in `scripts/verify_evidence_ledger.py:_extract_test_counts()`.
+- The `failed` pattern `r"(\d+)\s+failed"` incorrectly matched `complete=66 failed=0` in DSE CLI output as `failed=66`, because there is a digit sequence `66` followed by whitespace then the word `failed` — the regex doesn't care that the word `failed` is a key in a `key=value` pair rather than a pytest count.
+- Fix: added negative lookahead `(?!\s*=\s*\d)` to reject `key=value` patterns. The regex now correctly skips `failed=0` and does not populate `result["failed"]` for that evidence file.
+- Re-ran F1: `verify_evidence_ledger.py` exits 0 with `verdict: PASS` and empty `non_zero_exit_evidence`.
+
+## Key findings
+
+1. **The `_extract_test_counts()` regex is a best-effort heuristic** — it treats `DIGITS SPACES keyword` as pytest output. DSE CLI lines like `evaluated=66 complete=66 failed=0 frontier=0` happen to match the pattern for `failed` because `complete=66` provides the digit prefix `66`.
+2. **The fix is a 1-line regex change** with a negative lookahead that rejects the `key=value` follow-on pattern (`=digits`). The same vulnerability exists for `passed`, `skipped`, and `collected` patterns but has not caused failures — left unchanged per surgical-change discipline.
+3. **The cascade is correct** — without a `failed` key, `inspect_evidence()` on line 116 uses `counts.get("failed", 0) > 0` which evaluates to False, so `exit_code` defaults to 0 (no explicit exit code marker found either). This is the correct behavior for successful DSE output.
+
+## Verification
+
+- `uv run python scripts/verify_evidence_ledger.py --plan .omo/plans/engine-selection-p0-improvements.md --evidence-root .omo/evidence --output .omo/evidence/final-p0-f1-plan-compliance.json` → exit 0, `verdict: PASS`, zero non-zero exits.
+- The JSON output shows `failed` key removed from task-11 negative evidence test_counts, and `exit_code` is now 0.
+
 # Todo 15 — 更新决策级文档
 
 **Date:** 2026-07-30
@@ -654,6 +676,55 @@ The empty frontier was caused by the AUTHORITATIVE hard gate in `sim/dse/pareto.
   - Added "SRAM Bitcell 数据溯源" section with bitcell provenance from `sim/contracts/bitcell.py` and external calibration (TPUv1/RK1828).
   - Added "基于访问模式的 DRAM 效率方法论" section documenting sequential vs random efficiency model.
   - Updated decision-grade status to reflect continued FAIL with explicit reasons (WMMA/GMMA PE ratio T0, multi-node coverage exploratory).
+
+# F3 Final QA Gate — release_gate.py experimental profile
+
+**Date:** 2026-07-30
+
+## Gate execution
+
+```
+uv run python scripts/release_gate.py \
+  --profile experimental \
+  --clean-checkout \
+  --exercise-legacy \
+  --exercise-all-workloads \
+  --space ci-all-axes \
+  --output .omo/evidence/final-p0-f3-manual-qa.json
+```
+
+**Evidence:** `.omo/evidence/final-p0-f3-manual-qa.json` (959 lines, 19,044 bytes)
+
+## Verdict: APPROVE
+
+All 8 pass criteria met:
+
+| Criterion | Required | Actual | Status |
+|:---|:---|:---|:---|
+| `verdict` | PASS | `"PASS"` | ✅ |
+| `legacy_failures` | `[]` | `[]` | ✅ |
+| `workload_failures` | `[]` | `[]` | ✅ |
+| `coverage.missing` | `{}` or all axes `missing=[]` | All 23 axes have `missing: []` | ✅ |
+| `coverage.counts.failed` | 0 | 0 | ✅ |
+| `coverage.counts.successful` | == evaluated | 64/64 | ✅ |
+| `errors` | 0 | 0 | ✅ |
+| `experimental_gate` | `"pass"` | `"pass"` | ✅ |
+
+## Additional checks
+
+- **`replay_digest_match`**: `true` — build repro artifact digests match.
+- **Engine coverage**: All 8 engines evaluated successfully (block, fsa, gmma, input_stationary, os_systolic, systolic, tensor_core, wmma).
+- **Process node coverage**: All 4 nodes evaluated (7, 12, 22, 28 nm).
+- **Scenario constraint**: `scenario_bandwidth_match` correctly excluded non-applicable bandwidth values (only 51.2 GB/s for `lpddr5_3b`).
+- **LPDDR5 constraint**: `lpddr5_no_onchip` correctly excluded on-chip DRAM values (capacity > 0, width=1024, on_chip_bw=100/500/1000).
+- **Exclusions**: All constrained by registered reason codes (no ad-hoc filtering).
+
+## Notes
+
+- The gate was run against a **clean checkout** (`/tmp/arc-release-xkgsqk_w/npu_arc_model`) with `uv sync --frozen`.
+- 64 design points generated, 64 evaluated, 0 failed — 100% successful evaluation rate.
+- 23 axes present in coverage report, all with complete successful/total correspondence.
+- The `old_node_sram_l2_limit` constraint (8192 KB @ 28/22 nm) was not triggered in this run because the scenario defaults to 7nm primary process node, and ci-all-axes at 22/28nm only produces 1 config each (block engine, 2048 KB L2 — below the 4096 KB exclusion threshold).
 
 - Updated `README.md`:
   - Replaced 2.94× (geometric) with 2.70× (TSMC 12FFC density ratio) in process node decision row.
@@ -680,3 +751,176 @@ The empty frontier was caused by the AUTHORITATIVE hard gate in `sim/dse/pareto.
 - `uv run ruff check .` — passed (no Python changes in this todo).
 - `grep -n "2.94" README.md docs/model-trust-and-release.md references/area_sources.md` — 0 matches.
 - Evidence files created and validated.
+
+# F4 — Scope and Evidence Fidelity Verification
+
+**Date:** 2026-07-30
+
+## What was done
+
+- Ran `scripts/verify_scope.py` with baseline commit `ae3eac0802ad74d9c03683486c8fcb8c31107326` (merge-base HEAD vs origin/main).
+- Checked against `docs/publication-manifest.yaml`.
+- Output written to `.omo/evidence/final-p0-f4-scope-fidelity.json`.
+
+## Results
+
+- **verdict**: `PASS`
+- **exit code**: 0
+- **forbidden_dependencies**: `[]` (no PyTorch, ROS, Ramulator, DRAMSim in pyproject.toml or uv.lock)
+- **ultraresearch_changes**: `[]` (`.omo/ultraresearch/20260723-vla-models/sources/` is NOT staged)
+- **historical_report_changes**: `[]` (no changes to `reports/dse-engine-model-bugs-2026-07-27.md` or `reports/dse-engine-model-bugs-postfix-2026-07-27.md`)
+- **unbound_current_claims**: `[]` (`current_recommendations` list is empty, so nothing is unbound)
+- **violations**: `[]`
+
+## Noted observations
+
+- **out_of_scope_paths**: 5 paths flagged — `.omo/boulder.json`, `.omo/plans/engine-selection-p0-improvements.md`, `README.md`, `references/area_sources.md`, `references/calibration/parameters.yaml`. These are expected and intentional: the plan file itself, README updates (Todo 15), references updates (Todo 1, 4, 15), and the boulder state file. None are hard violations and all are documented in the plan's scope boundaries.
+- **git_status** shows untracked F1 and F2 evidence files (`.omo/evidence/final-p0-f1-plan-compliance.json`, `.omo/evidence/final-p0-f2-code-quality.txt`) — these are evidence from other verification waves, not scope violations.
+- **changed_paths** covers 93 files across `.omo/`, `sim/`, `scripts/`, `docs/`, `references/`, and `README.md` — all within the plan's expected modification set.
+
+## Verdict
+
+**APPROVE** — all four required-empty fields are empty (`forbidden_dependencies`, `ultraresearch_changes`, `historical_report_changes`, `unbound_current_claims`), exit code 0, verdict PASS. No scope violations detected.
+
+# F1 — Plan Compliance Audit (evidence-ledger verification)
+
+**Date:** 2026-07-30
+
+## What was done
+
+- Ran `scripts/verify_evidence_ledger.py` against `.omo/plans/engine-selection-p0-improvements.md`.
+- Evidence root: `.omo/evidence/`.
+- Output file: `.omo/evidence/final-p0-f1-plan-compliance.json`.
+
+## Raw results
+
+- **Script exit code**: 1
+- **verdict**: `FAIL` (in output JSON)
+- **todos_checked**: 19 (15 implementation todos + F1-F4)
+- **missing_evidence**: `[]` — NO missing evidence
+- **non_zero_exit_evidence**: 1 item reported
+  - `"11: .omo/evidence/task-11-engine-selection-p0-cross-validate-negative.txt exit=1"`
+- **expected_red_evidence**: 2 items (both Todo 5 TDD red-phase artifacts, excluded from blocking)
+  - `"5: .omo/evidence/task-5-bandwidth-detail.json exit=1"`
+  - `"5: .omo/evidence/task-5-verify.json exit=1"`
+
+## Root-cause analysis of the single non-zero-exit detection
+
+**This is a false positive.** The evidence file `.omo/evidence/task-11-engine-selection-p0-cross-validate-negative.txt` contains the line:
+
+```
+  evaluated=66 complete=66 failed=0 frontier=0
+```
+
+The script's `_extract_test_counts()` function uses regex `(\d+)\s+failed` to count failures. This regex greedily captures `66` from `complete=66` followed by ` failed=0`, producing `test_counts: {"failed": 66}` and inferring `exit_code: 1`. The actual meaning is `failed=0` (zero DSE design point failures). All 5 negative test scenarios in the file show PASS with exit 0. The DSE CLI exits 0.
+
+**The script has a regex ambiguity bug**: it cannot distinguish between `complete=66 failed=0` (66 complete, 0 failed) and a genuine `66 failed` result.
+
+## Evidence-per-todo summary
+
+| Todo | Evidence files | Commit found | Issues |
+|------|---------------|-------------|--------|
+| 1 | 7 files (bitcell test + calibration gate) | `356863f` — `feat(contracts): add SRAM bitcell area lookup table` | None |
+| 2 | 4 files (AreaModel refactor + schema roundtrip) | `bd64b93` — `refactor(ppa): separate SRAM bitcell from logic node-scale` | None |
+| 3 | 6 files (hardcode fix + 2 expected-red files) | `f40184e` — `fix(ppa,dse): remove hardcoded 12nm` | None |
+| 4 | 6 files (legacy_result + calibration params) | `c53d40a` — `fix(contracts,calibration): remove non-12nm loss guard` | None |
+| 5 | 10 files (cross-node area regression + 2 expected-red TDD artifacts) | `0502813` — `test(ppa): add cross-node area regression` | 2 expected-red files correctly excluded |
+| 6 | 8 files (MemoryAccessPattern + access_type) | `7275f3c` — `feat(memory): add access_type to MemoryAccessPattern` | None |
+| 7 | 8 files (DRAM efficiency audit + implementation) | `bb48c56` — `feat(engine): implement access-pattern DRAM efficiency` | None |
+| 8 | 9 files (kv_cache two-layer model) | `4de8bf1` — `fix(kv_cache): split KV cost into bandwidth + latency` | None |
+| 9 | 8 files (DRAM access pattern validation tests) | `c96abdd` — `test(dram): add access-pattern sensitivity and coverage` | None |
+| 10 | 11 files (new scenarios + DSE runs) | `5ca0aaa` — `feat(scenarios): add lpddr5x_7b and hbm2e_7b` | None |
+| 11 | 10 files (cross-validation wiring + DSE) | `d7fd73b` — `fix(dse): wire new scenarios into cross-validation` | **FALSE POSITIVE** on negative file (see root cause above) |
+| 12 | 7 files (ranking matrix + DSE) | `ed7eb86` — `fix(dse): restore non-empty Pareto frontier and bind scenario bandwidth` | Commit message differs from plan template but evidence committed |
+| 13 | 9 files (process_node DSE axis) | `39020d4` — `feat(dse): add process_node as scannable DSE axis` | None |
+| 14 | 8 files (cross-node DSE + ranking matrix) | `79e4883` — `fix(dse): propagate process_node to AreaModel/PowerModel in runner` | Commit message differs from plan template but evidence committed |
+| 15 | 7 files (docs update + ruff) | `00f579d` — `docs(release): update engine selection conclusions` | None |
+| F1-F4 | 8 files | Various commits | F1-F4 all show evidence present with exit=0 |
+
+## Git commit coverage
+
+- All 15 todos have corresponding commits.
+- Todos 12 and 14 used more accurate commit messages than the plan template (e.g., `fix(dse): restore non-empty Pareto frontier` instead of `evidence(dse): collect 5-scenario engine ranking comparison`). The evidence files are properly committed.
+- No orphaned evidence — every file under `.omo/evidence/` maps to a named task pattern.
+
+## Verdict
+
+**APPROVE** — The single `non_zero_exit_evidence` detection is a regex false positive (`_extract_test_counts()` conflates `complete=66 failed=0` with `66 failed`). The actual evidence file shows all 5 negative tests passing with exit 0 and DSE `failed=0`. All 15 todos have matching evidence files and commits. No evidence is missing. The two expected-red TDD artifacts in Todo 5 are correctly excluded. The script should be fixed to handle `key=value` patterns (e.g., `failed=0`), but the evidence is clean.
+
+# F2 — Code Quality and Model-Integrity Review
+
+**Date:** 2026-07-30
+
+## What was done
+
+- Ran Final Verification Wave F2 commands:
+  1. `ruff format --check .` — found 16 unformatted files
+  2. `ruff check .` — all checks passed
+  3. `basedpyright` — 0 errors, 4 pre-existing warnings, 0 notes
+  4. `pytest` (4 test files) — all tests passed, 0 fail/skip/xfail
+  5. `scripts/verify_model_integrity.py` — verdict=PASS, all violation arrays empty
+- Output captured to `.omo/evidence/final-p0-f2-code-quality.txt` and `.omo/evidence/final-p0-f2-code-quality.json`.
+
+## Results
+
+| Check | Exit code | Verdict |
+|:---|:---|:---|
+| `ruff format --check` | 1 | 16 files would be reformatted (cosmetic only) |
+| `ruff check` | 0 | All checks passed |
+| `basedpyright` | 0 | 0 errors, 4 warnings (pre-existing) |
+| `pytest` (4 files) | 0 | All `.` dots, no `s`/`x`/`F`/`E` — 0 skip/xfail |
+| `verify_model_integrity.py` | 0 | verdict=PASS |
+
+## Key findings
+
+1. **ruff format --check non-zero is styling only.** The 16 unformatted files differ in line-wrapping and inline-comment indentation. No semantic changes. The DSE runner, test files, engine files, and calibration script all have minor wrapping inconsistencies that `ruff format` would auto-fix. Per task rules, no code was modified.
+
+2. **ruff check is clean.** Zero lint violations across the entire codebase.
+
+3. **basedpyright is clean.** 0 errors. The 4 warnings are pre-existing unused expressions in `sd_unet_trace.py`, `sfu.py`, and `sw_overhead_eval.py` — none introduced by this P0 improvement cycle.
+
+4. **All tests pass with 0 skip/xfail.** The pytest progress bar shows exclusively `.` characters through 100%. No `s` (skip), `x` (xfail), `F` (fail), or `E` (error) indicators. The four test files (`test_engine_physical_invariants.py`, `test_area_cross_node.py`, `test_dram_access_pattern.py`, `test_memory_ppa.py`) collectively exercise engine physical contracts, cross-node area monotonicity, DRAM access-pattern routing, and memory PPA correctness.
+
+5. **Model integrity PASS with zero violations.** The `verify_model_integrity.py` script checked:
+   - `violations` = `[]` (no schema/model contract violations)
+   - `utilization_clamps` = `[]` (no utilization > 1.0 needing clamping)
+   - `legacy_unit_reads` = `[]` (no legacy unit reads detected)
+   - `diagnostic_skips` = `[]` (no diagnostics skipped)
+   - `duplicate_registries` = `[]` (no duplicate registry entries)
+   - `unregistered_constants` = `[]` (no unregistered magic constants)
+   - `fail_open_paths` = `[]` (no fail-open error paths)
+   - `utilization_bound_violations` = `[]` (no utilization-bound violations)
+
+## Verdict
+
+**APPROVE** — All substantive checks pass (ruff lint, basedpyright, pytest, model integrity). The ruff format exit code 1 is cosmetic only (16 files with non-compliant line wrapping). No skip/xfail in the test suite. The `verify_model_integrity.py` verdict is PASS with zero violations across all 8 categories.
+
+# F2 Follow-up — Fix ruff formatting + Re-verify
+
+**Date:** 2026-07-30
+
+## What was done
+
+1. **Applied `ruff format .`** — auto-reformatted all 16 flagged files.
+2. **Re-ran the full F2 command sequence** and captured to `.omo/evidence/final-p0-f2-code-quality.txt` and `.omo/evidence/final-p0-f2-code-quality.json`.
+3. **Committed** with message `style: auto-format 16 files with ruff format (fixes F2 formatting check)`.
+
+## Results
+
+| Check | Exit code | Verdict |
+|:---|:---|:---|
+| `ruff format --check .` | 0 | 300 files already formatted |
+| `ruff check .` | 0 | All checks passed |
+| `basedpyright` | 0 | 0 errors |
+| `pytest` (4 files) | 0 | all passed |
+| `verify_model_integrity.py` | 0 | verdict=PASS |
+
+## Key findings
+
+1. **All 16 files corrected by one `ruff format .` pass.** No manual edits needed. The only differences were line-wrapping and inline-comment indentation — purely cosmetic.
+2. **All substantive checks remain passing** after formatting. No regression introduced.
+3. **Files reformatted:** `reports/arc-model-dse-hbc-memory-wall-research-2026-07-28.md`, `scripts/p0_c1_sram_calibration_gate.py`, `sim/calibration/evaluate.py`, `sim/contracts/bitcell.py`, `sim/dse/runner.py`, `sim/engine/fsa_engine.py`, `sim/engine/gmma_engine.py`, `sim/engine/is_systolic_engine.py`, `sim/engine/systolic_engine.py`, `sim/engine/tensor_core_engine.py`, `sim/engine/wmma_engine.py`, `sim/tests/test_area_cross_node.py`, `sim/tests/test_bitcell_table.py`, `sim/tests/test_dram_access_pattern.py`, `sim/tests/test_dse_space.py`, `sim/tests/test_memory_access_pattern.py`.
+
+## Verdict
+
+**FIXED** — F2 now passes all 5 checks with exit 0.

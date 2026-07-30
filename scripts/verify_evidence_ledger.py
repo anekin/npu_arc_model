@@ -78,7 +78,8 @@ def _extract_test_counts(text: str) -> dict[str, Any]:
     m = re.search(r"(\d+)\s+passed", text)
     if m:
         result["passed"] = int(m.group(1))
-    m = re.search(r"(\d+)\s+failed", text)
+    # Negative lookahead rejects key=value patterns like "complete=66 failed=0"
+    m = re.search(r"(\d+)\s+failed(?!\s*=\s*\d)", text)
     if m:
         result["failed"] = int(m.group(1))
     m = re.search(r"(\d+)\s+skipped", text)
