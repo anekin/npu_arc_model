@@ -648,6 +648,38 @@ def _build_v2_output(
     return dsr.model_dump()
 
 
+def _resolve_cv_scenario(
+    best_config: dict,
+    base_cfg: dict,
+    seq_len_override: int | None = None,
+) -> str:
+    """Resolve cross-validation scenario from the best config's memory type.
+
+    Args:
+        best_config: The winning (best tok/s) configuration dict.
+        base_cfg: The base design-space YAML config (for seq_len fallback).
+        seq_len_override: Explicit seq_len (if provided, overrides base_cfg lookup).
+
+    Returns:
+        Scenario name string (e.g. "lpddr5_3b", "onchip_7b", "hbm2e_7b").
+    """
+    mem_type = best_config.get("memory", {}).get("type", "").lower()
+    if seq_len_override is not None:
+        seq_len = seq_len_override
+    else:
+        seq_len = int(base_cfg.get("workload", {}).get("seq_len", base_cfg.get("seq_len", 128)))
+    if mem_type.startswith("on_chip_3d_dram"):
+        return "onchip_7b" if seq_len > 256 else "onchip_7b_chat"
+    if mem_type.startswith("hbm2e"):
+        return "hbm2e_7b"
+    if mem_type.startswith("lpddr5x"):
+        return "lpddr5x_7b"
+    if mem_type.startswith("lpddr5"):
+        return "lpddr5_3b"
+    # Fallback: default to lpddr5_3b
+    return "lpddr5_3b"
+
+
 def _resolve_scenario(name: str) -> "Scenario":
     """Resolve a scenario name to a ``scenarios.schema.Scenario``."""
     from scenarios.schema import ArrivalMode, ArrivalPattern, QueuePolicy, Scenario, WorkloadClass
@@ -673,6 +705,12 @@ def _resolve_scenario(name: str) -> "Scenario":
         "cv_yolov8n": "cv-yolov8n",
         "cv_vit_b16": "cv-vit-b16",
         "llm_qwen25_3b": "llm-qwen25-3b",
+        # P0 scenario aliases (cross-validation scenarios)
+        "lpddr5x_7b": "lpddr5x_7b",
+        "hbm2e_7b": "hbm2e_7b",
+        "onchip_7b": "onchip_7b",
+        "onchip_7b_chat": "onchip_7b_chat",
+        "lpddr5_3b": "lpddr5_3b",
     }
     fixture_name = alias_map.get(name)
     if fixture_name is None:
@@ -1121,18 +1159,31 @@ def main():
         from dse_scenario import print_cross_validate as print_cv
 
         best = reasonable[0]
-        # Auto-detect scenario: on-chip if any config has on_chip_memory
-        has_onchip = any(
-            float(configs[i].get("on_chip_memory", {}).get("capacity_gb", 0)) > 0
-            for i in range(min(len(configs), len(results)))
-            if results[i].config_label == best.config_label
-        )
-        scenario = "onchip_7b" if has_onchip else "lpddr5_3b"
+
+        # Resolve scenario: explicit --scenario flag, or auto-detect from config
+        scenario = args.scenario if args.scenario else ""
+        if not scenario:
+            best_config = None
+            for i in range(min(len(configs), len(results))):
+                if results[i].config_label == best.config_label:
+                    best_config = configs[i]
+                    break
+            scenario = _resolve_cv_scenario(best_config, base_cfg) if best_config is not None else "lpddr5_3b"
+
+        tops_int8_map = {
+            "onchip_7b": 6.1,
+            "onchip_7b_chat": 6.1,
+            "hbm2e_7b": 16.4,
+            "lpddr5x_7b": 16.4,
+            "lpddr5_3b": 16.4,
+        }
+        tops_int8 = tops_int8_map.get(scenario, 16.4)
+
         cv = cv_func(
             {
                 "process_nm": int(base_cfg.get("area_model", {}).get("process_node", 12)),
                 "area_mm2": best.area_mm2,
-                "tops_int8": 6.1 if has_onchip else 16.4,  # scenario-dependent typical values
+                "tops_int8": tops_int8,
                 "tok_s": best.tok_s,
             },
             scenario,

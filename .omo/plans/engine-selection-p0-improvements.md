@@ -478,7 +478,7 @@ Note: C3 (Todos 10-12) functionally benefits from C2 (Todos 6-9), but can execut
 
   **Commit**: YES | `feat(scenarios): add lpddr5x_7b and hbm2e_7b intermediate scenarios` | `sim/config/scenarios.yaml`, `docs/publication-manifest.yaml`
 
-- [ ] 11. 将新场景接入 cross-validation
+- [x] 11. 将新场景接入 cross-validation
 
   **What to do**:
   1. 修改 `sim/design_space_explorer.py:1124-1130`：将 binary auto-detect 替换为基于 memory_type + seq_len 的多路检测。

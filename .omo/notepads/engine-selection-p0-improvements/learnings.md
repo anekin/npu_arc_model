@@ -380,3 +380,45 @@
 - Should the new scenarios have benchmarks defined (like `lpddr5_3b` has Apple A18 ANE and `onchip_7b` has RK1828)?
 - `hbm2e_7b` has `tps_min: 100` — should this be higher given the 410 GB/s bandwidth (vs 68 GB/s for lpddr5x_7b with tps_min=20)?
 - Should the `run_manifests` entries in `publication-manifest.yaml` be updated with `generated_at` timestamps and actual report paths once DSE reports are generated?
+
+# Todo 11 — Cross-validation scenario resolver (multi-way auto-detect)
+
+**Date:** 2026-07-30
+
+## What was done
+
+- Created `_resolve_cv_scenario()` standalone function in `design_space_explorer.py` that maps `memory_type` + `seq_len` to one of 5 scenarios:
+  - `on_chip_3d_dram` + seq_len > 256 → `onchip_7b`
+  - `on_chip_3d_dram` + seq_len ≤ 256 → `onchip_7b_chat`
+  - `hbm2e` → `hbm2e_7b`
+  - `lpddr5x` → `lpddr5x_7b`
+  - `lpddr5` → `lpddr5_3b`
+  - else → `lpddr5_3b` (fallback)
+- Memory type matching is case-insensitive (lowercased) and uses `startswith` to handle vendor-specific suffixes (e.g. "LPDDR5-6400" → `lpddr5`).
+- `lpddr5x` is checked before `lpddr5` to avoid false matches.
+- Replaced the binary `has_onchip` (line 1125-1129) in the legacy cross-validation block with a call to `_resolve_cv_scenario()`.
+- Updated `tops_int8` typical value to a scenario-dependent dict (onchip scenarios get 6.1, all others get 16.4).
+- Updated `_resolve_scenario()` alias map with explicit entries for all 5 P0 scenarios.
+- Added the `--scenario` CLI flag override path in the cross-validation block (accepts explicit override, even though current code flow prevents `--scenario` from reaching the legacy path).
+
+## Verification
+
+- `uv run pytest sim/tests/test_design_space_explorer.py -q` — 25 passed (19 parametrized routing cases + 6 boundary/corner cases).
+- `uv run pytest sim/tests/test_dse_coverage.py sim/tests/test_engine_instantiate.py -q` — 5 passed (no regression).
+- `uv run ruff check sim/design_space_explorer.py sim/tests/test_design_space_explorer.py` — All checks passed.
+- `uv run basedpyright sim/design_space_explorer.py sim/tests/test_design_space_explorer.py` — 0 errors, 0 warnings, 0 notes.
+- `uv run python sim/design_space_explorer.py --scenario hbm2e_7b --space ci-all-axes --result-schema v2` — exit 0, 66/66 evaluated.
+- Happy-path evidence: `.omo/evidence/task-11-engine-selection-p0-cross-validate.json`
+- Negative-path evidence: `.omo/evidence/task-11-engine-selection-p0-cross-validate-negative.txt`
+
+## Key findings
+
+1. **Memory type matching uses `startswith`, not `==`.** The design_space.yaml base config stores memory type as "LPDDR5-6400" (with bandwidth suffix). Using `startswith` after lowercasing ensures "lpddr5-6400" matches `lpddr5` and "LPDDR5X-8533" matches `lpddr5x`.
+
+2. **Order matters: check lpddr5x before lpddr5.** Since `startswith("lpddr5")` also matches "lpddr5x-8533", we must check `lpddr5x` before the more general `lpddr5`.
+
+3. **Legacy backward compatibility preserved.** The default design_space.yaml has `memory.type: LPDDR5-6400`, which lowercased + startswith matches `lpddr5` → resolves to `lpddr5_3b`. This matches the previous behavior where `has_onchip` was always False.
+
+4. **seq_len missing from design_space.yaml — defaults to 128.** The `base_cfg` (design_space.yaml) has no `seq_len` or `workload` key, so the fallback default of 128 is used in the legacy auto-detect path. For the on-chip boundary case, this means the legacy path always routes to `onchip_7b_chat` (never `onchip_7b`) — which is correct since the default sweep doesn't use on-chip memory.
+
+5. **Test coverage is comprehensive.** 25 pytest cases cover all 5 scenario routes, boundary conditions (seq_len=256), case-insensitivity, missing/default seq_len, and the fallback path for unknown memory types.

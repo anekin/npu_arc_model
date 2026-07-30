@@ -1,0 +1,51 @@
+{
+  "task": "11-engine-selection-p0-cross-validate",
+  "scenario_resolver_tests": {
+    "passed": true,
+    "exit_code": 0,
+    "count": 25
+  },
+  "ruff": {
+    "passed": true,
+    "exit_code": 0,
+    "output": "All checks passed!"
+  },
+  "basedpyright": {
+    "passed": true,
+    "exit_code": 0,
+    "output": "0 errors, 0 warnings, 0 notes"
+  },
+  "regression_tests": {
+    "passed": true,
+    "exit_code": 0,
+    "output": ".....                                                                    [100%]"
+  },
+  "cli_hbm2e_7b": {
+    "passed": true,
+    "exit_code": 0,
+    "output": "Scenario DSE: 66 design points (ci-all-axes)\n  evaluated=66 complete=66 failed=0 frontier=0\n\n==========================================================================================\n  Pareto frontier (0 points)\n  design_point_id                                                       tok/s     area    power\n  ------------------------------------------------------------------------------------------"
+  },
+  "scenario_resolver_cases": [],
+  "negative_tests": [
+    {
+      "test": "unknown memory type ddr5 -> lpddr5_3b",
+      "passed": true
+    },
+    {
+      "test": "empty memory type -> lpddr5_3b",
+      "passed": true
+    },
+    {
+      "test": "seq_len=256 boundary -> onchip_7b_chat",
+      "passed": true
+    },
+    {
+      "test": "HBM3 falls back to lpddr5_3b",
+      "passed": true
+    },
+    {
+      "test": "DSE CLI --scenario hbm2e_7b exits 0",
+      "passed": true
+    }
+  ]
+}
