@@ -1,0 +1,21 @@
+Traceback (most recent call last):
+  File "<stdin>", line 45, in <module>
+TypeError: MACEngine._dma_cycles() missing 1 required positional argument: 'access_type'
+=== Negative-path evidence for Todo 9 DRAM access-pattern tests ===
+
+1. Missing access_type on MACEngine._dma_cycles must raise TypeError
+   PASS: TypeError raised for missing access_type
+
+2. DMAModel.estimate_transfer defaults to SEQUENTIAL; RANDOM is strictly more expensive
+   sequential=33, default=33, random=89
+   PASS: default == sequential and random > sequential
+
+3. MACEngine._dma_cycles: SEQUENTIAL < RANDOM and hit < miss
+   sequential=94.11764705882352, random_hit=168.52486805100745, random_miss=208.52486805100745
+   PASS: sequential < random_hit < random_miss
+
+4. Incorrect RANDOM routing for a DMA-bound shape increases engine total_cycles
+   baseline=602, random-routed=717
+   PASS: incorrect random routing increased total_cycles
+
+=== End of negative-path evidence ===

@@ -417,7 +417,7 @@ Note: C3 (Todos 10-12) functionally benefits from C2 (Todos 6-9), but can execut
 
   **Commit**: YES | `fix(kv_cache): split KV cost into bandwidth + latency, respect hit/miss` | `sim/models/kv_cache.py`
 
-- [ ] 9. DRAM 访问模式验证测试
+- [x] 9. DRAM 访问模式验证测试
 
   **What to do**:
   1. 新建 `sim/tests/test_dram_access_pattern.py`，验证：

@@ -306,3 +306,39 @@
 
 - Should `layer_switch_cost()` use sequential bandwidth (raw or `dram_efficiency=0.85`) instead of the random `bw_bytes_per_cycle`? Currently it uses whatever `bw_bytes_per_cycle` is set to, which is now random. This is a minor overestimate (layer switch is a sequential DMA burst). The impact is small because 70% is hidden behind MXU already.
 - Should KV access cost use `_kv_dram_efficiency()` from `mac_engine.py` for an additional SRAM-resident fraction correction? Currently the two-layer model uses a flat `dram_efficiency_random_bw` without the per-transfer cache-awareness adjustment. This is acceptable for P0 but could be refined in future. The Todo 7 design decisions already note this as a call-time multiplier option.
+
+# Todo 9 — DRAM access-pattern validation tests
+
+**Date:** 2026-07-30
+
+## What was done
+
+- Created `sim/tests/test_dram_access_pattern.py` with 4 test classes and 140+ assertions covering:
+  - `DMAModel.estimate_transfer()`: sequential cycles < random cycles for the same transfer, with bandwidth-scaling checks.
+  - `MACEngine._dma_cycles()`: sequential weight transfers are cheaper than random KV transfers, and random hits skip the fixed latency penalty.
+  - `KVCacheModel`: random efficiency is applied to `bw_bytes_per_cycle`, hits pay only SRAM cycles, misses add the fixed 40-cycle penalty, and the bandwidth-dominated portion roughly halves when bandwidth doubles.
+  - 8-engine access-type routing: all engines pass `AccessType.SEQUENTIAL` into `_dma_cycles()` for weight/activation paths; FSA `estimate_attention()` routes KV loads as `AccessType.RANDOM` and Q loads as `AccessType.SEQUENTIAL`.
+  - Fail-closed checks: missing `access_type` on `MACEngine._dma_cycles()` raises `TypeError`, and forcing RANDOM for a DMA-bound shape increases total cycles.
+- Parametrized engine routing tests across 8 engine types × 2 frequencies (1000/2000 MHz).
+
+## Verification
+
+- `uv run pytest sim/tests/test_dram_access_pattern.py -q` — 87 passed.
+- `uv run pytest sim/tests/test_engine_physical_invariants.py -q` — passed (no regression).
+- `uv run ruff check sim/tests/test_dram_access_pattern.py` — All checks passed.
+- `uv run basedpyright sim/tests/test_dram_access_pattern.py` — 0 errors, 0 warnings, 0 notes.
+- Happy-path evidence: `.omo/evidence/task-9-engine-selection-p0-dram-test.json`.
+- Negative-path evidence: `.omo/evidence/task-9-engine-selection-p0-dram-test-negative.txt`.
+
+## Key findings
+
+1. **All 8 engines route weight/activation DMA as SEQUENTIAL.** The recording wrapper confirmed that every engine's `estimate()` and `estimate_weight_cache_pair()` paths pass `AccessType.SEQUENTIAL` to `_dma_cycles()`. Block engine's weight path uses `eff_bw_weight` directly (also sequential), and activation calls are still sequential.
+2. **FSA attention uses RANDOM for KV and SEQUENTIAL for Q.** This matches the design intent: KV cache reads are scattered (row-buffer conflicts), while Q is a contiguous broadcast stream.
+3. **Fail-closed behavior is real.** Omitting `access_type` from `MACEngine._dma_cycles()` immediately raises `TypeError`; `DMAModel.estimate_transfer()` defaults to SEQUENTIAL when omitted, making the conservative choice explicit.
+4. **Bandwidth scaling is stable.** Doubling bandwidth from 51.2 to 102.4 GB/s shrinks the bandwidth-dominated portion of DMA/KV cycles by approximately 1.9×, close to the ideal 2× after stripping fixed descriptor and latency overheads.
+5. **No regression in physical invariants.** The new test suite passes alongside `test_engine_physical_invariants.py`, confirming that adding pattern-aware DMA did not break the existing compute/DMA floor contracts.
+
+## Open questions
+
+- Should the routing test be extended to cover `npu_sim.py` and `golden_executor.py` DMA calls now that `DMAModel.estimate_transfer()` accepts `access_type`?
+- Should a future todo add property-based tests that vary `dram_efficiency_random_bw` continuously to verify monotonicity bounds?
