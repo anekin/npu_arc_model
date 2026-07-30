@@ -32,7 +32,7 @@
 
 ```
 scale(7nm)  = 1.0
-scale(12nm) = 2.70   # TSMC 12FFC 密度比（非几何 (12/7)² = 2.94）
+scale(12nm) = 2.70   # TSMC 12FFC 密度比（非几何平方律 (12/7)²）
 scale(22nm) = (22/7)² ≈ 9.88
 scale(28nm) = (28/7)² = 16.0
 ```
@@ -153,7 +153,7 @@ TSV（Through-Silicon Via）物理尺寸：~5µm 直径 + ~10µm keep-out zone �
 ## 7. 模型局限性
 
 1. **PE 面积是 MAC 单元净面积 × 绕线/clock tree/grid 系数**。绕线开销随阵列增大而增大（O(N) 信号线），当前用固定 baseline → scale 是简化处理。
-2. **SRAM 面积按 KB 线性叠加**，实际宏观 SRAM 效率随总容量增大而提高。
+2. ~~**SRAM 面积按 KB 线性叠加**，实际宏观 SRAM 效率随总容量增大而提高。~~ **✅ 已修复 (P0 改进)** — 现使用 `sim/contracts/bitcell.py` `BitcellTable` + `sram_area_mm2()` 按节点查 bitcell 面积并应用可配 peripheral overhead。参考外部校准（TPUv1/RK1828）偏差 <30%。详见 [`sim/contracts/bitcell.py`](../sim/contracts/bitcell.py) 和 [`docs/model-trust-and-release.md`](../docs/model-trust-and-release.md)。
 3. **工艺缩放平方律 `(node/7)²`** 在 12nm → 3nm 区间合理，对更老工艺（28nm, 65nm）是近似。
 4. **Block/WMMA/GMMA 的相对比值**基于架构推理而非 die-shot 反推，量级可信但精确比无硬数据。
 5. **Bitcell 查表仅限 TSMC 节点** — `BitcellTable` 仅收录已发布 TSMC HD bitcell 数据（7nm, 12FFC, 22nm, 28nm）。三星/Intel 节点不在表中；未来如需跨厂查表需扩展 `source_uri` + `provenance` 元数据。处于两个已知节点之间的工艺（如 16nm）暂不支持插值。

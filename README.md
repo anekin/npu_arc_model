@@ -56,7 +56,9 @@ Phase 2:  交叉校验    → 对比已知产品（TPUv1/RK1828/Eyeriss）
 | **DRAM 效率** | 0.85 — conservative sequential decode baseline (per-bank refresh ~3.6%, extra from controller scheduling/command bus/bank conflicts) | 详见 contracts/hardware.py MemoryConfig |
 | **量化方案** | per-block (g=128) INT4 | cos_sim > 0.99，比 per-channel 稳定 0.014 |
 | **SRAM 灵敏度** | LPDDR5 场景：4-6MB sweet spot（**探索性结论，待 T2+ 证据**）；3D DRAM 场景：512KB 足够（**理想驻留假设**） | DSE 扫描结果 |
-| **过程节点** | TSMC 12nm（面积 = 7nm 基线 × 2.94，**几何缩放近似，非实测密度比**） | 用户指定 |
+| **过程节点** | TSMC 12nm（面积 = 7nm 基线 × 2.70，**TSMC 12FFC 密度比，源自 bitcell 查表**） | [`sim/contracts/bitcell.py`](sim/contracts/bitcell.py) `BitcellTable` + [`references/calibration/parameters.yaml`](references/calibration/parameters.yaml) |
+| **SRAM bitcell 溯源** | TSMC HD bitcell 面积查表（7/12/22/28nm），peripheral overhead 可配，外部参考（TPUv1/RK1828）偏差 <30% | [`sim/contracts/bitcell.py`](sim/contracts/bitcell.py) |
+| **DRAM 效率模式化** | sequential decode baseline 0.90，random KV 访问 0.50（固定延迟惩罚 40 cycles） | [`docs/model-trust-and-release.md`](docs/model-trust-and-release.md) §DRAM 效率模式化方法 |
 | **BW-面积耦合** | On-chip 3D DRAM BW = area × 7.5 GB/s/mm²（**基于 RK1828 的外推，未绑定硅实现**） | RK1828 验证 |
 
 ### 1.4 双场景技术路线（探索性估算）
@@ -72,6 +74,7 @@ Phase 2:  交叉校验    → 对比已知产品（TPUv1/RK1828/Eyeriss）
 | 面积 @12nm | 61mm²（估算） | 66mm²（估算） |
 | Decode | 23 tok/s（估算） | 148 tok/s（估算） |
 | TTFT | 45ms（估算） | 160ms（估算） |
+| 跨节点验证结论 | block 引擎面积单调 7→28nm（99→261mm² @lpddr5_3b），低 BW block 胜、高 BW os_systolic 胜（7nm）；决策级状态：**FAIL（WMMA/GMMA PE 比仍 T0，多节点对比仅 block 有跨节点数据）** | [`参考跨节点 DSE 报告`](.omo/evidence/task-14-engine-selection-p0-cross-node-dse.md) |
 | 详细报告 | [`reports/arch-report-A-lpddr5-3b.md`](reports/arch-report-A-lpddr5-3b.md) | [`reports/arch-report-B-3ddram-7b.md`](reports/arch-report-B-3ddram-7b.md) |
 
 ---
@@ -376,7 +379,7 @@ uv run python sim/npu_sim.py --json | python3 -c "import sys,json; print(json.lo
 | **lock digest** | `ce33a246885fb5620a61ecd2b5d8aa773d4503c3a99a9c5b1ecb56fabfe8b288` |
 | **config digest** | `d3ad177cd825b7ef6342bc0f53402e61e5d4438267ae4112d7e6aca041a08217` (`sim/config/npu_config.yaml`) |
 | **process_node** | 12nm (TSMC 12FFC) |
-| **node_scale** | 2.94× = (12/7)² — **此几何换算将在 Todo 11 中修正为密度比 2.70×** |
+| **node_scale** | 2.70× = TSMC 12FFC 密度比（非几何 (12/7)²）— **已修正**，详见 [`sim/contracts/bitcell.py`](sim/contracts/bitcell.py) `_node_scale_factor(12)` → 2.70 |
 | **dram_efficiency** | 0.85 — conservative baseline；README 中 75% 声称已被证伪（待 Todo 6 统一清理） |
 | **Python** | >=3.10,<3.13 (via `pyproject.toml`) |
 | **复现命令** | `uv sync --frozen && uv run pytest -q` |

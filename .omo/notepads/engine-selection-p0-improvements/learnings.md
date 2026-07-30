@@ -642,3 +642,41 @@ The empty frontier was caused by the AUTHORITATIVE hard gate in `sim/dse/pareto.
 - The block engine's 2.64× area ratio from 7nm to 28nm is dominated by logic (16×) dampened
   by SRAM (~3.4×). For SRAM-light engines with larger PE arrays, the ratio should approach
   16×. This should be verified with a wider coverage sweep.
+
+# Todo 15 — 更新决策级文档
+
+**Date:** 2026-07-30
+
+## What was done
+
+- Updated `docs/model-trust-and-release.md`:
+  - Added "跨节点引擎选择发现" section with cross-node DSE findings (Todo 14).
+  - Added "SRAM Bitcell 数据溯源" section with bitcell provenance from `sim/contracts/bitcell.py` and external calibration (TPUv1/RK1828).
+  - Added "基于访问模式的 DRAM 效率方法论" section documenting sequential vs random efficiency model.
+  - Updated decision-grade status to reflect continued FAIL with explicit reasons (WMMA/GMMA PE ratio T0, multi-node coverage exploratory).
+
+- Updated `README.md`:
+  - Replaced 2.94× (geometric) with 2.70× (TSMC 12FFC density ratio) in process node decision row.
+  - Added SRAM bitcell provenance and DRAM efficiency pattern rows to 关键技术决策 table.
+  - Added 跨节点验证结论 row to 双场景技术路线 table linking to cross-node DSE evidence.
+  - Updated node_scale baseline entry to show fix is complete.
+
+- Updated `references/area_sources.md` §7:
+  - Marked the "SRAM 面积按 KB 线性叠加" limitation item as fixed (via bitcell lookup table).
+
+- Evidence files created:
+  - `.omo/evidence/task-15-engine-selection-p0-docs.json` — happy-path evidence.
+  - `.omo/evidence/task-15-engine-selection-p0-docs-negative.txt` — negative-path evidence.
+
+## Key findings
+
+1. **README no longer claims 2.94×** — the process-node scaling factor is now 2.70× (TSMC 12FFC density ratio), cited from bitcell.py.
+2. **Decision-grade remains correctly FAIL** — WMMA/GMMA PE ratios are still T0; multi-node coverage is still exploratory. The SRAM bitcell provenance is the only T2+ addition in this P0 round.
+3. **All existing limitation statements preserved** — no removals or weakenings.
+4. **Historical reports untouched** — no changes to `reports/` or dated artifacts.
+
+## Verification
+
+- `uv run ruff check .` — passed (no Python changes in this todo).
+- `grep -n "2.94" README.md docs/model-trust-and-release.md references/area_sources.md` — 0 matches.
+- Evidence files created and validated.

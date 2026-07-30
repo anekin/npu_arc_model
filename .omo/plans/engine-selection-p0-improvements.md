@@ -607,7 +607,7 @@ Note: C3 (Todos 10-12) functionally benefits from C2 (Todos 6-9), but can execut
 
   **Commit**: YES | `evidence(dse): cross-node engine ranking matrix for lpddr5_3b and onchip_7b` | `.omo/evidence/task-14-engine-selection-p0-cross-node-dse.json`, markdown report
 
-- [ ] 15. 更新决策级文档
+- [x] 15. 更新决策级文档
 
   **What to do**:
   1. 更新 `docs/model-trust-and-release.md`：加入跨节点引擎选择的结论、bitcell 数据溯源、pattern-based DRAM 效率的方法论。

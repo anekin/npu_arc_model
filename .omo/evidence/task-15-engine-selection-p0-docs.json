@@ -1,0 +1,39 @@
+{
+  "task": "15",
+  "description": "Update decision-grade documentation",
+  "timestamp": "2026-07-30",
+  "files_modified": [
+    "README.md",
+    "docs/model-trust-and-release.md",
+    "references/area_sources.md"
+  ],
+  "changes": {
+    "README.md": [
+      "§1.3: 过程节点 row: 2.94→2.70, cite bitcell.py",
+      "§1.3: Added SRAM bitcell provenance row",
+      "§1.3: Added DRAM efficiency pattern row",
+      "§1.4: Added 跨节点验证结论 row linking to cross-node DSE evidence",
+      "§8.3: Updated node_scale note to show fix complete"
+    ],
+    "docs/model-trust-and-release.md": [
+      "Added 跨节点引擎选择发现 section (Todo 14 findings)",
+      "Added SRAM Bitcell 数据溯源 section (bitcell.py provenance)",
+      "Added 基于访问模式的 DRAM 效率方法论 section (AccessType sequential/random)",
+      "Updated decision-grade status: still FAIL, explicit reasons"
+    ],
+    "references/area_sources.md": [
+      "§7 item 2: Marked SRAM linear stacking as fixed via bitcell table"
+    ]
+  },
+  "verification": {
+    "ruff_check": "All checks passed",
+    "grep_2_94": "No matches in README.md, docs/model-trust-and-release.md, references/area_sources.md"
+  },
+  "decision_grade_status": "FAIL",
+  "decision_grade_reasons": [
+    "WMMA/GMMA PE ratio remains T0",
+    "Multi-node coverage exploratory (only block engine at non-7nm nodes)",
+    "DRAM efficiency parameters uncalibrated against silicon",
+    "SRAM bitcell data is T2 (single parameter group does not lift overall grade)"
+  ]
+}
