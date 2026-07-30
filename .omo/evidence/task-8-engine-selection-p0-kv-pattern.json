@@ -1,0 +1,81 @@
+{
+  "schema": "task-8-engine-selection-p0-kv-pattern",
+  "description": "KV cache two-layer model (bandwidth + latency on miss) evidence",
+  "results": [
+    {
+      "test": "standard_51.2_gbps_0.50eff_40latency",
+      "bw_gbps": 51.2,
+      "dram_efficiency_random_bw": 0.5,
+      "random_latency_penalty_cycles": 40,
+      "bw_bytes_per_cycle": 25.6,
+      "kv_bytes_per_token": 2048,
+      "kv_bw_cycles": 80,
+      "per_miss_cost": 120,
+      "hit_result": {
+        "hit": false,
+        "access_cycles": 15616,
+        "sram_hit_rate": 0.5
+      },
+      "miss_result": {
+        "hit": false,
+        "access_cycles": 107776,
+        "sram_hit_rate": 0.125
+      },
+      "note_hit_no_latency": "Expected: hit adds 0 random latency (only SRAM cycles)",
+      "note_miss_two_layer": "Expected: miss = 80 (BW) + 40 (latency) = 120 per miss"
+    },
+    {
+      "test": "double_bw_102.4_gbps",
+      "bw_gbps": 102.4,
+      "dram_efficiency_random_bw": 0.5,
+      "bw_bytes_per_cycle": 51.2,
+      "kv_bw_cycles": 40,
+      "per_miss_cost": 80,
+      "hit_result": {
+        "hit": false,
+        "access_cycles": 10496,
+        "sram_hit_rate": 0.5
+      },
+      "miss_result": {
+        "hit": false,
+        "access_cycles": 71936,
+        "sram_hit_rate": 0.125
+      },
+      "note_bw_halved": "Expected: bw_cycles halved from 80 to 40"
+    },
+    {
+      "test": "zero_latency_penalty",
+      "random_latency_penalty_cycles": 0,
+      "bw_bytes_per_cycle": 25.6,
+      "per_miss_cost": 80,
+      "miss_result": {
+        "hit": false,
+        "access_cycles": 71936,
+        "sram_hit_rate": 0.125
+      },
+      "note_bw_only": "Expected: miss cost is bandwidth-only (no random latency)"
+    },
+    {
+      "test": "layer_switch_cost",
+      "layer_switch_cycles": 3072,
+      "note": "layer_switch uses bw_bytes_per_cycle (25.6 B/cyc), no latency penalty added"
+    },
+    {
+      "test": "per_token_kv_bytes_formula",
+      "num_kv_heads": 8,
+      "head_dim": 128,
+      "element_bytes": 1,
+      "computed_kv_bytes": 2048
+    },
+    {
+      "test": "npu_sim_legacy_compatibility",
+      "exit_code": 0,
+      "output": {
+        "engine_type": "block",
+        "tok_per_s": 21.5183,
+        "per_token_us": 46472.1
+      },
+      "note": "npu_sim --json exits 0 with no errors"
+    }
+  ]
+}

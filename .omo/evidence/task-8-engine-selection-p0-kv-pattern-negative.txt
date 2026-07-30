@@ -1,0 +1,16 @@
+token_pos=0: 0 cycles — PASS
+token_pos=1 (SRAM hit): 2 cycles — no random latency on hit — PASS
+
+=== TEST 2: layer_switch_cost unaffected by random latency ===
+  latency=40: 3072 cycles, latency=9999: 3072 cycles — SAME — PASS
+
+=== TEST 3: Backward compat with missing config keys ===
+  access_cycles=104896, bw_bytes_per_cycle=25.6 — PASS
+
+=== TEST 4: Latency NOT derived from bandwidth ===
+  random_latency_penalty_cycles: 40 (both)
+  bw_bytes_per_cycle: 25.6 (51.2) vs 51.2 (102.4)
+  Latency=40 for both — independent of bandwidth — PASS
+
+=== TEST 5: Fully cached tokens = no random latency ===
+  token_pos=50 (50 tokens, all SRAM): 100 cycles (50×2=100) — no extra latency — PASS

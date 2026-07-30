@@ -383,7 +383,7 @@ Note: C3 (Todos 10-12) functionally benefits from C2 (Todos 6-9), but can execut
 
   **Commit**: YES | `feat(engine): implement access-pattern DRAM efficiency with latency/bandwidth separation` | `sim/engine/mac_engine.py`, `sim/engine/*.py` (all engines), `sim/models/dma.py`, `sim/contracts/hardware.py`, `.omo/notepads/...` (audit)
 
-- [ ] 8. 替换 kv_cache.py 中的固定延迟和带宽模型
+- [x] 8. 替换 kv_cache.py 中的固定延迟和带宽模型
 
   **What to do**:
   1. 修改 `sim/models/kv_cache.py:39`：`self.bw_bytes_per_cycle` 由 raw BW 改为应用 `dram_efficiency_random_bw`（0.50）。

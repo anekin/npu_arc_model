@@ -1,5 +1,17 @@
-"""KV Cache Manager 性能模型 — SRAM 命中率 + DRAM 访问延迟"""
+"""KV Cache Manager 性能模型 — SRAM 命中率 + DRAM 访问延迟
 
+KV cache DRAM access follows a random access pattern
+(AccessType.RANDOM): scattered token positions within the DRAM region
+cause row-buffer conflicts and lower effective bandwidth compared to
+sequential weight streaming.
+
+Access cost is modeled as a two-layer DRAM miss penalty:
+1. Bandwidth part: bytes_per_token / effective_random_bw_bytes_per_cycle
+2. Latency part: fixed random_latency_penalty_cycles per miss
+   (row-buffer miss, precharge+activate, independent of bandwidth)
+"""
+
+import math
 from dataclasses import dataclass
 from typing import Any
 
@@ -39,22 +51,28 @@ class KVCacheModel:
         mem = config["memory"]
         from contracts.units import bandwidth_gbps_to_bytes_per_cycle as _bw2bpc
 
+        # Random-access efficiency and latency (Todo 7 — engine-selection-p0-improvements)
+        dram_efficiency_random_bw = float(mem.get("dram_efficiency_random_bw", 0.50))
+        self.random_latency_penalty_cycles = int(mem.get("random_latency_penalty_cycles", 40))
+
         freq_mhz = float(config.get("mac_engine", config.get("mxu", {})).get("frequency_mhz", 1000))
         bw_gbps = float(mem.get("bandwidth_gbps", 51.2))
-        self.bw_bytes_per_cycle = _bw2bpc(bw_gbps, freq_mhz)
+        # KV cache always follows a random access pattern (AccessType.RANDOM).
+        # Apply dram_efficiency_random_bw to the raw bandwidth.
+        self.bw_bytes_per_cycle = _bw2bpc(bw_gbps * dram_efficiency_random_bw, freq_mhz)
 
         self.memory_access_plan = memory_access_plan
         if memory_access_plan is not None:
             kv_fastest = memory_access_plan.fastest_allocated_tier("kv")
             if kv_fastest is not None:
                 tier = memory_access_plan.hierarchy.get_tier(kv_fastest)
-                self.bw_bytes_per_cycle = _bw2bpc(tier.effective_read_bw_gbps(), freq_mhz)
+                # tier.read_bw_gbps is raw BW; apply random efficiency instead of sequential
+                self.bw_bytes_per_cycle = _bw2bpc(tier.read_bw_gbps * dram_efficiency_random_bw, freq_mhz)
 
         # Timing parameters
         # SRAM access: ~2 cycles (1 read + 1 write port)
         self.sram_access_cycles = 2
-        # DRAM access: row open + CAS + data transfer
-        self.dram_access_cycles = 80  # tRC ≈ 48ns @ 1GHz → ~48 cycles + overhead
+        # DRAM access: modeled as two-layer miss cost in access() below
 
         # Current state (reset per layer)
         self.total_tokens = 0
@@ -107,9 +125,15 @@ class KVCacheModel:
 
         hit_rate = sram_hits / num_kv_entries if num_kv_entries > 0 else 1.0
 
-        # Access time: hit → SRAM, miss → DRAM
+        # Access time: hit → SRAM, miss → DRAM (two-layer model)
+        # Bandwidth part: cycles to transfer per-token KV over random-access DRAM
+        # Latency part: fixed penalty per miss (row-buffer miss, precharge+activate)
+        kv_bytes_per_token = self._per_layer_kv_bytes if self._per_layer_kv_bytes > 0 else 1
+        kv_bw_cycles = math.ceil(kv_bytes_per_token / self.bw_bytes_per_cycle)
+        per_miss_cost = kv_bw_cycles + self.random_latency_penalty_cycles
+
         sram_time = sram_hits * self.sram_access_cycles
-        dram_time = dram_misses * self.dram_access_cycles
+        dram_time = dram_misses * per_miss_cost
 
         total_cycles = sram_time + dram_time
 

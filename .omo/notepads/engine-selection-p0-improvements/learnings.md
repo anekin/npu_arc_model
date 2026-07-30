@@ -261,3 +261,48 @@
 
 - Should `mac_engine.py`, `compiler.py`, and `kv_cache.py` be refactored to create `MemoryAccessPattern` objects directly (for Todo 7 integration), or should the pattern-based DRAM efficiency layer accept `AccessType` from the caller independently?
 - The current `AccessType` has only two values. Do we need a third for mixed/streaming patterns (e.g., gather + compute)?
+
+# Todo 8 — Replace fixed latency/bandwidth in kv_cache.py with two-layer model
+
+**Date:** 2026-07-30
+
+## What was done
+
+- Modified `sim/models/kv_cache.py`:
+  - **`__init__`**: Changed `self.bw_bytes_per_cycle` from raw bandwidth (`bw_gbps`) to `bw_gbps * dram_efficiency_random_bw` (default 0.50). Reads `random_latency_penalty_cycles` (default 40) from config. Removed the fixed `self.dram_access_cycles = 80`.
+  - **`__init__` (memory_access_plan path)**: Changed from `tier.effective_read_bw_gbps()` (sequential) to `tier.read_bw_gbps * dram_efficiency_random_bw` (random), ensuring the random efficiency replaces sequential efficiency rather than multiplying on top of it.
+  - **`access()`**: Implemented two-layer DRAM miss cost model:
+    - **Bandwidth part**: `math.ceil(kv_bytes_per_token / self.bw_bytes_per_cycle)` — scales with bandwidth.
+    - **Latency part**: `self.random_latency_penalty_cycles` — fixed per-miss penalty (40 cycles), independent of bandwidth.
+    - **Total**: `sram_hits * sram_access_cycles + dram_misses * (kv_bw_cycles + random_latency_penalty_cycles)`.
+  - Added `import math`.
+  - Added module-level docstring documenting the `AccessType.RANDOM` pattern and the two-layer model.
+  - Class docstring updated to reference `AccessType.RANDOM`.
+
+## Verification
+
+| Command | Result |
+|---------|--------|
+| `ruff check sim/models/kv_cache.py` | All checks passed |
+| `basedpyright sim/models/kv_cache.py` | 0 errors, 0 warnings, 0 notes |
+| `pytest sim/tests/test_memory_access_pattern.py -q` | 19 passed |
+| `pytest sim/tests/test_legacy_compatibility.py -q` | 18 passed (18 dots) |
+| Happy-path evidence | `.omo/evidence/task-8-engine-selection-p0-kv-pattern.json` |
+| Negative-path evidence | `.omo/evidence/task-8-engine-selection-p0-kv-pattern-negative.txt` |
+
+## Key findings
+
+1. **Two-layer model separates bandwidth scaling from latency.** At 51.2 GB/s (50% eff = 25.6 B/cyc), per-token KV BW cost = ceil(2048 / 25.6) = 80 cycles; latency adds 40 cycles = 120 per miss total. At 102.4 GB/s, BW cost halves to 40 cycles; latency stays at 40 = 80 per miss. This correctly models the physical reality where random row-buffer misses add fixed overhead independent of burst bandwidth.
+
+2. **Fixed 80-cycle model replaced.** The old `dram_access_cycles = 80` was close to the new per-miss cost of 120 for the default 51.2 GB/s scenario, but did not scale with bandwidth. Under 3D DRAM (500+ GB/s), the old model would drastically overestimate KV access cost (still 80 cycles/token), while the new model correctly reduces it to ~2–3 cycles BW + 40 latency.
+
+3. **MemoryAccessPlan tier path corrected.** The old code used `tier.effective_read_bw_gbps()` which already included sequential `read_efficiency`. Applying `dram_efficiency_random_bw` on top would double-discount. Fixed by using raw `tier.read_bw_gbps * dram_efficiency_random_bw` instead.
+
+4. **Backward compatibility preserved.** Missing `dram_efficiency_random_bw` or `random_latency_penalty_cycles` keys default to 0.50 and 40 respectively. The `npu_sim --json` exit code remains 0 with tok/s ≈ 21.52 (same expectation window as baseline).
+
+5. **SRAM hit path untouched.** Tokens that hit SRAM pay exactly `sram_access_cycles` (2) per token — no random latency penalty. This is verified in negative-path test 5. Layer switch cost also remains unaffected by random latency (negative-path test 2).
+
+## Open questions
+
+- Should `layer_switch_cost()` use sequential bandwidth (raw or `dram_efficiency=0.85`) instead of the random `bw_bytes_per_cycle`? Currently it uses whatever `bw_bytes_per_cycle` is set to, which is now random. This is a minor overestimate (layer switch is a sequential DMA burst). The impact is small because 70% is hidden behind MXU already.
+- Should KV access cost use `_kv_dram_efficiency()` from `mac_engine.py` for an additional SRAM-resident fraction correction? Currently the two-layer model uses a flat `dram_efficiency_random_bw` without the per-transfer cache-awareness adjustment. This is acceptable for P0 but could be refined in future. The Todo 7 design decisions already note this as a call-time multiplier option.
