@@ -32,10 +32,10 @@ class TestPlanParsing:
         assert "F1" in ids
         assert "F4" in ids
 
-    def test_todo_18_unchecked(self):
+    def test_todo_18_checked(self):
         todos = parse_plan_todos(PLAN_PATH.read_text(encoding="utf-8"))
         todo_18 = next(t for t in todos if t["id"] == "18")
-        assert not todo_18["checked"]
+        assert todo_18["checked"]
 
 
 class TestEvidenceMapping:
