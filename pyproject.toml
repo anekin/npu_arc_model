@@ -67,6 +67,10 @@ known-first-party = ["sim"]
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
+exclude = [
+    "reports/dse-engine-model-bugs-2026-07-27.md",
+    "reports/dse-engine-model-bugs-postfix-2026-07-27.md",
+]
 
 [tool.basedpyright]
 typeCheckingMode = "basic"
