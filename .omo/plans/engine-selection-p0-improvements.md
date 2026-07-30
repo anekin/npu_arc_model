@@ -446,7 +446,7 @@ Note: C3 (Todos 10-12) functionally benefits from C2 (Todos 6-9), but can execut
 
   **Commit**: YES | `test(dram): add access-pattern sensitivity and coverage tests` | `sim/tests/test_dram_access_pattern.py`
 
-- [ ] 10. 新增 LPDDR5x_7B 和 HBM2e_7B 场景
+- [x] 10. 新增 LPDDR5x_7B 和 HBM2e_7B 场景
 
   **What to do**:
   1. 在 `sim/config/scenarios.yaml:82` 后新增两个 scenario entry：

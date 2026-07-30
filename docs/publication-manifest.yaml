@@ -17,6 +17,18 @@ profiles:
 
 current_recommendations: []
 
+run_manifests:
+  - id: "lpddr5x_7b"
+    scenario: "lpddr5x_7b"
+    description: "LPDDR5x-64b + Qwen2.5-7B high-bandwidth edge scenario"
+    status: draft
+    generated_at: null
+  - id: "hbm2e_7b"
+    scenario: "hbm2e_7b"
+    description: "HBM2e + Qwen2.5-7B high-performance compute scenario"
+    status: draft
+    generated_at: null
+
 pending_claims:
   - id: C-2026-07-30-block-64-lpddr5
     description: Block 64x64 engine on LPDDR5 is Pareto-optimal for dense GEMM at 1 GHz.

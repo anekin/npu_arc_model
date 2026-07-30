@@ -1,6 +1,11 @@
 # DSE 场景定义 — 内存类型、组件清单、对标产品、序列长度约束
 # 
 # 每个场景定义完整需求，DSE 自动适配 sweep 空间和约束检查
+#
+# NOTE: `dram_efficiency` is now documentation-only after Todo 7 pattern-based
+# DRAM efficiency implementation. Actual per-pattern efficiency uses
+# `dram_efficiency_random_bw` defined elsewhere. The `dram_efficiency` field
+# here is retained only for documentation / reference purposes.
 
 scenarios:
   lpddr5_3b:
@@ -79,6 +84,51 @@ scenarios:
       required: [pcie, tsv]
       excluded: [dram_phy]
       tsv_overhead_pct: 0.10
+    benchmarks: []
+
+  lpddr5x_7b:
+    description: "LPDDR5x + 7B 端侧高性能"
+    model: "qwen2.5-7b"
+    model_params_gb: 3.5
+    seq_len: 128
+    ttft_ms_max: 200
+    tps_min: 20
+    process_nm: 12
+    memory:
+      type: lpddr5x
+      bandwidth_gbps: 68.0
+      dram_efficiency: 0.85
+      effective_bw_gbps: 57.8
+    constraints:
+      ttft_ms_max: 200
+      tps_min: 20
+      area_mm2_max: 80
+    components:
+      required: [dram_phy, pcie]
+      excluded: [tsv]
+    benchmarks: []
+
+  hbm2e_7b:
+    description: "HBM2e + 7B 高性能计算"
+    model: "qwen2.5-7b"
+    model_params_gb: 3.5
+    seq_len: 128
+    ttft_ms_max: 200
+    tps_min: 100
+    process_nm: 12
+    memory:
+      type: hbm2e
+      bandwidth_gbps: 410.0
+      dram_efficiency: 0.95
+      effective_bw_gbps: 389.5
+    constraints:
+      ttft_ms_max: 200
+      tps_min: 100
+      area_mm2_max: 120
+    components:
+      required: [dram_phy, pcie, tsv]
+      excluded: []
+      tsv_overhead_pct: 0.05
     benchmarks: []
 
 # 内存类型 → 组件清单规则

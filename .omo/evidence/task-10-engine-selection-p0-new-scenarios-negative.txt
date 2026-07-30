@@ -1,0 +1,26 @@
+=== Wave 2 Lane B — Task 10 Negative-Path Evidence ===
+Date: 2026-07-30
+
+Negative Test 1: Load non-existent scenario
+  load_scenario('nonexistent_scenario') → None
+  PASS: Graceful None return, no crash
+
+Negative Test 2: check_requirements on non-existent scenario
+  result: ready=False, error="Scenario 'nonexistent_scenario' not found. Available: [...]"
+  PASS: Descriptive error, no silent default
+
+Negative Test 3: Empty scenario name
+  result: ready=False, error="Scenario '' not found. Available: [...]"
+  PASS: Empty string handled same as missing
+
+=== Negative Test Output (raw) ===
+=== Negative Test 1: Load non-existent scenario ===
+load_scenario result: None
+
+=== Negative Test 2: check_requirements on non-existent scenario ===
+result: {'ready': False, 'error': "Scenario 'nonexistent_scenario' not found. Available: ['lpddr5_3b', 'onchip_7b', 'onchip_7b_chat', 'lpddr5x_7b', 'hbm2e_7b']"}
+
+=== Negative Test 3: Empty scenario name ===
+result: {'ready': False, 'error': "Scenario '' not found. Available: ['lpddr5_3b', 'onchip_7b', 'onchip_7b_chat', 'lpddr5x_7b', 'hbm2e_7b']"}
+
+=== All negative tests passed ===

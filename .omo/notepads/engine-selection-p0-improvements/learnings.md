@@ -342,3 +342,41 @@
 
 - Should the routing test be extended to cover `npu_sim.py` and `golden_executor.py` DMA calls now that `DMAModel.estimate_transfer()` accepts `access_type`?
 - Should a future todo add property-based tests that vary `dram_efficiency_random_bw` continuously to verify monotonicity bounds?
+
+# Todo 10 — Add LPDDR5x_7B and HBM2e_7B scenarios
+
+**Date:** 2026-07-30
+
+## What was done
+
+- Added `lpddr5x_7b` and `hbm2e_7b` scenario entries to `sim/config/scenarios.yaml`.
+- Verified `memory_component_rules` already contains `lpddr5x` and `hbm2e` entries (no changes needed).
+- Added a doc comment in `scenarios.yaml` noting that `dram_efficiency` is documentation-only after Todo 7; actual per-pattern efficiency uses `dram_efficiency_random_bw`.
+- Added `run_manifests` section to `docs/publication-manifest.yaml` referencing the two new scenarios.
+- Verified both scenarios return valid data from `load_scenario()`, pass `check_requirements()` with all fields explicit and ready=True, and work in the DSE CLI with `--scenario` flag.
+
+## Key findings
+
+1. **Both scenarios load with all 6 critical fields explicit** — `seq_len` (128), `ttft_ms_max` (200), `tps_min` (20/100), `model` (qwen2.5-7b), `memory.type` (lpddr5x/hbm2e), `process_nm` (12). Zero warnings, zero questions.
+2. **Effective BW calculations verified** — `lpddr5x_7b`: 68.0 × 0.85 = 57.8 ✓; `hbm2e_7b`: 410.0 × 0.95 = 389.5 ✓.
+3. **Memory component rules are complete** — `lpddr5x` maps to `[dram_phy, pcie]` (no TSV), `hbm2e` maps to `[dram_phy, pcie, tsv]` with 5% TSV overhead. No additions needed.
+4. **DSE CLI runs with exit 0** — Both scenarios evaluated 66 design points (ci-all-axes), all 66 complete, 0 failed.
+5. **5 scenarios now available** — the original 3 (`lpddr5_3b`, `onchip_7b`, `onchip_7b_chat`) plus the 2 new ones.
+6. **Negative path is fail-closed** — non-existent and empty scenario names return `ready=False` with descriptive error messages; no crashes or silent fallbacks.
+7. **`dram_efficiency` in YAML is now documentation-only** — the actual per-pattern efficiency is controlled by `dram_efficiency_random_bw` (implemented in Todo 7). The YAML comment captures this for future readers.
+
+## Verification
+
+- `load_scenario('lpddr5x_7b')` → valid dict with memory.type=lpddr5x, bandwidth_gbps=68.0
+- `check_requirements('lpddr5x_7b')` → ready=True, 0 warnings, 0 questions
+- `load_scenario('hbm2e_7b')` → valid dict with memory.type=hbm2e, bandwidth_gbps=410.0
+- `check_requirements('hbm2e_7b')` → ready=True, 0 warnings, 0 questions
+- `design_space_explorer.py --scenario lpddr5x_7b --space ci-all-axes --result-schema v2` → exit 0, 66/66 evaluated
+- `design_space_explorer.py --scenario hbm2e_7b --space ci-all-axes --result-schema v2` → exit 0, 66/66 evaluated
+- Negative tests: non-existent scenario returns ready=False with error message
+
+## Open questions
+
+- Should the new scenarios have benchmarks defined (like `lpddr5_3b` has Apple A18 ANE and `onchip_7b` has RK1828)?
+- `hbm2e_7b` has `tps_min: 100` — should this be higher given the 410 GB/s bandwidth (vs 68 GB/s for lpddr5x_7b with tps_min=20)?
+- Should the `run_manifests` entries in `publication-manifest.yaml` be updated with `generated_at` timestamps and actual report paths once DSE reports are generated?

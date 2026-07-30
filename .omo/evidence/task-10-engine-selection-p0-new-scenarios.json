@@ -1,0 +1,185 @@
+{
+  "lpddr5x_7b": {
+    "found": true,
+    "keys": [
+      "description",
+      "model",
+      "model_params_gb",
+      "seq_len",
+      "ttft_ms_max",
+      "tps_min",
+      "process_nm",
+      "memory",
+      "constraints",
+      "components",
+      "benchmarks"
+    ],
+    "memory": {
+      "type": "lpddr5x",
+      "bandwidth_gbps": 68.0,
+      "dram_efficiency": 0.85,
+      "effective_bw_gbps": 57.8
+    },
+    "components": {
+      "required": [
+        "dram_phy",
+        "pcie"
+      ],
+      "excluded": [
+        "tsv"
+      ]
+    },
+    "check_requirements_ready": true,
+    "fields": {
+      "seq_len": {
+        "value": 128,
+        "confidence": "explicit",
+        "valid": true
+      },
+      "ttft_ms_max": {
+        "value": 200,
+        "confidence": "explicit",
+        "valid": true
+      },
+      "tps_min": {
+        "value": 20,
+        "confidence": "explicit",
+        "valid": true
+      },
+      "model": {
+        "value": "qwen2.5-7b",
+        "confidence": "explicit",
+        "valid": true
+      },
+      "memory.type": {
+        "value": "lpddr5x",
+        "confidence": "explicit",
+        "valid": true
+      },
+      "process_nm": {
+        "value": 12,
+        "confidence": "explicit",
+        "valid": true
+      }
+    },
+    "warnings": [],
+    "questions": []
+  },
+  "hbm2e_7b": {
+    "found": true,
+    "keys": [
+      "description",
+      "model",
+      "model_params_gb",
+      "seq_len",
+      "ttft_ms_max",
+      "tps_min",
+      "process_nm",
+      "memory",
+      "constraints",
+      "components",
+      "benchmarks"
+    ],
+    "memory": {
+      "type": "hbm2e",
+      "bandwidth_gbps": 410.0,
+      "dram_efficiency": 0.95,
+      "effective_bw_gbps": 389.5
+    },
+    "components": {
+      "required": [
+        "dram_phy",
+        "pcie",
+        "tsv"
+      ],
+      "excluded": [],
+      "tsv_overhead_pct": 0.05
+    },
+    "check_requirements_ready": true,
+    "fields": {
+      "seq_len": {
+        "value": 128,
+        "confidence": "explicit",
+        "valid": true
+      },
+      "ttft_ms_max": {
+        "value": 200,
+        "confidence": "explicit",
+        "valid": true
+      },
+      "tps_min": {
+        "value": 100,
+        "confidence": "explicit",
+        "valid": true
+      },
+      "model": {
+        "value": "qwen2.5-7b",
+        "confidence": "explicit",
+        "valid": true
+      },
+      "memory.type": {
+        "value": "hbm2e",
+        "confidence": "explicit",
+        "valid": true
+      },
+      "process_nm": {
+        "value": 12,
+        "confidence": "explicit",
+        "valid": true
+      }
+    },
+    "warnings": [],
+    "questions": []
+  },
+  "all_scenarios": [
+    "lpddr5_3b",
+    "onchip_7b",
+    "onchip_7b_chat",
+    "lpddr5x_7b",
+    "hbm2e_7b"
+  ],
+  "scenario_count": 5,
+  "memory_component_rules": {
+    "has_lpddr5x": true,
+    "has_hbm2e": true,
+    "lpddr5x_rules": {
+      "required": [
+        "dram_phy",
+        "pcie"
+      ],
+      "excluded": [
+        "tsv"
+      ],
+      "tsv_overhead_pct": 0.0
+    },
+    "hbm2e_rules": {
+      "required": [
+        "dram_phy",
+        "pcie",
+        "tsv"
+      ],
+      "excluded": [],
+      "tsv_overhead_pct": 0.05
+    }
+  },
+  "effective_bw_verification": {
+    "lpddr5x_7b": {
+      "bandwidth_gbps": 68.0,
+      "dram_efficiency": 0.85,
+      "computed_effective_bw": 57.8,
+      "yaml_effective_bw": 57.8,
+      "match": true
+    },
+    "hbm2e_7b": {
+      "bandwidth_gbps": 410.0,
+      "dram_efficiency": 0.95,
+      "computed_effective_bw": 389.5,
+      "yaml_effective_bw": 389.5,
+      "match": true
+    }
+  },
+  "dse_outputs": {
+    "lpddr5x_7b_exists": true,
+    "hbm2e_7b_exists": true
+  }
+}
