@@ -12,11 +12,24 @@ fake implementation can all satisfy the same contract.
 
 from __future__ import annotations
 
+import enum
 from abc import ABC, abstractmethod
 from typing import Literal
 
 from contracts.errors import ConfigError
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+
+class AccessType(str, enum.Enum):
+    """Expected DRAM access pattern — determines efficiency model.
+
+    Sequential access (weights, activations) benefits from page locality and
+    burst efficiency.  Random access (KV cache) incurs row-buffer conflict
+    penalties and lower effective bandwidth.
+    """
+
+    SEQUENTIAL = "sequential"
+    RANDOM = "random"
 
 
 class MemoryAccessPattern(BaseModel):
@@ -37,6 +50,10 @@ class MemoryAccessPattern(BaseModel):
         default=1e-6,
         gt=0,
         description="Time window over which energy is averaged into active power",
+    )
+    access_type: AccessType = Field(
+        default=AccessType.SEQUENTIAL,
+        description="Expected memory access pattern — sequential (weights/activations) or random (KV cache)",
     )
 
     @field_validator("active_time_seconds")

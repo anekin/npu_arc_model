@@ -1,0 +1,19 @@
+{
+  "sequential": {
+    "access_type": "sequential",
+    "serialized": "sequential"
+  },
+  "random": {
+    "access_type": "random",
+    "serialized": "random"
+  },
+  "default": {
+    "access_type": "sequential",
+    "serialized": "sequential"
+  },
+  "roundtrip": {
+    "input": "random",
+    "restored": "random",
+    "match": true
+  }
+}

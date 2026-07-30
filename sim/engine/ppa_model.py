@@ -7,6 +7,7 @@ from typing import Any
 
 from contracts.bitcell import BitcellTable, sram_area_mm2
 from models.memory_backend import (
+    AccessType,
     MemoryAccessPattern,
     MemoryBackend,
     MemoryRequest,
@@ -168,6 +169,7 @@ class AreaModel:
                 read_bytes=0,
                 write_bytes=0,
                 active_time_seconds=1e-6,
+                access_type=AccessType.SEQUENTIAL,
             ),
         )
         response = self._memory_backend.estimate(request)
@@ -331,6 +333,7 @@ class PowerModel:
                 read_bytes=int(bytes_per_s * active_time * 0.5),
                 write_bytes=int(bytes_per_s * active_time * 0.5),
                 active_time_seconds=active_time,
+                access_type=AccessType.SEQUENTIAL,
             ),
         )
         response = self._memory_backend.estimate(request)

@@ -22,6 +22,11 @@ class KVCacheModel:
     - Sliding window: most recent N tokens stay in SRAM
     - Older tokens in LPDDR5 KV region
     - On layer switch: SRAM is reloaded with that layer's KV window
+
+    KV cache DRAM access follows a random access pattern
+    (AccessType.RANDOM): scattered token positions within the DRAM region
+    cause row-buffer conflicts and lower effective bandwidth compared to
+    sequential weight streaming.
     """
 
     def __init__(self, config: dict[str, Any], memory_access_plan: Any = None):

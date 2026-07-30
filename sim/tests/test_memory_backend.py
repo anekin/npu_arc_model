@@ -11,6 +11,7 @@ from __future__ import annotations
 import pytest
 from contracts.errors import ConfigError
 from models.memory_backend import (
+    AccessType,
     MemoryAccessPattern,
     MemoryBackend,
     MemoryRequest,
@@ -29,6 +30,7 @@ def _onchip_request(
     read_bytes: int = 1_000_000,
     write_bytes: int = 500_000,
     process_node_nm: float = 12.0,
+    access_type: AccessType = AccessType.SEQUENTIAL,
 ) -> MemoryRequest:
     return MemoryRequest(
         topology=MemoryTopology(
@@ -45,6 +47,7 @@ def _onchip_request(
             write_bytes=write_bytes,
             read_fraction=read_bytes / max(read_bytes + write_bytes, 1),
             active_time_seconds=1e-6,
+            access_type=access_type,
         ),
     )
 

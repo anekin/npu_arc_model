@@ -21,6 +21,12 @@ class NPUCompiler:
     - Activations streamed per token
     - Double-buffer: load next layer weights while computing current layer
     - SFU ops inserted after attention matmuls and FFN matmuls
+
+    Access pattern notes:
+    - Weight DMA: sequential (AccessType.SEQUENTIAL) — contiguous bulk loads
+      with page locality and burst efficiency.
+    - Activation/scratch: sequential (AccessType.SEQUENTIAL) — streamed
+      per token in contiguous buffers.
     """
 
     def __init__(self, num_cores: int = 1):

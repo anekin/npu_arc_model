@@ -1,0 +1,33 @@
+Negative path evidence: MemoryAccessPattern access_type validation
+============================================================
+
+Test: unknown_string
+Result: {
+  "error": "{'type': 'enum', 'loc': ('access_type',), 'msg': \"Input should be 'sequential' or 'random'\", 'input': 'unknown', 'ctx': {'expected': \"'sequential' or 'random'\"}, 'url': 'https://errors.pydantic.dev/2.13/v/enum'}"
+}
+
+Test: empty_string
+Result: {
+  "error": "{'type': 'enum', 'loc': ('access_type',), 'msg': \"Input should be 'sequential' or 'random'\", 'input': '', 'ctx': {'expected': \"'sequential' or 'random'\"}, 'url': 'https://errors.pydantic.dev/2.13/v/enum'}"
+}
+
+Test: numeric
+Result: {
+  "error": "{'type': 'enum', 'loc': ('access_type',), 'msg': \"Input should be 'sequential' or 'random'\", 'input': 42, 'ctx': {'expected': \"'sequential' or 'random'\"}, 'url': 'https://errors.pydantic.dev/2.13/v/enum'}"
+}
+
+Test: valid_sequential
+Result: {
+  "access_type": "sequential",
+  "status": "accepted"
+}
+
+Test: frozen_check
+Result: "sequential"
+
+Test: frozen_rejected
+Result: {
+  "error": "frozen_instance",
+  "msg": "Instance is frozen"
+}
+

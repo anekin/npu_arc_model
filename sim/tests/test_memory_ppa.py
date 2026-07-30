@@ -13,6 +13,7 @@ from typing import Literal
 import pytest
 from contracts.errors import ConfigError
 from models.memory_backend import (
+    AccessType,
     MemoryAccessPattern,
     MemoryRequest,
     MemoryTopology,
@@ -33,6 +34,7 @@ def _request(
     include_phy: bool | None = None,
     include_tsv: bool | None = None,
     process_node_nm: float = 12.0,
+    access_type: AccessType = AccessType.SEQUENTIAL,
 ) -> MemoryRequest:
     if tier == "on_chip_3d_dram":
         include_phy = False if include_phy is None else include_phy
@@ -59,6 +61,7 @@ def _request(
             write_bytes=write_bytes,
             read_fraction=read_bytes / max(read_bytes + write_bytes, 1),
             active_time_seconds=1e-6,
+            access_type=access_type,
         ),
     )
 

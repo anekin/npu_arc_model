@@ -106,7 +106,13 @@ def _validate_finite(value: float, name: str) -> None:
 
 
 class MACEngine(ABC):
-    """MAC 引擎抽象基类"""
+    """MAC 引擎抽象基类
+
+    Weight DMA follows a sequential access pattern (AccessType.SEQUENTIAL):
+    weights are loaded in contiguous bulk transfers with page locality.
+    KV cache reads are random (AccessType.RANDOM) due to scattered token
+    positions causing row-buffer conflicts.
+    """
 
     def __init__(
         self,
@@ -182,7 +188,10 @@ class MACEngine(ABC):
         self.eff_bw = self.bw_raw * self.dram_efficiency * self.bw_multiplier
 
     def _dram_eff_for_bytes(self, transfer_bytes: int) -> float:
-        """DRAM utilization factor for a given transfer size.
+        """DRAM utilization factor for a given transfer size (sequential access).
+
+        Weight DMA follows a sequential access pattern, benefiting from
+        page locality and burst efficiency (cf. AccessType.SEQUENTIAL).
 
         - Small transfers (≤ wbuf) → cached, no DRAM needed
         - Large transfers → full DRAM read, efficiency depends on buffer ratio
@@ -198,7 +207,7 @@ class MACEngine(ABC):
         return 0.55 + 0.40 * ratio / (0.3 + ratio)
 
     def _kv_dram_efficiency(self, kv_bytes: int) -> float:
-        """DRAM efficiency for KV cache reads (uses 40% SRAM buffer)."""
+        """DRAM efficiency for KV cache reads (random access; cf. AccessType.RANDOM)."""
         if kv_bytes <= 0:
             return 1.0
         kvbuf_mb = self.kvbuf_kb / 1024.0

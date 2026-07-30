@@ -308,7 +308,7 @@ Note: C3 (Todos 10-12) functionally benefits from C2 (Todos 6-9), but can execut
 
   **Commit**: YES | `test(ppa): add cross-node area regression and unify oracle anchor` | `sim/tests/test_area_cross_node.py`, `sim/tests/oracles/ppa.py`
 
-- [ ] 6. 为 MemoryAccessPattern 添加 access_type 字段
+- [x] 6. 为 MemoryAccessPattern 添加 access_type 字段
 
   **What to do**:
   1. 修改 `sim/models/memory_backend.py:22-47`：在 `MemoryAccessPattern` 中新增 `access_type: str = Field(default="sequential", pattern="^(sequential|random)$")`。

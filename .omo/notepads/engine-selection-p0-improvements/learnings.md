@@ -176,3 +176,42 @@
 
 - Should the cross-node test matrix also include on-chip 3D DRAM memory configs to cover memory-die area scaling?
 - Should the 12nm density-correction outlier be documented in `references/area_sources.md` as a known non-monotonicity?
+
+# Todo 6 — Add access_type field to MemoryAccessPattern
+
+**Date:** 2026-07-30
+
+## What was done
+
+- Added `AccessType(str, enum.Enum)` to `sim/models/memory_backend.py` with `SEQUENTIAL="sequential"` and `RANDOM="random"`.
+- Added `access_type: AccessType` field to `MemoryAccessPattern` with default `AccessType.SEQUENTIAL`. Validation is enforced by the Pydantic enum field — any value other than `"sequential"` or `"random"` raises `ValidationError` with the message `"Input should be 'sequential' or 'random'"`.
+- Updated both `MemoryAccessPattern` creation sites in `sim/engine/ppa_model.py` (`_memory_area_estimate()` and `_memory_power_estimate()`) to pass `access_type=AccessType.SEQUENTIAL`.
+- Updated test helpers in `sim/tests/test_memory_ppa.py` and `sim/tests/test_memory_backend.py` to accept an `access_type` parameter (defaulting to `AccessType.SEQUENTIAL`).
+- Added documentation comments in `sim/engine/mac_engine.py` (weight DMA = sequential, KV cache = random), `sim/engine/compiler.py` (weight DMA/activation = sequential), and `sim/models/kv_cache.py` (KV cache = random).
+- Created `sim/tests/test_memory_access_pattern.py` with 19 tests covering:
+  - Schema validation (4 valid values accepted, 3 invalid values rejected)
+  - Default value behaviour (defaults to SEQUENTIAL)
+  - Serialization roundtrip (model_dump → model_validate, JSON roundtrip)
+  - Integration with engine creation sites (ppa_model patterns default to SEQUENTIAL)
+  - Frozen instance immutability
+
+## Verification
+
+- `uv run pytest sim/tests/test_memory_access_pattern.py -q` — 19 passed.
+- `uv run pytest sim/tests/test_memory_backend.py -q` — 41 passed.
+- `uv run ruff check sim/models/memory_backend.py sim/engine/mac_engine.py sim/engine/compiler.py sim/models/kv_cache.py sim/tests/test_memory_access_pattern.py sim/tests/test_memory_ppa.py sim/tests/test_memory_backend.py` — All checks passed.
+- `uv run basedpyright sim/models/memory_backend.py sim/engine/mac_engine.py sim/engine/compiler.py sim/models/kv_cache.py sim/tests/test_memory_access_pattern.py sim/tests/test_memory_ppa.py sim/tests/test_memory_backend.py` — 0 errors, 0 warnings, 0 notes.
+- Happy-path evidence: `.omo/evidence/task-6-engine-selection-p0-pattern.json`.
+- Negative-path evidence: `.omo/evidence/task-6-engine-selection-p0-pattern-negative.txt`.
+
+## Key findings
+
+1. **Pydantic str enum provides automatic validation** — using `AccessType(str, enum.Enum)` as the field type gives us model_dump serialization to string, model_validate deserialization from string, and automatic rejection of invalid values with a clear error message. No need for a separate `pattern` regex validator.
+2. **MemoryAccessPattern has exactly 4 creation sites** (2 × ppa_model, 2 × test helpers). The `mac_engine.py`, `compiler.py`, and `kv_cache.py` files do NOT directly create `MemoryAccessPattern` objects; they model DMA/KVCache at a higher abstraction level using `dram_efficiency` and `MemoryAccessPlan`.
+3. **Default access_type is SEQUENTIAL** — all existing callers that omit the new field continue to work unchanged. Only sites that need RANDOM (future KV cache DRAM modeling) need to pass `access_type=AccessType.RANDOM` explicitly.
+4. **The test file validates at the schema level, not the integration level** — creation-site tests verify that the ppa_model pattern defaults to SEQUENTIAL. Full integration with pattern-based DRAM efficiency (mac_engine/compiler/kv_cache pathways) belongs in Todo 7.
+
+## Open questions
+
+- Should `mac_engine.py`, `compiler.py`, and `kv_cache.py` be refactored to create `MemoryAccessPattern` objects directly (for Todo 7 integration), or should the pattern-based DRAM efficiency layer accept `AccessType` from the caller independently?
+- The current `AccessType` has only two values. Do we need a third for mixed/streaming patterns (e.g., gather + compute)?
