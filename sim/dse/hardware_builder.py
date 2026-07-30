@@ -62,6 +62,13 @@ def build_hardware_config(base_config: dict[str, Any], combo: dict[str, Any]) ->
     opts["weight_cache"] = combo["weight_cache"]
     opts.setdefault("dma_bw_multiplier", 1.0)
 
+    # Propagate process_node from DSE axis to area_model config.
+    # Backward compatibility: combos without process_node fall back to
+    # base_config["area_model"]["process_node"] (default 7).
+    if "process_node" in combo:
+        am = cfg.setdefault("area_model", {})
+        am["process_node"] = combo["process_node"]
+
     cfg.setdefault("version", "2")
     return cfg
 

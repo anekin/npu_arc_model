@@ -543,7 +543,7 @@ Note: C3 (Todos 10-12) functionally benefits from C2 (Todos 6-9), but can execut
 
   **Commit**: YES | `evidence(dse): collect 5-scenario engine ranking comparison` | `.omo/evidence/task-12-engine-selection-p0-scenario-dse.json`
 
-- [ ] 13. 将 process_node 加入 DSE 轴
+- [x] 13. 将 process_node 加入 DSE 轴
 
   **What to do**:
   1. 修改 `sim/config/dse_axes.yaml:10-142`：在 `axes` 区域新增 `process_node` 轴，values: `[28, 22, 12, 7]`。同时在 `bandwidth_gbps` 轴的 values 中添加 `68` 和 `410`。

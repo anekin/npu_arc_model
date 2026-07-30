@@ -86,6 +86,11 @@ axes:
     values: [0, 100, 500, 1000]
     provenance: scenarios/onchip_7b
 
+  process_node:
+    description: Process technology node in nm
+    values: [28, 22, 12, 7]
+    provenance: references/calibration/parameters.yaml
+
   queue_policy:
     description: Global queueing policy for temporal classes
     values: [fifo, mailbox_latest]
@@ -155,6 +160,7 @@ defaults:
   weight_cache: false
   on_chip_capacity_gb: 0
   on_chip_bandwidth_gbps: 0
+  process_node: 7
   queue_policy: fifo
   nonpreemptible_quantum_ms: 0.0
   partition: none
@@ -229,6 +235,13 @@ constraints:
         array_width: [384]
     reason: area_exceeds_200mm2
 
+  - name: old_node_sram_l2_limit
+    when:
+      process_node: [28, 22]
+    require:
+      sram_l2_kb: [512, 1024, 2048, 4096]
+    reason: old_node_sram_l2_limit
+
   - name: area_systolic_large
     when:
       engine: [systolic]
@@ -255,3 +268,4 @@ reason_codes:
   weight_cache_external_memory: Weight cache requires external DRAM-backed memory
   area_exceeds_200mm2: Array dimensions exceed area budget for this engine class
   area_exceeds_80mm2: Systolic array dimensions exceed conservative area budget at high frequency
+  old_node_sram_l2_limit: SRAM L2 capacity limited to 4096 KB on 28nm and 22nm process nodes

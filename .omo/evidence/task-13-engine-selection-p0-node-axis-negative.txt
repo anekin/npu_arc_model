@@ -1,0 +1,27 @@
+=== Negative-path evidence: process_node constraint ===
+
+Full-mode test config: 4 nodes x 5 sram values = 20 raw combos
+  Generated points (after constraint): 18
+  Exclusions triggered by old_node_sram_l2_limit: 2
+  Expected: 18 points, 2 exclusions
+
+Invalid combos found (process_node in (28,22) with sram==8192): 0
+  Details: []
+
+Exclusion records:
+  axis=sram_l2_kb, value=8192, reason=old_node_sram_l2_limit, constraint=old_node_sram_l2_limit
+  axis=sram_l2_kb, value=8192, reason=old_node_sram_l2_limit, constraint=old_node_sram_l2_limit
+
+=== process_node propagation through AreaModel ===
+  Full DSE pipeline: AreaModel(cfg_full).process_node_nm = 28.0
+  Full DSE pipeline: AreaModel(cfg_full).node_scale = 16.0
+  (28nm node_scale = (28/7)² = 16.0)
+
+=== Backward compatibility ===
+  Without process_node in combo, area_model.process_node = 7
+  (Expected: 7, the base config default)
+
+=== 12nm and 7nm allow sram=8192 ===
+  12nm/7nm with sram=8192 present: True
+
+All checks complete.

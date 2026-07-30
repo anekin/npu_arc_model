@@ -492,8 +492,47 @@ The empty frontier was caused by the AUTHORITATIVE hard gate in `sim/dse/pareto.
 - `sim/config/dse_axes.yaml`
 - `sim/tests/test_scenario_pareto.py`
 
+# Todo 13 — Add process_node axis to DSE
+
+**Date:** 2026-07-30
+
+## What was done
+
+- Modified `sim/config/dse_axes.yaml`:
+  - Added `process_node` axis with values `[28, 22, 12, 7]` and provenance `references/calibration/parameters.yaml`.
+  - Added `process_node: 7` to the defaults section.
+  - Added `old_node_sram_l2_limit` constraint: when `process_node` is 28 or 22, `sram_l2_kb` must be ≤ 4096 (i.e., only `[512, 1024, 2048, 4096]`).
+  - Added `old_node_sram_l2_limit` reason code.
+  - Verified `bandwidth_gbps` values unchanged (includes 68.0 and 410.0 from Todo 12).
+
+- Modified `sim/dse/hardware_builder.py`:
+  - Added process_node propagation from `combo["process_node"]` to `cfg["area_model"]["process_node"]`.
+  - Backward compatibility: if `process_node` is absent from combo (e.g., old cached data), falls back to `base_config["area_model"]["process_node"]` defaulting to 7.
+
+- Created `sim/tests/test_dse_space.py` with 12 tests across 3 classes:
+  - `TestProcessNodeGenerationFull`: full-mode generation, constraint enforcement, count
+  - `TestProcessNodeGenerationCi`: ci_all_axes generation, count
+  - `TestBuildHardwareConfigNode`: 4 node value propagation + backward compat + key preservation
+
+## Verification
+
+- `uv run pytest sim/tests/test_dse_space.py sim/tests/test_dse_coverage.py -q` — 15 passed.
+- `uv run ruff check sim/dse/hardware_builder.py sim/tests/test_dse_space.py` — All checks passed.
+- `uv run basedpyright sim/dse/hardware_builder.py sim/tests/test_dse_space.py` — 0 errors, 0 warnings, 0 notes.
+- `uv run python sim/design_space_explorer.py --scenario lpddr5_3b --space ci-all-axes --result-schema v2` — exit 0, 64/64 evaluated (was ~66 before; 64 < 240 ≤ 4× bound).
+- Happy-path evidence: `.omo/evidence/task-13-engine-selection-p0-node-axis.json`.
+- Negative-path evidence: `.omo/evidence/task-13-engine-selection-p0-node-axis-negative.txt`.
+
+## Key findings
+
+1. **ci-all-axes point count shrank from ~66 to 64** — adding process_node introduced constraint interactions that reduced total points slightly. This is within the ≤240 bound.
+2. **The constraint works correctly**: full-mode test confirms 18/20 combos survive (2 excluded for 28nm+8192 and 22nm+8192), with 0 invalid combos found in either mode.
+3. **AreaModel receives the correct process_node**: `AreaModel(cfg).process_node_nm = 28.0` and `node_scale = 16.0` (= (28/7)²) confirmed in negative-path evidence.
+4. **Backward compatibility is preserved**: combos without `process_node` key produce `area_model.process_node = 7` (the default).
+
 ## Open questions
 
 - Should the AUTHORITATIVE gate be removed entirely, or is the current "exclude only non_authoritative by default" behavior the right long-term semantic?
 - `completed_throughput_hz` was previously unset in all scenario-DSE results; should a regression test assert it is always populated for complete results?
 - The `os_systolic` winner at high BW uses a 128×128 array in the current `ci-all-axes` space. Would a larger array dimension (Todo 13 process_node axis) change the winner?
+- With process_node now in the DSE axis, `build_hardware_config` propagates it to `area_model.process_node`. Is there any downstream code that reads `area_model["process_node_nm"]` specifically instead of `area_model["process_node"]`? (AreaModel.__init__ checks `process_node_nm` first, then falls back to `process_node`.)
