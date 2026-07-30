@@ -1,0 +1,25 @@
+{
+  "pytest": {
+    "exit_code": 0,
+    "stdout": ".............................                                            [100%]\n",
+    "stderr": ""
+  },
+  "ruff": {
+    "exit_code": 0,
+    "stdout": "All checks passed!\n",
+    "stderr": ""
+  },
+  "basedpyright": {
+    "exit_code": 0,
+    "stdout": "0 errors, 0 warnings, 0 notes\n",
+    "stderr": ""
+  },
+  "legacy_28nm": {
+    "calibration_process_node_nm": 28.0,
+    "calibration_marked_as_loss": false
+  },
+  "legacy_12nm": {
+    "calibration_process_node_nm": 12.0,
+    "calibration_marked_as_loss": false
+  }
+}

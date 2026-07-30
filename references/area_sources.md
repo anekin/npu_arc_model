@@ -26,6 +26,28 @@
 - 128×128 systolic array @7nm ≈ 16,384 × 75.7 = **1.24 mm²**
 - **代码取 2.0 mm²**（含绕线损失、clock tree、电源/地网格，约 1.6× 实际物理比）
 
+**跨节点缩放公式（PE 逻辑面积）：**
+
+逻辑面积以 TSMC 7nm 为锚点，缩放因子由 `sim/engine/ppa_model.py` 中 `_node_scale_factor(node)` 定义：
+
+```
+scale(7nm)  = 1.0
+scale(12nm) = 2.70   # TSMC 12FFC 密度比（非几何 (12/7)² = 2.94）
+scale(22nm) = (22/7)² ≈ 9.88
+scale(28nm) = (28/7)² = 16.0
+```
+
+因此 128×128 systolic PE 面积为：
+
+| 节点 | 缩放因子 | 面积 (mm²) |
+|:----:|:--------:|:----------:|
+| 7nm  | 1.0      | 2.0        |
+| 12nm | 2.70     | 5.4        |
+| 22nm | 9.88     | 19.76      |
+| 28nm | 16.0     | 32.0       |
+
+> SRAM 面积不随 PE 逻辑一起按几何律缩放，而是按 `contracts/bitcell.py` 中 `BitcellTable` 的逐节点 bitcell 面积查表计算，再乘以 peripheral overhead。详见 §4。
+
 **配置项：** `systolic_pe_area_mm2: 2.0`
 
 ---

@@ -14,6 +14,7 @@ from typing import Any
 from calibration.registry import CalibrationRegistry
 from contracts.hardware import TrustLevel
 from contracts.identity import digest_sha256
+from engine.ppa_model import AreaModel
 
 
 def calibration_digest(registry: CalibrationRegistry) -> str:
@@ -46,6 +47,13 @@ def _node_scale_factor(process_node_nm: float) -> float:
     return (process_node_nm / 7.0) ** 2
 
 
+def _node_id_suffix(process_node_nm: float) -> str:
+    node_int = int(process_node_nm)
+    if node_int == process_node_nm:
+        return str(node_int)
+    return str(process_node_nm)
+
+
 def calibration_ids_for_design_point(hw_config: dict[str, Any]) -> set[str]:
     """Return the calibration IDs consumed by a hardware config.
 
@@ -61,10 +69,17 @@ def calibration_ids_for_design_point(hw_config: dict[str, Any]) -> set[str]:
 
     engine_type = (hw_config.get("mac_engine", {}).get("type", "block")).lower()
 
-    # PE area baseline and engine-specific ratios.
-    ids.add("systolic_pe_area_7nm")
+    area_model = hw_config.get("area_model", {})
+    process_node = float(
+        area_model.get("process_node_nm", area_model.get("process_node", 7.0))
+    )
+    node_suffix = _node_id_suffix(process_node)
+    ids.add(f"systolic_pe_area_{node_suffix}nm")
     if engine_type in {"block", "os_systolic", "input_stationary", "tensor_core", "wmma", "gmma", "fsa"}:
+        ids.add(f"block_pe_area_{node_suffix}nm")
         ids.add("block_systolic_pe_ratio")
+    if engine_type == "fsa":
+        ids.add(f"fsa_pe_area_{node_suffix}nm")
     if engine_type == "wmma":
         ids.add("wmma_pe_ratio")
     if engine_type == "gmma":
@@ -92,6 +107,18 @@ def _actual_value(calibration_id: str, hw_config: dict[str, Any]) -> float | Non
 
     if calibration_id == "systolic_pe_area_7nm":
         return float(area_model.get("systolic_pe_area_mm2", 2.0))
+
+    if calibration_id.startswith("systolic_pe_area_") and calibration_id.endswith("nm"):
+        model = AreaModel(hw_config)
+        return model.systolic_pe_baseline
+
+    if calibration_id.startswith("block_pe_area_") and calibration_id.endswith("nm"):
+        model = AreaModel(hw_config)
+        return model.block_pe_baseline
+
+    if calibration_id.startswith("fsa_pe_area_") and calibration_id.endswith("nm"):
+        model = AreaModel(hw_config)
+        return model.fsa_pe_baseline
 
     if calibration_id == "block_systolic_pe_ratio":
         systolic = float(area_model.get("systolic_pe_area_mm2", 2.0))

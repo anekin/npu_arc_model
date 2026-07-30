@@ -28,6 +28,17 @@ CALIBRATE_SCRIPT = REPO_ROOT / "scripts" / "calibrate_mxu_model.py"
 
 EXPECTED_IDS = {
     "systolic_pe_area_7nm",
+    "systolic_pe_area_28nm",
+    "systolic_pe_area_22nm",
+    "systolic_pe_area_12nm",
+    "block_pe_area_7nm",
+    "block_pe_area_28nm",
+    "block_pe_area_22nm",
+    "block_pe_area_12nm",
+    "fsa_pe_area_7nm",
+    "fsa_pe_area_28nm",
+    "fsa_pe_area_22nm",
+    "fsa_pe_area_12nm",
     "block_systolic_pe_ratio",
     "gmma_pipeline_scale",
     "tensor_core_descriptor_overhead",
@@ -40,8 +51,8 @@ EXPECTED_IDS = {
 }
 
 
-def test_valid_registry_has_all_ten_parameters():
-    """Canonical registry contains exactly the 10 decision-driving parameters."""
+def test_valid_registry_has_all_parameters():
+    """Canonical registry contains exactly the decision-driving parameters."""
     registry = CalibrationRegistry.from_yaml()
     assert set(registry.ids()) == EXPECTED_IDS
 

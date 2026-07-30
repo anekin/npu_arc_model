@@ -23,6 +23,160 @@ parameters:
       128x128 systolic PE area baseline at 7nm, inferred from TPUv1 ISCA 2017
       die-shot and cross-checked with Simba (MICRO 2019) and DiP-WS (2024).
 
+  - calibration_id: systolic_pe_area_28nm
+    value: 32.0
+    unit: mm2
+    source_uri: references/area_sources.md
+    source_hash: null
+    trust_level: T2
+    calibration_range: 28.8–35.2 mm2
+    range_min: 28.8
+    range_max: 35.2
+    status: calibrated
+    description: >
+      128x128 systolic PE area at 28nm, derived from the 7nm baseline scaled by
+      geometric (28/7)² = 16.0×.  Anchor: TPUv1 ISCA 2017 die-shot.
+
+  - calibration_id: systolic_pe_area_22nm
+    value: 19.7551
+    unit: mm2
+    source_uri: references/area_sources.md
+    source_hash: null
+    trust_level: T2
+    calibration_range: 17.8–21.7 mm2
+    range_min: 17.8
+    range_max: 21.7
+    status: calibrated
+    description: >
+      128x128 systolic PE area at 22nm, derived from the 7nm baseline scaled by
+      geometric (22/7)² ≈ 9.88×.  Cross-check: RK1828 block-engine area estimate.
+
+  - calibration_id: systolic_pe_area_12nm
+    value: 5.4
+    unit: mm2
+    source_uri: references/area_sources.md
+    source_hash: null
+    trust_level: T2
+    calibration_range: 4.9–5.9 mm2
+    range_min: 4.9
+    range_max: 5.9
+    status: calibrated
+    description: >
+      128x128 systolic PE area at 12nm (TSMC 12FFC), derived from the 7nm baseline
+      scaled by density ratio 2.70× (not geometric (12/7)²).
+
+  - calibration_id: block_pe_area_7nm
+    value: 4.0
+    unit: mm2
+    source_uri: references/area_sources.md
+    source_hash: null
+    trust_level: T1
+    calibration_range: 3.4–4.6 mm2
+    range_min: 3.4
+    range_max: 4.6
+    status: assumption
+    description: >
+      128x128 block PE area baseline at 7nm (2.0× systolic, per architecture
+      reasoning).  TPUv1 only validates systolic; block ratio is unconfirmed.
+
+  - calibration_id: block_pe_area_28nm
+    value: 64.0
+    unit: mm2
+    source_uri: references/area_sources.md
+    source_hash: null
+    trust_level: T1
+    calibration_range: 54.4–73.6 mm2
+    range_min: 54.4
+    range_max: 73.6
+    status: assumption
+    description: >
+      128x128 block PE area at 28nm, derived from the 7nm baseline scaled by
+      geometric (28/7)² = 16.0×.
+
+  - calibration_id: block_pe_area_22nm
+    value: 39.5102
+    unit: mm2
+    source_uri: references/area_sources.md
+    source_hash: null
+    trust_level: T1
+    calibration_range: 33.6–45.4 mm2
+    range_min: 33.6
+    range_max: 45.4
+    status: assumption
+    description: >
+      128x128 block PE area at 22nm, derived from the 7nm baseline scaled by
+      geometric (22/7)² ≈ 9.88×.
+
+  - calibration_id: block_pe_area_12nm
+    value: 10.8
+    unit: mm2
+    source_uri: references/area_sources.md
+    source_hash: null
+    trust_level: T1
+    calibration_range: 9.2–12.4 mm2
+    range_min: 9.2
+    range_max: 12.4
+    status: assumption
+    description: >
+      128x128 block PE area at 12nm (TSMC 12FFC), derived from the 7nm baseline
+      scaled by density ratio 2.70×.
+
+  - calibration_id: fsa_pe_area_7nm
+    value: 2.2
+    unit: mm2
+    source_uri: references/area_sources.md
+    source_hash: null
+    trust_level: T1
+    calibration_range: 1.9–2.5 mm2
+    range_min: 1.9
+    range_max: 2.5
+    status: assumption
+    description: >
+      128x128 FSA PE area baseline at 7nm (1.1× systolic, CMP + Split overhead).
+      Architectural ratio; no die-shot proxy.
+
+  - calibration_id: fsa_pe_area_28nm
+    value: 35.2
+    unit: mm2
+    source_uri: references/area_sources.md
+    source_hash: null
+    trust_level: T1
+    calibration_range: 29.9–40.5 mm2
+    range_min: 29.9
+    range_max: 40.5
+    status: assumption
+    description: >
+      128x128 FSA PE area at 28nm, derived from the 7nm baseline scaled by
+      geometric (28/7)² = 16.0×.
+
+  - calibration_id: fsa_pe_area_22nm
+    value: 21.7306
+    unit: mm2
+    source_uri: references/area_sources.md
+    source_hash: null
+    trust_level: T1
+    calibration_range: 18.5–25.0 mm2
+    range_min: 18.5
+    range_max: 25.0
+    status: assumption
+    description: >
+      128x128 FSA PE area at 22nm, derived from the 7nm baseline scaled by
+      geometric (22/7)² ≈ 9.88×.
+
+  - calibration_id: fsa_pe_area_12nm
+    value: 5.94
+    unit: mm2
+    source_uri: references/area_sources.md
+    source_hash: null
+    trust_level: T1
+    calibration_range: 5.0–6.8 mm2
+    range_min: 5.0
+    range_max: 6.8
+    status: assumption
+    description: >
+      128x128 FSA PE area at 12nm (TSMC 12FFC), derived from the 7nm baseline
+      scaled by density ratio 2.70×.
+
   - calibration_id: block_systolic_pe_ratio
     value: 2.0
     unit: ratio

@@ -243,7 +243,7 @@ Note: C3 (Todos 10-12) functionally benefits from C2 (Todos 6-9), but can execut
 
   **Commit**: YES | `fix(ppa,dse): remove hardcoded 12nm from MemoryTopology and CalibrationRef` | `sim/engine/ppa_model.py`, `sim/dse/runner.py`, `sim/contracts/result.py`, 相关测试
 
-- [ ] 4. 清理 legacy_result 反模式 + 更新 calibration parameters
+- [x] 4. 清理 legacy_result 反模式 + 更新 calibration parameters
 
   **What to do**:
   1. `legacy_result.py:136` 和 L209：移除 `if any(r.calibration.process_node_nm != 12.0 ...)` 的守卫，改为正确传播 calibration 信息到 legacy projection。

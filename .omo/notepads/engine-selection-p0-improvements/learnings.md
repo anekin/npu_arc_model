@@ -99,3 +99,43 @@
 
 - Should `Parametric3DMemoryBackend` scale macro parameters by `topology.process_node_nm` in the next todo, or should scaling happen at the `AreaModel` layer?
 - Do we need a calibration gate that asserts `CalibrationRef.node_scale` matches `_node_scale_factor(process_node_nm)` for every result?
+
+# Todo 4 — Clean up legacy_result anti-pattern + expand calibration parameters
+
+**Date:** 2026-07-30
+
+## What was done
+
+- Removed the non-12nm loss guards in `sim/contracts/legacy_result.py` (lines ~136 and ~209).
+- Added `_calibration_from_results()` helper that propagates `CalibrationRef` fields into the legacy LLM and CV projections as a top-level `calibration` dict.
+- Extended `references/calibration/parameters.yaml` with 12 new per-node PE area entries:
+  - `systolic_pe_area_{7,12,22,28}nm` (T2, primary anchor)
+  - `block_pe_area_{7,12,22,28}nm` (T1, architectural ratio)
+  - `fsa_pe_area_{7,12,22,28}nm` (T1, architectural ratio)
+  - All entries include `source_uri: references/area_sources.md` and calibrated ranges derived from `_node_scale_factor`.
+- Extended `sim/calibration/evaluate.py`:
+  - `calibration_ids_for_design_point()` now reads `area_model.process_node_nm` and emits per-node PE area IDs.
+  - `_actual_value()` supports `systolic_pe_area_*nm`, `block_pe_area_*nm`, and `fsa_pe_area_*nm` by deriving scaled values from `AreaModel`.
+- Updated `sim/tests/test_calibration_registry.py` `EXPECTED_IDS` to include the new entries.
+- Added focused tests in `sim/tests/test_calibration_evaluate.py` for per-node ID selection and `_actual_value` scaling.
+- Extended `references/area_sources.md` §1 with the 28nm→22nm→12nm→7nm scaling table and a reference to `contracts/bitcell.py` for SRAM area.
+
+## Verification
+
+- `uv run pytest sim/tests/test_calibration_registry.py sim/tests/test_calibration_evaluate.py -q` — 29 passed.
+- `uv run ruff check sim/contracts/legacy_result.py sim/calibration/evaluate.py` — All checks passed.
+- `uv run basedpyright sim/contracts/legacy_result.py sim/calibration/evaluate.py` — 0 errors, 0 warnings, 0 notes.
+- Happy-path evidence: `.omo/evidence/task-4-engine-selection-p0-legacy.json` shows `calibration.process_node_nm == 28.0` and `calibration_marked_as_loss == false`.
+- Negative-path evidence: `.omo/evidence/task-4-engine-selection-p0-legacy-negative.txt` shows unknown `systolic_pe_area_13nm` is fail-closed as `unknown_calibration_id`.
+
+## Key findings
+
+1. **The old 12nm-only loss guard was an anti-pattern** — `CalibrationRef` now carries the real process node from `AreaModel`; projecting any node to legacy should not be treated as data loss.
+2. **Per-node calibration entries make the registry node-aware** — `evaluate.py` no longer hardcodes `systolic_pe_area_7nm`; it selects the ID matching the configured node and derives the actual scaled value from `AreaModel`.
+3. **12nm uses the density ratio 2.70×, not geometric (12/7)²** — the new `systolic_pe_area_12nm = 5.4 mm²` reflects the TSMC 12FFC density correction already present in `_node_scale_factor`.
+4. **Registry cardinality changed** — the canonical registry grew from 10 to 21 entries; the test fixture `EXPECTED_IDS` was updated to match.
+
+## Open questions
+
+- Should `block_systolic_pe_ratio` be retired now that per-node `block_pe_area_*nm` entries exist, or kept as an independent cross-check?
+- Should `os_pe_area_*nm`, `is_pe_area_*nm`, `tc_pe_area_*nm`, `wmma_pe_area_*nm`, and `gmma_pe_area_*nm` be added to the registry for full engine coverage, or is the current systolic/block/fsa set sufficient for P0?

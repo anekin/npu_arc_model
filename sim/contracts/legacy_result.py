@@ -122,6 +122,7 @@ def project_v2_to_legacy_llm(
         "error_details": error_details,
         "pareto_frontier": [_legacy_point(r, pareto_ids) for r in pareto],
         "top_results": [_legacy_point(r, pareto_ids) for r in top],
+        "calibration": _calibration_from_results(v2_result.results),
     }
 
     # Loss report for v2-only data
@@ -133,8 +134,6 @@ def project_v2_to_legacy_llm(
         loss.dropped_fields.append("calibration_digest")
     if v2_result.trust_level.value != "exploratory":
         loss.dropped_fields.append("trust_level")
-    if any(r.calibration.process_node_nm != 12.0 for r in v2_result.results):
-        loss.dropped_fields.append("calibration")
     if any(r.hardware_digest for r in v2_result.results):
         loss.dropped_fields.append("hardware_digest")
     if any(r.design_point_id for r in v2_result.results):
@@ -200,14 +199,13 @@ def project_v2_to_legacy_cv(
             "error_details": error_details,
         },
         "points": points,
+        "calibration": _calibration_from_results(v2_result.results),
     }
 
     # Loss report
     if v2_result.input_digest:
         loss.dropped_fields.append("input_digest")
     loss.dropped_fields.append("schema_version")
-    if any(r.calibration.process_node_nm != 12.0 for r in v2_result.results):
-        loss.dropped_fields.append("calibration")
 
     return legacy, loss
 
@@ -235,6 +233,31 @@ def _pareto_ids_from_results(results: list[Any]) -> set[str]:
         if not dominated:
             pareto_ids.add(r.design_point_id)
     return pareto_ids
+
+
+def _calibration_from_results(results: list[Any]) -> dict[str, Any]:
+    """Extract calibration parameters shared by the result set.
+
+    All design points in a single DSE run share the same process node and
+    calibration anchor.  The legacy projection preserves the node and scale
+    so downstream consumers can reconstruct the area anchor.
+    """
+    if results:
+        cal = results[0].calibration
+        return {
+            "process_node_nm": cal.process_node_nm,
+            "node_scale": cal.node_scale,
+            "dram_efficiency": cal.dram_efficiency,
+            "pe_area_ratio_block_systolic": cal.pe_area_ratio_block_systolic,
+            "trust_level": cal.trust_level.value,
+        }
+    return {
+        "process_node_nm": 12.0,
+        "node_scale": 2.70,
+        "dram_efficiency": 0.85,
+        "pe_area_ratio_block_systolic": 2.0,
+        "trust_level": "exploratory",
+    }
 
 
 def _legacy_point(r: Any, pareto_ids: set[str]) -> dict[str, Any]:

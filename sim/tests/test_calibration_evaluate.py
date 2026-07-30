@@ -71,6 +71,7 @@ def test_calibration_ids_for_block_engine():
     cfg = _base_hw_config("block")
     ids = calibration_ids_for_design_point(cfg)
     assert "systolic_pe_area_7nm" in ids
+    assert "block_pe_area_7nm" in ids
     assert "block_systolic_pe_ratio" in ids
     assert "pj_per_mac_12nm_int8" in ids
     assert "power_density_12nm" in ids
@@ -79,6 +80,30 @@ def test_calibration_ids_for_block_engine():
     assert "gmma_pipeline_scale" not in ids
     assert "tensor_core_descriptor_overhead" not in ids
     assert "wmma_pe_ratio" not in ids
+
+
+def test_calibration_ids_use_configured_process_node():
+    """PE area calibration IDs follow the configured process node."""
+    cfg = _base_hw_config("block")
+    cfg["area_model"]["process_node_nm"] = 28.0
+    ids = calibration_ids_for_design_point(cfg)
+    assert "systolic_pe_area_28nm" in ids
+    assert "block_pe_area_28nm" in ids
+    assert "systolic_pe_area_7nm" not in ids
+
+
+def test_actual_value_per_node_pe_area():
+    """_actual_value derives scaled PE area from AreaModel for the requested node."""
+    from calibration.evaluate import _actual_value
+
+    cfg = _base_hw_config("block")
+    cfg["area_model"]["process_node_nm"] = 28.0
+    assert _actual_value("systolic_pe_area_28nm", cfg) == pytest.approx(32.0, rel=1e-4)
+    assert _actual_value("block_pe_area_28nm", cfg) == pytest.approx(64.0, rel=1e-4)
+
+    cfg["area_model"]["process_node_nm"] = 12.0
+    assert _actual_value("systolic_pe_area_12nm", cfg) == pytest.approx(5.4, rel=1e-4)
+    assert _actual_value("block_pe_area_12nm", cfg) == pytest.approx(10.8, rel=1e-4)
 
 
 def test_calibration_ids_for_gmma_engine():
