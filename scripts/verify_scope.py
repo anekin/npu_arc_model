@@ -160,6 +160,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--project-root", type=Path, default=Path("."))
     parser.add_argument("--baseline-commit", default="HEAD")
     parser.add_argument("--publication-manifest", type=Path, default=Path("docs/publication-manifest.yaml"))
+    parser.add_argument("--plan", type=Path, default=Path(".omo/plans/arc-model-scenario-driven-dse-development.md"))
     parser.add_argument("--output", type=Path, default=None)
     args = parser.parse_args(argv)
 
@@ -168,6 +169,7 @@ def main(argv: list[str] | None = None) -> int:
         baseline_commit=args.baseline_commit,
         publication_manifest_path=args.publication_manifest,
     )
+    report["plan"] = str(args.plan)
 
     output_text = json.dumps(report, indent=2, ensure_ascii=False)
     if args.output:

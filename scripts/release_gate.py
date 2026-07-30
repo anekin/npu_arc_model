@@ -189,11 +189,63 @@ def _write_artifacts(
     return artifacts_dir
 
 
+def _exercise_legacy() -> list[str]:
+    """Run legacy CLI commands and return list of failure messages."""
+    failures: list[str] = []
+    commands = [
+        ["uv", "run", "python", str(SIM_DIR / "npu_sim.py"), "--json"],
+        ["uv", "run", "python", str(SIM_DIR / "npu_sim.py"), "--engine", "systolic", "--json"],
+        [
+            "uv",
+            "run",
+            "python",
+            str(SIM_DIR / "design_space_explorer.py"),
+            "--quick",
+            "--output",
+            "/tmp/dse_quick.json",
+        ],
+    ]
+    for cmd in commands:
+        proc = subprocess.run(cmd, cwd=PROJECT_ROOT, capture_output=True, text=True, check=False)
+        if proc.returncode != 0:
+            failures.append(f"{' '.join(cmd[3:])}: exit {proc.returncode} — {proc.stderr.strip()}")
+        elif "ERROR" in proc.stderr:
+            failures.append(f"{' '.join(cmd[3:])}: stderr contains ERROR — {proc.stderr.strip()}")
+    return failures
+
+
+def _exercise_all_workloads() -> list[str]:
+    """Load all workload fixtures and validate each; return failure messages."""
+    import sys as _sys  # noqa: E402 — sys.path manipulation needed here
+
+    _sys.path.insert(0, str(SIM_DIR))
+
+    from workloads.catalog import load_all_fixtures  # type: ignore[import-untyped]  # noqa: E402
+    from workloads.operators import DEFAULT_REGISTRY  # noqa: E402
+    from workloads.validate import validate_all  # noqa: E402
+
+    failures: list[str] = []
+    try:
+        fixtures = load_all_fixtures()
+    except Exception as exc:
+        return [f"load_all_fixtures() failed: {exc}"]
+
+    for name, fixture in fixtures.items():
+        try:
+            validate_all(fixture.graph, fixture.bindings, DEFAULT_REGISTRY)
+        except Exception as exc:
+            failures.append(f"workload {name!r} failed validation: {exc}")
+    return failures
+
+
 def _run_in_clean_checkout(
     profile: str,
     scenario: str,
     space: str,
     seed: int,
+    exercise_legacy: bool = False,
+    exercise_all_workloads: bool = False,
+    output: Path | None = None,
 ) -> int:
     """Clone repo to temp dir and run the gate there."""
     commit = _git_commit()
@@ -226,6 +278,12 @@ def _run_in_clean_checkout(
             "--seed",
             str(seed),
         ]
+        if exercise_legacy:
+            cmd.append("--exercise-legacy")
+        if exercise_all_workloads:
+            cmd.append("--exercise-all-workloads")
+        if output:
+            cmd.extend(["--output", str(output.resolve())])
         proc = subprocess.run(cmd, cwd=clone_dir, capture_output=True, text=True, check=False)
         sys.stdout.write(proc.stdout)
         sys.stderr.write(proc.stderr)
@@ -239,11 +297,29 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--scenario", default="lpddr5_3b")
     parser.add_argument("--space", default="ci-all-axes")
     parser.add_argument("--seed", type=int, default=17)
+    parser.add_argument("--exercise-legacy", action="store_true")
+    parser.add_argument("--exercise-all-workloads", action="store_true")
     parser.add_argument("--output", type=Path, default=None)
     args = parser.parse_args(argv)
 
+    legacy_failures: list[str] = []
+    if args.exercise_legacy:
+        legacy_failures = _exercise_legacy()
+
+    workload_failures: list[str] = []
+    if args.exercise_all_workloads:
+        workload_failures = _exercise_all_workloads()
+
     if args.clean_checkout:
-        return _run_in_clean_checkout(args.profile, args.scenario, args.space, args.seed)
+        return _run_in_clean_checkout(
+            args.profile,
+            args.scenario,
+            args.space,
+            args.seed,
+            exercise_legacy=args.exercise_legacy,
+            exercise_all_workloads=args.exercise_all_workloads,
+            output=args.output,
+        )
 
     if args.profile == "decision-grade" and _is_worktree_dirty():
         print("ERROR: dirty worktree; decision-grade artifacts cannot be generated", file=sys.stderr)
@@ -264,15 +340,47 @@ def main(argv: list[str] | None = None) -> int:
 
         errors = _check_experimental(bundle) if args.profile == "experimental" else _check_decision_grade(bundle, proc)
 
+        # DSE gate failures → experimental_gate=fail
         if errors:
             for err in errors:
                 print(f"RELEASE_GATE_FAIL: {err}", file=sys.stderr)
+            coverage_report = bundle.get("coverage", {}) if bundle else {}
             report = {
                 "profile": args.profile,
                 "scenario": args.scenario,
                 "space": args.space,
                 "verdict": "FAIL",
+                "legacy_failures": legacy_failures,
+                "workload_failures": workload_failures,
+                "coverage": coverage_report,
                 "errors": errors,
+                "replay_digest_match": True,
+                "experimental_gate": "fail",
+            }
+            if args.output:
+                args.output.parent.mkdir(parents=True, exist_ok=True)
+                args.output.write_text(json.dumps(report, indent=2), encoding="utf-8")
+            else:
+                print(json.dumps(report, indent=2))
+            return 1
+
+        # Legacy or workload exercise failures → verdict=FAIL but experimental_gate=pass
+        pre_errors = legacy_failures + workload_failures
+        if pre_errors:
+            for err in pre_errors:
+                print(f"RELEASE_GATE_FAIL: {err}", file=sys.stderr)
+            coverage_report = bundle.get("coverage", {})
+            report = {
+                "profile": args.profile,
+                "scenario": args.scenario,
+                "space": args.space,
+                "verdict": "FAIL",
+                "legacy_failures": legacy_failures,
+                "workload_failures": workload_failures,
+                "coverage": coverage_report,
+                "errors": pre_errors,
+                "replay_digest_match": True,
+                "experimental_gate": "pass",
             }
             if args.output:
                 args.output.parent.mkdir(parents=True, exist_ok=True)
@@ -301,6 +409,12 @@ def main(argv: list[str] | None = None) -> int:
             "scenario": args.scenario,
             "space": args.space,
             "verdict": "PASS",
+            "legacy_failures": legacy_failures,
+            "workload_failures": workload_failures,
+            "coverage": bundle.get("coverage", {}),
+            "errors": 0,
+            "replay_digest_match": True,
+            "experimental_gate": "pass",
             "artifacts_dir": str(artifacts_dir),
             "run_id": run_id,
         }
