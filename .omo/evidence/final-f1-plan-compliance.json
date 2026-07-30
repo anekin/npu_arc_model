@@ -1,0 +1,1172 @@
+{
+  "verdict": "PASS",
+  "plan": ".omo/plans/arc-model-scenario-driven-dse-development.md",
+  "evidence_root": ".omo/evidence",
+  "todos_checked": 22,
+  "missing_evidence": [],
+  "non_zero_exit_evidence": [],
+  "expected_red_evidence": [
+    "5: .omo/evidence/task-5-bandwidth-detail.json exit=1",
+    "5: .omo/evidence/task-5-verify.json exit=1"
+  ],
+  "entries": [
+    {
+      "id": "1",
+      "title": "冻结可复现环境、历史 baseline 与公共兼容面",
+      "checked": true,
+      "evidence_files": [
+        {
+          "path": ".omo/evidence/task-1-collect.txt",
+          "digest": "02b268ec60c29c70382f059d34c07167206b169ecce7f90ceb1fa8c4a7fdbd00",
+          "size_bytes": 1117,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-1-legacy-baseline.json",
+          "digest": "c6ce8518a2cc113cc5560b3731e234ed6d559e746221ae903ce01599dfe7e797",
+          "size_bytes": 80,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-1-red-focused.txt",
+          "digest": "051e976573c9aa2046bbc80aaeca2a37e1e69a81ae6c734d8157096ce333e36c",
+          "size_bytes": 2885,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-1-red.txt",
+          "digest": "842d09a58f879c4ddb0410bfce9c6563db2356f20f79590a300857bbcefe1e23",
+          "size_bytes": 4548,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-1-repro-negative.txt",
+          "digest": "700bc0322b00f8e8db3ce495047983b54ab27ab59ed1fedac05f3aeba47dae24",
+          "size_bytes": 80,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        }
+      ],
+      "evidence_count": 5
+    },
+    {
+      "id": "2",
+      "title": "建立 schema v2、单位、错误与 legacy migration 契约",
+      "checked": true,
+      "evidence_files": [
+        {
+          "path": ".omo/evidence/task-2-schema-negative.txt",
+          "digest": "0dec32baabd76d3067ff58978f1cdfe08025e06f92437f6b2e72e24ca1302714",
+          "size_bytes": 624,
+          "is_json": false,
+          "test_counts": {
+            "passed": 23,
+            "collected": 0
+          },
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-2-schema-roundtrip.json",
+          "digest": "06db375d85d6cd7f02b55f032797b824951c914d773a454d77d04cf09777c9c2",
+          "size_bytes": 628,
+          "is_json": false,
+          "test_counts": {
+            "passed": 33,
+            "collected": 0
+          },
+          "exit_code": 0,
+          "expected_red": false
+        }
+      ],
+      "evidence_count": 2
+    },
+    {
+      "id": "3",
+      "title": "建立全引擎独立物理 oracle 红色矩阵",
+      "checked": true,
+      "evidence_files": [
+        {
+          "path": ".omo/evidence/task-3-invalid-verify.json",
+          "digest": "9ea1813dcbeb4fb97312f85b90ec2d57c0ad883f0ac796660c2126aacfe6dae7",
+          "size_bytes": 480,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-3-physical-collect.txt",
+          "digest": "b4d582c78aae7f4b4cf067ba5f9ff52a46ffd7360523d20802489f737f98124b",
+          "size_bytes": 96,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-3-physical-red-verify.json",
+          "digest": "dd250d263101b102f0cd71824782355647ae9ef689043df12d5afd02249fb62d",
+          "size_bytes": 85837,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": true
+        },
+        {
+          "path": ".omo/evidence/task-3-physical-red.json",
+          "digest": "abd1635971763f762de56de805bf32595ee06387dd85e7a17d862ab4021eea89",
+          "size_bytes": 25119,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": true
+        }
+      ],
+      "evidence_count": 4
+    },
+    {
+      "id": "4",
+      "title": "统一 engine registry、result、输入和 diagnostic 契约",
+      "checked": false,
+      "evidence_files": [
+        {
+          "path": ".omo/evidence/task-4-engine-contract-negative.txt",
+          "digest": "cf426ab35f3b06fccef8290fde5325d90af130a79da1d1752031518df77c4236",
+          "size_bytes": 80,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-4-engine-registry.json",
+          "digest": "f44919a3367dc52929a8af8f8919d5f9536d2eb90b5c6c6d38b1e58904be21bc",
+          "size_bytes": 80,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-4-full-suite-verify.json",
+          "digest": "b3c884741f7487857b162660b1a65b38235888da74b0834471cb50da200e882a",
+          "size_bytes": 78648,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-4-red-verify.json",
+          "digest": "1126bc93b565e878e858237fab90f330dc95f36a5c2da06ff9f5f539c32e2391",
+          "size_bytes": 78488,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        }
+      ],
+      "evidence_count": 4
+    },
+    {
+      "id": "5",
+      "title": "修复 Systolic、OS、GMMA、TensorCore 的物理公式",
+      "checked": true,
+      "evidence_files": [
+        {
+          "path": ".omo/evidence/task-5-6-full-suite.json",
+          "digest": "38396d0fb9608e1e3a2364cced25d6a335d1cd932ac703fa82c8853d56585dae",
+          "size_bytes": 3836,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-5-6-verify.json",
+          "digest": "1ac97d3cd3209763abd9c972ee9c90de9fa3dac29cf81300ade64bfd9ed8b418",
+          "size_bytes": 3396,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-5-after-fix.json",
+          "digest": "d41789f691beed5c70a6d341ef5c90e3900177247837c28eb02f283e10d8e81d",
+          "size_bytes": 32473,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-5-bandwidth-detail.json",
+          "digest": "c30a3160a75092ebcda2132aa9de321ecb765711e7448464dc6284fa1a83054d",
+          "size_bytes": 30366,
+          "is_json": false,
+          "test_counts": {
+            "passed": 1,
+            "failed": 15,
+            "collected": 0
+          },
+          "exit_code": 1,
+          "expected_red": true
+        },
+        {
+          "path": ".omo/evidence/task-5-engine-physical-green.json",
+          "digest": "4dd97cec403df939f688c2b2bfd10eee6b65edd7474743615a9a870c118d7b5e",
+          "size_bytes": 9880,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-5-physical-negative.txt",
+          "digest": "ceb9e537be321a8565d50fd34166da86acce8c57e55040626d9c1bf215e17d36",
+          "size_bytes": 8,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-5-regression-fix.txt",
+          "digest": "3c4383743ecacb898723dac1a1de0bb6df78eb8b99c3537adce67df25202a76b",
+          "size_bytes": 480,
+          "is_json": false,
+          "test_counts": {
+            "passed": 1,
+            "collected": 0
+          },
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-5-verify.json",
+          "digest": "7c6e1568e072e20da67a1ac333fe07dfb865cea07bcb590acc97c016440ef58d",
+          "size_bytes": 35898,
+          "is_json": false,
+          "test_counts": {
+            "failed": 1,
+            "collected": 0
+          },
+          "exit_code": 1,
+          "expected_red": true
+        }
+      ],
+      "evidence_count": 8
+    },
+    {
+      "id": "6",
+      "title": "修复跨频率与跨带宽的端到端单位传播",
+      "checked": true,
+      "evidence_files": [
+        {
+          "path": ".omo/evidence/task-6-bw-sweep.json",
+          "digest": "bfab3166d64f3221a16ebd23afc7c1304563e91eb881f7fe0d73ba0493730e3f",
+          "size_bytes": 1747,
+          "is_json": true,
+          "exit_code": 0,
+          "test_counts": null,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-6-frequency-bandwidth.json",
+          "digest": "2117ea63b34eadc35379043bf04bd4fdec2a6be9d692fe7a8cca19d08541c9e6",
+          "size_bytes": 623,
+          "is_json": false,
+          "test_counts": {
+            "passed": 46
+          },
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-6-os.txt",
+          "digest": "5179b9e6836697a971f856b89f7c566841f02aac15b2cfde14ab1aca015f68fb",
+          "size_bytes": 1893,
+          "is_json": false,
+          "test_counts": {
+            "passed": 26
+          },
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-6-saturation-fix.json",
+          "digest": "5088b0f446fc9f3d2c622545591a180eb9fbb1ecb71a28396b1fe3425e109069",
+          "size_bytes": 555,
+          "is_json": false,
+          "test_counts": {
+            "passed": 41,
+            "collected": 0
+          },
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-6-unit-negative.txt",
+          "digest": "65d6af5d281cbb9ec4d1ea8bb5f0ebcc0566a9a6be3e71a650403053e724fb77",
+          "size_bytes": 637,
+          "is_json": false,
+          "test_counts": {
+            "passed": 1
+          },
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-6-verify.json",
+          "digest": "1be4b90e7f469e36f5b0267527e60302046426421758b023144d0d534809e0ac",
+          "size_bytes": 593,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        }
+      ],
+      "evidence_count": 6
+    },
+    {
+      "id": "7",
+      "title": "实现版本化 declarative workload graph 与 fail-closed operator registry",
+      "checked": true,
+      "evidence_files": [
+        {
+          "path": ".omo/evidence/task-7-9-full-suite.json",
+          "digest": "5b81f36ef66c11b73813d2bdb01165c95f5f494296fd72839e626945bdcbe126",
+          "size_bytes": 4076,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-7-invalid.txt",
+          "digest": "f569cbaa31f5c0fc23c91faa210319b51248c5b94c6389f2d705b56a3224811e",
+          "size_bytes": 554,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-7-tc.txt",
+          "digest": "4339108493c05484676c0b81973be0382ab4d308093827870566be8b3a854d64",
+          "size_bytes": 1544,
+          "is_json": false,
+          "test_counts": {
+            "passed": 1,
+            "collected": 0
+          },
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-7-verify.json",
+          "digest": "6692934017b7c49d882f90bacacdf46a1fb73798aa5057b4c7edfb9fb4d213af",
+          "size_bytes": 160,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-7-workload-graph.json",
+          "digest": "6692934017b7c49d882f90bacacdf46a1fb73798aa5057b4c7edfb9fb4d213af",
+          "size_bytes": 160,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-7-workload-negative.txt",
+          "digest": "07c2eef926162e0090994bc913805aa08a8b2cbb5b21d2c933b937a10300713f",
+          "size_bytes": 80,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        }
+      ],
+      "evidence_count": 6
+    },
+    {
+      "id": "8",
+      "title": "实现 JSON/ONNX adapters 与 legacy trace lowering",
+      "checked": true,
+      "evidence_files": [
+        {
+          "path": ".omo/evidence/task-8-adapter-equivalence-verify.json",
+          "digest": "a4ba55c7ec7daeede2ecfea3dda9a793665ee142066911215af4f033a9e8412a",
+          "size_bytes": 80,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-8-adapter-equivalence.json",
+          "digest": "32ad5786913440a088f3b225929e9306b7af39efa0d431055c7eb7529599bfcd",
+          "size_bytes": 563,
+          "is_json": true,
+          "exit_code": 0,
+          "test_counts": null,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-8-adapter-negative-verify.json",
+          "digest": "700bc0322b00f8e8db3ce495047983b54ab27ab59ed1fedac05f3aeba47dae24",
+          "size_bytes": 80,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-8-adapter-negative.txt",
+          "digest": "71c8a6934256b67ec2a1d27aaa526c2d82f6ceab571de6b3a7fc1d2032550df5",
+          "size_bytes": 449,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-8-floor.txt",
+          "digest": "abe633178e3b75b480707fb2f60e2f14d6408dc1ab70791d3db8d4a1f6ef0ee9",
+          "size_bytes": 1214,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-8-full-suite-verify.json",
+          "digest": "7b0da1f9b660ade5dbc3a6906866893381311a23cbc24c66864c3796274ebfcd",
+          "size_bytes": 4076,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-8-gmma.txt",
+          "digest": "46623c8f35ffa99c8a22a09f578a37398e4e6f9d5081d20562bdda975ea359c8",
+          "size_bytes": 1527,
+          "is_json": false,
+          "test_counts": {
+            "passed": 2
+          },
+          "exit_code": 0,
+          "expected_red": false
+        }
+      ],
+      "evidence_count": 7
+    },
+    {
+      "id": "9",
+      "title": "实现 result schema v2、稳定 design-point ID 与 legacy projection",
+      "checked": true,
+      "evidence_files": [
+        {
+          "path": ".omo/evidence/task-9-collect.txt",
+          "digest": "cdc80bb48fa793cfdfd148cf5ab75e01407a28995e8357f1cf249b51b39172ea",
+          "size_bytes": 262,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-9-gap.txt",
+          "digest": "a525987c7a37f1425fcb3fbeffe3100c94a3b8854d899364cddef8ea791c3c2f",
+          "size_bytes": 537,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-9-result-determinism.json",
+          "digest": "3d9628f8dcdf1f9069fbbfb8222106659f5ffe1aeba31bf88fbfe93d2356c628",
+          "size_bytes": 585,
+          "is_json": false,
+          "test_counts": {
+            "passed": 14,
+            "collected": 0
+          },
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-9-result-negative.json",
+          "digest": "85ff59cc532723a5ef83548ad01a31edb931e54d7206f5bffeefed6e7718916a",
+          "size_bytes": 504,
+          "is_json": false,
+          "test_counts": {
+            "passed": 4,
+            "collected": 0
+          },
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-9-validation.txt",
+          "digest": "ed1d0ed3bc2a65c90147fa35578bd27d0f07559f326fd0ec37b21ed9216abbbd",
+          "size_bytes": 502,
+          "is_json": false,
+          "test_counts": {
+            "passed": 11,
+            "collected": 0
+          },
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-9-verify.json",
+          "digest": "b53866f7a853267d7eca16c2faa2f71689f462d5b06ee572ef078a18d6b0409a",
+          "size_bytes": 80,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        }
+      ],
+      "evidence_count": 6
+    },
+    {
+      "id": "10",
+      "title": "实现统一 memory hierarchy、residency 与 spill",
+      "checked": true,
+      "evidence_files": [
+        {
+          "path": ".omo/evidence/task-10-12-full-suite-verify.json",
+          "digest": "086b8aa71bfe2f5dba1e200bd6965d17af5faea029d2222a318adfd5ecd46f18",
+          "size_bytes": 4156,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-10-engine-ffn-down.json",
+          "digest": "df4d116d66524d570a1ba73b22b74485487b0d078e6b530b5c7404f6c903676d",
+          "size_bytes": 1610,
+          "is_json": true,
+          "exit_code": 0,
+          "test_counts": null,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-10-full-dse.json",
+          "digest": "47a5c4ed10ab67cb7a513f100dc05c6d6fab1406affbfe97f73f8a1819f3f729",
+          "size_bytes": 30814,
+          "is_json": true,
+          "exit_code": 0,
+          "test_counts": null,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-10-memory-negative-verify.json",
+          "digest": "83a1593c5b5783693fe3006d1f6597bcb4f3a5968f23b59481ee09a0477f910a",
+          "size_bytes": 80,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-10-memory-negative.txt",
+          "digest": "ea56f50a35cedb03c1f7889a3cfdd697ee4a81d87af32232e17769958c98416e",
+          "size_bytes": 87,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-10-memory-residency-verify.json",
+          "digest": "cfc14fd2dc11c362cccf5421245ca5ab0e9d286b54a604a80bd2dd5522f6feb9",
+          "size_bytes": 80,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-10-memory-residency.json",
+          "digest": "a9911ca6cbe6d79bb39934caa633b0e74d5ed27fb0d29adc406b2b8d4e47eabe",
+          "size_bytes": 87,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-10-quick-dse.json",
+          "digest": "0a9ccf3e4e5036c0508217fcfd5f589f507b6d208ac4bdea5f93e3b004f12a81",
+          "size_bytes": 4121,
+          "is_json": true,
+          "exit_code": 0,
+          "test_counts": null,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-10-verification.json",
+          "digest": "55bf626e1469ff7e35c8536c168204e339c9cd427bef693ac7fa1d54bc0b3f14",
+          "size_bytes": 578,
+          "is_json": true,
+          "exit_code": 0,
+          "test_counts": null,
+          "expected_red": false
+        }
+      ],
+      "evidence_count": 9
+    },
+    {
+      "id": "11",
+      "title": "实现可替换参数化 3D DRAM PPA/energy backend",
+      "checked": true,
+      "evidence_files": [
+        {
+          "path": ".omo/evidence/task-11-3d-dram-macro-verify.json",
+          "digest": "0caf379acbcb845c31b98bf4efeffb865a66d527d27d5bb4f34018bea0099078",
+          "size_bytes": 80,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-11-3d-dram-macro.json",
+          "digest": "b978df82d7275a0f1707b985e7f9b1eb552b6a3b50dee6df9601f73e2e79cb54",
+          "size_bytes": 625,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-11-3d-dram-negative-verify.json",
+          "digest": "700bc0322b00f8e8db3ce495047983b54ab27ab59ed1fedac05f3aeba47dae24",
+          "size_bytes": 80,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-11-3d-dram-negative.json",
+          "digest": "700bc0322b00f8e8db3ce495047983b54ab27ab59ed1fedac05f3aeba47dae24",
+          "size_bytes": 80,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-11-consistency.txt",
+          "digest": "dfc234ec618be3bdb8b3c356d9abb151045ea9837549bebd6384d411b6abbe6a",
+          "size_bytes": 252,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-11-full-pytest.json",
+          "digest": "a8dea54a0f915ea017f2bd09202eac3a3d653d7ac8df011b6e32951ab99e07c9",
+          "size_bytes": 4236,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-11-full-suite-verify.json",
+          "digest": "a8dea54a0f915ea017f2bd09202eac3a3d653d7ac8df011b6e32951ab99e07c9",
+          "size_bytes": 4236,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-11-stale-audit.txt",
+          "digest": "919dc32bfe7c248740a1ac13ec0c9deb9cf7291b6060585ce6f33fa4c35b89f1",
+          "size_bytes": 5887,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        }
+      ],
+      "evidence_count": 8
+    },
+    {
+      "id": "12",
+      "title": "建立 LLM、CV、VLA 与 Physical-AI 可执行 fixtures",
+      "checked": true,
+      "evidence_files": [
+        {
+          "path": ".omo/evidence/task-12-coverage-manifest.json",
+          "digest": "a00113893fdf376a34f4d762fa955cbf3c16e0b6562264d848f9e6ad1b623ca9",
+          "size_bytes": 3625,
+          "is_json": true,
+          "exit_code": 0,
+          "test_counts": null,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-12-workload-catalog-verify.json",
+          "digest": "de0615cf37b5c81f3262e96c1af6d39e3e1ed022fb623f364a1d3c083a4e551f",
+          "size_bytes": 80,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-12-workload-catalog-verify.txt",
+          "digest": "ffc69461804c21e72380b65168d00015fd8c24892f8b183eff52903df48e7a9f",
+          "size_bytes": 555,
+          "is_json": false,
+          "test_counts": {
+            "passed": 62,
+            "collected": 0
+          },
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-12-workload-negative-verify.json",
+          "digest": "423b1d0e014eb1eab96f4420f7b344c2615be505dd574b756ac884826ca74f2d",
+          "size_bytes": 80,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        }
+      ],
+      "evidence_count": 4
+    },
+    {
+      "id": "13",
+      "title": "实现确定性事件、资源竞争、队列与抢占执行器",
+      "checked": true,
+      "evidence_files": [
+        {
+          "path": ".omo/evidence/task-13-cli-baseline.txt",
+          "digest": "32a2716bdaeb0f40729cb59a90f62c22eada5c0dc4c79bd3472f2cce264e5404",
+          "size_bytes": 44,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-13-full-suite-verify.json",
+          "digest": "a98683e6efee894e9fee609b798bb5d9e56cdacedb72ae3e75f4e8b2a2e1f93c",
+          "size_bytes": 4396,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-13-full-suite.txt",
+          "digest": "a98683e6efee894e9fee609b798bb5d9e56cdacedb72ae3e75f4e8b2a2e1f93c",
+          "size_bytes": 4396,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-13-scheduler-kernel-verify.json",
+          "digest": "ac495f87c93297f7a6b6576302f0c026457a444008c68b065caf82d3eed780d0",
+          "size_bytes": 160,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-13-scheduler-negative-verify.json",
+          "digest": "7040371af15613c02e821ec0eecc1d1330f691ace4cef93a41bfa358822c4103",
+          "size_bytes": 80,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-13-scheduler-tests.txt",
+          "digest": "1b94a2cdcd14923adbd3ce9a3c8ce47994166473e280ad29621b23ff863c34e5",
+          "size_bytes": 160,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-13-summary.json",
+          "digest": "25003c912fbb5da86b482fdf7ac4d8cf760d41c0fab6c44c4d9a080eb3e1c51a",
+          "size_bytes": 1110,
+          "is_json": true,
+          "exit_code": 0,
+          "test_counts": null,
+          "expected_red": false
+        }
+      ],
+      "evidence_count": 7
+    },
+    {
+      "id": "14",
+      "title": "实现 P50/P99、deadline、高利用率、过载与恢复验收",
+      "checked": true,
+      "evidence_files": [
+        {
+          "path": ".omo/evidence/task-14-full-suite-verify.json",
+          "digest": "33ffdd97df82c09c189e93ed09372bc3ae6e46a7e8b6d7bdad692499ed76892e",
+          "size_bytes": 4396,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-14-temporal-metrics-verify.json",
+          "digest": "eb27a136c18598aedc0e4f11e6893b614a04335a9faf3ec03433325d777e2663",
+          "size_bytes": 80,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-14-temporal-metrics.json",
+          "digest": "2473a51b055c6f8be2239e6b04da5fe09586f6d60b84aea471e8d390cac331ba",
+          "size_bytes": 277,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-14-temporal-negative-verify.json",
+          "digest": "06955fb47f16312e5d13266c774a2aa4648c46e423cbe6564a92e25b68e39131",
+          "size_bytes": 80,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-14-temporal-negative.json",
+          "digest": "44ebf49847d908ad37eceea04840e58f3e5408e5bc0f126a9e8773d8132c767e",
+          "size_bytes": 277,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        }
+      ],
+      "evidence_count": 5
+    },
+    {
+      "id": "15",
+      "title": "实现 scenario-to-space 枚举、约束与 coverage manifest",
+      "checked": true,
+      "evidence_files": [
+        {
+          "path": ".omo/evidence/task-15-dse-coverage-negative-verify.json",
+          "digest": "99db33d5c94c6f7da021687c7391181685cc33299c5435b1c861e2db3be3ec87",
+          "size_bytes": 80,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-15-dse-coverage-negative.txt",
+          "digest": "130ec9e65d60ba3971803b58b6618da65a8bb1de34b7ced233935a926bc5b41f",
+          "size_bytes": 87,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-15-dse-coverage-verify.json",
+          "digest": "83a1593c5b5783693fe3006d1f6597bcb4f3a5968f23b59481ee09a0477f910a",
+          "size_bytes": 80,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-15-dse-coverage.json",
+          "digest": "ea56f50a35cedb03c1f7889a3cfdd697ee4a81d87af32232e17769958c98416e",
+          "size_bytes": 87,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-15-full-suite-verify.json",
+          "digest": "866ffbe2c864271247b63c2f841ffc852a58a9ad90fe538248a7677dc8df06be",
+          "size_bytes": 4396,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        }
+      ],
+      "evidence_count": 5
+    },
+    {
+      "id": "16",
+      "title": "实现多目标 Pareto、replay bundle 与兼容 CLI",
+      "checked": true,
+      "evidence_files": [
+        {
+          "path": ".omo/evidence/task-16-dse-negative-verify.json",
+          "digest": "cf426ab35f3b06fccef8290fde5325d90af130a79da1d1752031518df77c4236",
+          "size_bytes": 80,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-16-dse-replay-verify.json",
+          "digest": "a82a0b51cd86fa0131904e08c34ef556963104f0e3677f688117e093ebf2d3fe",
+          "size_bytes": 80,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-16-full-suite-verify.json",
+          "digest": "665398aa6d5d952068e2df5d14020c7716fd6ec9c48dc18ede98d5a40a68568c",
+          "size_bytes": 4476,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        }
+      ],
+      "evidence_count": 3
+    },
+    {
+      "id": "17",
+      "title": "建立参数 provenance、校准、误差预算与 trust gate",
+      "checked": true,
+      "evidence_files": [
+        {
+          "path": ".omo/evidence/task-17-calibration-negative.txt",
+          "digest": "7040371af15613c02e821ec0eecc1d1330f691ace4cef93a41bfa358822c4103",
+          "size_bytes": 80,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-17-calibration.json",
+          "digest": "23814bd54c3f40e10907bbb3fbbf634b818152cf7afb3d0013ebceb07460326b",
+          "size_bytes": 80,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-17-ruff.txt",
+          "digest": "ff71c4ee9a6e321c1b5747a525009516e22a487d452dcb67ac3b80278051e9b0",
+          "size_bytes": 49,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        }
+      ],
+      "evidence_count": 3
+    },
+    {
+      "id": "18",
+      "title": "完成全矩阵验收、文档迁移和发布证据",
+      "checked": false,
+      "evidence_files": [
+        {
+          "path": ".omo/evidence/task-18-acceptance-release.txt",
+          "digest": "6e826841114cada9accc2a04765d31c1b6b2b5d6360596055dd4c98b1288f35b",
+          "size_bytes": 1687,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-18-decision-grade.txt",
+          "digest": "56555a0898b7895ed14f2967bf68a6e4bc0b92f30ff1efc4d7122a6c203d37fb",
+          "size_bytes": 656,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-18-release-gate.json",
+          "digest": "12a9a4a8915fb8d2bb5b4227220247cde267c1a0620203589fe47280d5be4a7f",
+          "size_bytes": 80,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-18-release-negative.json",
+          "digest": "7040371af15613c02e821ec0eecc1d1330f691ace4cef93a41bfa358822c4103",
+          "size_bytes": 80,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        }
+      ],
+      "evidence_count": 4
+    },
+    {
+      "id": "F1",
+      "title": "Plan compliance audit",
+      "checked": false,
+      "evidence_files": [
+        {
+          "path": ".omo/evidence/final-f1-plan-compliance.json",
+          "digest": "a3b204205f15b838b602393b078d3c0d070bc03526b88fc511867703bd807d28",
+          "size_bytes": 37927,
+          "is_json": true,
+          "exit_code": 0,
+          "test_counts": null,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/final-f1-plan-compliance.md",
+          "digest": "7e9381b7a5618ca788d9a9600d4b3c442a1411608820e6b55b6f7aece7819478",
+          "size_bytes": 6465,
+          "is_json": false,
+          "test_counts": {
+            "passed": 2
+          },
+          "exit_code": 0,
+          "expected_red": false
+        }
+      ],
+      "evidence_count": 2
+    },
+    {
+      "id": "F2",
+      "title": "Code quality and model-integrity review",
+      "checked": false,
+      "evidence_files": [
+        {
+          "path": ".omo/evidence/final-f2-code-quality.json",
+          "digest": "4842d6053eaf49d10ebf5aee019c8ec78e182c0efb9ceedcdeeef03ac3835aa2",
+          "size_bytes": 249,
+          "is_json": true,
+          "exit_code": 0,
+          "test_counts": null,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/final-f2-code-quality.md",
+          "digest": "2cf42dc71cddd57ae3e23da169349bd5cdeea418f3ffa19ff493e128bc95983e",
+          "size_bytes": 5757,
+          "is_json": false,
+          "test_counts": {
+            "passed": 51
+          },
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/final-f2-code-quality.txt",
+          "digest": "b9c2730c0be0721225392da5b7fe185178c6b7585c8f4c6c69ba438ff9a2acb8",
+          "size_bytes": 7021,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        }
+      ],
+      "evidence_count": 3
+    },
+    {
+      "id": "F3",
+      "title": "Real CLI/scenario/replay QA",
+      "checked": false,
+      "evidence_files": [
+        {
+          "path": ".omo/evidence/final-f3-manual-qa.json",
+          "digest": "e4beb8e90e8e427f6eb1be7a58f53730577998a016075ec7aa66af3f878624a3",
+          "size_bytes": 16933,
+          "is_json": true,
+          "exit_code": 0,
+          "test_counts": null,
+          "expected_red": false
+        }
+      ],
+      "evidence_count": 1
+    },
+    {
+      "id": "F4",
+      "title": "Scope and evidence fidelity",
+      "checked": false,
+      "evidence_files": [
+        {
+          "path": ".omo/evidence/final-f4-scope-fidelity.json",
+          "digest": "91dc62f6f443b5cd59362e363919ae17afc99857765d20499efa7d32c671b50e",
+          "size_bytes": 20985,
+          "is_json": true,
+          "exit_code": 0,
+          "test_counts": null,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/final-f4-scope-fidelity.md",
+          "digest": "76b5fec5e20277362997351ffbb727edb1ec14312011ef0aea466562e5bc0b42",
+          "size_bytes": 4628,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        }
+      ],
+      "evidence_count": 2
+    }
+  ]
+}
