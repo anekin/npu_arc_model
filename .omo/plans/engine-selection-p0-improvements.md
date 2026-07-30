@@ -512,7 +512,7 @@ Note: C3 (Todos 10-12) functionally benefits from C2 (Todos 6-9), but can execut
 
   **Commit**: YES | `fix(dse): wire new scenarios into cross-validation detection` | `sim/design_space_explorer.py`
 
-- [ ] 12. 运行全场景 DSE 对比
+- [x] 12. 运行全场景 DSE 对比
 
   **What to do**:
   1. 对 5 个场景（lpddr5_3b, lpddr5x_7b, hbm2e_7b, onchip_7b, onchip_7b_chat）分别运行 `--space ci-all-axes` 的 scenario DSE。

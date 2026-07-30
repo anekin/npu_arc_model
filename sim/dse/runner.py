@@ -287,6 +287,7 @@ class ScenarioDseRunner:
             power_w=ppa.power_w,
             efficiency_tok_per_watt=ppa.efficiency_tok_per_watt,
             efficiency_tok_per_mm2=ppa.efficiency_tok_per_mm2,
+            completed_throughput_hz=metrics.completed_throughput_hz,
             mac_count=None,
             op_count=None,
             total_cycles=None,

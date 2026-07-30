@@ -76,6 +76,21 @@ class DesignSpace:
         self.defaults = dict(sorted(axes_config.get("defaults", {}).items()))
         self.reason_codes = axes_config.get("reason_codes", {})
 
+        # Bind external bandwidth axis to the scenario's declared bandwidth, if any.
+        scenario_bw = self._scenario_bandwidth_gbps()
+        if scenario_bw is not None and "bandwidth_gbps" in self.axes:
+            self.constraints.append(
+                Constraint(
+                    name="scenario_bandwidth_match",
+                    when={},
+                    require={"bandwidth_gbps": (scenario_bw,)},
+                    reason="scenario_bandwidth_match",
+                ),
+            )
+            self.reason_codes["scenario_bandwidth_match"] = (
+                f"External bandwidth axis pinned to scenario value {scenario_bw} GB/s"
+            )
+
     def generate(self) -> list[DesignPoint]:
         """Generate design points according to ``self.mode``."""
         return list(self.generate_with_exclusions().points)
@@ -91,6 +106,14 @@ class DesignSpace:
 
         points = tuple(self._build_point(combo) for combo in combos)
         return GenerationResult(points=points, exclusions=tuple(exclusions))
+
+    def _scenario_bandwidth_gbps(self) -> float | None:
+        """Return the scenario's declared external memory bandwidth, if any."""
+        if self.scenario.metadata is None:
+            return None
+        mem = self.scenario.metadata.get("memory") or {}
+        bw = mem.get("bandwidth_gbps")
+        return float(bw) if bw is not None else None
 
     def build_manifest(self, result: GenerationResult | None = None) -> CoverageManifest:
         """Build a ``CoverageManifest`` from a generation result."""

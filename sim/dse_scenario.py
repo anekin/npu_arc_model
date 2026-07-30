@@ -140,6 +140,10 @@ def _build_scenario_model(scenario_name: str, data: dict[str, Any]) -> Scenario:
         max_inflight_jobs=int(data.get("max_inflight_jobs", 128)),
         max_bandwidth_fraction=1.0,
         preemption_enabled=True,
+        metadata={
+            "memory": dict(mem),
+            "constraints": dict(constraints),
+        },
     )
 
 

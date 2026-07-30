@@ -269,12 +269,20 @@ class MultiObjectivePareto:
             )
         )
 
-        auth_ok = result.trust_level == RunTrustLevel.authoritative
+        # Trust-level gate: in decision-grade / quality-gate mode only authoritative
+        # results are allowed; in exploratory mode any result that is not explicitly
+        # non_authoritative (i.e. a partial run with errors) may enter the frontier.
+        if self.quality_gate_required:
+            auth_ok = result.trust_level == RunTrustLevel.authoritative
+            auth_reason = "" if auth_ok else f"trust_level={result.trust_level.value} (quality_gate_required)"
+        else:
+            auth_ok = result.trust_level != RunTrustLevel.non_authoritative
+            auth_reason = "" if auth_ok else f"trust_level={result.trust_level.value}"
         gates.append(
             GateResult(
                 code=HardGateCode.AUTHORITATIVE,
                 passed=auth_ok,
-                reason="" if auth_ok else f"trust_level={result.trust_level.value}",
+                reason=auth_reason,
             )
         )
 

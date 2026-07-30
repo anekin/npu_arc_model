@@ -1,0 +1,777 @@
+{
+  "scenarios": {
+    "lpddr5_3b": {
+      "scenario": "lpddr5_3b",
+      "bandwidth_gbps": 51.2,
+      "evaluated": 61,
+      "complete": 61,
+      "frontier_size": 3,
+      "rankings": [
+        {
+          "rank": 1,
+          "engine": "block",
+          "tok_s": 36.6,
+          "area_mm2": 99.0,
+          "on_pareto": false,
+          "config_label": "bloc 128\u00d7128 INT2 1000MHz  ",
+          "design_point_id": "f553d9bd9863f71553ac8b2636842006975ca5dd4858756d6e2d9bdf88efe8d6"
+        },
+        {
+          "rank": 2,
+          "engine": "os_systolic",
+          "tok_s": 31.8,
+          "area_mm2": 99.0,
+          "on_pareto": false,
+          "config_label": "os_s 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "1ad5404edbb26caa21fe7b1ad12fb6b3d9a369880e321e941f1680e5ff2bd633"
+        },
+        {
+          "rank": 3,
+          "engine": "systolic",
+          "tok_s": 22.0,
+          "area_mm2": 97.0,
+          "on_pareto": false,
+          "config_label": "syst 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "092524c8188de5d5b7509d64aad47f7c268c52d80a93c0e89960fa80b95f3bb1"
+        },
+        {
+          "rank": 4,
+          "engine": "gmma",
+          "tok_s": 20.8,
+          "area_mm2": 102.0,
+          "on_pareto": false,
+          "config_label": "gmma 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "35749a3ee24d6327c7a27a8dcc86007f098635bd9d9d88e54db5054c958e462c"
+        },
+        {
+          "rank": 5,
+          "engine": "fsa",
+          "tok_s": 20.5,
+          "area_mm2": 97.2,
+          "on_pareto": false,
+          "config_label": "fsa 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "bbb2a1e0201b246d7963282fa34a9fab054a45faa205ffd1b7c6c46da19b6002"
+        },
+        {
+          "rank": 6,
+          "engine": "input_stationary",
+          "tok_s": 11.1,
+          "area_mm2": 99.0,
+          "on_pareto": false,
+          "config_label": "inpu 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "5484386959250ef71f3a5a4669e2b561fef27801dad797d168c7c61850db67f5"
+        },
+        {
+          "rank": 7,
+          "engine": "tensor_core",
+          "tok_s": 9.9,
+          "area_mm2": 99.0,
+          "on_pareto": false,
+          "config_label": "tens 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "fe2a29197aa66896777e841fb5d94021320b9874473a693a09b5fd9c1be80c75"
+        },
+        {
+          "rank": 8,
+          "engine": "wmma",
+          "tok_s": 0.1,
+          "area_mm2": 101.0,
+          "on_pareto": true,
+          "config_label": "wmma 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "49a851a831c125033fe397464754607abb98a02122e1986ed5460bb8e03e3cbc"
+        }
+      ],
+      "engine_best": {
+        "block": {
+          "tok_s": 36.6,
+          "area_mm2": 99.0,
+          "config_label": "bloc 128\u00d7128 INT2 1000MHz  ",
+          "design_point_id": "f553d9bd9863f71553ac8b2636842006975ca5dd4858756d6e2d9bdf88efe8d6",
+          "on_pareto": false
+        },
+        "systolic": {
+          "tok_s": 22.0,
+          "area_mm2": 97.0,
+          "config_label": "syst 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "092524c8188de5d5b7509d64aad47f7c268c52d80a93c0e89960fa80b95f3bb1",
+          "on_pareto": false
+        },
+        "os_systolic": {
+          "tok_s": 31.8,
+          "area_mm2": 99.0,
+          "config_label": "os_s 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "1ad5404edbb26caa21fe7b1ad12fb6b3d9a369880e321e941f1680e5ff2bd633",
+          "on_pareto": false
+        },
+        "tensor_core": {
+          "tok_s": 9.9,
+          "area_mm2": 99.0,
+          "config_label": "tens 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "fe2a29197aa66896777e841fb5d94021320b9874473a693a09b5fd9c1be80c75",
+          "on_pareto": false
+        },
+        "wmma": {
+          "tok_s": 0.1,
+          "area_mm2": 101.0,
+          "config_label": "wmma 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "49a851a831c125033fe397464754607abb98a02122e1986ed5460bb8e03e3cbc",
+          "on_pareto": true
+        },
+        "gmma": {
+          "tok_s": 20.8,
+          "area_mm2": 102.0,
+          "config_label": "gmma 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "35749a3ee24d6327c7a27a8dcc86007f098635bd9d9d88e54db5054c958e462c",
+          "on_pareto": false
+        },
+        "input_stationary": {
+          "tok_s": 11.1,
+          "area_mm2": 99.0,
+          "config_label": "inpu 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "5484386959250ef71f3a5a4669e2b561fef27801dad797d168c7c61850db67f5",
+          "on_pareto": false
+        },
+        "fsa": {
+          "tok_s": 20.5,
+          "area_mm2": 97.2,
+          "config_label": "fsa 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "bbb2a1e0201b246d7963282fa34a9fab054a45faa205ffd1b7c6c46da19b6002",
+          "on_pareto": false
+        }
+      }
+    },
+    "lpddr5x_7b": {
+      "scenario": "lpddr5x_7b",
+      "bandwidth_gbps": 68.0,
+      "evaluated": 60,
+      "complete": 60,
+      "frontier_size": 3,
+      "rankings": [
+        {
+          "rank": 1,
+          "engine": "os_systolic",
+          "tok_s": 42.3,
+          "area_mm2": 99.0,
+          "on_pareto": true,
+          "config_label": "os_s 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "a9421c4bb24d96294454f5c195378195aeca55c3292573a71624baf84d0b1ce4"
+        },
+        {
+          "rank": 2,
+          "engine": "block",
+          "tok_s": 39.5,
+          "area_mm2": 99.0,
+          "on_pareto": false,
+          "config_label": "bloc 128\u00d7128 INT2 1000MHz  ",
+          "design_point_id": "053e803ddddce71dde4d98c868b356b237384b35967ff47c0c65ec32e656ffc2"
+        },
+        {
+          "rank": 3,
+          "engine": "gmma",
+          "tok_s": 27.7,
+          "area_mm2": 102.0,
+          "on_pareto": false,
+          "config_label": "gmma 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "b3b5ce9fcd9dc5a40d5f8cbd8d4b81f876f0da54ce66bd802218dd2b28501d7d"
+        },
+        {
+          "rank": 4,
+          "engine": "systolic",
+          "tok_s": 23.1,
+          "area_mm2": 97.0,
+          "on_pareto": false,
+          "config_label": "syst 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "5ee25f87c189a3f85b6924fcfe07995e6b2643d8a4242d27a8ff2a6aaa3a0161"
+        },
+        {
+          "rank": 5,
+          "engine": "fsa",
+          "tok_s": 23.1,
+          "area_mm2": 97.2,
+          "on_pareto": false,
+          "config_label": "fsa 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "dd4c461d657ad77f055bb381c6bcdf0db15691d16613539f24911264750ef720"
+        },
+        {
+          "rank": 6,
+          "engine": "input_stationary",
+          "tok_s": 14.8,
+          "area_mm2": 99.0,
+          "on_pareto": false,
+          "config_label": "inpu 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "a97060514796e1778a95c37e4245e10105f2c0534a407f6ee43ac5d0b88985bf"
+        },
+        {
+          "rank": 7,
+          "engine": "tensor_core",
+          "tok_s": 12.6,
+          "area_mm2": 99.0,
+          "on_pareto": false,
+          "config_label": "tens 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "96e98898d30f4c669319677b79fd43d81e396dde6348de9578bdbbe65a1247d1"
+        },
+        {
+          "rank": 8,
+          "engine": "wmma",
+          "tok_s": 0.1,
+          "area_mm2": 101.0,
+          "on_pareto": true,
+          "config_label": "wmma 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "8efa624d3a8260fa42f9b1bb8f369f2e928fd9291670c1616de61d1f03bd71bc"
+        }
+      ],
+      "engine_best": {
+        "block": {
+          "tok_s": 39.5,
+          "area_mm2": 99.0,
+          "config_label": "bloc 128\u00d7128 INT2 1000MHz  ",
+          "design_point_id": "053e803ddddce71dde4d98c868b356b237384b35967ff47c0c65ec32e656ffc2",
+          "on_pareto": false
+        },
+        "systolic": {
+          "tok_s": 23.1,
+          "area_mm2": 97.0,
+          "config_label": "syst 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "5ee25f87c189a3f85b6924fcfe07995e6b2643d8a4242d27a8ff2a6aaa3a0161",
+          "on_pareto": false
+        },
+        "os_systolic": {
+          "tok_s": 42.3,
+          "area_mm2": 99.0,
+          "config_label": "os_s 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "a9421c4bb24d96294454f5c195378195aeca55c3292573a71624baf84d0b1ce4",
+          "on_pareto": true
+        },
+        "tensor_core": {
+          "tok_s": 12.6,
+          "area_mm2": 99.0,
+          "config_label": "tens 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "96e98898d30f4c669319677b79fd43d81e396dde6348de9578bdbbe65a1247d1",
+          "on_pareto": false
+        },
+        "wmma": {
+          "tok_s": 0.1,
+          "area_mm2": 101.0,
+          "config_label": "wmma 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "8efa624d3a8260fa42f9b1bb8f369f2e928fd9291670c1616de61d1f03bd71bc",
+          "on_pareto": true
+        },
+        "gmma": {
+          "tok_s": 27.7,
+          "area_mm2": 102.0,
+          "config_label": "gmma 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "b3b5ce9fcd9dc5a40d5f8cbd8d4b81f876f0da54ce66bd802218dd2b28501d7d",
+          "on_pareto": false
+        },
+        "input_stationary": {
+          "tok_s": 14.8,
+          "area_mm2": 99.0,
+          "config_label": "inpu 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "a97060514796e1778a95c37e4245e10105f2c0534a407f6ee43ac5d0b88985bf",
+          "on_pareto": false
+        },
+        "fsa": {
+          "tok_s": 23.1,
+          "area_mm2": 97.2,
+          "config_label": "fsa 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "dd4c461d657ad77f055bb381c6bcdf0db15691d16613539f24911264750ef720",
+          "on_pareto": false
+        }
+      }
+    },
+    "hbm2e_7b": {
+      "scenario": "hbm2e_7b",
+      "bandwidth_gbps": 410.0,
+      "evaluated": 60,
+      "complete": 60,
+      "frontier_size": 6,
+      "rankings": [
+        {
+          "rank": 1,
+          "engine": "os_systolic",
+          "tok_s": 255.0,
+          "area_mm2": 99.0,
+          "on_pareto": true,
+          "config_label": "os_s 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "741a26aaf4a40d8467d9e8b71309ab4f90d1c05461062fc3b6b1ae1d7ed1124e"
+        },
+        {
+          "rank": 2,
+          "engine": "gmma",
+          "tok_s": 166.9,
+          "area_mm2": 102.0,
+          "on_pareto": false,
+          "config_label": "gmma 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "2b7d43a96c1ce8604ecd36e3f810c2c13db116a0580009fc92510a4eafe4c6b4"
+        },
+        {
+          "rank": 3,
+          "engine": "block",
+          "tok_s": 128.3,
+          "area_mm2": 107.0,
+          "on_pareto": false,
+          "config_label": "bloc 128\u00d7384 INT4 1000MHz  ",
+          "design_point_id": "358301217bd1a0030e1e16c2305c0d8cf3f9bbe8115085fff4a57f10fe8e56cb"
+        },
+        {
+          "rank": 4,
+          "engine": "input_stationary",
+          "tok_s": 88.8,
+          "area_mm2": 99.0,
+          "on_pareto": false,
+          "config_label": "inpu 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "860790b0e2ede39937b7cf2fc6943eadce6f5296504b07c69022bc0dde6f2829"
+        },
+        {
+          "rank": 5,
+          "engine": "tensor_core",
+          "tok_s": 43.9,
+          "area_mm2": 99.0,
+          "on_pareto": false,
+          "config_label": "tens 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "f76f1c607d7010ec2c4e93fd097713091715d69b2959496e5c1d9bec4ed16d69"
+        },
+        {
+          "rank": 6,
+          "engine": "systolic",
+          "tok_s": 26.2,
+          "area_mm2": 97.0,
+          "on_pareto": false,
+          "config_label": "syst 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "3f27d9c9a8fb4660e48116bd08622497cb03447f743f3bc93838599603ddd8f0"
+        },
+        {
+          "rank": 7,
+          "engine": "fsa",
+          "tok_s": 26.2,
+          "area_mm2": 97.2,
+          "on_pareto": false,
+          "config_label": "fsa 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "774578c1174051c641a2912d29dfa95933130b8dc77f82e2652124a631e0e5f4"
+        },
+        {
+          "rank": 8,
+          "engine": "wmma",
+          "tok_s": 0.1,
+          "area_mm2": 101.0,
+          "on_pareto": true,
+          "config_label": "wmma 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "5bcb557c1814d6c4682f706f749e1b567c95dc321c1549987dcb63c8be171849"
+        }
+      ],
+      "engine_best": {
+        "block": {
+          "tok_s": 128.3,
+          "area_mm2": 107.0,
+          "config_label": "bloc 128\u00d7384 INT4 1000MHz  ",
+          "design_point_id": "358301217bd1a0030e1e16c2305c0d8cf3f9bbe8115085fff4a57f10fe8e56cb",
+          "on_pareto": false
+        },
+        "systolic": {
+          "tok_s": 26.2,
+          "area_mm2": 97.0,
+          "config_label": "syst 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "3f27d9c9a8fb4660e48116bd08622497cb03447f743f3bc93838599603ddd8f0",
+          "on_pareto": false
+        },
+        "os_systolic": {
+          "tok_s": 255.0,
+          "area_mm2": 99.0,
+          "config_label": "os_s 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "741a26aaf4a40d8467d9e8b71309ab4f90d1c05461062fc3b6b1ae1d7ed1124e",
+          "on_pareto": true
+        },
+        "tensor_core": {
+          "tok_s": 43.9,
+          "area_mm2": 99.0,
+          "config_label": "tens 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "f76f1c607d7010ec2c4e93fd097713091715d69b2959496e5c1d9bec4ed16d69",
+          "on_pareto": false
+        },
+        "wmma": {
+          "tok_s": 0.1,
+          "area_mm2": 101.0,
+          "config_label": "wmma 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "5bcb557c1814d6c4682f706f749e1b567c95dc321c1549987dcb63c8be171849",
+          "on_pareto": true
+        },
+        "gmma": {
+          "tok_s": 166.9,
+          "area_mm2": 102.0,
+          "config_label": "gmma 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "2b7d43a96c1ce8604ecd36e3f810c2c13db116a0580009fc92510a4eafe4c6b4",
+          "on_pareto": false
+        },
+        "input_stationary": {
+          "tok_s": 88.8,
+          "area_mm2": 99.0,
+          "config_label": "inpu 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "860790b0e2ede39937b7cf2fc6943eadce6f5296504b07c69022bc0dde6f2829",
+          "on_pareto": false
+        },
+        "fsa": {
+          "tok_s": 26.2,
+          "area_mm2": 97.2,
+          "config_label": "fsa 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "774578c1174051c641a2912d29dfa95933130b8dc77f82e2652124a631e0e5f4",
+          "on_pareto": false
+        }
+      }
+    },
+    "onchip_7b": {
+      "scenario": "onchip_7b",
+      "bandwidth_gbps": 500.0,
+      "evaluated": 60,
+      "complete": 60,
+      "frontier_size": 6,
+      "rankings": [
+        {
+          "rank": 1,
+          "engine": "os_systolic",
+          "tok_s": 310.9,
+          "area_mm2": 99.0,
+          "on_pareto": true,
+          "config_label": "os_s 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "2b67f666650259900270e284c40e751236e7cdb1476de0e2831c0eb767a2cfee"
+        },
+        {
+          "rank": 2,
+          "engine": "gmma",
+          "tok_s": 203.5,
+          "area_mm2": 102.0,
+          "on_pareto": false,
+          "config_label": "gmma 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "f0c2e5486b6975c47c6fb12a4c8926ddfc17fc2084169af460269f3ed9f5459e"
+        },
+        {
+          "rank": 3,
+          "engine": "block",
+          "tok_s": 131.4,
+          "area_mm2": 107.0,
+          "on_pareto": false,
+          "config_label": "bloc 128\u00d7384 INT4 1000MHz  ",
+          "design_point_id": "b2298dcfcfdd3df10e28f230649f36f86af278fd22a7c2364829f0b9e0a739ff"
+        },
+        {
+          "rank": 4,
+          "engine": "input_stationary",
+          "tok_s": 108.1,
+          "area_mm2": 99.0,
+          "on_pareto": false,
+          "config_label": "inpu 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "a006547e5be7cc9825a03431fef58cb4fb723e2ad5b934384090803e31d33473"
+        },
+        {
+          "rank": 5,
+          "engine": "tensor_core",
+          "tok_s": 48.2,
+          "area_mm2": 99.0,
+          "on_pareto": false,
+          "config_label": "tens 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "c58d299afbd55f8906d44fee40040c0e5b2fcb4d68355116e0ae4bd5cec4e99f"
+        },
+        {
+          "rank": 6,
+          "engine": "systolic",
+          "tok_s": 26.4,
+          "area_mm2": 97.0,
+          "on_pareto": false,
+          "config_label": "syst 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "bb8387a7bf63675ad3c83550feeec677a6a242e95c5cc1f66b908a52b5e62cf1"
+        },
+        {
+          "rank": 7,
+          "engine": "fsa",
+          "tok_s": 26.4,
+          "area_mm2": 97.2,
+          "on_pareto": false,
+          "config_label": "fsa 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "e25acb269223fea39e3d3a64c5c226b5ceed9daf75cf63fb64f85cf5e9f97fcd"
+        },
+        {
+          "rank": 8,
+          "engine": "wmma",
+          "tok_s": 0.1,
+          "area_mm2": 101.0,
+          "on_pareto": true,
+          "config_label": "wmma 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "2def32215dd7a72ce0e783b3fc4f96442174643fb87fb4f75185cd8edbe86f4c"
+        }
+      ],
+      "engine_best": {
+        "block": {
+          "tok_s": 131.4,
+          "area_mm2": 107.0,
+          "config_label": "bloc 128\u00d7384 INT4 1000MHz  ",
+          "design_point_id": "b2298dcfcfdd3df10e28f230649f36f86af278fd22a7c2364829f0b9e0a739ff",
+          "on_pareto": false
+        },
+        "systolic": {
+          "tok_s": 26.4,
+          "area_mm2": 97.0,
+          "config_label": "syst 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "bb8387a7bf63675ad3c83550feeec677a6a242e95c5cc1f66b908a52b5e62cf1",
+          "on_pareto": false
+        },
+        "os_systolic": {
+          "tok_s": 310.9,
+          "area_mm2": 99.0,
+          "config_label": "os_s 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "2b67f666650259900270e284c40e751236e7cdb1476de0e2831c0eb767a2cfee",
+          "on_pareto": true
+        },
+        "tensor_core": {
+          "tok_s": 48.2,
+          "area_mm2": 99.0,
+          "config_label": "tens 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "c58d299afbd55f8906d44fee40040c0e5b2fcb4d68355116e0ae4bd5cec4e99f",
+          "on_pareto": false
+        },
+        "wmma": {
+          "tok_s": 0.1,
+          "area_mm2": 101.0,
+          "config_label": "wmma 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "2def32215dd7a72ce0e783b3fc4f96442174643fb87fb4f75185cd8edbe86f4c",
+          "on_pareto": true
+        },
+        "gmma": {
+          "tok_s": 203.5,
+          "area_mm2": 102.0,
+          "config_label": "gmma 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "f0c2e5486b6975c47c6fb12a4c8926ddfc17fc2084169af460269f3ed9f5459e",
+          "on_pareto": false
+        },
+        "input_stationary": {
+          "tok_s": 108.1,
+          "area_mm2": 99.0,
+          "config_label": "inpu 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "a006547e5be7cc9825a03431fef58cb4fb723e2ad5b934384090803e31d33473",
+          "on_pareto": false
+        },
+        "fsa": {
+          "tok_s": 26.4,
+          "area_mm2": 97.2,
+          "config_label": "fsa 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "e25acb269223fea39e3d3a64c5c226b5ceed9daf75cf63fb64f85cf5e9f97fcd",
+          "on_pareto": false
+        }
+      }
+    },
+    "onchip_7b_chat": {
+      "scenario": "onchip_7b_chat",
+      "bandwidth_gbps": 500.0,
+      "evaluated": 60,
+      "complete": 60,
+      "frontier_size": 6,
+      "rankings": [
+        {
+          "rank": 1,
+          "engine": "os_systolic",
+          "tok_s": 310.9,
+          "area_mm2": 99.0,
+          "on_pareto": true,
+          "config_label": "os_s 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "fc31b7e7b8d8d5c0caaf8bf1637ce41b47fbc7f7b84adbd60eb972c50564cd09"
+        },
+        {
+          "rank": 2,
+          "engine": "gmma",
+          "tok_s": 203.5,
+          "area_mm2": 102.0,
+          "on_pareto": false,
+          "config_label": "gmma 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "b1dc55e8f24ce6138db82e373480ce6d309297c11a7f15b03609a5fc8a07ecd0"
+        },
+        {
+          "rank": 3,
+          "engine": "block",
+          "tok_s": 131.4,
+          "area_mm2": 107.0,
+          "on_pareto": false,
+          "config_label": "bloc 128\u00d7384 INT4 1000MHz  ",
+          "design_point_id": "2b29fac1f7eadea6d38d59e90dfaa1c49ec3437ce7ee6053b92a329e49f8d672"
+        },
+        {
+          "rank": 4,
+          "engine": "input_stationary",
+          "tok_s": 108.1,
+          "area_mm2": 99.0,
+          "on_pareto": false,
+          "config_label": "inpu 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "7cb44904519f26ffcea832d3c0e5b0aa4575b983f21f2a6b3da9ded899ec8963"
+        },
+        {
+          "rank": 5,
+          "engine": "tensor_core",
+          "tok_s": 48.2,
+          "area_mm2": 99.0,
+          "on_pareto": false,
+          "config_label": "tens 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "9b1ceb68546effaabf0fee058abaafa1363802c1576c988914b1a089d6e05066"
+        },
+        {
+          "rank": 6,
+          "engine": "systolic",
+          "tok_s": 26.4,
+          "area_mm2": 97.0,
+          "on_pareto": false,
+          "config_label": "syst 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "d20fd9f94af4e097af42fd404ae6163c895bd89a8b59b5d169e505d9be174e51"
+        },
+        {
+          "rank": 7,
+          "engine": "fsa",
+          "tok_s": 26.4,
+          "area_mm2": 97.2,
+          "on_pareto": false,
+          "config_label": "fsa 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "8952cc2f71d35e141f3389552625fbe7471e8f4829f6e75facc7483ee710cf98"
+        },
+        {
+          "rank": 8,
+          "engine": "wmma",
+          "tok_s": 0.1,
+          "area_mm2": 101.0,
+          "on_pareto": true,
+          "config_label": "wmma 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "b470e702b3df5f30e9c74af24f0e8756b03d123cd67e899333c0a8057692e9ff"
+        }
+      ],
+      "engine_best": {
+        "block": {
+          "tok_s": 131.4,
+          "area_mm2": 107.0,
+          "config_label": "bloc 128\u00d7384 INT4 1000MHz  ",
+          "design_point_id": "2b29fac1f7eadea6d38d59e90dfaa1c49ec3437ce7ee6053b92a329e49f8d672",
+          "on_pareto": false
+        },
+        "systolic": {
+          "tok_s": 26.4,
+          "area_mm2": 97.0,
+          "config_label": "syst 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "d20fd9f94af4e097af42fd404ae6163c895bd89a8b59b5d169e505d9be174e51",
+          "on_pareto": false
+        },
+        "os_systolic": {
+          "tok_s": 310.9,
+          "area_mm2": 99.0,
+          "config_label": "os_s 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "fc31b7e7b8d8d5c0caaf8bf1637ce41b47fbc7f7b84adbd60eb972c50564cd09",
+          "on_pareto": true
+        },
+        "tensor_core": {
+          "tok_s": 48.2,
+          "area_mm2": 99.0,
+          "config_label": "tens 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "9b1ceb68546effaabf0fee058abaafa1363802c1576c988914b1a089d6e05066",
+          "on_pareto": false
+        },
+        "wmma": {
+          "tok_s": 0.1,
+          "area_mm2": 101.0,
+          "config_label": "wmma 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "b470e702b3df5f30e9c74af24f0e8756b03d123cd67e899333c0a8057692e9ff",
+          "on_pareto": true
+        },
+        "gmma": {
+          "tok_s": 203.5,
+          "area_mm2": 102.0,
+          "config_label": "gmma 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "b1dc55e8f24ce6138db82e373480ce6d309297c11a7f15b03609a5fc8a07ecd0",
+          "on_pareto": false
+        },
+        "input_stationary": {
+          "tok_s": 108.1,
+          "area_mm2": 99.0,
+          "config_label": "inpu 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "7cb44904519f26ffcea832d3c0e5b0aa4575b983f21f2a6b3da9ded899ec8963",
+          "on_pareto": false
+        },
+        "fsa": {
+          "tok_s": 26.4,
+          "area_mm2": 97.2,
+          "config_label": "fsa 128\u00d7128 INT4 1000MHz  ",
+          "design_point_id": "8952cc2f71d35e141f3389552625fbe7471e8f4829f6e75facc7483ee710cf98",
+          "on_pareto": false
+        }
+      }
+    }
+  },
+  "bandwidth_sensitivity": {
+    "bandwidths_gbps": [
+      51.2,
+      68.0,
+      410.0,
+      500.0,
+      500.0
+    ],
+    "by_engine": {
+      "systolic": [
+        22.0,
+        23.1,
+        26.2,
+        26.4,
+        26.4
+      ],
+      "os_systolic": [
+        31.8,
+        42.3,
+        255.0,
+        310.9,
+        310.9
+      ],
+      "block": [
+        36.6,
+        39.5,
+        128.3,
+        131.4,
+        131.4
+      ],
+      "tensor_core": [
+        9.9,
+        12.6,
+        43.9,
+        48.2,
+        48.2
+      ],
+      "wmma": [
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1
+      ],
+      "gmma": [
+        20.8,
+        27.7,
+        166.9,
+        203.5,
+        203.5
+      ],
+      "input_stationary": [
+        11.1,
+        14.8,
+        88.8,
+        108.1,
+        108.1
+      ],
+      "fsa": [
+        20.5,
+        23.1,
+        26.2,
+        26.4,
+        26.4
+      ]
+    }
+  },
+  "continuity": {
+    "winners_by_scenario": {
+      "lpddr5_3b": "block",
+      "lpddr5x_7b": "os_systolic",
+      "hbm2e_7b": "os_systolic",
+      "onchip_7b": "os_systolic",
+      "onchip_7b_chat": "os_systolic"
+    },
+    "transition_smooth": true,
+    "note": "Low-BW lpddr5_3b favors block (area-efficient at 51.2 GB/s); medium/high BW favors os_systolic (scales with bandwidth)."
+  }
+}

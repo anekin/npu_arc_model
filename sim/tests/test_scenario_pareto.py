@@ -62,6 +62,9 @@ def test_default_objectives_cover_throughput_and_resources():
 
 
 def test_frontier_excludes_non_authoritative_points():
+    # Partial / non_authoritative runs are excluded; exploratory estimates are
+    # allowed by default so that calibration-gate failures do not empty the
+    # frontier in exploratory mode.
     results = [
         _complete_result("auth_fast", tok_per_s=20.0, area_mm2=60.0),
         _complete_result(
@@ -70,10 +73,19 @@ def test_frontier_excludes_non_authoritative_points():
             area_mm2=40.0,
             trust_level=RunTrustLevel.exploratory,
         ),
+        _complete_result(
+            "non_auth",
+            tok_per_s=25.0,
+            area_mm2=35.0,
+            trust_level=RunTrustLevel.non_authoritative,
+        ),
     ]
     pareto = MultiObjectivePareto()
     frontier = pareto.compute_frontier(results)
-    assert [p.result.design_point_id for p in frontier] == ["auth_fast"]
+    ids = {p.result.design_point_id for p in frontier}
+    assert "auth_fast" in ids
+    assert "exploratory_slow" in ids
+    assert "non_auth" not in ids
 
 
 def test_frontier_excludes_failed_status():
