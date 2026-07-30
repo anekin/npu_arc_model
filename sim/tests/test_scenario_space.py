@@ -9,21 +9,18 @@ Then:  constraints are enforced, every requested value is generated or
 from __future__ import annotations
 
 import copy
-from typing import Any, Dict
+from typing import Any
 
 import pytest
-
 from contracts.errors import ConfigError
 from dse.manifest import CoverageManifest
 from dse.space import (
     AXES_PATH,
     DesignPoint,
     DesignSpace,
-    GenerationResult,
     load_design_space_from_yaml,
 )
 from scenarios.schema import ArrivalPattern, Scenario, WorkloadClass
-
 
 # ── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -46,7 +43,7 @@ def minimal_scenario() -> Scenario:
 
 
 @pytest.fixture
-def tiny_axes_config() -> Dict[str, Any]:
+def tiny_axes_config() -> dict[str, Any]:
     """Small axis configuration for fast deterministic tests."""
     return {
         "axes": {

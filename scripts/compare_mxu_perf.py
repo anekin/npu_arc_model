@@ -22,7 +22,6 @@ from pathlib import Path
 
 import yaml
 
-
 CSV_COLUMNS = [
     "scenario",
     "M",
@@ -128,9 +127,7 @@ def _stats(values: list[float]) -> tuple[float, float, float, float]:
     """Return (mean, min, max, pstdev) for a list of floats."""
     if not values:
         return 0.0, 0.0, 0.0, 0.0
-    return statistics.mean(values), min(values), max(values), (
-        statistics.pstdev(values) if len(values) > 1 else 0.0
-    )
+    return statistics.mean(values), min(values), max(values), (statistics.pstdev(values) if len(values) > 1 else 0.0)
 
 
 def generate_report(records: list[dict], engine_type: str, out_path: Path) -> None:
@@ -141,15 +138,11 @@ def generate_report(records: list[dict], engine_type: str, out_path: Path) -> No
     mean_gap_pct, min_gap_pct, max_gap_pct, std_gap_pct = _stats(gap_pcts)
     mean_gap_cycles, _, _, std_gap_cycles = _stats(gap_cycles)
 
-    non_degenerate_pcts = [
-        r["gap_pct"] for r in records if r["RTL_cycles"] > 0 and r["M"] > 0
-    ]
+    non_degenerate_pcts = [r["gap_pct"] for r in records if r["RTL_cycles"] > 0 and r["M"] > 0]
     nd_mean, nd_min, nd_max, nd_std = _stats(non_degenerate_pcts)
 
     # Single-tile anchor for the root-cause discussion.
-    single_tile = next(
-        (r for r in records if r["scenario"] == "single_tile"), None
-    )
+    single_tile = next((r for r in records if r["scenario"] == "single_tile"), None)
 
     sorted_records = sorted(records, key=lambda r: r["gap_pct"], reverse=True)
 
@@ -233,13 +226,8 @@ def generate_report(records: list[dict], engine_type: str, out_path: Path) -> No
     # Per-scenario table
     lines.append("## Per-Scenario Comparison (sorted by gap_pct descending)")
     lines.append("")
-    lines.append(
-        "| scenario | M | K | N | RTL cycles | model compute | model DMA | "
-        "model total | gap cycles | gap % |"
-    )
-    lines.append(
-        "|---|---|---|---:|---:|---:|---:|---:|---:|---:|"
-    )
+    lines.append("| scenario | M | K | N | RTL cycles | model compute | model DMA | model total | gap cycles | gap % |")
+    lines.append("|---|---|---|---:|---:|---:|---:|---:|---:|---:|")
     for r in sorted_records:
         lines.append(
             f"| {r['scenario']} | {r['M']} | {r['K']} | {r['N']} | "

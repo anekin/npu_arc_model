@@ -2,12 +2,9 @@
 
 import json
 import sys
-from pathlib import Path
-
-import pytest
 
 import design_space_explorer as dse
-
+import pytest
 
 _ORIG_EVALUATE = dse.evaluate_config
 
@@ -39,9 +36,7 @@ def test_default_exit_nonzero_on_evaluation_error(monkeypatch, capsys):
     assert "ERROR evaluating" in captured.err
 
 
-def test_allow_partial_preserves_valid_results_and_reports_errors(
-    monkeypatch, tmp_path
-):
+def test_allow_partial_preserves_valid_results_and_reports_errors(monkeypatch, tmp_path):
     """--allow-partial keeps valid results and writes errors=1 into metadata."""
     monkeypatch.setattr(dse, "evaluate_config", _make_fail_once())
     output = tmp_path / "partial.json"

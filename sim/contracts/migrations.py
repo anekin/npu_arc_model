@@ -90,14 +90,10 @@ def migrate_v1_to_v2(config: dict[str, Any]) -> tuple[dict[str, Any], LossReport
 
     # ── Clean memory section ──
     mem = data.get("memory")
-    if isinstance(mem, dict):
-        if "bandwidth_bytes_per_cycle" in mem:
-            del mem["bandwidth_bytes_per_cycle"]
-            loss.dropped_keys.append("memory.bandwidth_bytes_per_cycle")
-            loss.warnings.append(
-                "Dropped 'memory.bandwidth_bytes_per_cycle' — "
-                "use bandwidth_gbps + frequency_mhz in v2."
-            )
+    if isinstance(mem, dict) and "bandwidth_bytes_per_cycle" in mem:
+        del mem["bandwidth_bytes_per_cycle"]
+        loss.dropped_keys.append("memory.bandwidth_bytes_per_cycle")
+        loss.warnings.append("Dropped 'memory.bandwidth_bytes_per_cycle' — use bandwidth_gbps + frequency_mhz in v2.")
 
     return data, loss
 

@@ -21,7 +21,7 @@ import json
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 from contracts.errors import ConfigError
 from contracts.identity import canonical_json_bytes
@@ -29,7 +29,6 @@ from contracts.result import DesignSpaceResultV2
 from dse.manifest import CoverageManifest
 from dse.models import DesignPoint
 from dse.space import GenerationResult
-
 
 _CANONICAL_PAYLOAD_FILES = ("inputs.json", "result.json", "coverage.json", "manifest.json")
 
@@ -65,7 +64,7 @@ class ReplayBundlePaths:
         return self.root / "metadata.json"
 
 
-def _canonical_dump(obj: Dict[str, Any]) -> bytes:
+def _canonical_dump(obj: dict[str, Any]) -> bytes:
     """Dump a dict to canonical JSON bytes (sorted keys, compact)."""
     return canonical_json_bytes(obj)
 
@@ -90,12 +89,12 @@ def _sha256_file(path: Path) -> str:
 
 def _build_inputs_dict(
     *,
-    scenario_dict: Dict[str, Any],
-    axes_dict: Dict[str, Any],
+    scenario_dict: dict[str, Any],
+    axes_dict: dict[str, Any],
     seed: int,
-    run_config: Dict[str, Any],
-    design_points: List[DesignPoint],
-) -> Dict[str, Any]:
+    run_config: dict[str, Any],
+    design_points: list[DesignPoint],
+) -> dict[str, Any]:
     """Build normalized inputs dictionary."""
     return {
         "schema_version": "1",
@@ -123,7 +122,7 @@ def _build_manifest_dict(
     coverage_digest: str,
     payload_digest: str,
     design_point_count: int,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Build bundle manifest linking payload files."""
     return {
         "schema_version": "1",
@@ -143,10 +142,10 @@ def write_replay_bundle(
     *,
     result_set: DesignSpaceResultV2,
     manifest: CoverageManifest,
-    scenario_dict: Dict[str, Any],
-    axes_dict: Dict[str, Any],
+    scenario_dict: dict[str, Any],
+    axes_dict: dict[str, Any],
     seed: int,
-    run_config: Dict[str, Any],
+    run_config: dict[str, Any],
     generation_result: GenerationResult,
     command: str = "",
     git_commit: str = "",
@@ -228,7 +227,7 @@ def write_replay_bundle(
             path.write_bytes(data)
 
     # SHA256SUMS over canonical payload.
-    sha_lines: List[str] = []
+    sha_lines: list[str] = []
     for name in _CANONICAL_PAYLOAD_FILES:
         digest = _sha256_file(root / name)
         sha_lines.append(f"{digest}  {name}")
@@ -254,7 +253,7 @@ def write_replay_bundle(
     return paths
 
 
-def read_replay_bundle(output_path: Path | str) -> Dict[str, Any]:
+def read_replay_bundle(output_path: Path | str) -> dict[str, Any]:
     """Read a replay bundle directory and return its canonical payload dicts."""
     root = Path(output_path)
     paths = ReplayBundlePaths(root=root)
@@ -289,11 +288,7 @@ def read_replay_bundle(output_path: Path | str) -> Dict[str, Any]:
             )
 
     # Verify manifest payload digest.
-    payload_bytes = (
-        paths.inputs.read_bytes()
-        + paths.result.read_bytes()
-        + paths.coverage.read_bytes()
-    )
+    payload_bytes = paths.inputs.read_bytes() + paths.result.read_bytes() + paths.coverage.read_bytes()
     actual_payload_digest = hashlib.sha256(payload_bytes).hexdigest()
     expected_payload_digest = manifest.get("digests", {}).get("canonical_payload")
     if expected_payload_digest != actual_payload_digest:

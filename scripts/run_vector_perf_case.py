@@ -15,13 +15,11 @@ from __future__ import annotations
 
 import argparse
 import datetime as _dt
-import re
 import shlex
 import subprocess
 import sys
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Sequence
-
 
 # ══════════════════════════════════════════════════════════════════════
 # Paths and constants
@@ -58,10 +56,18 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--repeat", type=int, default=1, help="Back-to-back CMD loop count (default: 1)")
     parser.add_argument("--simv", default=str(DEFAULT_SIMV), help=f"VCS simv binary path (default: {DEFAULT_SIMV})")
     parser.add_argument("--rebuild", action="store_true", help="Force VCS recompile")
-    parser.add_argument("--eda-server", default=DEFAULT_EDA_SERVER, help=f"EDA server SSH target (default: {DEFAULT_EDA_SERVER})")
-    parser.add_argument("--vcs-module", default=DEFAULT_VCS_MODULE, help=f"VCS module name (default: {DEFAULT_VCS_MODULE})")
+    parser.add_argument(
+        "--eda-server", default=DEFAULT_EDA_SERVER, help=f"EDA server SSH target (default: {DEFAULT_EDA_SERVER})"
+    )
+    parser.add_argument(
+        "--vcs-module", default=DEFAULT_VCS_MODULE, help=f"VCS module name (default: {DEFAULT_VCS_MODULE})"
+    )
     parser.add_argument("--commit", action="store_true", help="Commit testcase-list status change")
-    parser.add_argument("--evidence-dir", default=str(DEFAULT_EVIDENCE_DIR), help=f"Evidence directory (default: {DEFAULT_EVIDENCE_DIR})")
+    parser.add_argument(
+        "--evidence-dir",
+        default=str(DEFAULT_EVIDENCE_DIR),
+        help=f"Evidence directory (default: {DEFAULT_EVIDENCE_DIR})",
+    )
     parser.add_argument("--dry-run", action="store_true", help="Formula check only; no VCS")
     return parser
 
@@ -94,9 +100,7 @@ def run_cmd(
             print(result.stdout, file=sys.stderr)
         if result.stderr:
             print(result.stderr, file=sys.stderr)
-        raise subprocess.CalledProcessError(
-            result.returncode, cmd_strs, output=result.stdout, stderr=result.stderr
-        )
+        raise subprocess.CalledProcessError(result.returncode, cmd_strs, output=result.stdout, stderr=result.stderr)
     return result
 
 
@@ -140,9 +144,7 @@ def has_vcs_errors(log_path: Path) -> bool:
 # ══════════════════════════════════════════════════════════════════════
 
 
-def step_compile_vcs(
-    eda_server: str, vcs_module: str, simv: Path, force: bool
-) -> Path:
+def step_compile_vcs(eda_server: str, vcs_module: str, simv: Path, force: bool) -> Path:
     """Compile the Vector performance testbench on the EDA server."""
     compile_log = Path(f"{simv}.compile.log")
 
@@ -196,18 +198,20 @@ def step_run_simulation(
     return sim_log_remote
 
 
-def step_analyze_perf(
-    case_id: str, op: str, dim: int, sim_log_local: Path
-) -> subprocess.CompletedProcess[str]:
+def step_analyze_perf(case_id: str, op: str, dim: int, sim_log_local: Path) -> subprocess.CompletedProcess[str]:
     """Run analyze_vector_perf.py to check measured vs expected cycles."""
     return run_cmd(
         [
             "python3",
             str(CADUCEUS_CORE / "scripts" / "analyze_vector_perf.py"),
-            "--case", case_id,
-            "--op", op,
-            "--dim", str(dim),
-            "--log", str(sim_log_local),
+            "--case",
+            case_id,
+            "--op",
+            op,
+            "--dim",
+            str(dim),
+            "--log",
+            str(sim_log_local),
         ],
         cwd=REPO_ROOT,
     )
@@ -220,9 +224,12 @@ def step_dry_run_analyze(case_id: str, op: str, dim: int) -> subprocess.Complete
             "python3",
             str(CADUCEUS_CORE / "scripts" / "analyze_vector_perf.py"),
             "--dry-run",
-            "--case", case_id,
-            "--op", op,
-            "--dim", str(dim),
+            "--case",
+            case_id,
+            "--op",
+            op,
+            "--dim",
+            str(dim),
         ],
         cwd=REPO_ROOT,
     )
@@ -232,9 +239,7 @@ def append_learning(case_id: str, op: str, dim: int, passed: bool) -> None:
     """Append a summary line to the learnings notepad."""
     timestamp = _dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     status = "PASS" if passed else "FAIL"
-    line = (
-        f"\n## {timestamp} run_vector_perf_case.py — {case_id} op={op} dim={dim} — {status}\n"
-    )
+    line = f"\n## {timestamp} run_vector_perf_case.py — {case_id} op={op} dim={dim} — {status}\n"
     LEARNINGS_FILE.parent.mkdir(parents=True, exist_ok=True)
     with LEARNINGS_FILE.open("a", encoding="utf-8") as f:
         f.write(line)
@@ -269,25 +274,27 @@ def main() -> int:
 
     evidence_parts: list[str] = [
         f"# Vector Perf Case: {case_id}",
-        f"",
+        "",
         f"- **Op**: {op}",
         f"- **Dim**: {dim}",
         f"- **Command**: `{command_used}`",
-        f"",
+        "",
     ]
 
     try:
         if dry_run:
             analyze_result = step_dry_run_analyze(case_id, op, dim)
-            evidence_parts.extend([
-                "## Dry-Run Formula Check",
-                "",
-                "```",
-                analyze_result.stdout.strip(),
-                "```",
-                "",
-                "**Final verdict: PASS (dry-run, formula check only)**",
-            ])
+            evidence_parts.extend(
+                [
+                    "## Dry-Run Formula Check",
+                    "",
+                    "```",
+                    analyze_result.stdout.strip(),
+                    "```",
+                    "",
+                    "**Final verdict: PASS (dry-run, formula check only)**",
+                ]
+            )
             evidence_file.write_text("\n".join(evidence_parts) + "\n", encoding="utf-8")
             append_learning(case_id, op, dim, passed=True)
             print(f"[evidence] wrote {evidence_file}")
@@ -298,23 +305,23 @@ def main() -> int:
         scp_from_remote(eda_server, compile_log_remote, compile_log_local)
 
         if has_vcs_errors(compile_log_local):
-            evidence_parts.extend([
-                "## VCS Compile — FAIL",
-                "",
-                "```",
-                tail(compile_log_local, 30),
-                "```",
-                "",
-                "**Final verdict: FAIL (VCS compile errors)**",
-            ])
+            evidence_parts.extend(
+                [
+                    "## VCS Compile — FAIL",
+                    "",
+                    "```",
+                    tail(compile_log_local, 30),
+                    "```",
+                    "",
+                    "**Final verdict: FAIL (VCS compile errors)**",
+                ]
+            )
             evidence_file.write_text("\n".join(evidence_parts) + "\n", encoding="utf-8")
             print(f"ERROR: VCS compile produced errors (see {compile_log_local})", file=sys.stderr)
             return 1
 
         # ── Run simulation ───────────────────────────────────────────────
-        sim_log_remote = step_run_simulation(
-            eda_server, vcs_module, simv, case_id, op, dim, repeat
-        )
+        sim_log_remote = step_run_simulation(eda_server, vcs_module, simv, case_id, op, dim, repeat)
         scp_from_remote(eda_server, sim_log_remote, sim_log_local)
 
         if not sim_log_local.exists():
@@ -322,15 +329,17 @@ def main() -> int:
 
         sim_text = sim_log_local.read_text(encoding="utf-8", errors="replace")
         if "PERF|" not in sim_text:
-            evidence_parts.extend([
-                "## Simulation — FAIL (no PERF data)",
-                "",
-                "```",
-                tail(sim_log_local, 30),
-                "```",
-                "",
-                "**Final verdict: FAIL (no PERF| lines in simulation log)**",
-            ])
+            evidence_parts.extend(
+                [
+                    "## Simulation — FAIL (no PERF data)",
+                    "",
+                    "```",
+                    tail(sim_log_local, 30),
+                    "```",
+                    "",
+                    "**Final verdict: FAIL (no PERF| lines in simulation log)**",
+                ]
+            )
             evidence_file.write_text("\n".join(evidence_parts) + "\n", encoding="utf-8")
             print("ERROR: simulation log contains no PERF| lines", file=sys.stderr)
             return 1
@@ -340,27 +349,29 @@ def main() -> int:
         analyze_stdout = analyze_result.stdout.strip()
         analyze_pass = "PASS" in analyze_stdout and "FAIL" not in analyze_stdout
 
-        evidence_parts.extend([
-            "## Compile Log",
-            "",
-            "```",
-            tail(compile_log_local, 20),
-            "```",
-            "",
-            "## Simulation Log (tail)",
-            "",
-            "```",
-            tail(sim_log_local, 40),
-            "```",
-            "",
-            "## Cycle Analysis",
-            "",
-            "```",
-            analyze_stdout,
-            "```",
-            "",
-            f"**Final verdict: {'PASS' if analyze_pass else 'FAIL'}**",
-        ])
+        evidence_parts.extend(
+            [
+                "## Compile Log",
+                "",
+                "```",
+                tail(compile_log_local, 20),
+                "```",
+                "",
+                "## Simulation Log (tail)",
+                "",
+                "```",
+                tail(sim_log_local, 40),
+                "```",
+                "",
+                "## Cycle Analysis",
+                "",
+                "```",
+                analyze_stdout,
+                "```",
+                "",
+                f"**Final verdict: {'PASS' if analyze_pass else 'FAIL'}**",
+            ]
+        )
         evidence_file.write_text("\n".join(evidence_parts) + "\n", encoding="utf-8")
 
         append_learning(case_id, op, dim, passed=analyze_pass)
@@ -369,28 +380,32 @@ def main() -> int:
         return 0 if analyze_pass else 1
 
     except subprocess.CalledProcessError as exc:
-        evidence_parts.extend([
-            "## Failure Context",
-            "",
-            f"Subprocess failed (exit {exc.returncode}): {' '.join(exc.cmd)}",
-            exc.stdout.strip() if exc.stdout else "",
-            exc.stderr.strip() if exc.stderr else "",
-            "",
-            "**Final verdict: FAIL (subprocess error)**",
-        ])
+        evidence_parts.extend(
+            [
+                "## Failure Context",
+                "",
+                f"Subprocess failed (exit {exc.returncode}): {' '.join(exc.cmd)}",
+                exc.stdout.strip() if exc.stdout else "",
+                exc.stderr.strip() if exc.stderr else "",
+                "",
+                "**Final verdict: FAIL (subprocess error)**",
+            ]
+        )
         evidence_file.write_text("\n".join(evidence_parts) + "\n", encoding="utf-8")
         append_learning(case_id, op, dim, passed=False)
         print(f"[evidence] wrote {evidence_file}")
         return 1
 
     except Exception as exc:
-        evidence_parts.extend([
-            "## Failure Context",
-            "",
-            f"Exception: {exc}",
-            "",
-            "**Final verdict: FAIL (runner error)**",
-        ])
+        evidence_parts.extend(
+            [
+                "## Failure Context",
+                "",
+                f"Exception: {exc}",
+                "",
+                "**Final verdict: FAIL (runner error)**",
+            ]
+        )
         evidence_file.write_text("\n".join(evidence_parts) + "\n", encoding="utf-8")
         append_learning(case_id, op, dim, passed=False)
         print(f"[evidence] wrote {evidence_file}")

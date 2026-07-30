@@ -14,9 +14,9 @@ NVIDIA 实际 Tensor Core 以 64×16×16 (K×M×N) 子块处理 GEMM：
 """
 
 import math
-from typing import Any, Dict
+from typing import Any
 
-from engine.mac_engine import MACEngine, EngineResult
+from engine.mac_engine import EngineResult, MACEngine
 
 
 class TensorCoreEngine(MACEngine):
@@ -28,27 +28,21 @@ class TensorCoreEngine(MACEngine):
     the primary source of fragmentation overhead vs. a monolithic Block Engine.
     """
 
-    SUBTILE_K = 64   # accumulation depth per sub-tile
-    SUBTILE_M = 16   # output rows per sub-tile
-    SUBTILE_N = 16   # output columns per sub-tile
+    SUBTILE_K = 64  # accumulation depth per sub-tile
+    SUBTILE_M = 16  # output rows per sub-tile
+    SUBTILE_N = 16  # output columns per sub-tile
     SUBTILE_PIPELINE_FILL = 80  # 64 (K) + 16 (N) systolic fill/drain
     SUBTILE_OVERHEAD_CYCLES = 4  # small sync/startup overhead
     DEFAULT_DESCRIPTOR_OVERHEAD_CYCLES = 5
 
-    def _parse_config(self, config: Dict[str, Any]) -> None:
+    def _parse_config(self, config: dict[str, Any]) -> None:
         """Parse common config plus Tensor Core descriptor overhead cycles."""
         super()._parse_config(config)
-        overhead = config.get("dma", {}).get(
-            "descriptor_overhead_cycles", self.DEFAULT_DESCRIPTOR_OVERHEAD_CYCLES
-        )
+        overhead = config.get("dma", {}).get("descriptor_overhead_cycles", self.DEFAULT_DESCRIPTOR_OVERHEAD_CYCLES)
         if not isinstance(overhead, int) or isinstance(overhead, bool):
-            raise ValueError(
-                f"dma.descriptor_overhead_cycles must be an integer, got {overhead!r}"
-            )
+            raise ValueError(f"dma.descriptor_overhead_cycles must be an integer, got {overhead!r}")
         if overhead < 0:
-            raise ValueError(
-                f"dma.descriptor_overhead_cycles must be >= 0, got {overhead}"
-            )
+            raise ValueError(f"dma.descriptor_overhead_cycles must be >= 0, got {overhead}")
         self.descriptor_overhead_cycles = overhead
 
     @property
@@ -65,8 +59,7 @@ class TensorCoreEngine(MACEngine):
         """Cycles to execute one 64×16×16 sub-tile on a TC."""
         return self.SUBTILE_PIPELINE_FILL + self.SUBTILE_OVERHEAD_CYCLES
 
-    def estimate(self, M: int, K: int, N: int,
-                 weight_preloaded: bool = False) -> EngineResult:
+    def estimate(self, M: int, K: int, N: int, weight_preloaded: bool = False) -> EngineResult:
         """TC-style GEMM estimate with 64x16x16 sub-tile fragmentation."""
         sub_K = math.ceil(K / self.SUBTILE_K)
         sub_M = math.ceil(M / self.SUBTILE_M)
@@ -83,12 +76,8 @@ class TensorCoreEngine(MACEngine):
         if last_n <= 0:
             last_n = self.SUBTILE_N
 
-        full_weight_bytes = math.ceil(
-            self.SUBTILE_K * self.SUBTILE_N * self.w_bits / 8
-        )
-        full_act_bytes = math.ceil(
-            self.SUBTILE_M * self.SUBTILE_K * self.a_bits / 8
-        )
+        full_weight_bytes = math.ceil(self.SUBTILE_K * self.SUBTILE_N * self.w_bits / 8)
+        full_act_bytes = math.ceil(self.SUBTILE_M * self.SUBTILE_K * self.a_bits / 8)
         full_payload = (full_weight_bytes + full_act_bytes) / self.eff_bw
 
         num_tcs = self.num_tcs
@@ -111,18 +100,12 @@ class TensorCoreEngine(MACEngine):
             m_eff = last_m if m_idx == sub_M - 1 else self.SUBTILE_M
             k_eff = last_k if k_idx == sub_K - 1 else self.SUBTILE_K
             n_eff = last_n if n_idx == sub_N - 1 else self.SUBTILE_N
-            last_wave_weight_bytes += math.ceil(
-                k_eff * n_eff * self.w_bits / 8
-            )
-            last_wave_act_bytes += math.ceil(
-                m_eff * k_eff * self.a_bits / 8
-            )
+            last_wave_weight_bytes += math.ceil(k_eff * n_eff * self.w_bits / 8)
+            last_wave_act_bytes += math.ceil(m_eff * k_eff * self.a_bits / 8)
 
         last_wave_payload = (last_wave_weight_bytes + last_wave_act_bytes) / self.eff_bw
         last_wave_descriptor = active_tcs * self.descriptor_overhead_cycles
-        total_descriptor_cycles = (
-            descriptor_cycles_per_wave * (waves - 1) + last_wave_descriptor
-        )
+        total_descriptor_cycles = descriptor_cycles_per_wave * (waves - 1) + last_wave_descriptor
 
         per_wave_dma = per_wave_payload_cycles + descriptor_cycles_per_wave
         bottleneck = max(per_wave_compute, per_wave_dma)
@@ -135,22 +118,19 @@ class TensorCoreEngine(MACEngine):
         else:
             last_wave_dma_total = last_wave_payload + last_wave_descriptor
             total = int(
-                per_wave_dma + per_wave_compute
-                + (waves - 2) * bottleneck
-                + max(per_wave_compute, last_wave_dma_total)
+                per_wave_dma + per_wave_compute + (waves - 2) * bottleneck + max(per_wave_compute, last_wave_dma_total)
             )
 
         total_macs = M * K * N
         total_weight_bytes = (
-            (waves - 1) * num_tcs * (full_weight_bytes + full_act_bytes)
-            + last_wave_weight_bytes + last_wave_act_bytes
+            (waves - 1) * num_tcs * (full_weight_bytes + full_act_bytes) + last_wave_weight_bytes + last_wave_act_bytes
         )
         ideal = math.ceil(total_macs / self.peak_macs_per_cycle)
         util = ideal / total if total > 0 else 0.0
 
         compute_cycles = waves * per_wave_compute
         dma_cycles = total - compute_cycles
-        raw_dma = (K * N * self.w_bits // 8 + M * K * self.a_bits // 8)
+        raw_dma = K * N * self.w_bits // 8 + M * K * self.a_bits // 8
         raw_dma_cycles = math.ceil(raw_dma / self.eff_bw) if self.eff_bw > 0 else 0
 
         return EngineResult(
@@ -201,12 +181,8 @@ class TensorCoreEngine(MACEngine):
         if last_n <= 0:
             last_n = self.SUBTILE_N
 
-        full_weight_bytes = math.ceil(
-            self.SUBTILE_K * self.SUBTILE_N * self.w_bits / 8
-        )
-        full_act_bytes = math.ceil(
-            self.SUBTILE_M * self.SUBTILE_K * self.a_bits / 8
-        )
+        full_weight_bytes = math.ceil(self.SUBTILE_K * self.SUBTILE_N * self.w_bits / 8)
+        full_act_bytes = math.ceil(self.SUBTILE_M * self.SUBTILE_K * self.a_bits / 8)
         full_payload = (2 * full_weight_bytes + full_act_bytes) / self.eff_bw
 
         num_tcs = self.num_tcs
@@ -229,18 +205,12 @@ class TensorCoreEngine(MACEngine):
             m_eff = last_m if m_idx == sub_M - 1 else self.SUBTILE_M
             k_eff = last_k if k_idx == sub_K - 1 else self.SUBTILE_K
             n_eff = last_n if n_idx == sub_N - 1 else self.SUBTILE_N
-            last_wave_weight_bytes += math.ceil(
-                k_eff * n_eff * self.w_bits / 8
-            )
-            last_wave_act_bytes += math.ceil(
-                m_eff * k_eff * self.a_bits / 8
-            )
+            last_wave_weight_bytes += math.ceil(k_eff * n_eff * self.w_bits / 8)
+            last_wave_act_bytes += math.ceil(m_eff * k_eff * self.a_bits / 8)
 
         last_wave_payload = (2 * last_wave_weight_bytes + last_wave_act_bytes) / self.eff_bw
         last_wave_descriptor = active_tcs * self.descriptor_overhead_cycles
-        total_descriptor_cycles = (
-            descriptor_cycles_per_wave * (waves - 1) + last_wave_descriptor
-        )
+        total_descriptor_cycles = descriptor_cycles_per_wave * (waves - 1) + last_wave_descriptor
 
         per_wave_dma = per_wave_payload_cycles + descriptor_cycles_per_wave
         bottleneck = max(per_wave_compute, per_wave_dma)
@@ -253,15 +223,14 @@ class TensorCoreEngine(MACEngine):
         else:
             last_wave_dma_total = last_wave_payload + last_wave_descriptor
             total = int(
-                per_wave_dma + per_wave_compute
-                + (waves - 2) * bottleneck
-                + max(per_wave_compute, last_wave_dma_total)
+                per_wave_dma + per_wave_compute + (waves - 2) * bottleneck + max(per_wave_compute, last_wave_dma_total)
             )
 
         total_macs = M * K * N * 2
         total_weight_bytes = (
             (waves - 1) * num_tcs * (2 * full_weight_bytes + full_act_bytes)
-            + 2 * last_wave_weight_bytes + last_wave_act_bytes
+            + 2 * last_wave_weight_bytes
+            + last_wave_act_bytes
         )
         ideal = math.ceil(total_macs / self.peak_macs_per_cycle)
         util = ideal / total if total > 0 else 0.0

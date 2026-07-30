@@ -12,9 +12,8 @@
 """
 
 import math
-from typing import Any, Dict
 
-from engine.mac_engine import MACEngine, EngineResult
+from engine.mac_engine import EngineResult, MACEngine
 
 
 class WMMAEngine(MACEngine):
@@ -51,14 +50,10 @@ class WMMAEngine(MACEngine):
         return (self.H // self.FRAG_M) * (self.W // self.FRAG_N)
 
     def _per_fragment_compute(self, ops_multiplier: int = 1) -> int:
-        base = (
-            self.WARP_FRAGMENT_SERIALIZATION_CYCLES
-            + self.WARP_SYNC_CYCLES
-            + self.FRAG_MAC_CYCLES
-        )
+        base = self.WARP_FRAGMENT_SERIALIZATION_CYCLES + self.WARP_SYNC_CYCLES + self.FRAG_MAC_CYCLES
         return base * ops_multiplier
 
-    def _fragment_counts(self, M: int, K: int, N: int) -> Dict[str, int]:
+    def _fragment_counts(self, M: int, K: int, N: int) -> dict[str, int]:
         """Return fragment counts per (H,W) tile and across the full GEMM."""
         frag_M_total = math.ceil(M / self.FRAG_M)
         frag_K_total = math.ceil(K / self.FRAG_K)
@@ -84,8 +79,7 @@ class WMMAEngine(MACEngine):
             "fragments_per_tile": fragments_per_tile,
         }
 
-    def _estimate(self, M: int, K: int, N: int,
-                  weight_multiplier: int = 1, ops_multiplier: int = 1) -> EngineResult:
+    def _estimate(self, M: int, K: int, N: int, weight_multiplier: int = 1, ops_multiplier: int = 1) -> EngineResult:
         """Core WMMA estimator with explicit per-fragment serialization."""
         frag = self._fragment_counts(M, K, N)
         fragments_per_tile = frag["fragments_per_tile"]
@@ -93,13 +87,10 @@ class WMMAEngine(MACEngine):
 
         per_frag_compute = self._per_fragment_compute(ops_multiplier=ops_multiplier)
 
-        per_tile_weight_bytes = weight_multiplier * math.ceil(
-            self.H * self.W * self.w_bits / 8
-        )
+        per_tile_weight_bytes = weight_multiplier * math.ceil(self.H * self.W * self.w_bits / 8)
         per_tile_act_bytes = math.ceil(M * self.H * self.a_bits / 8)
         per_tile_dma = (
-            fragments_per_tile * self.DMA_STARTUP_CYCLES
-            + (per_tile_weight_bytes + per_tile_act_bytes) / self.eff_bw
+            fragments_per_tile * self.DMA_STARTUP_CYCLES + (per_tile_weight_bytes + per_tile_act_bytes) / self.eff_bw
         )
 
         per_tile_compute = fragments_per_tile * per_frag_compute
@@ -107,18 +98,14 @@ class WMMAEngine(MACEngine):
         # Per-fragment DMA: startup overhead + fraction of tile bytes
         per_frag_dma = (
             self.DMA_STARTUP_CYCLES
-            + (per_tile_weight_bytes + per_tile_act_bytes)
-            / max(fragments_per_tile, 1) / self.eff_bw
+            + (per_tile_weight_bytes + per_tile_act_bytes) / max(fragments_per_tile, 1) / self.eff_bw
         )
 
         # Double-buffered pipeline across tiles.
         bottleneck = max(per_tile_compute, per_tile_dma)
         first_cold = per_tile_dma + per_tile_compute
 
-        if total_tiles > 1:
-            total = int(first_cold + (total_tiles - 1) * bottleneck)
-        else:
-            total = int(first_cold)
+        total = int(first_cold + (total_tiles - 1) * bottleneck) if total_tiles > 1 else int(first_cold)
 
         total_macs = M * K * N * ops_multiplier
         ideal = math.ceil(total_macs / self.peak_macs_per_cycle)
@@ -126,7 +113,7 @@ class WMMAEngine(MACEngine):
 
         compute_cycles = int(per_tile_compute * total_tiles)
         dma_cycles = total - compute_cycles
-        raw_dma = (K * N * self.w_bits // 8 + M * K * self.a_bits // 8)
+        raw_dma = K * N * self.w_bits // 8 + M * K * self.a_bits // 8
         raw_dma_cycles = math.ceil(raw_dma / self.eff_bw) if self.eff_bw > 0 else 0
 
         details = {
@@ -160,8 +147,7 @@ class WMMAEngine(MACEngine):
             details=details,
         )
 
-    def estimate(self, M: int, K: int, N: int,
-                 weight_preloaded: bool = False) -> EngineResult:
+    def estimate(self, M: int, K: int, N: int, weight_preloaded: bool = False) -> EngineResult:
         """WMMA GEMM — massive tile fragmentation for small M."""
         return self._estimate(M, K, N, weight_multiplier=1, ops_multiplier=1)
 

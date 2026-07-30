@@ -7,11 +7,9 @@ from pathlib import Path
 
 import pytest
 import yaml
-
+from scenario_runner import run_scenario
 from scenarios.compiler import compile_scenario
 from scenarios.schema import Scenario
-from scenario_runner import run_scenario
-
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 SIM_DIR = REPO_ROOT / "sim"
@@ -130,6 +128,4 @@ class TestNinetyPercentStable:
         assert metrics.dropped_count == 0
         assert metrics.replaced_count == 0
         assert metrics.deadline_miss_count == 0
-        assert math.isclose(
-            metrics.class_metrics[0].offered_load_ratio, 0.9, abs_tol=1e-9
-        )
+        assert math.isclose(metrics.class_metrics[0].offered_load_ratio, 0.9, abs_tol=1e-9)

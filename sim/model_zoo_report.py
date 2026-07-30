@@ -10,24 +10,22 @@ and writes:
 
 from __future__ import annotations
 
+import argparse
 import json
 import re
-import os
-import argparse
 from pathlib import Path
 from typing import Any
 
 import model_specs
-
 
 SIM_DIR = Path(__file__).resolve().parent
 RESULTS_DIR = SIM_DIR.parent / "results"
 MODEL_ZOO_DIR = RESULTS_DIR / "model_zoo"
 CV_DIR = RESULTS_DIR / "cv" / "mobilenetv3_small"
 
-TARGET_TOK_S = 20          # lower bound of 3B decode MRD range
-TARGET_TOK_S_1_5B = 25     # expectation for 1.5B model
-CHIP_AREA_LIMIT = 40       # ~30 mm² tolerance
+TARGET_TOK_S = 20  # lower bound of 3B decode MRD range
+TARGET_TOK_S_1_5B = 25  # expectation for 1.5B model
+CHIP_AREA_LIMIT = 40  # ~30 mm² tolerance
 
 DRAM_BW_GBPS = {
     "LPDDR5-32b": 25.6,
@@ -77,7 +75,7 @@ def compute_architecture_params(spec: model_specs.ModelSpec) -> float:
 
 
 def read_json(path: Path) -> Any:
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         return json.load(f)
 
 
@@ -105,8 +103,9 @@ def best_by_tok_s(configs: list[dict]) -> dict | None:
     return max(configs, key=lambda c: c.get("tok_s", 0.0))
 
 
-def best_under_constraint(configs: list[dict], *, max_power: float | None = None,
-                          max_area: float | None = None) -> dict | None:
+def best_under_constraint(
+    configs: list[dict], *, max_power: float | None = None, max_area: float | None = None
+) -> dict | None:
     filtered = configs
     if max_power is not None:
         filtered = [c for c in filtered if c.get("power_w", float("inf")) <= max_power]
@@ -136,8 +135,7 @@ def dram_per_token_bytes(params: float, weight_bits: int) -> float:
     return params * weight_bits / 8.0
 
 
-def theoretical_max_tok_s(params: float, weight_bits: int,
-                          bw_gbps: float = MAX_BW_GBPS) -> float:
+def theoretical_max_tok_s(params: float, weight_bits: int, bw_gbps: float = MAX_BW_GBPS) -> float:
     bytes_per_tok = dram_per_token_bytes(params, weight_bits)
     if bytes_per_tok <= 0:
         return 0.0
@@ -178,9 +176,15 @@ def build_model_summary(alias: str, pareto_suffix: str = "") -> dict[str, Any]:
 
     def entry(c: dict | None) -> dict[str, Any]:
         if c is None:
-            return {"config": "N/A", "tok_s": None, "area_mm2": None,
-                    "power_w": None, "tok_per_w": None, "tok_per_mm2": None,
-                    "pass_fail": "Fail"}
+            return {
+                "config": "N/A",
+                "tok_s": None,
+                "area_mm2": None,
+                "power_w": None,
+                "tok_per_w": None,
+                "tok_per_mm2": None,
+                "pass_fail": "Fail",
+            }
         tok_s = c.get("tok_s", 0.0)
         area = c.get("area_mm2", 0.0)
         power = c.get("power_w", 0.0)
@@ -262,9 +266,11 @@ def generate_markdown(report: dict[str, Any]) -> str:
     bottleneck_line = "; ".join(f"{k}: {', '.join(v)}" for k, v in bottlenecks.items())
     add(f"- 主要瓶颈: {bottleneck_line}")
     add("")
-    add("整体而言，全部 5 个模型在 12W/40mm² 芯片约束下均可满足 20-25 tok/s 的 3B 级目标，"
+    add(
+        "整体而言，全部 5 个模型在 12W/40mm² 芯片约束下均可满足 20-25 tok/s 的 3B 级目标，"
         "其中 Gemma-4-12B 由 gmma 引擎达到 33.0 tok/s，说明 GMMA 的 TMA 异步 DMA 流水线对中大规模模型有显著收益。"
-        "当前 DSE 空间对 1.5B–12B LLM 均已存在可行的芯片级解。")
+        "当前 DSE 空间对 1.5B–12B LLM 均已存在可行的芯片级解。"
+    )
     add("")
 
     # Section 2: Methodology
@@ -309,12 +315,16 @@ def generate_markdown(report: dict[str, Any]) -> str:
     add("|-------|-------------|------:|-----:|------:|------:|--------:|")
     for m in report["models"]:
         e = m["best_m1"]
-        add(f"| {m['alias']} | {e['config']} | {fmt_num(e['tok_s'])} | "
+        add(
+            f"| {m['alias']} | {e['config']} | {fmt_num(e['tok_s'])} | "
             f"{fmt_num(e['area_mm2'])} | {fmt_num(e['power_w'])} | "
-            f"{fmt_num(e['tok_per_w'])} | {fmt_num(e['tok_per_mm2'])} |")
+            f"{fmt_num(e['tok_per_w'])} | {fmt_num(e['tok_per_mm2'])} |"
+        )
     add("")
-    add("所有模型的无约束最佳配置均落在 HBM3-1024b + block 引擎 + 128×256 阵列 + INT2 上，"
-        "面积与功耗分别达到 189.2 mm² 与 77W，远超芯片级目标，仅适合数据中心/PCIe 高功耗形态。")
+    add(
+        "所有模型的无约束最佳配置均落在 HBM3-1024b + block 引擎 + 128×256 阵列 + INT2 上，"
+        "面积与功耗分别达到 189.2 mm² 与 77W，远超芯片级目标，仅适合数据中心/PCIe 高功耗形态。"
+    )
     add("")
 
     # Section 4: Batch M=2 improvement
@@ -333,8 +343,10 @@ def generate_markdown(report: dict[str, Any]) -> str:
         else:
             add(f"| {m['alias']} | {fmt_num(m1)} | {fmt_num(m2)} | N/A |")
     add("")
-    add("M=2 并未带来显著提升，部分模型甚至出现小幅下降。这符合 decode 阶段的特性："
-        "batch 增加主要放大 K/V 与激活内存，而权重读取仍是主导流量，因此受 DRAM 带宽制约明显。")
+    add(
+        "M=2 并未带来显著提升，部分模型甚至出现小幅下降。这符合 decode 阶段的特性："
+        "batch 增加主要放大 K/V 与激活内存，而权重读取仍是主导流量，因此受 DRAM 带宽制约明显。"
+    )
     add("")
 
     # Section 5: Product requirement matrix
@@ -349,8 +361,10 @@ def generate_markdown(report: dict[str, Any]) -> str:
     add("|-------|----------------|------:|-----:|------:|:---------:|")
     for m in report["models"]:
         e = m["m2_10w"]
-        add(f"| {m['alias']} | {e['config']} | {fmt_num(e['tok_s'])} | "
-            f"{fmt_num(e['area_mm2'])} | {fmt_num(e['power_w'])} | {e['pass_fail']} |")
+        add(
+            f"| {m['alias']} | {e['config']} | {fmt_num(e['tok_s'])} | "
+            f"{fmt_num(e['area_mm2'])} | {fmt_num(e['power_w'])} | {e['pass_fail']} |"
+        )
     add("")
     add("在 10W 限制下，所有模型均选择 LPDDR5-64b + block 64×64 的最低功耗组合。")
     add("除 Gemma-4-12B 外，其余模型均满足目标吞吐。")
@@ -364,12 +378,16 @@ def generate_markdown(report: dict[str, Any]) -> str:
     add("|-------|-------------------------|------:|-----:|------:|:---------:|")
     for m in report["models"]:
         e = m["chip_12w_40mm2"]
-        add(f"| {m['alias']} | {e['config']} | {fmt_num(e['tok_s'])} | "
-            f"{fmt_num(e['area_mm2'])} | {fmt_num(e['power_w'])} | {e['pass_fail']} |")
+        add(
+            f"| {m['alias']} | {e['config']} | {fmt_num(e['tok_s'])} | "
+            f"{fmt_num(e['area_mm2'])} | {fmt_num(e['power_w'])} | {e['pass_fail']} |"
+        )
     add("")
-    add("芯片级约束下所有模型选择 gmma 64×64（30.2 mm², 10.4W）搭配 LPDDR5-64b，而 M.2 约束使用 bloc 64×64 以降低面积（28.2 mm², 9.6W）；"
+    add(
+        "芯片级约束下所有模型选择 gmma 64×64（30.2 mm², 10.4W）搭配 LPDDR5-64b，而 M.2 约束使用 bloc 64×64 以降低面积（28.2 mm², 9.6W）；"
         "GMMA 的 TMA 异步 DMA 使其在相同 DRAM 下获得更高吞吐，适合芯片级产品。"
-        "若放宽面积到 40mm² 以上，可上探 LPDDR5-128b 获得更高吞吐。")
+        "若放宽面积到 40mm² 以上，可上探 LPDDR5-128b 获得更高吞吐。"
+    )
     add("")
 
     add("### PCIe 卡约束: ≤15W")
@@ -378,8 +396,10 @@ def generate_markdown(report: dict[str, Any]) -> str:
     add("|-------|----------------|------:|-----:|------:|:---------:|")
     for m in report["models"]:
         e = m["pcie_15w"]
-        add(f"| {m['alias']} | {e['config']} | {fmt_num(e['tok_s'])} | "
-            f"{fmt_num(e['area_mm2'])} | {fmt_num(e['power_w'])} | {e['pass_fail']} |")
+        add(
+            f"| {m['alias']} | {e['config']} | {fmt_num(e['tok_s'])} | "
+            f"{fmt_num(e['area_mm2'])} | {fmt_num(e['power_w'])} | {e['pass_fail']} |"
+        )
     add("")
     add("PCIe 15W 允许使用 LPDDR5-128b，所有模型均达标。")
     add("Gemma-4-12B 在此约束下达到 45.1 tok/s，与芯片级约束下的 33.0 tok/s 共同说明")
@@ -389,12 +409,16 @@ def generate_markdown(report: dict[str, Any]) -> str:
     # Section 6: Model scale gradient and DRAM wall
     add("## 6. 模型规模梯度与 DRAM 墙")
     add("")
-    add("表中 Params 为 architecture weight（不含 embedding），DRAM/tok 按 INT2（2 bit/weight）估算，"
-        "Theoretical Max 按 HBM3-1024b 819.2 GB/s × 85% 效率计算。")
+    add(
+        "表中 Params 为 architecture weight（不含 embedding），DRAM/tok 按 INT2（2 bit/weight）估算，"
+        "Theoretical Max 按 HBM3-1024b 819.2 GB/s × 85% 效率计算。"
+    )
     add("")
-    add("DRAM/tok 仅统计单次 decode 所需读取的权重大小，未计入 KV cache 与激活；"
+    add(
+        "DRAM/tok 仅统计单次 decode 所需读取的权重大小，未计入 KV cache 与激活；"
         "由于 weight cache 与 layer fusion 可减少实际片外流量，achieved best 偶会接近甚至略低于理论上限。"
-        "从 1.5B 到 12B，理论上限下降约 7.7 倍，与模型规模增长呈反比，验证 DRAM 墙是主要扩展瓶颈。")
+        "从 1.5B 到 12B，理论上限下降约 7.7 倍，与模型规模增长呈反比，验证 DRAM 墙是主要扩展瓶颈。"
+    )
     add("")
     add("| Model | Params | DRAM/tok | Theoretical Max tok/s | Achieved Best tok/s | Bottleneck |")
     add("|-------|-------:|---------:|----------------------:|--------------------:|------------|")
@@ -404,11 +428,15 @@ def generate_markdown(report: dict[str, Any]) -> str:
         dram_mb = dram_per_token_bytes(m["params"], wbits) / 1e6
         theoretical = theoretical_max_tok_s(m["params"], wbits)
         achieved = m["best_m1"]["tok_s"]
-        add(f"| {m['alias']} | {params_b:.1f}B | {dram_mb:.2f} MB | "
-            f"{fmt_num(theoretical)} | {fmt_num(achieved)} | {m['bottleneck']} |")
+        add(
+            f"| {m['alias']} | {params_b:.1f}B | {dram_mb:.2f} MB | "
+            f"{fmt_num(theoretical)} | {fmt_num(achieved)} | {m['bottleneck']} |"
+        )
     add("")
-    add("随着 Params 增大，DRAM/tok 线性增长，HBM3 理论上限快速下降；所有模型的 achieved best 均接近 HBM3 上限，"
-        "说明在 128×256 block 阵列下，系统仍被 DRAM 带宽约束，进一步提速需更宽带宽或更低 bit 量化。")
+    add(
+        "随着 Params 增大，DRAM/tok 线性增长，HBM3 理论上限快速下降；所有模型的 achieved best 均接近 HBM3 上限，"
+        "说明在 128×256 block 阵列下，系统仍被 DRAM 带宽约束，进一步提速需更宽带宽或更低 bit 量化。"
+    )
     add("")
 
     # Section 7: CV comparison
@@ -420,12 +448,16 @@ def generate_markdown(report: dict[str, Any]) -> str:
     best_fps = cv["best_fps"]
     best_eff = cv["best_area_efficient"]
     add(f"| Best FPS | {fmt_num(best_fps['fps'])} ({best_fps['config']}) |")
-    add(f"| Best Area-Efficient | {fmt_num(best_eff['fps'])} fps @ {fmt_num(best_eff['area_mm2'])} mm² "
-        f"({fmt_num(best_eff['fps_per_mm2'])} fps/mm²) |")
+    add(
+        f"| Best Area-Efficient | {fmt_num(best_eff['fps'])} fps @ {fmt_num(best_eff['area_mm2'])} mm² "
+        f"({fmt_num(best_eff['fps_per_mm2'])} fps/mm²) |"
+    )
     add(f"| SRAM Spill | {cv['sram_spill_mb']} MB |")
     add("")
-    add("CV 任务在 LPDDR5-64b 即可达到 1000+ fps，且 SRAM spill 为 0，说明 CaduceusCore 对轻量 CV 模型"
-        "的算力与片上存储均充足，不会成为产品瓶颈。")
+    add(
+        "CV 任务在 LPDDR5-64b 即可达到 1000+ fps，且 SRAM spill 为 0，说明 CaduceusCore 对轻量 CV 模型"
+        "的算力与片上存储均充足，不会成为产品瓶颈。"
+    )
     add("")
 
     # Section 8: Insights
@@ -469,8 +501,9 @@ def generate_markdown(report: dict[str, Any]) -> str:
         )
 
     # Insight 4: area/power
-    area_models = [m["alias"] for m in report["models"]
-                   if m["best_m1"]["area_mm2"] and m["best_m1"]["area_mm2"] > CHIP_AREA_LIMIT]
+    area_models = [
+        m["alias"] for m in report["models"] if m["best_m1"]["area_mm2"] and m["best_m1"]["area_mm2"] > CHIP_AREA_LIMIT
+    ]
     if area_models:
         insights.append(
             f"{', '.join(area_models)} 的绝对最佳配置面积超过 {CHIP_AREA_LIMIT} mm²、功耗超过 70W，"
@@ -487,11 +520,13 @@ def generate_markdown(report: dict[str, Any]) -> str:
     for insight in insights:
         add(f"- {insight}")
     add("")
-    add("综上，CaduceusCore 在当前 DSE 空间内已能为 1.5B-12B 的 LLM 提供满足 20-25 tok/s 的芯片级配置，"
+    add(
+        "综上，CaduceusCore 在当前 DSE 空间内已能为 1.5B-12B 的 LLM 提供满足 20-25 tok/s 的芯片级配置，"
         "其中 Gemma-4-12B 借助 gmma 引擎在 12W/40mm² 约束下达到 33.0 tok/s。"
         "绝对峰值性能仍受 DRAM 带宽上限制约。后续优化应聚焦："
         "(1) 提升 LPDDR5 通道数以降低芯片成本形态下的 DRAM 墙；(2) 评估 INT2 以下量化或稀疏化对 7B+ 模型的收益；"
-        "(3) 针对 decode 阶段优化 weight cache 命中率，缓解 batch 提升受限的问题。")
+        "(3) 针对 decode 阶段优化 weight cache 命中率，缓解 batch 提升受限的问题。"
+    )
     add("")
 
     return "\n".join(lines)
@@ -531,8 +566,12 @@ def build_report(pareto_suffix: str = "") -> dict[str, Any]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate cross-model PPA comparison report from DSE results.")
-    parser.add_argument("--pareto-suffix", dest="pareto_suffix", default="",
-                        help="Pareto file suffix (e.g. 'v2' reads pareto_v2.json / pareto_m2_v2.json)")
+    parser.add_argument(
+        "--pareto-suffix",
+        dest="pareto_suffix",
+        default="",
+        help="Pareto file suffix (e.g. 'v2' reads pareto_v2.json / pareto_m2_v2.json)",
+    )
     args = parser.parse_args()
 
     report = build_report(pareto_suffix=args.pareto_suffix)

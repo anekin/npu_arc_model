@@ -10,18 +10,16 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import yaml
-
 from contracts.errors import ConfigError
 from models.memory_hierarchy import build_hierarchy_from_config
 from models.residency import build_memory_access_plan
+from scenarios.schema import ArrivalMode, QueuePolicy, Scenario
 from scheduler.admission import AdmissionController
-from scheduler.metrics import ms_to_ps
 from scheduler.queues import BoundedFIFO, MailboxLatest
 from scheduler.resources import CapacityResource
-from scenarios.schema import ArrivalMode, QueuePolicy, Scenario, WorkloadClass
 from workloads.catalog import WorkloadFixture, load_all_fixtures
 
 
@@ -45,14 +43,14 @@ class CompiledScenario:
     """Runnable output of ``compile_scenario``."""
 
     scenario: Scenario
-    fixture: Optional[WorkloadFixture]
-    releases: List[JobRelease] = field(default_factory=list)
-    resources: Dict[str, CapacityResource] = field(default_factory=dict)
-    queues: Dict[str, Any] = field(default_factory=dict)
+    fixture: WorkloadFixture | None
+    releases: list[JobRelease] = field(default_factory=list)
+    resources: dict[str, CapacityResource] = field(default_factory=dict)
+    queues: dict[str, Any] = field(default_factory=dict)
     admission: AdmissionController = field(default_factory=lambda: AdmissionController(0, 1))
     window_start_ps: int = 0
     window_end_ps: int = 0
-    memory_plan: Optional[Any] = None
+    memory_plan: Any | None = None
 
 
 def _load_scenario_from_yaml(yaml_path: str | Path) -> Scenario:
@@ -67,9 +65,9 @@ def _load_scenario_from_yaml(yaml_path: str | Path) -> Scenario:
     return Scenario.model_validate(data)
 
 
-def _build_resources(scenario: Scenario) -> Dict[str, CapacityResource]:
+def _build_resources(scenario: Scenario) -> dict[str, CapacityResource]:
     """Create capacity resources from the scenario configuration."""
-    resources: Dict[str, CapacityResource] = {
+    resources: dict[str, CapacityResource] = {
         "compute": CapacityResource(name="compute", capacity=scenario.compute_capacity),
     }
     for name, capacity in scenario.resources.items():
@@ -82,9 +80,9 @@ def _build_resources(scenario: Scenario) -> Dict[str, CapacityResource]:
     return resources
 
 
-def _build_queues(scenario: Scenario) -> Dict[str, Any]:
+def _build_queues(scenario: Scenario) -> dict[str, Any]:
     """Create queue objects for FIFO and mailbox_latest classes."""
-    queues: Dict[str, Any] = {}
+    queues: dict[str, Any] = {}
     for cls in scenario.classes:
         if cls.queue_policy == QueuePolicy.FIFO:
             queues[f"fifo:{cls.id}"] = BoundedFIFO(capacity=cls.queue_capacity, name=f"fifo:{cls.id}")
@@ -96,7 +94,7 @@ def _build_queues(scenario: Scenario) -> Dict[str, Any]:
     return queues
 
 
-def _build_admission(scenario: Scenario, fixture: Optional[WorkloadFixture]) -> AdmissionController:
+def _build_admission(scenario: Scenario, fixture: WorkloadFixture | None) -> AdmissionController:
     """Build admission controller using scenario + optional fixture footprint."""
     memory_available = scenario.memory_available_bytes
     if fixture is not None:
@@ -125,7 +123,7 @@ def _build_admission(scenario: Scenario, fixture: Optional[WorkloadFixture]) -> 
 def compile_scenario(
     scenario: Scenario,
     *,
-    fixture: Optional[WorkloadFixture] = None,
+    fixture: WorkloadFixture | None = None,
 ) -> CompiledScenario:
     """Compile a scenario into a runnable ``CompiledScenario``.
 
@@ -137,9 +135,9 @@ def compile_scenario(
         A ``CompiledScenario`` with release list, resources, queues, admission,
         and measurement window bounds.
     """
-    releases: List[JobRelease] = []
+    releases: list[JobRelease] = []
     seq = 0
-    class_window_ends: List[int] = []
+    class_window_ends: list[int] = []
 
     for cls in scenario.classes:
         release_times = cls.arrival.release_times_ps()
@@ -206,7 +204,7 @@ def compile_scenario(
 def compile_scenario_from_yaml(
     yaml_path: str | Path,
     *,
-    fixtures: Optional[Dict[str, WorkloadFixture]] = None,
+    fixtures: dict[str, WorkloadFixture] | None = None,
 ) -> CompiledScenario:
     """Load and compile a scenario from a YAML file.
 
@@ -216,7 +214,7 @@ def compile_scenario_from_yaml(
             are discovered from the default catalog directory.
     """
     scenario = _load_scenario_from_yaml(yaml_path)
-    fixture: Optional[WorkloadFixture] = None
+    fixture: WorkloadFixture | None = None
     if scenario.workload_ref is not None:
         fixtures = fixtures or load_all_fixtures()
         fixture = fixtures.get(scenario.workload_ref)

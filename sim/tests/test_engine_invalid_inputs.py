@@ -8,15 +8,14 @@ These tests MUST PASS in the red phase — they validate input handling,
 not formula correctness.
 """
 
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 import pytest
-
 from engine.mac_engine import EngineResult, create_engine
 
 # ── Test parameters ──────────────────────────────────────────────────────
 
-ENGINE_TYPES: List[str] = [
+ENGINE_TYPES: list[str] = [
     "systolic",
     "block",
     "os_systolic",
@@ -28,7 +27,7 @@ ENGINE_TYPES: List[str] = [
 ]
 
 # Invalid shape inputs
-INVALID_SHAPES: List[Tuple[str, Any, Any, Any]] = [
+INVALID_SHAPES: list[tuple[str, Any, Any, Any]] = [
     ("zero M", 0, 110, 72),
     ("zero K", 4, 0, 72),
     ("zero N", 4, 110, 0),
@@ -47,10 +46,9 @@ INVALID_SHAPES: List[Tuple[str, Any, Any, Any]] = [
 ]
 
 
-def _engine_config(engine_type: str,
-                   overrides: Dict[str, Any] = None) -> Dict[str, Any]:
+def _engine_config(engine_type: str, overrides: dict[str, Any] = None) -> dict[str, Any]:
     """Build a minimal valid engine config, optionally overriding fields."""
-    cfg: Dict[str, Any] = {
+    cfg: dict[str, Any] = {
         "mac_engine": {
             "type": engine_type,
             "array_height": 64,
@@ -78,9 +76,9 @@ def _engine_config(engine_type: str,
 # ── Helper: call estimate and verify it doesn't crash ─────────────────────
 
 
-def _call_and_assert_no_crash(engine_type: str, method: str,
-                              M: Any, K: Any, N: Any,
-                              overrides: Dict[str, Any] = None) -> EngineResult:
+def _call_and_assert_no_crash(
+    engine_type: str, method: str, M: Any, K: Any, N: Any, overrides: dict[str, Any] = None
+) -> EngineResult:
     """Call estimate (or estimate_weight_cache_pair) and handle errors.
 
     Returns the EngineResult if successful, None if an expected error was raised.
@@ -96,12 +94,8 @@ def _call_and_assert_no_crash(engine_type: str, method: str,
         return None
 
     try:
-        if method == "estimate":
-            result = engine.estimate(M, K, N)
-        else:
-            result = engine.estimate_weight_cache_pair(M, K, N)
-    except (ValueError, TypeError, AssertionError, ZeroDivisionError,
-            OverflowError):
+        result = engine.estimate(M, K, N) if method == "estimate" else engine.estimate_weight_cache_pair(M, K, N)
+    except (ValueError, TypeError, AssertionError, ZeroDivisionError, OverflowError):
         # Input-level rejection is acceptable and preferred
         return None
     except Exception:
@@ -110,8 +104,7 @@ def _call_and_assert_no_crash(engine_type: str, method: str,
 
     # Result was returned; verify structural validity
     assert isinstance(result, EngineResult), (
-        f"{engine_type}.{method}({M},{K},{N}) returned "
-        f"{type(result).__name__} instead of EngineResult"
+        f"{engine_type}.{method}({M},{K},{N}) returned {type(result).__name__} instead of EngineResult"
     )
     return result
 
@@ -124,23 +117,17 @@ class TestInvalidShapes:
 
     @pytest.mark.parametrize("engine_type", ENGINE_TYPES)
     @pytest.mark.parametrize("label,M,K,N", INVALID_SHAPES)
-    def test_estimate_handles_invalid_shape(self, engine_type: str,
-                                            label: str,
-                                            M: Any, K: Any, N: Any) -> None:
+    def test_estimate_handles_invalid_shape(self, engine_type: str, label: str, M: Any, K: Any, N: Any) -> None:
         """estimate must not crash on invalid shapes."""
         result = _call_and_assert_no_crash(engine_type, "estimate", M, K, N)
         if result is not None:
-            assert isinstance(result.total_cycles, int), (
-                f"{engine_type}: total_cycles not int"
-            )
+            assert isinstance(result.total_cycles, int), f"{engine_type}: total_cycles not int"
             assert isinstance(result.compute_cycles, int)
             assert isinstance(result.dma_cycles, int)
 
     @pytest.mark.parametrize("engine_type", ENGINE_TYPES)
     @pytest.mark.parametrize("label,M,K,N", INVALID_SHAPES)
-    def test_cache_pair_handles_invalid_shape(self, engine_type: str,
-                                              label: str,
-                                              M: Any, K: Any, N: Any) -> None:
+    def test_cache_pair_handles_invalid_shape(self, engine_type: str, label: str, M: Any, K: Any, N: Any) -> None:
         """estimate_weight_cache_pair must not crash on invalid shapes."""
         _call_and_assert_no_crash(engine_type, "cache_pair", M, K, N)
 
@@ -152,21 +139,22 @@ class TestInvalidConfig:
     """Invalid configuration parameters are handled without unexpected crashes."""
 
     @pytest.mark.parametrize("engine_type", ENGINE_TYPES)
-    @pytest.mark.parametrize("field,value,desc", [
-        ("array_height", 0, "zero height"),
-        ("array_height", -1, "negative height"),
-        ("array_width", 0, "zero width"),
-        ("array_width", -64, "negative width"),
-        ("frequency_mhz", 0, "zero frequency"),
-        ("frequency_mhz", -1000, "negative frequency"),
-        ("weight_precision_bits", 0, "zero weight precision"),
-        ("weight_precision_bits", -4, "negative weight precision"),
-        ("activation_precision_bits", 0, "zero activation precision"),
-        ("activation_precision_bits", -8, "negative activation precision"),
-    ])
-    def test_estimate_with_invalid_config(self, engine_type: str,
-                                          field: str, value: Any,
-                                          desc: str) -> None:
+    @pytest.mark.parametrize(
+        "field,value,desc",
+        [
+            ("array_height", 0, "zero height"),
+            ("array_height", -1, "negative height"),
+            ("array_width", 0, "zero width"),
+            ("array_width", -64, "negative width"),
+            ("frequency_mhz", 0, "zero frequency"),
+            ("frequency_mhz", -1000, "negative frequency"),
+            ("weight_precision_bits", 0, "zero weight precision"),
+            ("weight_precision_bits", -4, "negative weight precision"),
+            ("activation_precision_bits", 0, "zero activation precision"),
+            ("activation_precision_bits", -8, "negative activation precision"),
+        ],
+    )
+    def test_estimate_with_invalid_config(self, engine_type: str, field: str, value: Any, desc: str) -> None:
         """Invalid array/precision configs must not cause unexpected crashes."""
         overrides = {"mac_engine": {field: value}}
         _call_and_assert_no_crash(engine_type, "estimate", 4, 110, 72, overrides)
@@ -185,8 +173,7 @@ class TestInvalidConfig:
 
     @pytest.mark.parametrize("engine_type", ENGINE_TYPES)
     @pytest.mark.parametrize("dram_eff", [-0.1, 0.0, 2.0, 100.0])
-    def test_extreme_dram_efficiency(self, engine_type: str,
-                                     dram_eff: float) -> None:
+    def test_extreme_dram_efficiency(self, engine_type: str, dram_eff: float) -> None:
         """DRAM efficiency outside (0, 1] should not crash."""
         overrides = {"memory": {"dram_efficiency": dram_eff}}
         _call_and_assert_no_crash(engine_type, "estimate", 4, 110, 72, overrides)
@@ -218,13 +205,15 @@ class TestLargeValues:
     """Very large shape values should not crash."""
 
     @pytest.mark.parametrize("engine_type", ENGINE_TYPES)
-    @pytest.mark.parametrize("M,K,N", [
-        (1024, 11008, 2048),
-        (1, 11008, 11008),
-        (256, 4096, 4096),
-    ])
-    def test_large_geomm_no_crash(self, engine_type: str,
-                                  M: int, K: int, N: int) -> None:
+    @pytest.mark.parametrize(
+        "M,K,N",
+        [
+            (1024, 11008, 2048),
+            (1, 11008, 11008),
+            (256, 4096, 4096),
+        ],
+    )
+    def test_large_geomm_no_crash(self, engine_type: str, M: int, K: int, N: int) -> None:
         """Large GEMM shapes produce valid results."""
         engine = create_engine(_engine_config(engine_type))
         result = engine.estimate(M, K, N)
@@ -236,13 +225,15 @@ class TestCachePairCoverage:
     """Weight-cache pair coverage across all engines with valid inputs."""
 
     @pytest.mark.parametrize("engine_type", ENGINE_TYPES)
-    @pytest.mark.parametrize("M,K,N", [
-        (1, 110, 72),
-        (4, 110, 72),
-        (64, 64, 64),
-    ])
-    def test_cache_pair_valid_inputs(self, engine_type: str,
-                                     M: int, K: int, N: int) -> None:
+    @pytest.mark.parametrize(
+        "M,K,N",
+        [
+            (1, 110, 72),
+            (4, 110, 72),
+            (64, 64, 64),
+        ],
+    )
+    def test_cache_pair_valid_inputs(self, engine_type: str, M: int, K: int, N: int) -> None:
         """estimate_weight_cache_pair with valid inputs returns EngineResult."""
         engine = create_engine(_engine_config(engine_type))
         result = engine.estimate_weight_cache_pair(M, K, N)

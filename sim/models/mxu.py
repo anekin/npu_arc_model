@@ -9,7 +9,9 @@ v2 changes:
 
 import math
 from dataclasses import dataclass
-from typing import Any, Dict
+from typing import Any
+
+from contracts.units import bandwidth_gbps_to_bytes_per_cycle
 
 # Marker consumed by overnight_loop.py consistency checks
 V2_BANDWIDTH_AWARE = True
@@ -27,35 +29,38 @@ class MXUResult:
     weight_bytes: int = 0
 
     def __repr__(self):
-        return (f"MXU(compute={self.compute_cycles}, stall_dram={self.stall_cycles_dram}, "
-                f"stall_sram={self.stall_cycles_sram}, util={self.utilization:.1%}, "
-                f"tiles={self.num_tiles})")
+        return (
+            f"MXU(compute={self.compute_cycles}, stall_dram={self.stall_cycles_dram}, "
+            f"stall_sram={self.stall_cycles_sram}, util={self.utilization:.1%}, "
+            f"tiles={self.num_tiles})"
+        )
 
 
 class MXUModel:
     """Weight-stationary systolic array v2 — bandwidth-aware."""
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: dict[str, Any]):
         mxu = config["mxu"]
-        self.H = int(mxu["array_height"])       # 128
-        self.W = int(mxu["array_width"])        # 128
+        self.H = int(mxu["array_height"])  # 128
+        self.W = int(mxu["array_width"])  # 128
         self.f_mhz = int(mxu["frequency_mhz"])  # 1000
-        self.w_bits = int(mxu["weight_precision_bits"])     # 4
-        self.a_bits = int(mxu["activation_precision_bits"]) # 8
-        self.ops_per_mac = int(mxu["ops_per_mac"])          # 2
+        self.w_bits = int(mxu["weight_precision_bits"])  # 4
+        self.a_bits = int(mxu["activation_precision_bits"])  # 8
+        self.ops_per_mac = int(mxu["ops_per_mac"])  # 2
         self.double_buffer = bool(mxu.get("double_buffer", True))
 
         mem = config["memory"]
-        self.bw_bytes_per_cycle = float(mem["bandwidth_bytes_per_cycle"])  # 51.2
-        self.dram_efficiency = float(mem.get("dram_efficiency", 0.85))    # 85%
+        frequency_mhz = self.f_mhz
+        bw_gbps = float(mem["bandwidth_gbps"])
+        self.bw_bytes_per_cycle = bandwidth_gbps_to_bytes_per_cycle(bw_gbps, frequency_mhz)
+        self.dram_efficiency = float(mem.get("dram_efficiency", 0.85))  # 85%
 
         # DMA bandwidth multiplier (L2 optimization: 128-bit DRAM or 4ch DMA)
         opts = config.get("optimizations", {})
         self.bw_multiplier = float(opts.get("dma_bw_multiplier", 1.0))
 
         # Effective bandwidth (with multiplier)
-        self.eff_bw = (self.bw_bytes_per_cycle * self.dram_efficiency
-                       * self.bw_multiplier)
+        self.eff_bw = self.bw_bytes_per_cycle * self.dram_efficiency * self.bw_multiplier
 
     @property
     def macs_per_cycle(self) -> int:
@@ -69,9 +74,7 @@ class MXUModel:
             last_rows = self.H
         return (M_tiles - 1) * (2 * self.H + self.W) + (self.H + self.W + last_rows)
 
-    def estimate(
-        self, M: int, K: int, N: int
-    ) -> MXUResult:
+    def estimate(self, M: int, K: int, N: int) -> MXUResult:
         K_tiles = math.ceil(K / self.H)
         N_tiles = math.ceil(N / self.W)
         total_tiles = K_tiles * N_tiles
@@ -107,9 +110,7 @@ class MXUModel:
             weight_bytes=total_weight_bytes,
         )
 
-    def estimate_weight_cache_pair(
-        self, M: int, K: int, N: int
-    ) -> MXUResult:
+    def estimate_weight_cache_pair(self, M: int, K: int, N: int) -> MXUResult:
         """Estimate Gate+Up combined with PE dual weight register caching.
 
         Hardware: each PE has dual weight reg (reg_w0, reg_w1).

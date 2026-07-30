@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 import pytest
-
-from scheduler.admission import AdmissionController, AdmissionResult
+from scheduler.admission import AdmissionController
 
 
 class TestAdmissionMemory:

@@ -1,13 +1,13 @@
 """KV Cache Manager 性能模型 — SRAM 命中率 + DRAM 访问延迟"""
 
 from dataclasses import dataclass
-from typing import Any, Dict
+from typing import Any
 
 
 @dataclass
 class KVCacheResult:
-    hit: bool          # cache hit?
-    access_cycles: int # actual access time
+    hit: bool  # cache hit?
+    access_cycles: int  # actual access time
     sram_hit_rate: float  # overall hit rate
 
 
@@ -24,15 +24,16 @@ class KVCacheModel:
     - On layer switch: SRAM is reloaded with that layer's KV window
     """
 
-    def __init__(self, config: Dict[str, Any], memory_access_plan: Any = None):
+    def __init__(self, config: dict[str, Any], memory_access_plan: Any = None):
         kv = config["kv_cache"]
-        self.sram_bytes = int(kv["sram_kb"]) * 1024       # 256 KB
-        self.dram_region_mb = int(kv["dram_region_mb"])    # 96 MB
-        self.element_bits = int(kv["precision_bits"])       # 8 (INT8)
-        self.element_bytes = self.element_bits // 8          # 1
+        self.sram_bytes = int(kv["sram_kb"]) * 1024  # 256 KB
+        self.dram_region_mb = int(kv["dram_region_mb"])  # 96 MB
+        self.element_bits = int(kv["precision_bits"])  # 8 (INT8)
+        self.element_bytes = self.element_bits // 8  # 1
 
         mem = config["memory"]
         from contracts.units import bandwidth_gbps_to_bytes_per_cycle as _bw2bpc
+
         freq_mhz = float(config.get("mac_engine", config.get("mxu", {})).get("frequency_mhz", 1000))
         bw_gbps = float(mem.get("bandwidth_gbps", 51.2))
         self.bw_bytes_per_cycle = _bw2bpc(bw_gbps, freq_mhz)
@@ -42,9 +43,7 @@ class KVCacheModel:
             kv_fastest = memory_access_plan.fastest_allocated_tier("kv")
             if kv_fastest is not None:
                 tier = memory_access_plan.hierarchy.get_tier(kv_fastest)
-                self.bw_bytes_per_cycle = _bw2bpc(
-                    tier.effective_read_bw_gbps(), freq_mhz
-                )
+                self.bw_bytes_per_cycle = _bw2bpc(tier.effective_read_bw_gbps(), freq_mhz)
 
         # Timing parameters
         # SRAM access: ~2 cycles (1 read + 1 write port)
@@ -57,8 +56,7 @@ class KVCacheModel:
         self.sram_tokens = 0
         self._per_layer_kv_bytes = 0
 
-    def configure_for_model(self, num_kv_heads: int, head_dim: int,
-                            num_layers: int, max_context: int = 2048):
+    def configure_for_model(self, num_kv_heads: int, head_dim: int, num_layers: int, max_context: int = 2048):
         """Set model-specific parameters.
 
         KV per token per layer = num_kv_heads × head_dim × 2(K+V) × element_bytes
@@ -140,7 +138,6 @@ class KVCacheModel:
             # Penalty proportional to miss rate
             miss_rate = 1.0 - result.sram_hit_rate
             return int(result.access_cycles * miss_rate * 0.1)  # partial stall
-
 
     def layer_switch_cost(self) -> int:
         """Cost to reload SRAM with a new layer's KV window.

@@ -11,8 +11,9 @@ Invariants enforced:
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass, field
-from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
+from typing import Any
 
 from contracts.errors import CoverageError
 
@@ -32,26 +33,26 @@ class AxisCoverage:
     """Per-axis coverage bookkeeping."""
 
     axis: str
-    requested: Set[Any] = field(default_factory=set)
-    generated: Set[Any] = field(default_factory=set)
-    evaluated: Set[Any] = field(default_factory=set)
-    successful: Set[Any] = field(default_factory=set)
-    pruned: Set[Any] = field(default_factory=set)
-    failed: Set[Any] = field(default_factory=set)
-    filtered: Set[Any] = field(default_factory=set)
-    exclusions: List[ExclusionRecord] = field(default_factory=list)
+    requested: set[Any] = field(default_factory=set)
+    generated: set[Any] = field(default_factory=set)
+    evaluated: set[Any] = field(default_factory=set)
+    successful: set[Any] = field(default_factory=set)
+    pruned: set[Any] = field(default_factory=set)
+    failed: set[Any] = field(default_factory=set)
+    filtered: set[Any] = field(default_factory=set)
+    exclusions: list[ExclusionRecord] = field(default_factory=list)
 
     @property
-    def excluded_values(self) -> Set[Any]:
+    def excluded_values(self) -> set[Any]:
         """Values with at least one structured exclusion carrying a reason."""
         return {e.value for e in self.exclusions if e.reason}
 
     @property
-    def missing(self) -> List[Any]:
+    def missing(self) -> list[Any]:
         """Requested values that are neither generated nor excluded."""
         return sorted(self.requested - self.generated - self.excluded_values)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "axis": self.axis,
             "requested": sorted(self.requested),
@@ -80,9 +81,9 @@ class CoverageManifest:
 
     def __init__(
         self,
-        axes: Dict[str, "AxisSpec"],
-        points: Iterable["DesignPoint"],
-        exclusions: Optional[Iterable[ExclusionRecord]] = None,
+        axes: dict[str, AxisSpec],
+        points: Iterable[DesignPoint],
+        exclusions: Iterable[ExclusionRecord] | None = None,
     ) -> None:
         """Build a manifest from axis specs and generated design points.
 
@@ -92,14 +93,14 @@ class CoverageManifest:
             exclusions: Optional structured exclusions from constraint filtering.
         """
         self.axes = axes
-        self.points: List["DesignPoint"] = list(points)
-        self.exclusions: List[ExclusionRecord] = list(exclusions or [])
-        self._coverage: Dict[str, AxisCoverage] = {}
-        self._evaluated_ids: Set[str] = set()
-        self._pruned_ids: Set[str] = set()
-        self._successful_ids: Set[str] = set()
-        self._filtered_ids: Set[str] = set()
-        self._failed_ids: Set[str] = set()
+        self.points: list[DesignPoint] = list(points)
+        self.exclusions: list[ExclusionRecord] = list(exclusions or [])
+        self._coverage: dict[str, AxisCoverage] = {}
+        self._evaluated_ids: set[str] = set()
+        self._pruned_ids: set[str] = set()
+        self._successful_ids: set[str] = set()
+        self._filtered_ids: set[str] = set()
+        self._failed_ids: set[str] = set()
         self._build()
 
     def _build(self) -> None:
@@ -145,33 +146,33 @@ class CoverageManifest:
         return sum(1 for p in self.points if p.design_point_id in self._failed_ids)
 
     @property
-    def axis_coverage(self) -> Dict[str, AxisCoverage]:
+    def axis_coverage(self) -> dict[str, AxisCoverage]:
         return dict(self._coverage)
 
     @property
-    def missing_axes(self) -> Dict[str, List[Any]]:
+    def missing_axes(self) -> dict[str, list[Any]]:
         """Return axes with missing values."""
         return {name: cov.missing for name, cov in self._coverage.items() if cov.missing}
 
     @property
-    def duplicate_ids(self) -> List[str]:
+    def duplicate_ids(self) -> list[str]:
         """Return design-point IDs that appear more than once."""
-        seen: Set[str] = set()
-        duplicates: Set[str] = set()
+        seen: set[str] = set()
+        duplicates: set[str] = set()
         for point in self.points:
             if point.design_point_id in seen:
                 duplicates.add(point.design_point_id)
             seen.add(point.design_point_id)
         return sorted(duplicates)
 
-    def record_evaluated(self, point: "DesignPoint") -> None:
+    def record_evaluated(self, point: DesignPoint) -> None:
         """Mark a generated point as having entered evaluation."""
         self._evaluated_ids.add(point.design_point_id)
         for axis, value in point.axis_values.items():
             if axis in self._coverage:
                 self._coverage[axis].evaluated.add(value)
 
-    def record_success(self, point: "DesignPoint") -> None:
+    def record_success(self, point: DesignPoint) -> None:
         """Mark a generated point as successful."""
         self.record_evaluated(point)
         self._successful_ids.add(point.design_point_id)
@@ -179,7 +180,7 @@ class CoverageManifest:
             if axis in self._coverage:
                 self._coverage[axis].successful.add(value)
 
-    def _clear_success_state(self, point: "DesignPoint") -> None:
+    def _clear_success_state(self, point: DesignPoint) -> None:
         """Remove point from successful/evaluated sets when reclassified."""
         self._evaluated_ids.discard(point.design_point_id)
         self._successful_ids.discard(point.design_point_id)
@@ -189,7 +190,7 @@ class CoverageManifest:
                 cov.evaluated.discard(value)
                 cov.successful.discard(value)
 
-    def record_pruned(self, point: "DesignPoint", reason: str) -> None:
+    def record_pruned(self, point: DesignPoint, reason: str) -> None:
         """Mark a generated point as pre-evaluation pruned."""
         self._clear_success_state(point)
         self._pruned_ids.add(point.design_point_id)
@@ -198,7 +199,7 @@ class CoverageManifest:
                 self._coverage[axis].pruned.add(value)
         self._add_point_exclusion(point, reason)
 
-    def record_failed(self, point: "DesignPoint", reason: str) -> None:
+    def record_failed(self, point: DesignPoint, reason: str) -> None:
         """Mark an evaluated point as failed."""
         self._successful_ids.discard(point.design_point_id)
         self.record_evaluated(point)
@@ -207,7 +208,7 @@ class CoverageManifest:
             if axis in self._coverage:
                 self._coverage[axis].failed.add(value)
 
-    def record_filtered(self, point: "DesignPoint", reason: str) -> None:
+    def record_filtered(self, point: DesignPoint, reason: str) -> None:
         """Mark an evaluated point as post-evaluation filtered."""
         self._successful_ids.discard(point.design_point_id)
         self.record_evaluated(point)
@@ -216,20 +217,18 @@ class CoverageManifest:
             if axis in self._coverage:
                 self._coverage[axis].filtered.add(value)
 
-    def _add_point_exclusion(self, point: "DesignPoint", reason: str) -> None:
+    def _add_point_exclusion(self, point: DesignPoint, reason: str) -> None:
         """Record an exclusion reason for every axis value of a pruned point."""
         for axis, value in point.axis_values.items():
             if axis in self._coverage:
-                self._coverage[axis].exclusions.append(
-                    ExclusionRecord(axis=axis, value=value, reason=reason)
-                )
+                self._coverage[axis].exclusions.append(ExclusionRecord(axis=axis, value=value, reason=reason))
 
-    def validate(self) -> List[str]:
+    def validate(self) -> list[str]:
         """Check invariants and coverage completeness.
 
         Returns a list of error messages (empty if valid).
         """
-        errors: List[str] = []
+        errors: list[str] = []
 
         # Count invariants
         if self.generated_count != self.evaluated_count + self.pruned_count:
@@ -250,9 +249,7 @@ class CoverageManifest:
         # Coverage completeness: no silently missing values
         for name, cov in self._coverage.items():
             if cov.missing:
-                errors.append(
-                    f"axis {name!r} has missing values without exclusion reason: {cov.missing}"
-                )
+                errors.append(f"axis {name!r} has missing values without exclusion reason: {cov.missing}")
 
         return errors
 
@@ -262,7 +259,7 @@ class CoverageManifest:
         if errors:
             raise CoverageError("; ".join(errors))
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "counts": {
                 "generated": self.generated_count,
@@ -278,7 +275,7 @@ class CoverageManifest:
 
 
 # Forward-reference imports for type checking only
-from dse.space import AxisSpec, DesignPoint  # noqa: E402
+from dse.models import AxisSpec, DesignPoint  # noqa: E402
 
 __all__ = [
     "AxisCoverage",

@@ -1,9 +1,8 @@
 """CV PPA Report — generates Markdown and JSON reports for CV simulation results."""
 
-from dataclasses import dataclass
-from typing import List
 import json
 import os
+from dataclasses import dataclass
 
 
 @dataclass
@@ -20,6 +19,7 @@ class CVPpaReport:
         total_cycles: Total execution cycles.
         engine_type: Engine architecture label (e.g. "systolic", "block").
     """
+
     fps: float
     area_mm2: float
     power_w: float
@@ -30,7 +30,7 @@ class CVPpaReport:
     engine_type: str
 
 
-def generate_report(results: List[CVPpaReport], output_dir: str) -> None:
+def generate_report(results: list[CVPpaReport], output_dir: str) -> None:
     """Generate CV PPA report in Markdown and JSON formats.
 
     Creates ``cv_ppa_report.md`` and ``cv_ppa_report.json`` under *output_dir*.
@@ -46,7 +46,7 @@ def generate_report(results: List[CVPpaReport], output_dir: str) -> None:
     total_macs_arc = sum(r.total_macs for r in results)
 
     # --- Markdown Report ---
-    md_lines: List[str] = []
+    md_lines: list[str] = []
     md_lines.append("# CV PPA Report — MobileNetV3-Small")
     md_lines.append("")
     md_lines.append("## Engine Comparison")

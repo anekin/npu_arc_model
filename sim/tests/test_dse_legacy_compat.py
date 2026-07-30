@@ -6,7 +6,6 @@ import sys
 from pathlib import Path
 
 import pytest
-
 from dse.legacy_adapter import evaluate_config, find_pareto, generate_configs
 from engine.ppa_model import AreaModel, PowerModel
 

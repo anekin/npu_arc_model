@@ -7,32 +7,34 @@
   python3 design_space_explorer.py --output results/pareto.json
 """
 
-import sys, json, copy, math, itertools
+import copy
+import json
+import sys
 from pathlib import Path
-from typing import Dict, Any, List, Tuple
+from typing import Any
 
 sys.path.insert(0, str(Path(__file__).parent))
-from contracts.errors import ConfigError
-from engine.ppa_model import AreaModel, PowerModel, PPA
-from engine.mac_engine import create_engine
-from model_specs import get_spec, all_aliases
-
 import yaml
+from contracts.errors import ConfigError
+from engine.mac_engine import create_engine
+from engine.ppa_model import PPA, AreaModel, PowerModel
+from model_specs import all_aliases, get_spec
+from scenarios.schema import Scenario
 
 SIM_DIR = Path(__file__).parent
 
 _CV_MODEL: str = ""
-_CV_TRACE: List[Any] = []
+_CV_TRACE: list[Any] = []
 _CV_ONNX_PATH: str = ""
 
 _NUM_LAYERS: int = 28
-_LLM_TRACE: List[Tuple] = []
-_SEQ_KV: int = 2048      # KV cache sequence length for decode
-_KV_HEADS: int = 2        # num_kv_heads from model spec
-_HEAD_DIM: int = 128      # head_dim from model spec
+_LLM_TRACE: list[tuple] = []
+_SEQ_KV: int = 2048  # KV cache sequence length for decode
+_KV_HEADS: int = 2  # num_kv_heads from model spec
+_HEAD_DIM: int = 128  # head_dim from model spec
 
 
-def generate_trace_from_spec(alias: str, batch_m: int = 1) -> List[Tuple]:
+def generate_trace_from_spec(alias: str, batch_m: int = 1) -> list[tuple]:
     global _KV_HEADS, _HEAD_DIM
     spec = get_spec(alias)
     H = spec.hidden
@@ -45,24 +47,24 @@ def generate_trace_from_spec(alias: str, batch_m: int = 1) -> List[Tuple]:
     m_attn = batch_m  # attention projections batch all tokens
     m_ffn = batch_m if batch_m > 1 else 1  # prefill: batch tokens; decode: single token
     trace.append((m_attn, H, qkv, 0, "Q_proj"))
-    trace.append((m_attn, H, kv,  0, "K_proj"))
-    trace.append((m_attn, H, kv,  0, "V_proj"))
+    trace.append((m_attn, H, kv, 0, "K_proj"))
+    trace.append((m_attn, H, kv, 0, "V_proj"))
     trace.append((m_attn, qkv, H, 0, "O_proj"))
-    trace.append((m_ffn, H, I,    0, "FFN_gate"))
-    trace.append((m_ffn, H, I,    0, "FFN_up"))
-    trace.append((m_ffn, I, H,    0, "FFN_down"))
+    trace.append((m_ffn, H, I, 0, "FFN_gate"))
+    trace.append((m_ffn, H, I, 0, "FFN_up"))
+    trace.append((m_ffn, I, H, 0, "FFN_down"))
     return trace
 
 
 _LLM_TRACE = generate_trace_from_spec("qwen2.5-3b", batch_m=1)
 
 SFU_CYCLES_PER_LAYER = {
-    "attn": 33,   # softmax + layernorm + rope (simplified)
-    "ffn": 8,     # gelu + layernorm
+    "attn": 33,  # softmax + layernorm + rope (simplified)
+    "ffn": 8,  # gelu + layernorm
 }
 
 
-def _compute_kv_cycles(config: Dict[str, Any], batch_m: int = 1) -> int:
+def _compute_kv_cycles(config: dict[str, Any], batch_m: int = 1) -> int:
     """Dynamic KV cache DRAM read cycles per layer.
 
     - For decode (batch_m=1): K,V read from memory
@@ -87,6 +89,7 @@ def _compute_kv_cycles(config: Dict[str, Any], batch_m: int = 1) -> int:
     kvbuf_kb = int(l2_kb * 0.4)
 
     from contracts.units import bandwidth_gbps_to_bytes_per_cycle as _bw2bpc
+
     mem = config.get("memory", {})
     freq_mhz = float(config.get("mac_engine", {}).get("frequency_mhz", 1000))
     bw_gbps = float(mem.get("bandwidth_gbps", 51.2))
@@ -105,7 +108,7 @@ def _compute_kv_cycles(config: Dict[str, Any], batch_m: int = 1) -> int:
     return int(kv_bytes / (eff_bw * kv_dram_eff))
 
 
-def simulate_layer(config: Dict[str, Any], batch_m: int = None) -> tuple:
+def simulate_layer(config: dict[str, Any], batch_m: int = None) -> tuple:
     """Simulate one transformer layer. Returns (total_cycles, weight_bytes).
 
     batch_m=1 for decode, >1 for prefill. If None, inferred from trace.
@@ -125,8 +128,7 @@ def simulate_layer(config: Dict[str, Any], batch_m: int = None) -> tuple:
         M, K, N, _, name = ops[i]
 
         # Weight cache merge
-        if (weight_cache and name == "FFN_gate" and i + 1 < len(ops)
-                and ops[i + 1][4] == "FFN_up"):
+        if weight_cache and name == "FFN_gate" and i + 1 < len(ops) and ops[i + 1][4] == "FFN_up":
             r = engine.estimate_weight_cache_pair(M, K, N)
             i += 2
         else:
@@ -152,20 +154,19 @@ def simulate_layer(config: Dict[str, Any], batch_m: int = None) -> tuple:
 def tok_s_from_layer(layer_cycles: int, num_layers: int, f_mhz: float) -> float:
     """Convert per-layer cycle count to tokens/second using actual frequency."""
     from contracts.units import cycles_to_microseconds as _c2us
+
     total_us = _c2us(layer_cycles * num_layers, f_mhz)
     return round(1e6 / total_us, 1) if total_us > 0 else 0
 
 
-def _depthwise_util_from_cv_result(cv_result: Dict[str, Any]) -> float:
+def _depthwise_util_from_cv_result(cv_result: dict[str, Any]) -> float:
     utils = [
-        layer.get("mxu_util_pct", 0.0)
-        for layer in cv_result.get("layers", [])
-        if layer.get("type") == "depthwise_conv"
+        layer.get("mxu_util_pct", 0.0) for layer in cv_result.get("layers", []) if layer.get("type") == "depthwise_conv"
     ]
     return sum(utils) / len(utils) if utils else 0.0
 
 
-def generate_configs(quick: bool = False) -> List[Dict[str, Any]]:
+def generate_configs(quick: bool = False) -> list[dict[str, Any]]:
     """Generate design space configurations to sweep."""
     with open(SIM_DIR / "config" / "design_space.yaml") as f:
         base = yaml.safe_load(f)
@@ -175,17 +176,18 @@ def generate_configs(quick: bool = False) -> List[Dict[str, Any]]:
     # Engine types — from unified registry
     if quick:
         from engine.registry import engine_quick_ids_list
+
         engines = engine_quick_ids_list()
     else:
         from engine.registry import engine_full_ids
+
         engines = engine_full_ids()
 
     # Array dimensions (constrained by area)
     if quick:
         dims = [(128, 128), (128, 256), (256, 256)]
     else:
-        dims = [(64, 64), (96, 96), (128, 128), (128, 192),
-                (128, 256), (192, 256), (256, 256)]
+        dims = [(64, 64), (96, 96), (128, 128), (128, 192), (128, 256), (192, 256), (256, 256)]
 
     # DRAM bandwidth configurations (GB/s, width_bits, description)
     if quick:
@@ -195,19 +197,16 @@ def generate_configs(quick: bool = False) -> List[Dict[str, Any]]:
         ]
     else:
         dram_configs = [
-            (25.6, 32, "LPDDR5-32b"),      # Low-end mobile
-            (51.2, 64, "LPDDR5-64b"),      # Baseline
-            (102.4, 128, "LPDDR5-128b"),   # Dual channel / 128-bit
-            (204.8, 256, "LPDDR5-256b"),   # Quad channel
+            (25.6, 32, "LPDDR5-32b"),  # Low-end mobile
+            (51.2, 64, "LPDDR5-64b"),  # Baseline
+            (102.4, 128, "LPDDR5-128b"),  # Dual channel / 128-bit
+            (204.8, 256, "LPDDR5-256b"),  # Quad channel
             (460.0, 1024, "HBM2e-1024b"),  # HBM2e 3.6Gbps
-            (819.2, 1024, "HBM3-1024b"),   # HBM3 6.4Gbps
+            (819.2, 1024, "HBM3-1024b"),  # HBM3 6.4Gbps
         ]
 
     # Weight precision
-    if quick:
-        precisions = [4]
-    else:
-        precisions = [4, 2]  # INT4, INT2
+    precisions = [4] if quick else [4, 2]  # INT4, INT2
 
     # Frequency
     freqs = [1000] if quick else [800, 1000, 1200]
@@ -262,13 +261,13 @@ def generate_configs(quick: bool = False) -> List[Dict[str, Any]]:
     return configs
 
 
-def evaluate_config(cfg: Dict[str, Any], area_model: AreaModel,
-                    power_model: PowerModel) -> PPA:
+def evaluate_config(cfg: dict[str, Any], area_model: AreaModel, power_model: PowerModel) -> PPA:
     """Evaluate one configuration → PPA."""
     engine_type = cfg["mac_engine"]["type"]
 
     if _CV_MODEL:
         from cv.cv_sim import simulate_cv
+
         cv_result = simulate_cv(_CV_TRACE, cfg)
         fps = 1e9 / cv_result["total_cycles"] if cv_result["total_cycles"] > 0 else 0.0
         area_result = area_model.estimate(cfg, engine_type)
@@ -290,13 +289,10 @@ def evaluate_config(cfg: Dict[str, Any], area_model: AreaModel,
     W = cfg["mac_engine"]["array_width"]
     w_bits = cfg["mac_engine"]["weight_precision_bits"]
     wc = cfg["optimizations"]["weight_cache"]
-    bw = cfg["optimizations"]["dma_bw_multiplier"]
+    cfg["optimizations"]["dma_bw_multiplier"]
     freq = cfg["mac_engine"]["frequency_mhz"]
 
-    label = (f"{engine_type[:4]} {H}×{W} INT{w_bits} "
-             f"{freq}MHz "
-             f"{'WC' if wc else ''} "
-             f"{cfg.get('_dram_label', '')}")
+    label = f"{engine_type[:4]} {H}×{W} INT{w_bits} {freq}MHz {'WC' if wc else ''} {cfg.get('_dram_label', '')}"
 
     return PPA(
         tok_s=fps,
@@ -308,14 +304,13 @@ def evaluate_config(cfg: Dict[str, Any], area_model: AreaModel,
     )
 
 
-def find_pareto(ppas: List[PPA]) -> List[PPA]:
+def find_pareto(ppas: list[PPA]) -> list[PPA]:
     """Find Pareto-optimal points (max tok/s, min area)."""
     pareto = []
     for p in ppas:
         dominated = False
         for q in ppas:
-            if (q.tok_s >= p.tok_s and q.area_mm2 <= p.area_mm2 and
-                    (q.tok_s > p.tok_s or q.area_mm2 < p.area_mm2)):
+            if q.tok_s >= p.tok_s and q.area_mm2 <= p.area_mm2 and (q.tok_s > p.tok_s or q.area_mm2 < p.area_mm2):
                 dominated = True
                 break
         if not dominated:
@@ -328,67 +323,74 @@ def find_pareto(ppas: List[PPA]) -> List[PPA]:
 # ═══════════════════════════════════════════════════════════════
 
 import re
-from statistics import mean, stdev
 from collections import defaultdict
+from statistics import mean
 
 
-def _parse_label(label: str) -> Dict[str, Any]:
+def _parse_label(label: str) -> dict[str, Any]:
     """Parse config_label into structured params.
-    
+
     Format: "eng H×W INT{w} {freq}MHz {WC} {DRAM_label}"
     Example: "fsa  128×128 INT4 1000MHz  LPDDR5-64b"
     """
     params = {}
     # Engine type (first token, possibly truncated)
-    m = re.match(r'(\S+)', label)
+    m = re.match(r"(\S+)", label)
     if m:
-        eng_map = {'syst': 'systolic', 'os_s': 'os_systolic', 'bloc': 'block',
-                   'tens': 'tensor_core', 'wmma': 'wmma', 'gmma': 'gmma',
-                   'inpu': 'input_stationary', 'fsa': 'fsa', 'fsa ': 'fsa'}
-        params['engine'] = eng_map.get(m.group(1), m.group(1))
-    
+        eng_map = {
+            "syst": "systolic",
+            "os_s": "os_systolic",
+            "bloc": "block",
+            "tens": "tensor_core",
+            "wmma": "wmma",
+            "gmma": "gmma",
+            "inpu": "input_stationary",
+            "fsa": "fsa",
+            "fsa ": "fsa",
+        }
+        params["engine"] = eng_map.get(m.group(1), m.group(1))
+
     # Array dims: H×W
-    m = re.search(r'(\d+)×(\d+)', label)
+    m = re.search(r"(\d+)×(\d+)", label)
     if m:
-        params['H'] = int(m.group(1))
-        params['W'] = int(m.group(2))
-        params['MACs'] = params['H'] * params['W']
-    
+        params["H"] = int(m.group(1))
+        params["W"] = int(m.group(2))
+        params["MACs"] = params["H"] * params["W"]
+
     # Weight precision
-    m = re.search(r'INT(\d+)', label)
+    m = re.search(r"INT(\d+)", label)
     if m:
-        params['w_bits'] = int(m.group(1))
-    
+        params["w_bits"] = int(m.group(1))
+
     # Frequency
-    m = re.search(r'(\d+)MHz', label)
+    m = re.search(r"(\d+)MHz", label)
     if m:
-        params['freq_mhz'] = int(m.group(1))
-    
+        params["freq_mhz"] = int(m.group(1))
+
     # Weight cache
-    params['weight_cache'] = 'WC' in label
-    
+    params["weight_cache"] = "WC" in label
+
     # SRAM size — handles "SRAM  8MB", "SRAM512KB", "SRAM 1MB"
-    m = re.search(r'SRAM\s*(\d+)\s*(MB|KB)', label)
+    m = re.search(r"SRAM\s*(\d+)\s*(MB|KB)", label)
     if m:
         val = int(m.group(1))
-        params['sram_mb'] = val if m.group(2) == 'MB' else val / 1024
-    
+        params["sram_mb"] = val if m.group(2) == "MB" else val / 1024
+
     # DRAM label
-    m = re.search(r'(LPDDR\S+|HBM\S+|DDR\S+|on-chip)', label)
+    m = re.search(r"(LPDDR\S+|HBM\S+|DDR\S+|on-chip)", label)
     if m:
-        params['dram'] = m.group(1)
-    
+        params["dram"] = m.group(1)
+
     return params
 
 
-def analyze_sensitivity(results: List[PPA], 
-                         metrics: List[str] = None) -> Dict[str, Any]:
+def analyze_sensitivity(results: list[PPA], metrics: list[str] = None) -> dict[str, Any]:
     """Compute per-parameter sensitivity across a DSE result set.
-    
+
     Args:
         results: List of PPA results from evaluate_config
         metrics: Which metrics to analyze (default: ['tok_s', 'area_mm2'])
-    
+
     Returns:
         {
             'parameters': {
@@ -407,16 +409,16 @@ def analyze_sensitivity(results: List[PPA],
         }
     """
     if metrics is None:
-        metrics = ['tok_s', 'area_mm2']
-    
+        metrics = ["tok_s", "area_mm2"]
+
     if len(results) < 10:
-        return {'error': 'Need ≥10 results for meaningful sensitivity analysis'}
-    
+        return {"error": "Need ≥10 results for meaningful sensitivity analysis"}
+
     # Parse all labels
     parsed = [_parse_label(r.config_label) for r in results]
-    
+
     # Parameters to analyze (only those that vary across the result set)
-    param_keys = ['engine', 'H', 'W', 'MACs', 'w_bits', 'freq_mhz', 'weight_cache', 'dram', 'sram_mb']
+    param_keys = ["engine", "H", "W", "MACs", "w_bits", "freq_mhz", "weight_cache", "dram", "sram_mb"]
     varying_params = {}
     for key in param_keys:
         values = set()
@@ -425,10 +427,10 @@ def analyze_sensitivity(results: List[PPA],
                 values.add(p[key])
         if len(values) > 1:
             varying_params[key] = sorted(values, key=str)
-    
+
     sensitivity = {}
     warnings = []
-    
+
     for param, values in varying_params.items():
         # Group results by this parameter's value
         groups = defaultdict(list)
@@ -436,136 +438,138 @@ def analyze_sensitivity(results: List[PPA],
             val = parsed[i].get(param)
             if val is not None:
                 groups[val].append(r)
-        
+
         # Compute mean metrics per group
         group_means = {}
         for val, group_results in groups.items():
             group_means[val] = {
-                'tok_s': mean(r.tok_s for r in group_results),
-                'area_mm2': mean(r.area_mm2 for r in group_results),
-                'count': len(group_results),
+                "tok_s": mean(r.tok_s for r in group_results),
+                "area_mm2": mean(r.area_mm2 for r in group_results),
+                "count": len(group_results),
             }
-        
+
         # Impact = (max_mean - min_mean) / overall_mean
         overall_tps = mean(r.tok_s for r in results)
         overall_area = mean(r.area_mm2 for r in results)
-        
-        tps_vals = [m['tok_s'] for m in group_means.values()]
-        area_vals = [m['area_mm2'] for m in group_means.values()]
-        
+
+        tps_vals = [m["tok_s"] for m in group_means.values()]
+        area_vals = [m["area_mm2"] for m in group_means.values()]
+
         impact_tps = (max(tps_vals) - min(tps_vals)) / max(overall_tps, 0.01) * 100
         impact_area = (max(area_vals) - min(area_vals)) / max(overall_area, 0.01) * 100
-        
+
         # Zero-sensitivity detection
-        is_zero = (impact_tps < 2.0 and impact_area < 2.0)
-        
+        is_zero = impact_tps < 2.0 and impact_area < 2.0
+
         # Find optimal value (best TPS/mm² efficiency)
         best_val = None
         best_eff = -1
         for val, m in group_means.items():
-            eff = m['tok_s'] / max(m['area_mm2'], 0.01)
+            eff = m["tok_s"] / max(m["area_mm2"], 0.01)
             if eff > best_eff:
                 best_eff = eff
                 best_val = val
-        
+
         sensitivity[param] = {
-            'impact_tps_pct': round(impact_tps, 1),
-            'impact_area_pct': round(impact_area, 1),
-            'total_impact': round(impact_tps + impact_area, 1),
-            'is_zero_sensitivity': is_zero,
-            'optimal_value': str(best_val),
-            'values_tested': [str(v) for v in values],
-            'group_means': {str(k): {'tok_s': round(v['tok_s'], 1), 
-                                      'area_mm2': round(v['area_mm2'], 1)}
-                           for k, v in group_means.items()},
+            "impact_tps_pct": round(impact_tps, 1),
+            "impact_area_pct": round(impact_area, 1),
+            "total_impact": round(impact_tps + impact_area, 1),
+            "is_zero_sensitivity": is_zero,
+            "optimal_value": str(best_val),
+            "values_tested": [str(v) for v in values],
+            "group_means": {
+                str(k): {"tok_s": round(v["tok_s"], 1), "area_mm2": round(v["area_mm2"], 1)}
+                for k, v in group_means.items()
+            },
         }
-        
+
         if is_zero:
             # Find the minimum-cost value
-            min_cost_val = min(group_means.keys(), 
-                              key=lambda v: group_means[v]['area_mm2'] 
-                              if isinstance(v, (int, float)) else 0)
+            min_cost_val = min(
+                group_means.keys(), key=lambda v: group_means[v]["area_mm2"] if isinstance(v, (int, float)) else 0
+            )
             warnings.append(
                 f"⚠ {param}: zero sensitivity (TPS ±{impact_tps:.1f}%, area ±{impact_area:.1f}%). "
                 f"Recommend {min_cost_val} to minimize cost."
             )
-    
+
     # Rank by total impact
-    ranked = sorted(sensitivity.keys(), 
-                    key=lambda k: sensitivity[k]['total_impact'], 
-                    reverse=True)
-    
-    zero_params = [k for k, v in sensitivity.items() if v['is_zero_sensitivity']]
-    
+    ranked = sorted(sensitivity.keys(), key=lambda k: sensitivity[k]["total_impact"], reverse=True)
+
+    zero_params = [k for k, v in sensitivity.items() if v["is_zero_sensitivity"]]
+
     return {
-        'parameters': sensitivity,
-        'ranked': ranked,
-        'zero_sensitivity_params': zero_params,
-        'warnings': warnings,
-        'varying_params_count': len(varying_params),
-        'total_results_analyzed': len(results),
+        "parameters": sensitivity,
+        "ranked": ranked,
+        "zero_sensitivity_params": zero_params,
+        "warnings": warnings,
+        "varying_params_count": len(varying_params),
+        "total_results_analyzed": len(results),
     }
 
 
-def print_sensitivity_report(sa: Dict[str, Any]):
+def print_sensitivity_report(sa: dict[str, Any]):
     """Print a human-readable sensitivity analysis report."""
-    if 'error' in sa:
+    if "error" in sa:
         print(f"  Sensitivity analysis skipped: {sa['error']}")
         return
-    
-    params = sa['parameters']
-    print(f"\n{'='*80}")
-    print(f"  Parameter Sensitivity Analysis ({sa['total_results_analyzed']} configs, "
-          f"{sa['varying_params_count']} varying params)")
-    print(f"{'='*80}")
+
+    params = sa["parameters"]
+    print(f"\n{'=' * 80}")
+    print(
+        f"  Parameter Sensitivity Analysis ({sa['total_results_analyzed']} configs, "
+        f"{sa['varying_params_count']} varying params)"
+    )
+    print(f"{'=' * 80}")
     print(f"  {'Rank':<5} {'Parameter':<16} {'ΔTPS%':>8} {'ΔArea%':>8} {'Impact':>8} {'Flag'}")
-    print(f"  {'-'*55}")
-    
-    for i, param in enumerate(sa['ranked'], 1):
+    print(f"  {'-' * 55}")
+
+    for i, param in enumerate(sa["ranked"], 1):
         p = params[param]
-        flag = "⚠ ZERO" if p['is_zero_sensitivity'] else ""
-        print(f"  {i:<5} {param:<16} {p['impact_tps_pct']:>7.1f}% {p['impact_area_pct']:>7.1f}% "
-              f"{p['total_impact']:>7.1f}  {flag}")
-    
-    if sa['warnings']:
-        print(f"\n  ══ Optimization Opportunities ══")
-        for w in sa['warnings']:
+        flag = "⚠ ZERO" if p["is_zero_sensitivity"] else ""
+        print(
+            f"  {i:<5} {param:<16} {p['impact_tps_pct']:>7.1f}% {p['impact_area_pct']:>7.1f}% "
+            f"{p['total_impact']:>7.1f}  {flag}"
+        )
+
+    if sa["warnings"]:
+        print("\n  ══ Optimization Opportunities ══")
+        for w in sa["warnings"]:
             print(f"  {w}")
-    
+
     # Per-param detail
-    print(f"\n  ══ Per-Parameter Detail ══")
-    for param in sa['ranked']:
+    print("\n  ══ Per-Parameter Detail ══")
+    for param in sa["ranked"]:
         p = params[param]
         print(f"\n  [{param}] — {'ZERO SENSITIVITY' if p['is_zero_sensitivity'] else 'ACTIVE DRIVER'}")
         print(f"    Values tested: {', '.join(p['values_tested'][:8])}")
         print(f"    Optimal (TPS/mm²): {p['optimal_value']}")
         print(f"    Impact: TPS {p['impact_tps_pct']:.1f}% | Area {p['impact_area_pct']:.1f}%")
-        for val, metrics in sorted(p['group_means'].items()):
+        for val, metrics in sorted(p["group_means"].items()):
             print(f"      {val:<20s} → {metrics['tok_s']:6.1f} tok/s, {metrics['area_mm2']:6.1f} mm²")
 
 
 def _build_v2_output(
     *,
-    results: List[PPA],
-    result_configs: List[Dict[str, Any]],
-    pareto: List[PPA],
-    reasonable: List[PPA],
+    results: list[PPA],
+    result_configs: list[dict[str, Any]],
+    pareto: list[PPA],
+    reasonable: list[PPA],
     top_n: int,
     generated: int,
     evaluated: int,
     filtered_by_area: int,
     errors: int,
-    error_details: List[Dict[str, Any]],
+    error_details: list[dict[str, Any]],
     model_spec: str,
     batch_m: int,
     cv_model: str,
     allow_partial: bool,
-    base_cfg: Dict[str, Any],
-) -> Dict[str, Any]:
+    base_cfg: dict[str, Any],
+) -> dict[str, Any]:
     """Build a DesignSpaceResultV2 output dictionary."""
     from contracts.identity import digest_sha256
     from contracts.result import (
-        CalibrationRef,
         DesignPointResult,
         DesignSpaceResultV2,
         EngineMetrics,
@@ -579,10 +583,10 @@ def _build_v2_output(
     set_trust = RunTrustLevel.non_authoritative if is_partial else RunTrustLevel.exploratory
 
     # Build per-result v2 records
-    pareto_labels = {p.config_label for p in pareto}
+    {p.config_label for p in pareto}
     v2_results: list[DesignPointResult] = []
 
-    for ppa, cfg in zip(results, result_configs):
+    for ppa, cfg in zip(results, result_configs, strict=False):
         dp_id = digest_sha256(cfg)
         metrics = EngineMetrics(
             tok_per_s=ppa.tok_s,
@@ -594,29 +598,33 @@ def _build_v2_output(
             depthwise_util_pct=ppa.depthwise_util_pct if ppa.depthwise_util_pct else None,
         )
         status = RunStatus.partial if is_partial else RunStatus.complete
-        v2_results.append(DesignPointResult(
-            design_point_id=dp_id,
-            status=status,
-            hardware_digest=dp_id,
-            config_label=ppa.config_label,
-            engine_type=cfg.get("mac_engine", {}).get("type", "unknown"),
-            trust_level=set_trust,
-            metrics=metrics,
-        ))
+        v2_results.append(
+            DesignPointResult(
+                design_point_id=dp_id,
+                status=status,
+                hardware_digest=dp_id,
+                config_label=ppa.config_label,
+                engine_type=cfg.get("mac_engine", {}).get("type", "unknown"),
+                trust_level=set_trust,
+                metrics=metrics,
+            )
+        )
 
     # Error records with stable IDs
     v2_errors: list[ErrorRecord] = []
     for err in error_details:
-        v2_errors.append(ErrorRecord(
-            design_point_id=err.get("design_point_id", ""),
-            code="RuntimeError",
-            message=err.get("error", "")[:200],
-            details={
-                "engine_type": err.get("engine_type", "unknown"),
-                "dims": err.get("dims", "?"),
-                "memory_mode": err.get("memory_mode", "unknown"),
-            },
-        ))
+        v2_errors.append(
+            ErrorRecord(
+                design_point_id=err.get("design_point_id", ""),
+                code="RuntimeError",
+                message=err.get("error", "")[:200],
+                details={
+                    "engine_type": err.get("engine_type", "unknown"),
+                    "dims": err.get("dims", "?"),
+                    "memory_mode": err.get("memory_mode", "unknown"),
+                },
+            )
+        )
 
     summary = ResultSummary(
         generated=generated,
@@ -642,11 +650,12 @@ def _build_v2_output(
 
 def _resolve_scenario(name: str) -> "Scenario":
     """Resolve a scenario name to a ``scenarios.schema.Scenario``."""
-    from scenarios.schema import Scenario, WorkloadClass, ArrivalPattern, ArrivalMode, QueuePolicy
+    from scenarios.schema import ArrivalMode, ArrivalPattern, QueuePolicy, Scenario, WorkloadClass
     from workloads.catalog import load_all_fixtures
 
     try:
-        from dse_scenario import load_scenario, _build_scenario_model
+        from dse_scenario import _build_scenario_model, load_scenario
+
         data = load_scenario(name)
         if data is not None:
             return _build_scenario_model(name, data)
@@ -728,19 +737,20 @@ def _run_scenario_dse(args) -> int:
     runner = ScenarioDseRunner(run_config)
     result_set, manifest, frontier = runner.run(generation_result)
 
-    print(f"  evaluated={result_set.summary.evaluated} "
-          f"complete={result_set.summary.complete} "
-          f"failed={result_set.summary.failed} "
-          f"frontier={len(frontier)}")
+    print(
+        f"  evaluated={result_set.summary.evaluated} "
+        f"complete={result_set.summary.complete} "
+        f"failed={result_set.summary.failed} "
+        f"frontier={len(frontier)}"
+    )
 
-    print(f"\n{'='*90}")
+    print(f"\n{'=' * 90}")
     print(f"  Pareto frontier ({len(frontier)} points)")
     print(f"  {'design_point_id':<66} {'tok/s':>8} {'area':>8} {'power':>8}")
-    print(f"  {'-'*90}")
+    print(f"  {'-' * 90}")
     for p in frontier[:15]:
         m = p.result.metrics
-        print(f"  {p.result.design_point_id:<66} "
-              f"{m.tok_per_s:>7.1f} {m.area_mm2:>7.1f} {m.power_w:>7.1f}")
+        print(f"  {p.result.design_point_id:<66} {m.tok_per_s:>7.1f} {m.area_mm2:>7.1f} {m.power_w:>7.1f}")
 
     if args.output:
         out_path = Path(args.output) if args.output.startswith("/") else SIM_DIR / args.output
@@ -757,9 +767,8 @@ def _run_scenario_dse(args) -> int:
             git_commit = ""
             try:
                 import subprocess
-                git_commit = subprocess.check_output(
-                    ["git", "rev-parse", "HEAD"], cwd=SIM_DIR, text=True
-                ).strip()
+
+                git_commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=SIM_DIR, text=True).strip()
             except Exception:
                 pass
 
@@ -791,8 +800,8 @@ def _run_scenario_dse(args) -> int:
 
 def _run_replay(args) -> int:
     """Replay a bundle and verify the canonical payload digest matches."""
-    from dse.serialization import read_replay_bundle, replay_bundle_canonical_digest
     from dse.runner import DseRunConfig, ScenarioDseRunner
+    from dse.serialization import read_replay_bundle, replay_bundle_canonical_digest
     from dse.space import DesignSpace
     from scenarios.schema import Scenario
 
@@ -865,35 +874,43 @@ def _run_replay(args) -> int:
 
 def main():
     import argparse
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--quick", action="store_true")
-    parser.add_argument("--allow-partial", action="store_true",
-                        help="Keep valid results when some configurations fail")
+    parser.add_argument("--allow-partial", action="store_true", help="Keep valid results when some configurations fail")
     parser.add_argument("--output", default=None)
-    parser.add_argument("--top", type=int, default=20,
-                        help="Show top N results")
-    parser.add_argument("--cv-model", choices=["mobilenetv3-small", "yolov8n", "vit-b16", "resnet18", "resnet50"],
-                        default=None,
-                        help="Run CV design-space exploration")
-    parser.add_argument("--model-spec",
-                        choices=[a for a in all_aliases() if get_spec(a).model_type == "llm"],
-                        default=None,
-                        help="LLM model spec alias for DSE")
-    parser.add_argument("--batch-m", type=int, choices=[1, 2], default=None,
-                        help="Batch M dimension for attention ops (1 or 2)")
-    parser.add_argument("--result-schema", choices=["legacy", "v1", "v2"], default="v1",
-                        help="Output schema version (default: v1 legacy)")
-    parser.add_argument("--scenario", default=None,
-                        help="Scenario-driven DSE scenario name")
-    parser.add_argument("--space", default="ci-all-axes",
-                        help="Scenario DSE space mode: full or ci-all-axes")
-    parser.add_argument("--seed", type=int, default=0,
-                        help="Deterministic seed for scenario-driven DSE")
-    parser.add_argument("--replay", default=None,
-                        help="Replay a bundle directory and verify digest")
-    parser.add_argument("--trust-mode", choices=["exploratory", "decision-grade"],
-                        default="exploratory",
-                        help="Calibration trust mode (default: exploratory)")
+    parser.add_argument("--top", type=int, default=20, help="Show top N results")
+    parser.add_argument(
+        "--cv-model",
+        choices=["mobilenetv3-small", "yolov8n", "vit-b16", "resnet18", "resnet50"],
+        default=None,
+        help="Run CV design-space exploration",
+    )
+    parser.add_argument(
+        "--model-spec",
+        choices=[a for a in all_aliases() if get_spec(a).model_type == "llm"],
+        default=None,
+        help="LLM model spec alias for DSE",
+    )
+    parser.add_argument(
+        "--batch-m", type=int, choices=[1, 2], default=None, help="Batch M dimension for attention ops (1 or 2)"
+    )
+    parser.add_argument(
+        "--result-schema",
+        choices=["legacy", "v1", "v2"],
+        default="v1",
+        help="Output schema version (default: v1 legacy)",
+    )
+    parser.add_argument("--scenario", default=None, help="Scenario-driven DSE scenario name")
+    parser.add_argument("--space", default="ci-all-axes", help="Scenario DSE space mode: full or ci-all-axes")
+    parser.add_argument("--seed", type=int, default=0, help="Deterministic seed for scenario-driven DSE")
+    parser.add_argument("--replay", default=None, help="Replay a bundle directory and verify digest")
+    parser.add_argument(
+        "--trust-mode",
+        choices=["exploratory", "decision-grade"],
+        default="exploratory",
+        help="Calibration trust mode (default: exploratory)",
+    )
     args = parser.parse_args()
 
     if args.replay:
@@ -927,19 +944,24 @@ def main():
     if _CV_MODEL:
         if args.cv_model == "mobilenetv3-small":
             from cv.cv_trace import generate_mobilenetv3_trace
+
             _CV_ONNX_PATH = str(Path(__file__).parent.parent / "assets" / "mobilenetv3_small.onnx")
             _CV_TRACE = generate_mobilenetv3_trace(_CV_ONNX_PATH)
         elif args.cv_model == "yolov8n":
             from cv.traces.yolov8n_trace import generate_yolov8n_trace
+
             _CV_TRACE = generate_yolov8n_trace()
         elif args.cv_model == "vit-b16":
             from cv.traces.vit_trace import generate_vit_trace
+
             _CV_TRACE = generate_vit_trace()
         elif args.cv_model == "resnet18":
             from cv.traces.resnet18_trace import generate_resnet18_trace
+
             _CV_TRACE = generate_resnet18_trace()
         elif args.cv_model == "resnet50":
             from cv.traces.resnet50_trace import generate_resnet50_trace
+
             _CV_TRACE = generate_resnet50_trace()
     else:
         _LLM_TRACE = generate_trace_from_spec(model_spec, batch_m)
@@ -952,22 +974,21 @@ def main():
     power_model = PowerModel(base_cfg)
 
     configs = generate_configs(quick=args.quick)
-    from engine.registry import canonical_engine_ids
-    engine_types_in_configs = sorted(set(c['mac_engine']['type'] for c in configs))
+
+    engine_types_in_configs = sorted({c["mac_engine"]["type"] for c in configs})
     print(f"Design space: {len(configs)} configurations")
     print(f"  Engine types: {', '.join(engine_types_in_configs)}")
-    dim_set = set((c['mac_engine']['array_height'],
-                   c['mac_engine']['array_width']) for c in configs)
+    dim_set = {(c["mac_engine"]["array_height"], c["mac_engine"]["array_width"]) for c in configs}
     print(f"  Array dims: {len(dim_set)}")
-    print(f"  Sweeping...", end=" ", flush=True)
+    print("  Sweeping...", end=" ", flush=True)
 
-    results: List[PPA] = []
-    result_configs: List[Dict[str, Any]] = []  # paired configs for stable ID generation
+    results: list[PPA] = []
+    result_configs: list[dict[str, Any]] = []  # paired configs for stable ID generation
     generated = len(configs)
     evaluated = 0
     filtered_by_area = 0
     errors = 0
-    error_details: List[Dict[str, Any]] = []
+    error_details: list[dict[str, Any]] = []
 
     # Pre-compute IDs for v2 output (avoids duplicate hashing)
     _v2_mode = args.result_schema == "v2"
@@ -984,7 +1005,7 @@ def main():
                 f"{cfg.get('mac_engine', {}).get('array_width', '?')}"
             )
             mem_mode = cfg.get("_dram_label", "unknown")
-            err_entry: Dict[str, Any] = {
+            err_entry: dict[str, Any] = {
                 "engine_type": engine_type,
                 "dims": dims,
                 "memory_mode": mem_mode,
@@ -992,6 +1013,7 @@ def main():
             }
             if _v2_mode:
                 from contracts.identity import digest_sha256
+
                 err_entry["design_point_id"] = digest_sha256(cfg)
             error_details.append(err_entry)
             print(
@@ -1018,8 +1040,7 @@ def main():
         sys.exit(1)
     if errors and not args.allow_partial:
         print(
-            f"{errors} configuration(s) failed evaluation. "
-            "Use --allow-partial to keep valid results.",
+            f"{errors} configuration(s) failed evaluation. Use --allow-partial to keep valid results.",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -1040,36 +1061,39 @@ def main():
     line_width = 100 if _CV_MODEL else 85
 
     # ── Output ──
-    print(f"\n{'='*90}")
-    print(f"  Pareto 前沿 (面积 vs 性能)")
+    print(f"\n{'=' * 90}")
+    print("  Pareto 前沿 (面积 vs 性能)")
     print(f"  {'Config':<45} {perf_label:>8} {'Area':>8} {'Power':>8} {eff_label:>8}{cv_extra_header}")
-    print(f"  {'-'*line_width}")
+    print(f"  {'-' * line_width}")
     for p in pareto[:15]:
-        arrow = "← Pareto" if p in pareto else ""
         extra = ""
         if _CV_MODEL:
             extra = f" {p.sram_spill_mb:>9.1f} {p.depthwise_util_pct:>7.3f}"
-        print(f"  {p.config_label:<45} {p.tok_s:>7.0f} {p.area_mm2:>6.0f}mm² "
-              f"{p.power_w:>6.1f}W {p.efficiency_tok_per_watt:>7.1f}{extra}")
+        print(
+            f"  {p.config_label:<45} {p.tok_s:>7.0f} {p.area_mm2:>6.0f}mm² "
+            f"{p.power_w:>6.1f}W {p.efficiency_tok_per_watt:>7.1f}{extra}"
+        )
 
     # ── Top by tok/s ──
     print(f"\n  Top {args.top} by {perf_label} (area ≤ 150mm²):")
     print(f"  {'Config':<45} {perf_label:>8} {'Area':>8} {'Power':>8} {eff_label:>8}{cv_extra_header}")
-    print(f"  {'-'*line_width}")
-    for p in reasonable[:args.top]:
+    print(f"  {'-' * line_width}")
+    for p in reasonable[: args.top]:
         pareto_flag = "←" if p in pareto else ""
         extra = ""
         if _CV_MODEL:
             extra = f" {p.sram_spill_mb:>9.1f} {p.depthwise_util_pct:>7.3f}"
-        print(f"  {p.config_label:<45} {p.tok_s:>7.0f} {p.area_mm2:>6.0f}mm² "
-              f"{p.power_w:>6.1f}W {p.efficiency_tok_per_watt:>7.1f}{extra} {pareto_flag}")
+        print(
+            f"  {p.config_label:<45} {p.tok_s:>7.0f} {p.area_mm2:>6.0f}mm² "
+            f"{p.power_w:>6.1f}W {p.efficiency_tok_per_watt:>7.1f}{extra} {pareto_flag}"
+        )
 
     # ── Best per engine type ──
-    from engine.registry import engine_full_ids, lookup_by_prefix, is_valid_engine
+    from engine.registry import engine_full_ids, is_valid_engine, lookup_by_prefix
 
-    print(f"\n  Best per engine type (area ≤ 80mm², DRAM ≤ 102.4 GB/s):")
+    print("\n  Best per engine type (area ≤ 80mm², DRAM ≤ 102.4 GB/s):")
     # Group results by canonical engine ID using registry prefix resolution
-    eng_groups: Dict[str, List[PPA]] = {eid: [] for eid in engine_full_ids()}
+    eng_groups: dict[str, list[PPA]] = {eid: [] for eid in engine_full_ids()}
     for r in results:
         # Parse engine prefix from config_label (first token is truncated engine name)
         prefix = r.config_label.split()[0] if r.config_label else ""
@@ -1082,8 +1106,10 @@ def main():
     for eid in engine_full_ids():
         if eng_groups[eid]:
             best = max(eng_groups[eid], key=lambda x: x.tok_s)
-            print(f"    {eid}: {best.tok_s:.0f} {perf_label}, {best.area_mm2:.0f}mm², "
-                  f"{best.power_w:.1f}W — {best.config_label}")
+            print(
+                f"    {eid}: {best.tok_s:.0f} {perf_label}, {best.area_mm2:.0f}mm², "
+                f"{best.power_w:.1f}W — {best.config_label}"
+            )
 
     # ── Sensitivity Analysis (always run after sweep) ──
     sa = analyze_sensitivity(results)
@@ -1091,21 +1117,26 @@ def main():
 
     # ── Cross-Validation (compare best config against known products) ──
     if not _CV_MODEL and reasonable:
-        from dse_scenario import cross_validate as cv_func, print_cross_validate as print_cv
+        from dse_scenario import cross_validate as cv_func
+        from dse_scenario import print_cross_validate as print_cv
+
         best = reasonable[0]
         # Auto-detect scenario: on-chip if any config has on_chip_memory
         has_onchip = any(
-            float(configs[i].get('on_chip_memory', {}).get('capacity_gb', 0)) > 0
+            float(configs[i].get("on_chip_memory", {}).get("capacity_gb", 0)) > 0
             for i in range(min(len(configs), len(results)))
             if results[i].config_label == best.config_label
         )
-        scenario = 'onchip_7b' if has_onchip else 'lpddr5_3b'
-        cv = cv_func({
-            'process_nm': int(base_cfg.get('area_model', {}).get('process_node', 12)),
-            'area_mm2': best.area_mm2,
-            'tops_int8': 6.1 if has_onchip else 16.4,  # scenario-dependent typical values
-            'tok_s': best.tok_s,
-        }, scenario)
+        scenario = "onchip_7b" if has_onchip else "lpddr5_3b"
+        cv = cv_func(
+            {
+                "process_nm": int(base_cfg.get("area_model", {}).get("process_node", 12)),
+                "area_mm2": best.area_mm2,
+                "tops_int8": 6.1 if has_onchip else 16.4,  # scenario-dependent typical values
+                "tok_s": best.tok_s,
+            },
+            scenario,
+        )
         print_cv(cv)
 
     # ── Save ──
@@ -1129,9 +1160,9 @@ def main():
                 base_cfg=base_cfg,
             )
         else:
+
             def _result_dict(p, on_pareto=False):
-                d = {"label": p.config_label, "tok_s": p.tok_s,
-                     "area_mm2": p.area_mm2, "power_w": p.power_w}
+                d = {"label": p.config_label, "tok_s": p.tok_s, "area_mm2": p.area_mm2, "power_w": p.power_w}
                 if _CV_MODEL:
                     d["sram_spill_mb"] = p.sram_spill_mb
                     d["depthwise_util_pct"] = p.depthwise_util_pct
@@ -1160,7 +1191,7 @@ def main():
             if _CV_MODEL:
                 points = [_result_dict(p, True) for p in pareto]
                 seen = {p.config_label for p in pareto}
-                for p in reasonable[:args.top]:
+                for p in reasonable[: args.top]:
                     if p.config_label not in seen:
                         points.append(_result_dict(p, False))
                 output = {
@@ -1180,7 +1211,7 @@ def main():
                     "valid_results": len(results),
                     **counts,
                     "pareto_frontier": [_result_dict(p, True) for p in pareto],
-                    "top_results": [_result_dict(p, False) for p in reasonable[:args.top]],
+                    "top_results": [_result_dict(p, False) for p in reasonable[: args.top]],
                 }
         out_path = SIM_DIR / args.output if not args.output.startswith("/") else Path(args.output)
         out_path.parent.mkdir(parents=True, exist_ok=True)

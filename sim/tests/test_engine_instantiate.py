@@ -33,13 +33,9 @@ def test_all_engines_instantiate():
         cfg = dict(_BASE_CONFIG)
         cfg["mac_engine"]["type"] = etype
         e = create_engine(cfg)
-        assert e.engine_type == etype, (
-            f"Expected engine_type={etype!r}, got {e.engine_type!r}"
-        )
+        assert e.engine_type == etype, f"Expected engine_type={etype!r}, got {e.engine_type!r}"
 
 
 def test_canonical_engine_count():
     """Registry must expose exactly 8 canonical engine IDs."""
-    assert len(canonical_engine_ids()) == 8, (
-        f"Expected 8 canonical engines, got {len(canonical_engine_ids())}"
-    )
+    assert len(canonical_engine_ids()) == 8, f"Expected 8 canonical engines, got {len(canonical_engine_ids())}"

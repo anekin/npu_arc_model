@@ -9,12 +9,13 @@ inputs are converted to picoseconds with ``ceil(cycles * ps_per_cycle)``.
 from __future__ import annotations
 
 import math
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import IntEnum
-from typing import Any, Callable
+from typing import Any
 
 from contracts.errors import ConfigError
-from scheduler.events import EventPhase, EventQueue
+from scheduler.events import Event, EventPhase, EventQueue
 
 
 class SchedulerError(RuntimeError):
@@ -57,9 +58,7 @@ class JobHandle:
 
     def __post_init__(self) -> None:
         if self.work_ps < 0:
-            raise SchedulerError(
-                f"job {self.job_id!r} work_ps must be non-negative, got {self.work_ps}"
-            )
+            raise SchedulerError(f"job {self.job_id!r} work_ps must be non-negative, got {self.work_ps}")
         self.remaining_ps = self.work_ps
 
     @property
@@ -90,7 +89,7 @@ class DiscreteEventKernel:
     def __init__(
         self,
         frequency_mhz: int,
-        dispatch_callback: Callable[["DiscreteEventKernel", list[JobHandle]], None] | None = None,
+        dispatch_callback: Callable[[DiscreteEventKernel, list[JobHandle]], None] | None = None,
     ) -> None:
         if frequency_mhz <= 0:
             raise ConfigError(
@@ -150,20 +149,13 @@ class DiscreteEventKernel:
                 field_path="job_id",
             )
         if work_ps < 0:
-            raise SchedulerError(
-                f"job {job_id!r} work_ps must be non-negative, got {work_ps}"
-            )
+            raise SchedulerError(f"job {job_id!r} work_ps must be non-negative, got {work_ps}")
         if release_ps < self.now_ps:
-            raise SchedulerError(
-                f"job {job_id!r} release_ps {release_ps} is in the past "
-                f"(now={self.now_ps})"
-            )
+            raise SchedulerError(f"job {job_id!r} release_ps {release_ps} is in the past (now={self.now_ps})")
 
         rel_deadline = relative_deadline_ps if relative_deadline_ps is not None else work_ps
         if rel_deadline < 0:
-            raise SchedulerError(
-                f"job {job_id!r} relative_deadline_ps must be non-negative, got {rel_deadline}"
-            )
+            raise SchedulerError(f"job {job_id!r} relative_deadline_ps must be non-negative, got {rel_deadline}")
 
         dep_set = set(depends_on or ())
         if job_id in dep_set:
@@ -208,20 +200,18 @@ class DiscreteEventKernel:
         self,
         time_ps: int,
         phase: EventPhase,
-        payload: Callable[["DiscreteEventKernel"], None],
-    ) -> "Event":
+        payload: Callable[[DiscreteEventKernel], None],
+    ) -> Event:
         """Schedule an event at ``time_ps`` with the given phase/payload."""
         if time_ps < self.now_ps:
-            raise SchedulerError(
-                f"cannot schedule event at {time_ps} ps (now={self.now_ps} ps)"
-            )
+            raise SchedulerError(f"cannot schedule event at {time_ps} ps (now={self.now_ps} ps)")
         return self.queue.push(time_ps, phase, payload)
 
-    def cancel_event(self, event: "Event") -> bool:
+    def cancel_event(self, event: Event) -> bool:
         """Cancel a previously scheduled event."""
         return self.queue.cancel(event)
 
-    def _release_payload(self, job_id: str) -> Callable[["DiscreteEventKernel"], None]:
+    def _release_payload(self, job_id: str) -> Callable[[DiscreteEventKernel], None]:
         def _release(kernel: DiscreteEventKernel) -> None:
             job = kernel._get_job(job_id)
             if job.state != JobState.PENDING:
@@ -229,6 +219,7 @@ class DiscreteEventKernel:
             if kernel._dependencies_satisfied(job):
                 kernel._make_ready(job)
                 kernel._schedule_dispatch(kernel.now_ps)
+
         return _release
 
     def _make_ready(self, job: JobHandle) -> None:
@@ -236,10 +227,7 @@ class DiscreteEventKernel:
             job.state = JobState.READY
 
     def _dependencies_satisfied(self, job: JobHandle) -> bool:
-        return all(
-            self.jobs.get(dep, job).state == JobState.COMPLETED
-            for dep in job.depends_on
-        )
+        return all(self.jobs.get(dep, job).state == JobState.COMPLETED for dep in job.depends_on)
 
     def _detect_cycle(self, start_job_id: str) -> None:
         """Raise SchedulerError if ``start_job_id`` participates in a cycle."""
@@ -274,16 +262,16 @@ class DiscreteEventKernel:
         self._next_dispatch_time = time_ps
         self.queue.push(time_ps, EventPhase.DISPATCH, self._dispatch_payload())
 
-    def _dispatch_payload(self) -> Callable[["DiscreteEventKernel"], None]:
-        def _dispatch(kernel: "DiscreteEventKernel") -> None:
+    def _dispatch_payload(self) -> Callable[[DiscreteEventKernel], None]:
+        def _dispatch(kernel: DiscreteEventKernel) -> None:
             kernel._next_dispatch_time = None
             if kernel._dispatch_callback is None:
                 return
             ready = kernel.ready_jobs()
             if ready:
                 kernel._dispatch_callback(kernel, ready)
-        return _dispatch
 
+        return _dispatch
 
     def ready_jobs(self) -> list[JobHandle]:
         """Return all jobs in ``READY`` state, sorted by job_id for determinism."""
@@ -304,18 +292,11 @@ class DiscreteEventKernel:
         """
         job = self._get_job(job_id)
         if job.state != JobState.RUNNING:
-            raise SchedulerError(
-                f"cannot consume work for job {job_id!r} in state {job.state.name}"
-            )
+            raise SchedulerError(f"cannot consume work for job {job_id!r} in state {job.state.name}")
         if duration_ps < 0:
-            raise SchedulerError(
-                f"consume_work duration must be non-negative, got {duration_ps}"
-            )
+            raise SchedulerError(f"consume_work duration must be non-negative, got {duration_ps}")
         if duration_ps > job.remaining_ps:
-            raise SchedulerError(
-                f"job {job_id!r} over-consumed: duration {duration_ps} > "
-                f"remaining {job.remaining_ps}"
-            )
+            raise SchedulerError(f"job {job_id!r} over-consumed: duration {duration_ps} > remaining {job.remaining_ps}")
         job.remaining_ps -= duration_ps
 
     def complete_job(self, job_id: str) -> None:
@@ -327,9 +308,7 @@ class DiscreteEventKernel:
         if job.state == JobState.COMPLETED:
             return
         if job.state != JobState.RUNNING:
-            raise SchedulerError(
-                f"cannot complete job {job_id!r} in state {job.state.name}"
-            )
+            raise SchedulerError(f"cannot complete job {job_id!r} in state {job.state.name}")
         self._complete_job_internal(job)
 
     def _complete_job_internal(self, job: JobHandle) -> None:
@@ -340,9 +319,12 @@ class DiscreteEventKernel:
         self._completed_ids.add(job.job_id)
 
         for other in self.jobs.values():
-            if other.state == JobState.PENDING and self._dependencies_satisfied(other):
-                if other.release_ps <= self.now_ps:
-                    self._make_ready(other)
+            if (
+                other.state == JobState.PENDING
+                and self._dependencies_satisfied(other)
+                and other.release_ps <= self.now_ps
+            ):
+                self._make_ready(other)
         if any(j.state == JobState.READY for j in self.jobs.values()):
             self._schedule_dispatch(self.now_ps)
 
@@ -387,17 +369,9 @@ class DiscreteEventKernel:
             ev = self.queue.pop()
             old_time = self.now_ps
             old_completed = len(self.completed)
-            old_remaining = {
-                jid: j.remaining_ps
-                for jid, j in self.jobs.items()
-                if j.state == JobState.RUNNING
-            }
-            old_running = {
-                jid for jid, j in self.jobs.items() if j.state == JobState.RUNNING
-            }
-            old_ready = {
-                jid for jid, j in self.jobs.items() if j.state == JobState.READY
-            }
+            old_remaining = {jid: j.remaining_ps for jid, j in self.jobs.items() if j.state == JobState.RUNNING}
+            old_running = {jid for jid, j in self.jobs.items() if j.state == JobState.RUNNING}
+            old_ready = {jid for jid, j in self.jobs.items() if j.state == JobState.READY}
 
             if ev.time_ps < self.now_ps:
                 raise SchedulerError(
@@ -411,9 +385,7 @@ class DiscreteEventKernel:
             if callable(ev.payload):
                 ev.payload(self)
 
-            new_running = {
-                jid for jid, j in self.jobs.items() if j.state == JobState.RUNNING
-            }
+            new_running = {jid for jid, j in self.jobs.items() if j.state == JobState.RUNNING}
             newly_running = new_running - old_running
             new_completed = len(self.completed)
             # A DISPATCH event that finds no ready jobs is a legitimate no-op.
@@ -423,15 +395,11 @@ class DiscreteEventKernel:
                 or new_completed > old_completed
                 or newly_running
                 or idle_dispatch
-                or any(
-                    self.jobs[jid].remaining_ps < old_remaining[jid]
-                    for jid in old_remaining
-                )
+                or any(self.jobs[jid].remaining_ps < old_remaining[jid] for jid in old_remaining)
             )
             if not progress:
                 raise SchedulerError(
-                    "zero-time livelock detected: event did not advance time, "
-                    "consume work, or terminate a job",
+                    "zero-time livelock detected: event did not advance time, consume work, or terminate a job",
                     detail=ev,
                 )
             event_count += 1
@@ -444,9 +412,7 @@ class DiscreteEventKernel:
         """Run until all non-rejected jobs are completed or limits are hit."""
         for _ in range(max_events):
             pending_or_ready = [
-                j
-                for j in self.jobs.values()
-                if j.state in (JobState.PENDING, JobState.READY, JobState.RUNNING)
+                j for j in self.jobs.values() if j.state in (JobState.PENDING, JobState.READY, JobState.RUNNING)
             ]
             if not pending_or_ready:
                 break

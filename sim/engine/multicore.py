@@ -12,21 +12,20 @@ FIFO byte server.
 """
 
 import math
-from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from dataclasses import dataclass
 
-from engine.timeline import CoreTimeline, TimelineEvent, breakdown_events
-from scheduler.kernel import DiscreteEventKernel, JobState
-from scheduler.resources import ByteServer
+from engine.timeline import CoreTimeline
+from scheduler.kernel import DiscreteEventKernel
 
 
 @dataclass
 class FIFOConfig:
     """核间 FIFO 配置"""
-    size_bytes: int = 4096        # 4KB per direction
-    width_bits: int = 256         # bits per cycle
-    latency_cycles: int = 2       # fixed pipeline delay
-    bidirectional: bool = True    # 双向（上下游均可传）
+
+    size_bytes: int = 4096  # 4KB per direction
+    width_bits: int = 256  # bits per cycle
+    latency_cycles: int = 2  # fixed pipeline delay
+    bidirectional: bool = True  # 双向（上下游均可传）
 
 
 @dataclass
@@ -37,20 +36,21 @@ class CrossbarConfig:
     stages, and per-hop latency.  Supports round-robin or priority
     arbitration with configurable routing.
     """
+
     # ── Topology ──
     ports: int = 4
-    bandwidth_gbps: float = 500.0     # per-port link bandwidth
+    bandwidth_gbps: float = 500.0  # per-port link bandwidth
 
     # ── Link / flit ──
-    hop_latency_cycles: int = 3       # wire delay per hop
-    flit_width_bits: int = 256        # flit payload width (header overhead separate)
-    vcs: int = 2                      # virtual channels per port
+    hop_latency_cycles: int = 3  # wire delay per hop
+    flit_width_bits: int = 256  # flit payload width (header overhead separate)
+    vcs: int = 2  # virtual channels per port
 
     # ── Router microarchitecture ──
-    buffer_depth: int = 4             # flits per VC buffer
+    buffer_depth: int = 4  # flits per VC buffer
     arbitration: str = "round_robin"  # "round_robin" | "priority" | "age_based"
     routing: str = "destination_tag"  # "destination_tag" | "xy" | "source_routing"
-    pipeline_stages: int = 3          # RC + VA + SA + ST (simplified to one count)
+    pipeline_stages: int = 3  # RC + VA + SA + ST (simplified to one count)
 
     # ── Backward-compat aliases (deprecated, kept for old callers) ──
 
@@ -84,8 +84,7 @@ class MultiCoreTimeline:
     server rather than a fixed 70% overlap assumption.
     """
 
-    def __init__(self, num_cores: int, fifo: FIFOConfig = None,
-                 crossbar: CrossbarConfig = None):
+    def __init__(self, num_cores: int, fifo: FIFOConfig = None, crossbar: CrossbarConfig = None):
         self.num_cores = num_cores
         self.cores = [CoreTimeline(i) for i in range(num_cores)]
         self.fifo = fifo or FIFOConfig()
@@ -106,8 +105,7 @@ class MultiCoreTimeline:
         transfer_cycles = math.ceil(total_bytes / bytes_per_cycle)
         return transfer_cycles + self.fifo.latency_cycles
 
-    def fifo_transfer_ps(self, num_elements: int, element_bytes: int = 2,
-                         frequency_mhz: int = 1000) -> int:
+    def fifo_transfer_ps(self, num_elements: int, element_bytes: int = 2, frequency_mhz: int = 1000) -> int:
         """FIFO transfer latency in picoseconds via the scheduler kernel."""
         cycles = self.fifo_transfer_cycles(num_elements, element_bytes)
         return DiscreteEventKernel(frequency_mhz).cycles_to_ps(cycles)
@@ -156,10 +154,9 @@ class MultiCoreTimeline:
 
     # ── 工作模式 ─────────────────────────────────────────────────
 
-    def simulate_pipeline(self,
-                          layer_assignments: List[List[int]],
-                          per_layer_cycles: List[int],
-                          activation_size: int = 2560) -> Dict:
+    def simulate_pipeline(
+        self, layer_assignments: list[list[int]], per_layer_cycles: list[int], activation_size: int = 2560
+    ) -> dict:
         """流水线并行: 核心 N 处理 Layer N，核间 FIFO 传递激活.
 
         Args:
@@ -178,8 +175,7 @@ class MultiCoreTimeline:
         num_layers = sum(len(la) for la in layer_assignments)
         for layer_idx in range(num_layers):
             core_id = layer_idx % self.num_cores
-            cycles = (per_layer_cycles[layer_idx]
-                      if layer_idx < len(per_layer_cycles) else 1000)
+            cycles = per_layer_cycles[layer_idx] if layer_idx < len(per_layer_cycles) else 1000
             work_ps = kernel.cycles_to_ps(cycles)
             core_progress[core_id] = max(core_progress[core_id], kernel.now_ps) + work_ps
             kernel.now_ps = max(core_progress)
@@ -204,8 +200,7 @@ class MultiCoreTimeline:
             "core_progress": core_progress,
         }
 
-    def simulate_data_parallel(self, per_token_cycles: int,
-                                num_tokens: int) -> Dict:
+    def simulate_data_parallel(self, per_token_cycles: int, num_tokens: int) -> dict:
         """数据并行: 每核处理不同 token，吞吐 ×N.
 
         Since each core works independently, total tokens processed

@@ -12,7 +12,6 @@ from __future__ import annotations
 from typing import Any
 
 import onnx
-
 from contracts.errors import UnsupportedOperatorError
 from workloads.operators import DEFAULT_REGISTRY
 
@@ -54,6 +53,7 @@ SE_PATTERN: tuple[str, ...] = (
 
 import os as _os
 import sys as _sys
+
 _sim_dir = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
 if _sim_dir not in _sys.path:
     _sys.path.insert(0, _sim_dir)
@@ -120,6 +120,7 @@ def _parse_attrs(node: onnx.NodeProto) -> dict[str, Any]:
 # Kernel helpers
 # ---------------------------------------------------------------------------
 
+
 def _get_conv_kernel(weight_shape: list[int] | None) -> list[int] | None:
     """Extract [H, W] from a conv weight shape [C_out, C_in, H, W].
 
@@ -134,6 +135,7 @@ def _get_conv_kernel(weight_shape: list[int] | None) -> list[int] | None:
 # SE-block detection (post-processing)
 # ---------------------------------------------------------------------------
 
+
 def _tag_se_blocks(layers: list[dict[str, Any]]) -> None:
     """Walk *layers* and tag every SE-block layer with ``se_block=True``.
 
@@ -146,7 +148,7 @@ def _tag_se_blocks(layers: list[dict[str, Any]]) -> None:
     pattern_len = len(SE_PATTERN)
     for i in range(len(layers) - pattern_len + 1):
         window = layers[i : i + pattern_len]
-        if all(w["type"] == exp for w, exp in zip(window, SE_PATTERN)):
+        if all(w["type"] == exp for w, exp in zip(window, SE_PATTERN, strict=False)):
             for w in window:
                 w["se_block"] = True
             window[-1]["se_output"] = True
@@ -155,6 +157,7 @@ def _tag_se_blocks(layers: list[dict[str, Any]]) -> None:
 # ---------------------------------------------------------------------------
 # Main entry point
 # ---------------------------------------------------------------------------
+
 
 def import_mobilenetv3(onnx_path: str) -> list[dict[str, Any]]:
     """Load a MobileNetV3-Small ONNX file and extract layer topology.

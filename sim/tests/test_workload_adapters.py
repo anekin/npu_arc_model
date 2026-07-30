@@ -14,12 +14,10 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
 
 import numpy as np
 import onnx
 import pytest
-
 from contracts.errors import ConfigError, DimensionBindingError, UnsupportedOperatorError
 from engine.mac_engine import create_engine
 from workloads.dimensions import DimensionBindings, apply_bindings
@@ -52,7 +50,9 @@ def _make_tensor(tid: str, shape: list, producer: str = "", consumers: list | No
     )
 
 
-def _make_node(nid: str, op: str, inputs: list | None = None, outputs: list | None = None, deps: list | None = None) -> NodeSpec:
+def _make_node(
+    nid: str, op: str, inputs: list | None = None, outputs: list | None = None, deps: list | None = None
+) -> NodeSpec:
     return NodeSpec(
         node_id=nid,
         op_type=op,
@@ -64,7 +64,6 @@ def _make_node(nid: str, op: str, inputs: list | None = None, outputs: list | No
 
 def _build_tiny_onnx_golden_graph(batch: int | str = "batch") -> WorkloadGraphV1:
     """Hand-written canonical graph equivalent to tiny_mixed_ops.onnx."""
-    provenance_source = "hand-crafted:tiny_mixed_ops"
     t_in = _make_tensor(
         "input",
         [batch, 3, 8, 8],
@@ -139,7 +138,9 @@ def _build_unsupported_onnx_model() -> onnx.ModelProto:
     output_tensor = helper.make_tensor_value_info("output", onnx.TensorProto.FLOAT, [1, 3, 16, 16])
     scales = numpy_helper.from_array(np.array([1.0, 1.0, 2.0, 2.0], dtype=np.float32), name="scales")
     nodes = [
-        helper.make_node("Upsample", inputs=["input", "scales"], outputs=["output"], name="upsample_node", mode="nearest"),
+        helper.make_node(
+            "Upsample", inputs=["input", "scales"], outputs=["output"], name="upsample_node", mode="nearest"
+        ),
     ]
     graph = helper.make_graph(
         nodes=nodes,
@@ -218,7 +219,9 @@ class TestOnnxAdapter:
         bound = apply_bindings(g, DimensionBindings(request_batch=batch))
         digest_a = graph_digest(bound)
         # Re-parse and re-bind should be identical
-        bound2 = apply_bindings(lower_onnx_to_graph(str(TINY_ONNX_PATH), graph_name="tiny"), DimensionBindings(request_batch=batch))
+        bound2 = apply_bindings(
+            lower_onnx_to_graph(str(TINY_ONNX_PATH), graph_name="tiny"), DimensionBindings(request_batch=batch)
+        )
         digest_b = graph_digest(bound2)
         assert digest_a == digest_b
         assert bound.tensors[0].shape[0] == batch
@@ -226,10 +229,7 @@ class TestOnnxAdapter:
     def test_bound_batch_ids_are_different(self):
         """Different batch bindings produce different digests."""
         g = lower_onnx_to_graph(str(TINY_ONNX_PATH), graph_name="tiny")
-        digests = {
-            b: graph_digest(apply_bindings(g, DimensionBindings(request_batch=b)))
-            for b in [1, 2, 4, 8]
-        }
+        digests = {b: graph_digest(apply_bindings(g, DimensionBindings(request_batch=b))) for b in [1, 2, 4, 8]}
         assert len(set(digests.values())) == 4
 
     def test_unsupported_op_raises_with_context(self):
@@ -250,7 +250,7 @@ class TestOnnxAdapter:
         golden_g = _build_tiny_onnx_golden_graph(batch="batch")
         assert [n.op_type for n in onnx_g.nodes] == [n.op_type for n in golden_g.nodes]
         assert {t.tensor_id for t in onnx_g.tensors} == {t.tensor_id for t in golden_g.tensors}
-        for ot, gt in zip(onnx_g.tensors, golden_g.tensors):
+        for ot, gt in zip(onnx_g.tensors, golden_g.tensors, strict=False):
             assert ot.shape == gt.shape, f"shape mismatch for {ot.tensor_id}"
             assert ot.precision == gt.precision
 
@@ -311,7 +311,7 @@ class TestLegacyAdapter:
         validate_all(graph, bindings, DEFAULT_REGISTRY)
 
         # Each trace entry is a gemm node; compare node mac_count / cycles with direct estimate.
-        for node, (m, k, n, _layer, _name) in zip(graph.nodes, trace):
+        for node, (m, k, n, _layer, _name) in zip(graph.nodes, trace, strict=False):
             direct = engine.estimate(m, k, n)
             assert node.op_type == "gemm"
             assert direct.mac_count == m * k * n
@@ -319,7 +319,15 @@ class TestLegacyAdapter:
     def test_legacy_cv_cycles_match_old_path(self):
         """A legacy CV trace lowered to graph produces the same modeled-op counts as the old trace."""
         trace = [
-            {"type": "pointwise_conv", "name": "conv1", "M": 16, "K": 3, "N": 4, "im2col_overhead_cycles": 0.0, "sfu_cycles": 0},
+            {
+                "type": "pointwise_conv",
+                "name": "conv1",
+                "M": 16,
+                "K": 3,
+                "N": 4,
+                "im2col_overhead_cycles": 0.0,
+                "sfu_cycles": 0,
+            },
             {"type": "relu", "name": "relu1", "M": 0, "K": 0, "N": 0, "im2col_overhead_cycles": 0.0, "sfu_cycles": 8},
             {"type": "add", "name": "add1", "M": 0, "K": 0, "N": 0, "im2col_overhead_cycles": 0.0, "sfu_cycles": 0},
         ]

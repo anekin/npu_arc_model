@@ -10,38 +10,40 @@ Usage:
 
 import argparse
 import json
-import math
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
 
 import yaml
 
 # Add parent to path for relative imports
 sys.path.insert(0, str(Path(__file__).parent))
 
+from engine.isa import NPUInstruction
 from engine.mac_engine import create_engine
+from engine.multicore import MultiCoreTimeline
+from engine.timeline import (
+    CoreTimeline,
+    LayerBreakdown,
+    SimulationReport,
+    breakdown_events,
+)
+from models.dma import DMAModel
+from models.dram import DRAMModel
+from models.kv_cache import KVCacheModel
 from models.memory_hierarchy import build_hierarchy_from_config
+from models.noc import NoCModel
 from models.residency import build_memory_access_plan
 from models.sfu import SFUModel
 from models.vector import VectorModel
-from models.dma import DMAModel
-from models.kv_cache import KVCacheModel
-from models.dram import DRAMModel
-from models.noc import NoCModel
-from engine.timeline import (
-    CoreTimeline, LayerBreakdown, SimulationReport, breakdown_events,
-)
-from engine.multicore import MultiCoreTimeline, FIFOConfig, CrossbarConfig
 from workloads.legacy_adapter import lower_llm_tuple_trace
-
 
 # ── Default 3B model trace ──────────────────────────────────────────
 # Each GEMM: (M, K, N, layer, op_name)
 # Derived from Qwen2.5-3B config (36 layers, hidden=2048, intermediate=11008)
 # Decode: M=1 (single token), Prefill: M=128
 
-def generate_qwen3b_trace(prompt_len: int = 128) -> List[Tuple[int, int, int, int, str]]:
+
+def generate_qwen3b_trace(prompt_len: int = 128) -> list[tuple[int, int, int, int, str]]:
     """Generate GEMM trace from Qwen2.5-3B architecture.
 
     Each transformer layer has 7 matmuls:
@@ -59,8 +61,8 @@ def generate_qwen3b_trace(prompt_len: int = 128) -> List[Tuple[int, int, int, in
     NUM_HEADS = 16
     NUM_KV_HEADS = 16
     HEAD_DIM = 128
-    QKV_DIM = NUM_HEADS * HEAD_DIM   # 16 * 128 = 2048
-    KV_DIM = NUM_KV_HEADS * HEAD_DIM # 16 * 128 = 2048
+    QKV_DIM = NUM_HEADS * HEAD_DIM  # 16 * 128 = 2048
+    KV_DIM = NUM_KV_HEADS * HEAD_DIM  # 16 * 128 = 2048
 
     trace = []
     for layer in range(NUM_LAYERS):
@@ -75,6 +77,7 @@ def generate_qwen3b_trace(prompt_len: int = 128) -> List[Tuple[int, int, int, in
 
 
 # ── Simulator ────────────────────────────────────────────────────────
+
 
 class NPUSimulator:
     """Phase 1: Single-core NPU performance simulator."""
@@ -101,11 +104,9 @@ class NPUSimulator:
         self.memory_access_plan = memory_plan
 
         # Configure KV cache for Qwen2.5-3B
-        self.kv.configure_for_model(
-            num_kv_heads=16, head_dim=128, num_layers=36, max_context=2048
-        )
+        self.kv.configure_for_model(num_kv_heads=16, head_dim=128, num_layers=36, max_context=2048)
 
-    def simulate_decode(self, trace: List[Tuple[int, int, int, int, str]]) -> SimulationReport:
+    def simulate_decode(self, trace: list[tuple[int, int, int, int, str]]) -> SimulationReport:
         """Simulate decode: M=1 per GEMM — v2 bandwidth-aware model.
 
         v2: Weights stream from DRAM every token (too large for SRAM).
@@ -115,7 +116,7 @@ class NPUSimulator:
         that share (M,K) into a single dual-weight-register estimation.
         """
         timeline = CoreTimeline(core_id=0)
-        layer_data: Dict[int, LayerBreakdown] = {}
+        layer_data: dict[int, LayerBreakdown] = {}
         total_tokens = 128  # KV cache tracked context depth (baseline for Qwen2.5-3B)
         total_weight_bytes = 0
 
@@ -137,45 +138,40 @@ class NPUSimulator:
                 timeline.add_kv("layer_switch", kv_switch, layer)
                 layer_data[layer].kv_cache += kv_switch
                 if debug_enabled:
-                    print(f"[DEBUG L{layer}/layer_switch] wall_clock += {timeline._current_cycle - _prev_cycle:>10,}  (accumulated: {timeline._current_cycle:>12,})")
+                    print(
+                        f"[DEBUG L{layer}/layer_switch] wall_clock += {timeline._current_cycle - _prev_cycle:>10,}  (accumulated: {timeline._current_cycle:>12,})"
+                    )
 
             # ── Weight Cache: merge FFN_gate + FFN_up ──
-            if (weight_cache_enabled and op_name == "FFN_gate"
-                    and i + 1 < len(trace)):
+            if weight_cache_enabled and op_name == "FFN_gate" and i + 1 < len(trace):
                 next_M, next_K, next_N, next_layer, next_op = trace[i + 1]
-                if (next_op == "FFN_up" and next_M == M
-                        and next_K == K and next_layer == layer):
+                if next_op == "FFN_up" and next_M == M and next_K == K and next_layer == layer:
                     # Merged estimation
                     _prev_cycle = timeline._current_cycle
                     mxu_result = self.mxu.estimate_weight_cache_pair(M, K, N)
                     mxu_cycles = mxu_result.total_cycles
                     timeline.add_mxu(
-                        f"Gate+Up (cache, {M}×{K}×{N}, "
-                        f"{mxu_result.num_tiles} dual-tiles)",
-                        mxu_cycles, layer)
+                        f"Gate+Up (cache, {M}×{K}×{N}, {mxu_result.num_tiles} dual-tiles)", mxu_cycles, layer
+                    )
                     layer_data[layer].mxu += mxu_cycles
                     total_weight_bytes += mxu_result.weight_bytes
                     if debug_enabled:
-                        print(f"[DEBUG L{layer}/Gate+Up_cache] wall_clock += {timeline._current_cycle - _prev_cycle:>10,}  (accumulated: {timeline._current_cycle:>12,})")
+                        print(
+                            f"[DEBUG L{layer}/Gate+Up_cache] wall_clock += {timeline._current_cycle - _prev_cycle:>10,}  (accumulated: {timeline._current_cycle:>12,})"
+                        )
 
                     # DMA: merged weight pair event for breakdown tracking
                     mxu_end = timeline._current_cycle
-                    timeline.add_dma_parallel(
-                        f"dma_weights Gate+Up {M}x{K}x{N}",
-                        mxu_result.dma_cycles, layer)
+                    timeline.add_dma_parallel(f"dma_weights Gate+Up {M}x{K}x{N}", mxu_result.dma_cycles, layer)
                     timeline._current_cycle = mxu_end
 
-                    effective, hidden = self.dma.estimate_effective(
-                        mxu_result.dma_cycles, mxu_result.compute_cycles)
+                    effective, hidden = self.dma.estimate_effective(mxu_result.dma_cycles, mxu_result.compute_cycles)
                     layer_data[layer].dma_effective += effective
                     layer_data[layer].dma_weight += hidden
 
                     # NoC: merged weight pair transfer over interconnect (breakdown only)
-                    noc_cycles = self.noc.estimate_transfer(
-                        mxu_result.weight_bytes, src_id=0, dst_id=0)
-                    timeline.add_noc(
-                        f"noc_weights Gate+Up {M}x{K}x{N}",
-                        noc_cycles, layer)
+                    noc_cycles = self.noc.estimate_transfer(mxu_result.weight_bytes, src_id=0, dst_id=0)
+                    timeline.add_noc(f"noc_weights Gate+Up {M}x{K}x{N}", noc_cycles, layer)
                     timeline._current_cycle = mxu_end
                     layer_data[layer].noc_latency += noc_cycles
 
@@ -185,7 +181,9 @@ class NPUSimulator:
                     timeline.add_kv("kv_access", kv_cycles, layer)
                     layer_data[layer].kv_cache += kv_cycles
                     if debug_enabled:
-                        print(f"[DEBUG L{layer}/kv_cache_pair] wall_clock += {timeline._current_cycle - _prev_cycle:>10,}  (accumulated: {timeline._current_cycle:>12,})")
+                        print(
+                            f"[DEBUG L{layer}/kv_cache_pair] wall_clock += {timeline._current_cycle - _prev_cycle:>10,}  (accumulated: {timeline._current_cycle:>12,})"
+                        )
 
                     i += 2  # skip both gate and up
                     continue
@@ -194,34 +192,28 @@ class NPUSimulator:
             _prev_cycle = timeline._current_cycle
             mxu_result = self.mxu.estimate(M, K, N)
             mxu_cycles = mxu_result.total_cycles
-            timeline.add_mxu(
-                f"{op_name} ({M}×{K}×{N}, {mxu_result.num_tiles}tiles)",
-                mxu_cycles, layer)
+            timeline.add_mxu(f"{op_name} ({M}×{K}×{N}, {mxu_result.num_tiles}tiles)", mxu_cycles, layer)
             layer_data[layer].mxu += mxu_cycles
             total_weight_bytes += mxu_result.weight_bytes
             if debug_enabled:
-                print(f"[DEBUG L{layer}/{op_name}] wall_clock += {timeline._current_cycle - _prev_cycle:>10,}  (accumulated: {timeline._current_cycle:>12,})")
+                print(
+                    f"[DEBUG L{layer}/{op_name}] wall_clock += {timeline._current_cycle - _prev_cycle:>10,}  (accumulated: {timeline._current_cycle:>12,})"
+                )
 
             # DMA: weight streaming event for breakdown tracking.
             # Engine total_cycles already accounts for DMA stall, so we
             # add the DMA event and then restore the MXU-end position.
             mxu_end = timeline._current_cycle
-            timeline.add_dma_parallel(
-                f"dma_weights {op_name} {M}x{K}x{N}",
-                mxu_result.dma_cycles, layer)
+            timeline.add_dma_parallel(f"dma_weights {op_name} {M}x{K}x{N}", mxu_result.dma_cycles, layer)
             timeline._current_cycle = mxu_end
 
-            effective, hidden = self.dma.estimate_effective(
-                mxu_result.dma_cycles, mxu_result.compute_cycles)
+            effective, hidden = self.dma.estimate_effective(mxu_result.dma_cycles, mxu_result.compute_cycles)
             layer_data[layer].dma_effective += effective
             layer_data[layer].dma_weight += hidden
 
             # NoC: weight transfer over interconnect (breakdown only)
-            noc_cycles = self.noc.estimate_transfer(
-                mxu_result.weight_bytes, src_id=0, dst_id=0)
-            timeline.add_noc(
-                f"noc_weights {op_name} {M}x{K}x{N}",
-                noc_cycles, layer)
+            noc_cycles = self.noc.estimate_transfer(mxu_result.weight_bytes, src_id=0, dst_id=0)
+            timeline.add_noc(f"noc_weights {op_name} {M}x{K}x{N}", noc_cycles, layer)
             timeline._current_cycle = mxu_end
             layer_data[layer].noc_latency += noc_cycles
 
@@ -232,21 +224,27 @@ class NPUSimulator:
                 vec_softmax = self.vector.estimate_softmax_vector_parts(HIDDEN)
                 sfu_softmax = self.sfu.estimate_softmax_decomposed(HIDDEN)
 
-                sfu_cycles = vec_softmax["max_reduce"] + sfu_softmax["exp"] + vec_softmax["sum_reduce"] + sfu_softmax["div"]
+                sfu_cycles = (
+                    vec_softmax["max_reduce"] + sfu_softmax["exp"] + vec_softmax["sum_reduce"] + sfu_softmax["div"]
+                )
                 sfu_cycles += self.sfu.estimate("layernorm", HIDDEN)
                 sfu_cycles += self.sfu.estimate("rope", HIDDEN * 2)
                 _prev_cycle = timeline._current_cycle
                 timeline.add_sfu("attn_sfu (exp+div+ln+rope)", sfu_cycles, layer)
                 layer_data[layer].sfu += sfu_cycles
                 if debug_enabled:
-                    print(f"[DEBUG L{layer}/attn_sfu] wall_clock += {timeline._current_cycle - _prev_cycle:>10,}  (accumulated: {timeline._current_cycle:>12,})")
+                    print(
+                        f"[DEBUG L{layer}/attn_sfu] wall_clock += {timeline._current_cycle - _prev_cycle:>10,}  (accumulated: {timeline._current_cycle:>12,})"
+                    )
 
                 vec_cycles = vec_softmax["scale_sub"] + self.vector.estimate_residual_add(HIDDEN)
                 _prev_cycle = timeline._current_cycle
                 timeline.add_vector("attn_vec (sub+residual)", vec_cycles, layer)
                 layer_data[layer].vector += vec_cycles
                 if debug_enabled:
-                    print(f"[DEBUG L{layer}/attn_vec] wall_clock += {timeline._current_cycle - _prev_cycle:>10,}  (accumulated: {timeline._current_cycle:>12,})")
+                    print(
+                        f"[DEBUG L{layer}/attn_vec] wall_clock += {timeline._current_cycle - _prev_cycle:>10,}  (accumulated: {timeline._current_cycle:>12,})"
+                    )
 
             elif op_name in ("FFN_down",):
                 INTERMEDIATE = 11008
@@ -257,14 +255,18 @@ class NPUSimulator:
                 timeline.add_sfu("ffn_sfu (gelu+ln)", sfu_cycles, layer)
                 layer_data[layer].sfu += sfu_cycles
                 if debug_enabled:
-                    print(f"[DEBUG L{layer}/ffn_sfu] wall_clock += {timeline._current_cycle - _prev_cycle:>10,}  (accumulated: {timeline._current_cycle:>12,})")
+                    print(
+                        f"[DEBUG L{layer}/ffn_sfu] wall_clock += {timeline._current_cycle - _prev_cycle:>10,}  (accumulated: {timeline._current_cycle:>12,})"
+                    )
 
                 vec_cycles = self.vector.estimate_residual_add(HIDDEN)
                 _prev_cycle = timeline._current_cycle
                 timeline.add_vector("ffn_vec (residual)", vec_cycles, layer)
                 layer_data[layer].vector += vec_cycles
                 if debug_enabled:
-                    print(f"[DEBUG L{layer}/ffn_vec] wall_clock += {timeline._current_cycle - _prev_cycle:>10,}  (accumulated: {timeline._current_cycle:>12,})")
+                    print(
+                        f"[DEBUG L{layer}/ffn_vec] wall_clock += {timeline._current_cycle - _prev_cycle:>10,}  (accumulated: {timeline._current_cycle:>12,})"
+                    )
 
             # KV Cache: per-GEMM access
             _prev_cycle = timeline._current_cycle
@@ -272,12 +274,18 @@ class NPUSimulator:
             timeline.add_kv("kv_access", kv_cycles, layer)
             layer_data[layer].kv_cache += kv_cycles
             if debug_enabled:
-                print(f"[DEBUG L{layer}/kv_access] wall_clock += {timeline._current_cycle - _prev_cycle:>10,}  (accumulated: {timeline._current_cycle:>12,})")
+                print(
+                    f"[DEBUG L{layer}/kv_access] wall_clock += {timeline._current_cycle - _prev_cycle:>10,}  (accumulated: {timeline._current_cycle:>12,})"
+                )
 
             # Update layer total
-            layer_data[layer].total = (layer_data[layer].mxu + layer_data[layer].sfu
-                                        + layer_data[layer].vector + layer_data[layer].kv_cache
-                                        + layer_data[layer].dma_effective)
+            layer_data[layer].total = (
+                layer_data[layer].mxu
+                + layer_data[layer].sfu
+                + layer_data[layer].vector
+                + layer_data[layer].kv_cache
+                + layer_data[layer].dma_effective
+            )
 
             i += 1
 
@@ -287,10 +295,13 @@ class NPUSimulator:
         refresh_cycles = self.dram.add_refresh_overhead(total_cycles_before)
         timeline.add_kv("dram_refresh", refresh_cycles, -1)
         if debug_enabled:
-            print(f"[DEBUG SYSTEM/dram_refresh] wall_clock += {timeline._current_cycle - _prev_cycle:>10,}  (accumulated: {timeline._current_cycle:>12,})")
+            print(
+                f"[DEBUG SYSTEM/dram_refresh] wall_clock += {timeline._current_cycle - _prev_cycle:>10,}  (accumulated: {timeline._current_cycle:>12,})"
+            )
 
         total_cycles = timeline.total_cycles
         from contracts.units import cycles_to_microseconds as _c2us
+
         decode_us = _c2us(total_cycles, self.f_mhz)
         decode_tok_per_s = 1e6 / decode_us if decode_us > 0 else 0
 
@@ -317,16 +328,16 @@ class NPUSimulator:
 
     # ── L2: ISA instruction interface ───────────────────────────────
 
-    def run_instructions(self, program: "List[NPUInstruction]") -> SimulationReport:
+    def run_instructions(self, program: "list[NPUInstruction]") -> SimulationReport:
         """L2 interface: execute NPU ISA program on the simulator.
 
         Maps each ISA instruction to the appropriate model call,
         advancing the timeline with proper overlap semantics.
         """
-        from engine.isa import NPUInstruction, OpCode
+        from engine.isa import OpCode
 
         timeline = CoreTimeline(core_id=0)
-        layer_data: Dict[int, LayerBreakdown] = {}
+        layer_data: dict[int, LayerBreakdown] = {}
         current_layer = 0
 
         for instr in program:
@@ -356,8 +367,16 @@ class NPUSimulator:
                 dma_cycles = self.dma.estimate_transfer(size, "store")
                 timeline.add_dma_parallel(f"DMA_ST {size}B", dma_cycles, current_layer)
 
-            elif op in (OpCode.SOFTMAX, OpCode.LAYERNORM, OpCode.GELU, OpCode.RELU,
-                        OpCode.SILU, OpCode.MAXPOOL, OpCode.AVGPOOL, OpCode.ROPE):
+            elif op in (
+                OpCode.SOFTMAX,
+                OpCode.LAYERNORM,
+                OpCode.GELU,
+                OpCode.RELU,
+                OpCode.SILU,
+                OpCode.MAXPOOL,
+                OpCode.AVGPOOL,
+                OpCode.ROPE,
+            ):
                 length = ops.get("len", 2048)
                 op_name = op.name.lower()
                 sfu_cycles = self.sfu.estimate(op_name, length)
@@ -376,6 +395,7 @@ class NPUSimulator:
 
         total_cycles = timeline.total_cycles
         from contracts.units import cycles_to_microseconds as _c2us
+
         decode_us = _c2us(total_cycles, self.f_mhz)
         decode_tok_per_s = 1e6 / decode_us if decode_us > 0 else 0
 
@@ -404,9 +424,9 @@ class NPUSimulator:
         """
         trace = generate_qwen3b_trace(prompt_len=prompt_len)
         timeline = CoreTimeline(core_id=0)
-        layer_data: Dict[int, LayerBreakdown] = {}
+        layer_data: dict[int, LayerBreakdown] = {}
 
-        for (M, K, N, layer, op_name) in trace:
+        for M, K, N, layer, op_name in trace:
             if layer not in layer_data:
                 layer_data[layer] = LayerBreakdown(layer=layer)
 
@@ -417,22 +437,16 @@ class NPUSimulator:
 
             # DMA: weight streaming event for breakdown tracking
             mxu_end = timeline._current_cycle
-            timeline.add_dma_parallel(
-                f"dma_weights {op_name} {M}x{K}x{N}",
-                mxu_result.dma_cycles, layer)
+            timeline.add_dma_parallel(f"dma_weights {op_name} {M}x{K}x{N}", mxu_result.dma_cycles, layer)
             timeline._current_cycle = mxu_end
 
-            effective, hidden = self.dma.estimate_effective(
-                mxu_result.dma_cycles, mxu_result.compute_cycles)
+            effective, hidden = self.dma.estimate_effective(mxu_result.dma_cycles, mxu_result.compute_cycles)
             layer_data[layer].dma_effective += effective
             layer_data[layer].dma_weight += hidden
 
             # NoC: weight transfer over interconnect (breakdown only)
-            noc_cycles = self.noc.estimate_transfer(
-                mxu_result.weight_bytes, src_id=0, dst_id=0)
-            timeline.add_noc(
-                f"noc_weights {op_name} {M}x{K}x{N}",
-                noc_cycles, layer)
+            noc_cycles = self.noc.estimate_transfer(mxu_result.weight_bytes, src_id=0, dst_id=0)
+            timeline.add_noc(f"noc_weights {op_name} {M}x{K}x{N}", noc_cycles, layer)
             timeline._current_cycle = mxu_end
             layer_data[layer].noc_latency += noc_cycles
 
@@ -453,9 +467,12 @@ class NPUSimulator:
             layer_data[layer].kv_cache += kv_cycles
 
             # Update layer total
-            layer_data[layer].total = (layer_data[layer].mxu + layer_data[layer].sfu
-                                        + layer_data[layer].kv_cache
-                                        + layer_data[layer].dma_effective)
+            layer_data[layer].total = (
+                layer_data[layer].mxu
+                + layer_data[layer].sfu
+                + layer_data[layer].kv_cache
+                + layer_data[layer].dma_effective
+            )
 
         # DRAM refresh overhead
         total_before = timeline.total_cycles
@@ -483,40 +500,39 @@ class NPUSimulator:
 
 # ── CLI ──────────────────────────────────────────────────────────────
 
+
 def main():
     parser = argparse.ArgumentParser(description="NPU System Simulator — Phase 3")
     parser.add_argument("-c", "--config", default="config/npu_config.yaml")
     parser.add_argument("--prefill", type=int, default=128)
-    parser.add_argument("--isa", action="store_true",
-                        help="Use ISA instruction mode (L2 interface)")
+    parser.add_argument("--isa", action="store_true", help="Use ISA instruction mode (L2 interface)")
     parser.add_argument("-o", "--output", default=None)
     parser.add_argument("--json", action="store_true")
 
     # ── Live override args ──
-    parser.add_argument("--engine", default=None,
-                        choices=["systolic", "os_systolic", "block", "tensor_core",
-                                 "wmma", "gmma", "input_stationary", "fsa"],
-                        help="Override engine type (ignores config)")
-    parser.add_argument("--dram", default=None,
-                        choices=["25", "50", "100", "200", "460", "819"],
-                        help="Override DRAM bandwidth in GB/s")
-    parser.add_argument("--array", default=None,
-                        help="Override array dimensions, e.g. 128x256")
-    parser.add_argument("--freq", type=int, default=None,
-                        help="Override frequency in MHz")
-    parser.add_argument("--precision", type=int, default=None, choices=[2, 4, 8],
-                        help="Override weight precision bits")
-    parser.add_argument("--weight-cache", action="store_true", default=None,
-                        help="Enable weight cache (PE dual register)")
-    parser.add_argument("--list-engines", action="store_true",
-                        help="List available engines and exit")
-    parser.add_argument("--list-dram", action="store_true",
-                        help="List DRAM bandwidth presets and exit")
+    parser.add_argument(
+        "--engine",
+        default=None,
+        choices=["systolic", "os_systolic", "block", "tensor_core", "wmma", "gmma", "input_stationary", "fsa"],
+        help="Override engine type (ignores config)",
+    )
+    parser.add_argument(
+        "--dram", default=None, choices=["25", "50", "100", "200", "460", "819"], help="Override DRAM bandwidth in GB/s"
+    )
+    parser.add_argument("--array", default=None, help="Override array dimensions, e.g. 128x256")
+    parser.add_argument("--freq", type=int, default=None, help="Override frequency in MHz")
+    parser.add_argument("--precision", type=int, default=None, choices=[2, 4, 8], help="Override weight precision bits")
+    parser.add_argument(
+        "--weight-cache", action="store_true", default=None, help="Enable weight cache (PE dual register)"
+    )
+    parser.add_argument("--list-engines", action="store_true", help="List available engines and exit")
+    parser.add_argument("--list-dram", action="store_true", help="List DRAM bandwidth presets and exit")
     args = parser.parse_args()
 
     # List modes
     if args.list_engines:
         from engine.registry import engine_listing
+
         print(engine_listing())
         return
     if args.list_dram:
@@ -541,12 +557,10 @@ def main():
         mac["type"] = args.engine
         overrides.append(f"engine={args.engine}")
     if args.dram:
-        bw = {"25": 25.6, "50": 51.2, "100": 102.4, "200": 204.8,
-              "460": 460.0, "819": 819.2}[args.dram]
+        bw = {"25": 25.6, "50": 51.2, "100": 102.4, "200": 204.8, "460": 460.0, "819": 819.2}[args.dram]
         mem = cfg.get("memory", {})
         mem["bandwidth_gbps"] = bw
-        mem["dram_width_bits"] = {"25": 32, "50": 64, "100": 128,
-                                   "200": 256, "460": 1024, "819": 1024}[args.dram]
+        mem["dram_width_bits"] = {"25": 32, "50": 64, "100": 128, "200": 256, "460": 1024, "819": 1024}[args.dram]
         overrides.append(f"DRAM={bw}GB/s")
     if args.array:
         h, w = args.array.split("x")
@@ -581,15 +595,14 @@ def main():
         sim.dma = DMAModel(cfg, memory_access_plan=memory_plan)
         sim.dram = DRAMModel(cfg)
         sim.kv = KVCacheModel(cfg, memory_access_plan=memory_plan)
-        sim.kv.configure_for_model(
-            num_kv_heads=16, head_dim=128, num_layers=36, max_context=2048
-        )
+        sim.kv.configure_for_model(num_kv_heads=16, head_dim=128, num_layers=36, max_context=2048)
         sim.memory_access_plan = memory_plan
         sim.config = cfg
 
     if args.isa:
         # ── L2: ISA instruction mode ─────────────────────────────
         from engine.compiler import NPUCompiler
+
         compiler = NPUCompiler(num_cores=1)
         decode_trace = generate_qwen3b_trace(prompt_len=1)
         program = compiler.compile_decode(decode_trace)  # v2: weights stream from DRAM (compiler default=False)
@@ -634,16 +647,16 @@ def main():
 
         # ── Multi-core projection ────────────────────────────────────
         if report.decode_tok_per_s > 0:
-            print(f"\n--- Multi-core Projection ---")
+            print("\n--- Multi-core Projection ---")
             mct = MultiCoreTimeline(num_cores=1)
             base_us = report.decode_per_token_us
             print(f"  {'Config':12s} {'Decode':>10s} {'Area':>8s} {'Notes'}")
-            print(f"  {'─'*50}")
+            print(f"  {'─' * 50}")
             for nc in [1, 2, 4, 8]:
                 mct.num_cores = nc
                 dp = mct.simulate_data_parallel(int(base_us), 1)
                 area = {1: 27, 2: 42, 4: 69, 8: 122}.get(nc, 0)
-                note = "Baseline" if nc == 1 else f"DP, -{int((1-dp['contention_penalty'])*100)}% contention"
+                note = "Baseline" if nc == 1 else f"DP, -{int((1 - dp['contention_penalty']) * 100)}% contention"
                 print(f"  {f'{nc} core':12s} {dp['effective_tok_per_s']:7,.0f} tok/s  {area:4d}mm²  {note}")
 
 

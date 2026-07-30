@@ -8,11 +8,7 @@ Ensures that:
 
 from __future__ import annotations
 
-from typing import Any, Dict
-
 import pytest
-from pydantic import ValidationError
-
 from contracts.errors import ConfigError
 from models.memory_backend import (
     MemoryAccessPattern,
@@ -24,6 +20,7 @@ from models.memory_backend import (
     validate_component_manifest,
 )
 from models.onchip_dram import Parametric3DMemoryBackend
+from pydantic import ValidationError
 
 
 def _onchip_request(
@@ -216,8 +213,6 @@ def test_parametric_backend_varies_with_capacity_and_bandwidth(capacity_gb, band
     """Different capacity × bandwidth produce different PPA numbers."""
     backend = Parametric3DMemoryBackend()
     base = backend.estimate(_onchip_request(capacity_gb=0.1, bandwidth_gbps=100.0))
-    current = backend.estimate(
-        _onchip_request(capacity_gb=capacity_gb, bandwidth_gbps=bandwidth_gbps)
-    )
+    current = backend.estimate(_onchip_request(capacity_gb=capacity_gb, bandwidth_gbps=bandwidth_gbps))
     assert current.total_area_mm2 >= base.total_area_mm2
     assert current.memory_die_area_mm2 >= base.memory_die_area_mm2

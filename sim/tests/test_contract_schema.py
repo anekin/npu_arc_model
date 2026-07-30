@@ -8,28 +8,22 @@ Covers plan acceptance criteria:
   non-finite/non-positive numbers.
 """
 
-import copy
-import json
-import math
 import tempfile
 from pathlib import Path
 
 import pytest
 import yaml
-from pydantic import ValidationError
-
-from contracts.errors import ConfigError, SchemaVersionError
+from config.npu_config import load_config
+from contracts.errors import ConfigError
 from contracts.hardware import (
     HardwareConfigV2,
     MACEngineConfig,
     MemoryConfig,
     Provenance,
-    SRAMConfig,
     TrustLevel,
 )
-from contracts.migrations import LossReport, migrate_v1_to_v2, project_v2_to_legacy
-from config.npu_config import load_config
-
+from contracts.migrations import migrate_v1_to_v2, project_v2_to_legacy
+from pydantic import ValidationError
 
 # ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -77,7 +71,11 @@ def _load_config_as_v2() -> HardwareConfigV2:
     # Drop legacy sections not yet in the v2 schema
     for key in list(migrated.keys()):
         if key not in (
-            "version", "mac_engine", "memory", "sram", "cores",
+            "version",
+            "mac_engine",
+            "memory",
+            "sram",
+            "cores",
             "on_chip_memory",  # optional, keep
         ):
             del migrated[key]
@@ -306,15 +304,17 @@ def test_missing_version_defaults_to_v2():
     When validating as HardwareConfigV2,
     Then it defaults to '2' and succeeds.
     """
-    cfg = HardwareConfigV2.model_validate({
-        "mac_engine": {
-            "type": "block",
-            "array_height": 64,
-            "array_width": 64,
-            "frequency_mhz": 1000,
-        },
-        "memory": {"bandwidth_gbps": 51.2},
-    })
+    cfg = HardwareConfigV2.model_validate(
+        {
+            "mac_engine": {
+                "type": "block",
+                "array_height": 64,
+                "array_width": 64,
+                "frequency_mhz": 1000,
+            },
+            "memory": {"bandwidth_gbps": 51.2},
+        }
+    )
     assert cfg.version == "2"
 
 
@@ -324,15 +324,17 @@ def test_wrong_version_fails():
     Then a validation error is raised.
     """
     with pytest.raises((ValidationError, ValueError), match="version"):
-        HardwareConfigV2.model_validate({
-            "version": "1",
-            "mac_engine": {
-                "type": "block",
-                "array_height": 64,
-                "array_width": 64,
-            },
-            "memory": {"bandwidth_gbps": 51.2},
-        })
+        HardwareConfigV2.model_validate(
+            {
+                "version": "1",
+                "mac_engine": {
+                    "type": "block",
+                    "array_height": 64,
+                    "array_width": 64,
+                },
+                "memory": {"bandwidth_gbps": 51.2},
+            }
+        )
 
 
 # ── NaN / Inf ─────────────────────────────────────────────────────────────
@@ -488,10 +490,11 @@ def test_non_mapping_root_fails():
     try:
         # Monkey-patch the config path for the test
         import config.npu_config as cfg_mod
-        orig = str(Path(cfg_mod.__file__).with_suffix(".yaml"))
+
+        str(Path(cfg_mod.__file__).with_suffix(".yaml"))
         # Use load_config logic directly
-        from contracts.errors import ConfigError
         import yaml as y
+        from contracts.errors import ConfigError
 
         with open(tmp_path) as fh:
             data = y.safe_load(fh)
@@ -509,11 +512,13 @@ def test_non_mapping_sub_section():
     When validating as HardwareConfigV2,
     Then ValidationError is raised."""
     with pytest.raises(ValidationError):
-        HardwareConfigV2.model_validate({
-            "version": "2",
-            "mac_engine": "not a dict",
-            "memory": {"bandwidth_gbps": 51.2},
-        })
+        HardwareConfigV2.model_validate(
+            {
+                "version": "2",
+                "mac_engine": "not a dict",
+                "memory": {"bandwidth_gbps": 51.2},
+            }
+        )
 
 
 # ── provenance defaults ───────────────────────────────────────────────────

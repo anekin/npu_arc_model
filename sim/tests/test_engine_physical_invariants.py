@@ -11,13 +11,10 @@ The independent oracle in ``tests.oracles.physics`` computes every bound
 from first principles without importing production estimators.
 """
 
-import copy
-import math
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 import pytest
-
-from engine.mac_engine import EngineResult, create_engine
+from engine.mac_engine import create_engine
 from tests.oracles.physics import (
     activation_bytes,
     bytes_per_cycle,
@@ -25,20 +22,17 @@ from tests.oracles.physics import (
     compute_lower_bound,
     dma_lower_bound,
     mac_count,
-    op_count,
     peak_macs_per_cycle,
     raw_transfer_bytes,
-    required_diagnostics,
     validate_bandwidth_monotonic,
     validate_diagnostics,
     validate_m_monotonic,
     validate_utilization,
-    weight_bytes,
 )
 
 # ── Test parameters ──────────────────────────────────────────────────────
 
-ENGINE_TYPES: List[str] = [
+ENGINE_TYPES: list[str] = [
     "systolic",
     "block",
     "os_systolic",
@@ -49,16 +43,16 @@ ENGINE_TYPES: List[str] = [
     "fsa",
 ]
 
-M_VALUES: List[int] = [1, 2, 3, 4, 8, 16, 64, 256, 1024]
+M_VALUES: list[int] = [1, 2, 3, 4, 8, 16, 64, 256, 1024]
 
 # Representative shape pairs (K, N): small baseline + non-divisible
-SHAPE_PAIRS: List[Tuple[int, int]] = [
-    (64, 64),    # aligned with 64×64 array
-    (110, 72),   # non-divisible by 64
+SHAPE_PAIRS: list[tuple[int, int]] = [
+    (64, 64),  # aligned with 64×64 array
+    (110, 72),  # non-divisible by 64
 ]
 
 # Bandwidth tiers: (label, bandwidth_gbps)
-BW_TIERS: List[Tuple[str, float]] = [
+BW_TIERS: list[tuple[str, float]] = [
     ("LPDDR5", 51.2),
     ("HBM3", 819.2),
     ("HIGH_BW", 500.0),
@@ -77,7 +71,7 @@ DEFAULT_DRAM_EFF = 0.85
 # ── Config builders ───────────────────────────────────────────────────────
 
 
-def _base_mac_engine(engine_type: str) -> Dict[str, Any]:
+def _base_mac_engine(engine_type: str) -> dict[str, Any]:
     """Core MAC engine parameters shared across bandwidth tiers."""
     return {
         "type": engine_type,
@@ -90,20 +84,17 @@ def _base_mac_engine(engine_type: str) -> Dict[str, Any]:
     }
 
 
-def _memory_config(bandwidth_gbps: float) -> Dict[str, Any]:
+def _memory_config(bandwidth_gbps: float) -> dict[str, Any]:
     """Memory config with GB/s bandwidth and bytes/cycle for the engine."""
     return {
         "type": "LPDDR5" if bandwidth_gbps <= 100 else "HBM3",
         "bandwidth_gbps": bandwidth_gbps,
-        "bandwidth_bytes_per_cycle": (
-            bandwidth_gbps * 1000.0 / DEFAULT_FREQ_MHZ
-        ),
+        "bandwidth_bytes_per_cycle": (bandwidth_gbps * 1000.0 / DEFAULT_FREQ_MHZ),
         "dram_efficiency": DEFAULT_DRAM_EFF,
     }
 
 
-def build_config(engine_type: str,
-                 bandwidth_gbps: float = 51.2) -> Dict[str, Any]:
+def build_config(engine_type: str, bandwidth_gbps: float = 51.2) -> dict[str, Any]:
     """Build a complete engine config for the given type and bandwidth."""
     return {
         "mac_engine": _base_mac_engine(engine_type),
@@ -116,7 +107,7 @@ def build_config(engine_type: str,
 # ── Engine configs with on-chip 3D DRAM for high-BW tier ──────────────────
 
 
-def build_config_onchip(engine_type: str) -> Dict[str, Any]:
+def build_config_onchip(engine_type: str) -> dict[str, Any]:
     """High-BW config with on-chip 3D DRAM for weight-resident mode."""
     cfg = {
         "mac_engine": _base_mac_engine(engine_type),
@@ -130,9 +121,7 @@ def build_config_onchip(engine_type: str) -> Dict[str, Any]:
     return cfg
 
 
-def bw_config_for_tier(engine_type: str,
-                       label: str,
-                       gbps: float) -> Dict[str, Any]:
+def bw_config_for_tier(engine_type: str, label: str, gbps: float) -> dict[str, Any]:
     """Select config builder based on bandwidth tier."""
     if label == "HIGH_BW":
         return build_config_onchip(engine_type)
@@ -144,9 +133,7 @@ def bw_config_for_tier(engine_type: str,
 
 def oracle_peak_macs() -> float:
     """Oracle peak MACs/cycle from fixed geometry."""
-    return peak_macs_per_cycle(
-        DEFAULT_ARRAY_H, DEFAULT_ARRAY_W, DEFAULT_OPS_PER_MAC
-    )
+    return peak_macs_per_cycle(DEFAULT_ARRAY_H, DEFAULT_ARRAY_W, DEFAULT_OPS_PER_MAC)
 
 
 def oracle_eff_bw(bandwidth_gbps: float) -> float:
@@ -161,38 +148,36 @@ class TestMacOpCount:
     """MAC and OP count correctness."""
 
     @pytest.mark.parametrize("engine_type", ENGINE_TYPES)
-    @pytest.mark.parametrize("M,K,N", [
-        (1, 110, 72),
-        (3, 110, 72),
-        (64, 64, 64),
-        (256, 110, 72),
-    ])
-    def test_mac_count_correct(self, engine_type: str,
-                               M: int, K: int, N: int) -> None:
+    @pytest.mark.parametrize(
+        "M,K,N",
+        [
+            (1, 110, 72),
+            (3, 110, 72),
+            (64, 64, 64),
+            (256, 110, 72),
+        ],
+    )
+    def test_mac_count_correct(self, engine_type: str, M: int, K: int, N: int) -> None:
         """Engine.ops (legacy MAC count) must equal M × K × N."""
         engine = create_engine(build_config(engine_type))
         result = engine.estimate(M, K, N)
         expected_macs = mac_count(M, K, N)
-        assert result.ops == expected_macs, (
-            f"{engine_type}: ops={result.ops}, "
-            f"expected mac_count={expected_macs}"
-        )
+        assert result.ops == expected_macs, f"{engine_type}: ops={result.ops}, expected mac_count={expected_macs}"
 
     @pytest.mark.parametrize("engine_type", ENGINE_TYPES)
-    @pytest.mark.parametrize("M,K,N", [
-        (1, 110, 72),
-        (3, 110, 72),
-    ])
-    def test_weight_cache_pair_mac_count(self, engine_type: str,
-                                         M: int, K: int, N: int) -> None:
+    @pytest.mark.parametrize(
+        "M,K,N",
+        [
+            (1, 110, 72),
+            (3, 110, 72),
+        ],
+    )
+    def test_weight_cache_pair_mac_count(self, engine_type: str, M: int, K: int, N: int) -> None:
         """Weight-cache pair ops = 2 × M × K × N (gate + up)."""
         engine = create_engine(build_config(engine_type))
         result = engine.estimate_weight_cache_pair(M, K, N)
         expected_macs = 2 * mac_count(M, K, N)
-        assert result.ops >= expected_macs, (
-            f"{engine_type} cache-pair: ops={result.ops}, "
-            f"expected ≥ {expected_macs}"
-        )
+        assert result.ops >= expected_macs, f"{engine_type} cache-pair: ops={result.ops}, expected ≥ {expected_macs}"
 
 
 class TestComputeFloor:
@@ -201,8 +186,7 @@ class TestComputeFloor:
     @pytest.mark.parametrize("engine_type", ENGINE_TYPES)
     @pytest.mark.parametrize("M", M_VALUES)
     @pytest.mark.parametrize("K,N", SHAPE_PAIRS)
-    def test_compute_floor(self, engine_type: str,
-                           M: int, K: int, N: int) -> None:
+    def test_compute_floor(self, engine_type: str, M: int, K: int, N: int) -> None:
         """total_cycles must be at least the ideal compute floor."""
         engine = create_engine(build_config(engine_type))
         result = engine.estimate(M, K, N)
@@ -218,8 +202,7 @@ class TestComputeFloor:
     @pytest.mark.parametrize("engine_type", ENGINE_TYPES)
     @pytest.mark.parametrize("M", [1, 4, 16, 64])
     @pytest.mark.parametrize("K,N", SHAPE_PAIRS)
-    def test_weight_cache_pair_compute_floor(self, engine_type: str,
-                                             M: int, K: int, N: int) -> None:
+    def test_weight_cache_pair_compute_floor(self, engine_type: str, M: int, K: int, N: int) -> None:
         """Weight-cache pair also respects the compute floor (2× MACs)."""
         engine = create_engine(build_config(engine_type))
         result = engine.estimate_weight_cache_pair(M, K, N)
@@ -227,8 +210,7 @@ class TestComputeFloor:
         peak = oracle_peak_macs()
         floor = compute_lower_bound(macs, peak)
         assert result.total_cycles >= floor, (
-            f"{engine_type} cache-pair M={M},{K},{N}: "
-            f"total_cycles={result.total_cycles} < floor={floor}"
+            f"{engine_type} cache-pair M={M},{K},{N}: total_cycles={result.total_cycles} < floor={floor}"
         )
 
 
@@ -239,9 +221,7 @@ class TestDMAFloor:
     @pytest.mark.parametrize("M", [1, 4, 16, 64])
     @pytest.mark.parametrize("K,N", SHAPE_PAIRS)
     @pytest.mark.parametrize("bw_label,bw_gbps", BW_TIERS)
-    def test_dma_floor(self, engine_type: str,
-                       M: int, K: int, N: int,
-                       bw_label: str, bw_gbps: float) -> None:
+    def test_dma_floor(self, engine_type: str, M: int, K: int, N: int, bw_label: str, bw_gbps: float) -> None:
         """total_cycles >= ceil(raw_bytes / eff_bytes_per_cycle)."""
         cfg = bw_config_for_tier(engine_type, bw_label, bw_gbps)
         engine = create_engine(cfg)
@@ -260,9 +240,7 @@ class TestDMAFloor:
             act_bytes = activation_bytes(M, K, DEFAULT_ABITS)
             # Fallback external DRAM for activations in on-chip mode
             floor_ext = dma_lower_bound(act_bytes, oracle_eff_bw(51.2))
-            floor = compute_lower_bound(
-                mac_count(M, K, N), oracle_peak_macs()
-            )
+            floor = compute_lower_bound(mac_count(M, K, N), oracle_peak_macs())
             # The engine must be compute-bound when on-chip; the primary
             # check is the compute floor, but activations still need time.
             floor = max(floor, floor_ext)
@@ -280,8 +258,7 @@ class TestUtilizationBounds:
     @pytest.mark.parametrize("engine_type", ENGINE_TYPES)
     @pytest.mark.parametrize("M", M_VALUES)
     @pytest.mark.parametrize("K,N", SHAPE_PAIRS)
-    def test_utilization_range(self, engine_type: str,
-                               M: int, K: int, N: int) -> None:
+    def test_utilization_range(self, engine_type: str, M: int, K: int, N: int) -> None:
         """0 < utilization <= 1."""
         engine = create_engine(build_config(engine_type))
         result = engine.estimate(M, K, N)
@@ -293,8 +270,7 @@ class TestUtilizationBounds:
     @pytest.mark.parametrize("engine_type", ENGINE_TYPES)
     @pytest.mark.parametrize("M", [1, 4, 16, 64])
     @pytest.mark.parametrize("K,N", SHAPE_PAIRS)
-    def test_weight_cache_pair_utilization(self, engine_type: str,
-                                           M: int, K: int, N: int) -> None:
+    def test_weight_cache_pair_utilization(self, engine_type: str, M: int, K: int, N: int) -> None:
         """Weight-cache pair utilization also in (0, 1]."""
         engine = create_engine(build_config(engine_type))
         result = engine.estimate_weight_cache_pair(M, K, N)
@@ -309,13 +285,12 @@ class TestMMonotonic:
 
     @pytest.mark.parametrize("engine_type", ENGINE_TYPES)
     @pytest.mark.parametrize("bw_label,bw_gbps", BW_TIERS)
-    def test_m_non_decreasing(self, engine_type: str,
-                              bw_label: str, bw_gbps: float) -> None:
+    def test_m_non_decreasing(self, engine_type: str, bw_label: str, bw_gbps: float) -> None:
         """For fixed K=110,N=72, total_cycles must be non-decreasing with M."""
         cfg = bw_config_for_tier(engine_type, bw_label, bw_gbps)
         engine = create_engine(cfg)
         K, N = 110, 72
-        results: Dict[int, int] = {}
+        results: dict[int, int] = {}
         for m_val in M_VALUES:
             result = engine.estimate(m_val, K, N)
             results[m_val] = result.total_cycles
@@ -334,13 +309,15 @@ class TestBandwidthSaturation:
     """
 
     @pytest.mark.parametrize("engine_type", ENGINE_TYPES)
-    @pytest.mark.parametrize("M,K,N", [
-        (4, 110, 72),
-        (64, 64, 64),
-        (256, 256, 256),
-    ])
-    def test_bandwidth_monotonic(self, engine_type: str,
-                                  M: int, K: int, N: int) -> None:
+    @pytest.mark.parametrize(
+        "M,K,N",
+        [
+            (4, 110, 72),
+            (64, 64, 64),
+            (256, 256, 256),
+        ],
+    )
+    def test_bandwidth_monotonic(self, engine_type: str, M: int, K: int, N: int) -> None:
         """As BW increases, total_cycles must not increase (monotonicity).
 
         This test enforces the universal invariant: higher bandwidth cannot
@@ -348,15 +325,13 @@ class TestBandwidthSaturation:
         the engine to be compute-bound, which only happens for large matrices
         on specific engines.
         """
-        bw_points: List[Tuple[float, str]] = [
+        bw_points: list[tuple[float, str]] = [
             (51.2, "LPDDR5"),
             (204.8, "HBM_MID"),
             (819.2, "HBM3"),
         ]
-        results: Dict[float, int] = {}
-        compute_floor = compute_lower_bound(
-            mac_count(M, K, N), oracle_peak_macs()
-        )
+        results: dict[float, int] = {}
+        compute_floor = compute_lower_bound(mac_count(M, K, N), oracle_peak_macs())
 
         for gbps, _label in bw_points:
             cfg = build_config(engine_type, gbps)
@@ -372,13 +347,12 @@ class TestBandwidthSaturation:
             pytest.skip(f"{engine_type}: not enough valid BW configs")
 
         valid, msg = validate_bandwidth_monotonic(
-            clean, compute_floor,
+            clean,
+            compute_floor,
             tolerance_pct=5.0,
             require_saturation=False,
         )
-        assert valid, (
-            f"{engine_type} M={M},{K},{N}: {msg}"
-        )
+        assert valid, f"{engine_type} M={M},{K},{N}: {msg}"
 
     def test_saturation_at_compute_bound(self) -> None:
         """Verify engines saturate near compute floor when truly compute-bound.
@@ -387,7 +361,7 @@ class TestBandwidthSaturation:
         relative to the compute floor. For each engine, we use a matrix that
         is definitively compute-bound at 819.2 GB/s.
         """
-        tests: List[Tuple[str, int, int, int, float]] = [
+        tests: list[tuple[str, int, int, int, float]] = [
             # (engine_type, M, K, N, tolerance_pct)
             ("systolic", 256, 256, 256, 510.0),
             ("block", 256, 256, 256, 13600.0),
@@ -400,10 +374,8 @@ class TestBandwidthSaturation:
 
         for engine_type, M, K, N, tolerance in tests:
             bw_points = [51.2, 204.8, 819.2]
-            results: Dict[float, int] = {}
-            compute_floor = compute_lower_bound(
-                mac_count(M, K, N), oracle_peak_macs()
-            )
+            results: dict[float, int] = {}
+            compute_floor = compute_lower_bound(mac_count(M, K, N), oracle_peak_macs())
 
             for gbps in bw_points:
                 cfg = build_config(engine_type, gbps)
@@ -419,36 +391,33 @@ class TestBandwidthSaturation:
                 pytest.skip(f"{engine_type}: not enough valid BW configs")
 
             valid, msg = validate_bandwidth_monotonic(
-                clean, compute_floor,
+                clean,
+                compute_floor,
                 tolerance_pct=tolerance,
                 require_saturation=True,
             )
-            assert valid, (
-                f"{engine_type} M={M},{K},{N}: {msg}"
-            )
+            assert valid, f"{engine_type} M={M},{K},{N}: {msg}"
 
     @pytest.mark.parametrize("engine_type", ENGINE_TYPES)
-    @pytest.mark.parametrize("M,K,N", [
-        (4, 110, 72),
-        (64, 64, 64),
-    ])
-    def test_bw_saturation_combined(self, engine_type: str,
-                                    M: int, K: int, N: int) -> None:
+    @pytest.mark.parametrize(
+        "M,K,N",
+        [
+            (4, 110, 72),
+            (64, 64, 64),
+        ],
+    )
+    def test_bw_saturation_combined(self, engine_type: str, M: int, K: int, N: int) -> None:
         """Combined floor (max of compute and DMA) holds across BW sweep."""
         for gbps in [51.2, 204.8, 819.2]:
             cfg = build_config(engine_type, gbps)
             engine = create_engine(cfg)
             result = engine.estimate(M, K, N)
             macs = mac_count(M, K, N)
-            raw_bytes = raw_transfer_bytes(
-                M, K, N, DEFAULT_WBITS, DEFAULT_ABITS
-            )
+            raw_bytes = raw_transfer_bytes(M, K, N, DEFAULT_WBITS, DEFAULT_ABITS)
             eff_bpc = oracle_eff_bw(gbps)
-            floor = combined_lower_bound(macs, oracle_peak_macs(),
-                                         raw_bytes, eff_bpc)
+            floor = combined_lower_bound(macs, oracle_peak_macs(), raw_bytes, eff_bpc)
             assert result.total_cycles >= floor, (
-                f"{engine_type} BW={gbps} M={M},{K},{N}: "
-                f"total_cycles={result.total_cycles} < combined_floor={floor}"
+                f"{engine_type} BW={gbps} M={M},{K},{N}: total_cycles={result.total_cycles} < combined_floor={floor}"
             )
 
 
@@ -456,19 +425,19 @@ class TestDiagnostics:
     """Required diagnostics keys must be present in details."""
 
     @pytest.mark.parametrize("engine_type", ENGINE_TYPES)
-    @pytest.mark.parametrize("M,K,N", [
-        (1, 110, 72),
-        (64, 64, 64),
-    ])
-    def test_diagnostics_complete(self, engine_type: str,
-                                  M: int, K: int, N: int) -> None:
+    @pytest.mark.parametrize(
+        "M,K,N",
+        [
+            (1, 110, 72),
+            (64, 64, 64),
+        ],
+    )
+    def test_diagnostics_complete(self, engine_type: str, M: int, K: int, N: int) -> None:
         """Each engine must expose its required diagnostic keys."""
         engine = create_engine(build_config(engine_type))
         result = engine.estimate(M, K, N)
         valid, msg = validate_diagnostics(engine_type, result.details)
-        assert valid, (
-            f"{engine_type} M={M},{K},{N}: {msg}"
-        )
+        assert valid, f"{engine_type} M={M},{K},{N}: {msg}"
 
     @pytest.mark.parametrize("engine_type", ENGINE_TYPES)
     def test_diagnostics_cache_pair(self, engine_type: str) -> None:
@@ -484,9 +453,7 @@ class TestDiagnostics:
             f"{engine_type} cache-pair: details too sparse: {result.details}"
         )
         # At minimum, cache-pair should signal weight_cache behavior
-        assert "weight_cache" in result.details or any(
-            "cache" in k.lower() for k in result.details
-        ), (
+        assert "weight_cache" in result.details or any("cache" in k.lower() for k in result.details), (
             f"{engine_type} cache-pair: no cache indicator in {list(result.details)}"
         )
 
@@ -495,12 +462,14 @@ class TestBasicInvariants:
     """Cross-engine basic invariants that are always true."""
 
     @pytest.mark.parametrize("engine_type", ENGINE_TYPES)
-    @pytest.mark.parametrize("M,K,N", [
-        (1, 110, 72),
-        (64, 64, 64),
-    ])
-    def test_result_fields_positive(self, engine_type: str,
-                                    M: int, K: int, N: int) -> None:
+    @pytest.mark.parametrize(
+        "M,K,N",
+        [
+            (1, 110, 72),
+            (64, 64, 64),
+        ],
+    )
+    def test_result_fields_positive(self, engine_type: str, M: int, K: int, N: int) -> None:
         """Essential result fields are positive/non-negative."""
         engine = create_engine(build_config(engine_type))
         result = engine.estimate(M, K, N)
@@ -509,9 +478,7 @@ class TestBasicInvariants:
         assert result.dma_cycles >= 0, "dma_cycles must be non-negative"
         assert result.num_tiles > 0, "num_tiles must be positive"
         assert result.weight_bytes > 0, "weight_bytes must be positive"
-        assert result.bottleneck in {"compute", "dma", "on_chip_bw"}, (
-            f"bottleneck={result.bottleneck!r}"
-        )
+        assert result.bottleneck in {"compute", "dma", "on_chip_bw"}, f"bottleneck={result.bottleneck!r}"
 
     @pytest.mark.parametrize("engine_type", ENGINE_TYPES)
     def test_small_square_gemm(self, engine_type: str) -> None:

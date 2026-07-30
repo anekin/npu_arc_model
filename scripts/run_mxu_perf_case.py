@@ -22,9 +22,8 @@ import re
 import shlex
 import subprocess
 import sys
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Sequence
-
 
 # ══════════════════════════════════════════════════════════════════════
 # Paths and constants
@@ -55,15 +54,11 @@ def parse_shape(shape_str: str) -> tuple[int, int, int]:
     """Parse ``M,N,K`` into a tuple of integers."""
     parts = shape_str.split(",")
     if len(parts) != 3:
-        raise argparse.ArgumentTypeError(
-            f"shape must be M,N,K (3 integers, got {len(parts)}: {shape_str!r})"
-        )
+        raise argparse.ArgumentTypeError(f"shape must be M,N,K (3 integers, got {len(parts)}: {shape_str!r})")
     try:
         return int(parts[0]), int(parts[1]), int(parts[2])
     except ValueError as exc:
-        raise argparse.ArgumentTypeError(
-            f"shape values must be integers: {shape_str!r}"
-        ) from exc
+        raise argparse.ArgumentTypeError(f"shape values must be integers: {shape_str!r}") from exc
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -72,9 +67,7 @@ def build_parser() -> argparse.ArgumentParser:
         description="MXU module-level performance case runner (one command, one PASS/FAIL).",
     )
     parser.add_argument("--case", required=True, help="Case ID, e.g. MX-P01")
-    parser.add_argument(
-        "--shape", required=True, type=parse_shape, help="Shape as M,N,K, e.g. 64,64,64"
-    )
+    parser.add_argument("--shape", required=True, type=parse_shape, help="Shape as M,N,K, e.g. 64,64,64")
     parser.add_argument(
         "--out-dir", default=str(DEFAULT_OUT_DIR), help=f"Output base directory (default: {DEFAULT_OUT_DIR})"
     )
@@ -88,15 +81,13 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--vcs-module", default=DEFAULT_VCS_MODULE, help=f"VCS module name (default: {DEFAULT_VCS_MODULE})"
     )
+    parser.add_argument("--commit", action="store_true", help="Commit testcase-list status change (default: off)")
     parser.add_argument(
-        "--commit", action="store_true", help="Commit testcase-list status change (default: off)"
+        "--evidence-dir",
+        default=str(DEFAULT_EVIDENCE_DIR),
+        help=f"Evidence directory (default: {DEFAULT_EVIDENCE_DIR})",
     )
-    parser.add_argument(
-        "--evidence-dir", default=str(DEFAULT_EVIDENCE_DIR), help=f"Evidence directory (default: {DEFAULT_EVIDENCE_DIR})"
-    )
-    parser.add_argument(
-        "--dry-run", action="store_true", help="Generate vectors + formula check only; no VCS"
-    )
+    parser.add_argument("--dry-run", action="store_true", help="Generate vectors + formula check only; no VCS")
     parser.add_argument(
         "--repeat",
         type=int,
@@ -134,9 +125,7 @@ def run_cmd(
             print(result.stdout, file=sys.stderr)
         if result.stderr:
             print(result.stderr, file=sys.stderr)
-        raise subprocess.CalledProcessError(
-            result.returncode, cmd_strs, output=result.stdout, stderr=result.stderr
-        )
+        raise subprocess.CalledProcessError(result.returncode, cmd_strs, output=result.stdout, stderr=result.stderr)
     return result
 
 
@@ -243,9 +232,7 @@ def step_generate_vectors(out_dir: Path, case: str, shape: tuple[int, int, int])
     return scenario_dir
 
 
-def step_ensure_vectors_on_eda(
-    eda_server: str, scenario_dir: Path, out_dir: Path, case: str
-) -> None:
+def step_ensure_vectors_on_eda(eda_server: str, scenario_dir: Path, out_dir: Path, case: str) -> None:
     """Copy vectors to the EDA server when the output directory is not shared."""
     if is_shared_path(out_dir):
         print(f"[info] out-dir {out_dir} is shared; skipping vector SCP")
@@ -258,9 +245,7 @@ def step_ensure_vectors_on_eda(
     scp_to_remote(eda_server, scenario_dir, remote_case_dir)
 
 
-def step_compile_vcs(
-    eda_server: str, vcs_module: str, simv: Path, force: bool
-) -> Path:
+def step_compile_vcs(eda_server: str, vcs_module: str, simv: Path, force: bool) -> Path:
     """Compile the MXU performance testbench on the EDA server if needed."""
     compile_log = Path(f"{simv}.compile.log")
 
@@ -326,9 +311,7 @@ def step_compare_rtl(scenario_dir: Path, scenario_name: str) -> subprocess.Compl
     )
 
 
-def step_analyze_perf(
-    case: str, shape: tuple[int, int, int], sim_log_local: Path
-) -> subprocess.CompletedProcess[str]:
+def step_analyze_perf(case: str, shape: tuple[int, int, int], sim_log_local: Path) -> subprocess.CompletedProcess[str]:
     """Run analyze_perf.py to check measured vs expected cycles."""
     M, N, K = shape
     return run_cmd(
@@ -373,12 +356,11 @@ def update_testcase_list(case: str, measured: str, expected: str) -> None:
     updated = False
 
     for i, line in enumerate(lines):
-        if line.startswith(f"| {case} "):
+        if line.startswith(f"| {case} ") and "⬜" in line:
             # Replace the first occurrence of ⬜ on the case line with ✅
-            if "⬜" in line:
-                lines[i] = line.replace("⬜", "✅", 1)
-                updated = True
-                break
+            lines[i] = line.replace("⬜", "✅", 1)
+            updated = True
+            break
 
     if not updated:
         raise RuntimeError(f"Could not find TODO status for {case} in {TESTCASE_LIST}")
@@ -398,9 +380,7 @@ def append_learning(case: str, shape: tuple[int, int, int], passed: bool) -> Non
     timestamp = _dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     status = "PASS" if passed else "FAIL"
     M, N, K = shape
-    line = (
-        f"\n## {timestamp} run_mxu_perf_case.py — {case} shape={M},{N},{K} — {status}\n"
-    )
+    line = f"\n## {timestamp} run_mxu_perf_case.py — {case} shape={M},{N},{K} — {status}\n"
     LEARNINGS_FILE.parent.mkdir(parents=True, exist_ok=True)
     with LEARNINGS_FILE.open("a", encoding="utf-8") as f:
         f.write(line)
@@ -485,9 +465,7 @@ def main() -> int:
             return 1
 
         # ── Step d: run simulation ─────────────────────────────────────
-        sim_log_remote = step_run_simulation(
-            eda_server, vcs_module, simv, case, scenario_dir, scenario_name, repeat
-        )
+        sim_log_remote = step_run_simulation(eda_server, vcs_module, simv, case, scenario_dir, scenario_name, repeat)
         scp_from_remote(eda_server, sim_log_remote, sim_log_local)
 
         if not sim_log_local.exists():
@@ -554,8 +532,7 @@ def main() -> int:
         if all_pass and args.commit:
             if expected is None or measured is None:
                 print(
-                    "WARNING: --commit requested but could not parse measured/expected cycles; "
-                    "skipping commit",
+                    "WARNING: --commit requested but could not parse measured/expected cycles; skipping commit",
                     file=sys.stderr,
                 )
             else:

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import pytest
-
 from scheduler.queues import BoundedFIFO, MailboxLatest, QueueFullError
 
 

@@ -11,12 +11,11 @@ Aggregates total cycles, MACs, DMA cycles, SRAM spill, and per-layer breakdown.
 """
 
 import math
-from typing import Any, Dict, List
+from typing import Any
 
 from contracts.errors import UnsupportedOperatorError
 from engine.mac_engine import create_engine
 from workloads.operators import DEFAULT_REGISTRY
-
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -35,6 +34,7 @@ _ELEMENTWISE_TYPES = frozenset({"add", "mul"})
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _get_sram_config(config: dict) -> tuple:
     """Extract SRAM sizes from config, returning (l1_kb, l2_kb)."""
@@ -78,6 +78,7 @@ def _estimate_activation_bytes(entry: dict, bytes_per_element: float) -> float:
 # Per-layer simulation dispatch
 # ---------------------------------------------------------------------------
 
+
 def _simulate_conv(entry: dict, engine) -> dict:
     """Simulate a convolution or GEMM layer through the MAC engine."""
     M = entry.get("M", 0)
@@ -91,7 +92,7 @@ def _simulate_conv(entry: dict, engine) -> dict:
     compute_cycles = result.compute_cycles
     dma_cycles = result.dma_cycles + im2col
     cycles = result.total_cycles + im2col
-    mxu_util = result.utilization * 100.0   # convert fraction -> percent
+    mxu_util = result.utilization * 100.0  # convert fraction -> percent
 
     return {
         "cycles": int(cycles),
@@ -144,6 +145,7 @@ def _simulate_metadata(entry: dict) -> dict:
 # Main simulation entry point
 # ---------------------------------------------------------------------------
 
+
 def simulate_cv(
     trace: list,
     config: dict,
@@ -177,7 +179,7 @@ def simulate_cv(
     total_macs = 0
     total_dma_cycles = 0.0
     total_activation_bytes = 0.0
-    layers: List[Dict[str, Any]] = []
+    layers: list[dict[str, Any]] = []
 
     for entry in trace:
         entry_type = entry.get("type", "")
@@ -202,9 +204,7 @@ def simulate_cv(
 
         # --- Accumulate activation volume for SRAM spill -------------------
         if not DEFAULT_REGISTRY.is_free_or_fused(entry_type):
-            total_activation_bytes += _estimate_activation_bytes(
-                entry, bytes_per_element
-            )
+            total_activation_bytes += _estimate_activation_bytes(entry, bytes_per_element)
 
         # --- Aggregate totals ----------------------------------------------
         cycles = result["cycles"]
@@ -215,15 +215,17 @@ def simulate_cv(
         total_macs += macs
         total_dma_cycles += dma_cycles
 
-        layers.append({
-            "name": name,
-            "type": entry_type,
-            "cycles": cycles,
-            "compute_cycles": result["compute_cycles"],
-            "dma_cycles": dma_cycles,
-            "macs": macs,
-            "mxu_util_pct": result["mxu_util_pct"],
-        })
+        layers.append(
+            {
+                "name": name,
+                "type": entry_type,
+                "cycles": cycles,
+                "compute_cycles": result["compute_cycles"],
+                "dma_cycles": dma_cycles,
+                "macs": macs,
+                "mxu_util_pct": result["mxu_util_pct"],
+            }
+        )
 
     # --- SRAM spill calculation -------------------------------------------
     if memory_access_plan is not None:

@@ -8,16 +8,13 @@ Then:  invariants hold, silent omissions are rejected, and duplicate IDs
 
 from __future__ import annotations
 
-from copy import deepcopy
-from typing import Any, Dict
+from typing import Any
 
 import pytest
-
 from contracts.errors import CoverageError
 from dse.manifest import AxisCoverage, CoverageManifest, ExclusionRecord
 from dse.space import DesignPoint, DesignSpace
 from scenarios.schema import ArrivalPattern, Scenario, WorkloadClass
-
 
 # ── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -39,7 +36,7 @@ def minimal_scenario() -> Scenario:
 
 
 @pytest.fixture
-def tiny_axes_config() -> Dict[str, Any]:
+def tiny_axes_config() -> dict[str, Any]:
     return {
         "axes": {
             "engine": {"values": ["block"]},

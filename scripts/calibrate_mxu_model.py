@@ -48,7 +48,7 @@ MODEL_CONFIG = {
         "double_buffer": True,
     },
     "memory": {
-        "bandwidth_bytes_per_cycle": 51.2,
+        "bandwidth_gbps": 51.2,
         "dram_efficiency": 0.85,
     },
     "optimizations": {

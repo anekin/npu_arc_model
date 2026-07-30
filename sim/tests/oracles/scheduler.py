@@ -8,7 +8,6 @@ strict-priority behavior.
 from __future__ import annotations
 
 import math
-from typing import Dict, List, Tuple
 
 
 def bytes_per_us_to_bytes_per_ps(bytes_per_us: float) -> float:
@@ -38,10 +37,10 @@ def single_transfer_completion(
 
 
 def equal_share_completion_times(
-    requests: List[Tuple[str, int]],
+    requests: list[tuple[str, int]],
     total_bytes_per_us: float,
     start_ps: int = 0,
-) -> Dict[str, int]:
+) -> dict[str, int]:
     """Oracle for equal-share bandwidth: each active request shares equally.
 
     All requests start together and each gets ``total / N`` bandwidth,
@@ -53,17 +52,15 @@ def equal_share_completion_times(
     per_member_bw = total_bytes_per_us / n
     if per_member_bw <= 0:
         raise ValueError("per-member bandwidth must be positive")
-    duration = max(
-        transfer_duration_ps(bytes_, per_member_bw) for _, bytes_ in requests
-    )
+    duration = max(transfer_duration_ps(bytes_, per_member_bw) for _, bytes_ in requests)
     return {rid: start_ps + duration for rid, _ in requests}
 
 
 def strict_priority_completion_times(
-    requests: List[Tuple[str, int, int]],
+    requests: list[tuple[str, int, int]],
     total_bytes_per_us: float,
     start_ps: int = 0,
-) -> Dict[str, int]:
+) -> dict[str, int]:
     """Oracle for strict-priority bandwidth: highest priority runs first.
 
     ``requests`` is a list of ``(request_id, bytes, priority)`` where higher
@@ -71,7 +68,7 @@ def strict_priority_completion_times(
     """
     ordered = sorted(requests, key=lambda item: (-item[2], item[0]))
     now = start_ps
-    result: Dict[str, int] = {}
+    result: dict[str, int] = {}
     for rid, bytes_, _ in ordered:
         duration = transfer_duration_ps(bytes_, total_bytes_per_us)
         now += duration

@@ -11,12 +11,11 @@ import math
 import warnings
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
-from contracts.errors import ConfigError
 from contracts.units import bandwidth_gbps_to_bytes_per_cycle as _bw2bpc
 from models.memory_hierarchy import build_hierarchy_from_config
-from models.residency import build_memory_access_plan
+from models.residency import MemoryAccessPlan, build_memory_access_plan
 from workloads.schema import WorkloadGraphV1
 
 
@@ -34,15 +33,15 @@ class EngineResult:
     """
 
     compute_cycles: int
-    dma_cycles: int           # DRAM ↔ SRAM 数据传输
+    dma_cycles: int  # DRAM ↔ SRAM 数据传输
     total_cycles: int
-    utilization: float        # 理论峰值利用率
-    mac_count: int            # M × K × N multiply-accumulates
-    op_count: int             # 2 × mac_count
+    utilization: float  # 理论峰值利用率
+    mac_count: int  # M × K × N multiply-accumulates
+    op_count: int  # 2 × mac_count
     num_tiles: int = 0
     weight_bytes: int = 0
-    bottleneck: str = ""      # "compute" | "dma"
-    details: Dict[str, Any] = field(default_factory=dict)
+    bottleneck: str = ""  # "compute" | "dma"
+    details: dict[str, Any] = field(default_factory=dict)
     stall_cycles_dram: int = 0
     stall_cycles_sram: int = 0
     ideal_compute_cycles: int = 0
@@ -90,12 +89,14 @@ class EngineResult:
         return self.mac_count
 
     def __repr__(self):
-        return (f"Engine(total={self.total_cycles}c, "
-                f"compute={self.compute_cycles}c, dma={self.dma_cycles}c, "
-                f"util={self.utilization:.1%}, tiles={self.num_tiles}, "
-                f"mac_count={self.mac_count}, "
-                f"bottleneck={self.bottleneck}, "
-                f"stall_dram={self.stall_cycles_dram}, stall_sram={self.stall_cycles_sram})")
+        return (
+            f"Engine(total={self.total_cycles}c, "
+            f"compute={self.compute_cycles}c, dma={self.dma_cycles}c, "
+            f"util={self.utilization:.1%}, tiles={self.num_tiles}, "
+            f"mac_count={self.mac_count}, "
+            f"bottleneck={self.bottleneck}, "
+            f"stall_dram={self.stall_cycles_dram}, stall_sram={self.stall_cycles_sram})"
+        )
 
 
 def _validate_finite(value: float, name: str) -> None:
@@ -109,7 +110,7 @@ class MACEngine(ABC):
 
     def __init__(
         self,
-        config: Dict[str, Any],
+        config: dict[str, Any],
         graph: WorkloadGraphV1 | None = None,
         memory_access_plan: "MemoryAccessPlan | None" = None,
     ):
@@ -119,18 +120,15 @@ class MACEngine(ABC):
         if memory_access_plan is not None:
             self.memory_access_plan = memory_access_plan
         elif graph is not None:
-            from models.memory_hierarchy import MemoryHierarchy
             hierarchy = build_hierarchy_from_config(config)
             self.memory_access_plan = build_memory_access_plan(graph, hierarchy)
         else:
             hierarchy = build_hierarchy_from_config(config)
-            self.memory_access_plan = build_memory_access_plan(
-                WorkloadGraphV1(), hierarchy
-            )
+            self.memory_access_plan = build_memory_access_plan(WorkloadGraphV1(), hierarchy)
 
         self._apply_memory_plan()
 
-    def _parse_config(self, config: Dict[str, Any]):
+    def _parse_config(self, config: dict[str, Any]):
         """解析公共配置参数"""
         mac = config.get("mac_engine", config.get("mxu", {}))
         self.H = int(mac.get("array_height", 128))
@@ -178,9 +176,7 @@ class MACEngine(ABC):
             fastest = plan.fastest_allocated_tier("weight")
             if fastest is not None:
                 tier = plan.hierarchy.get_tier(fastest)
-                self.eff_bw = _bw2bpc(
-                    tier.effective_read_bw_gbps(), self.f_mhz
-                )
+                self.eff_bw = _bw2bpc(tier.effective_read_bw_gbps(), self.f_mhz)
                 return
 
         self.eff_bw = self.bw_raw * self.dram_efficiency * self.bw_multiplier
@@ -216,8 +212,7 @@ class MACEngine(ABC):
         return self.H * self.W * self.ops_per_mac
 
     @abstractmethod
-    def estimate(self, M: int, K: int, N: int,
-                 weight_preloaded: bool = False) -> EngineResult:
+    def estimate(self, M: int, K: int, N: int, weight_preloaded: bool = False) -> EngineResult:
         """估算 (M×K) × (K×N) 矩阵乘法的 cycle 数"""
         ...
 
@@ -233,9 +228,8 @@ class MACEngine(ABC):
         ...
 
 
-
 def create_engine(
-    config: Dict[str, Any],
+    config: dict[str, Any],
     graph: WorkloadGraphV1 | None = None,
     memory_access_plan: "MemoryAccessPlan | None" = None,
 ) -> MACEngine:
@@ -248,6 +242,4 @@ def create_engine(
 
     mac = config.get("mac_engine", config.get("mxu", {}))
     engine_type = mac.get("type", "block")
-    return create_engine_by_type(
-        engine_type, config, graph=graph, memory_access_plan=memory_access_plan
-    )
+    return create_engine_by_type(engine_type, config, graph=graph, memory_access_plan=memory_access_plan)

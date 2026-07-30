@@ -1,7 +1,7 @@
 """Tests for scenario-driven DSE Pareto frontier and hard gates."""
 
 import pytest
-
+from contracts.errors import ConfigError
 from contracts.result import (
     DesignPointResult,
     EngineMetrics,
@@ -227,7 +227,7 @@ def test_objectives_from_scenario_rejects_invalid_entry():
         classes=[_default_class()],
         metadata={"objectives": [{"direction": "maximize"}]},
     )
-    with pytest.raises(Exception):
+    with pytest.raises(ConfigError):
         objectives_from_scenario(scenario)
 
 

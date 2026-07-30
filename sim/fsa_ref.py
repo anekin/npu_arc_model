@@ -15,33 +15,34 @@ Source: https://github.com/VCA-EPFL/FSA
 Paper: http://arxiv.org/abs/2507.11331
 """
 
-import numpy as np
 from dataclasses import dataclass, field
-from typing import Optional
 
+import numpy as np
 
 # ═══════════════════════════════════════════════════════════════════
 # Configuration
 # ═══════════════════════════════════════════════════════════════════
 
+
 @dataclass
 class FSAConfig:
     """FSA architecture configuration."""
-    sa_rows: int = 64           # systolic array rows
-    sa_cols: int = 64           # systolic array columns
-    frequency_mhz: int = 1000   # clock frequency
-    weight_precision_bits: int = 4    # INT4
+
+    sa_rows: int = 64  # systolic array rows
+    sa_cols: int = 64  # systolic array columns
+    frequency_mhz: int = 1000  # clock frequency
+    weight_precision_bits: int = 4  # INT4
     activation_precision_bits: int = 8  # INT8
     accumulate_precision_bits: int = 32  # INT32
     dataflow: str = "weight_stationary"
     ops_per_mac: int = 2
 
     # FSA-specific
-    cmp_overhead_pct: float = 2.0    # CMP column area overhead
+    cmp_overhead_pct: float = 2.0  # CMP column area overhead
     split_overhead_pct: float = 4.0  # PE Split unit area overhead
     upward_path_overhead_pct: float = 3.0  # upward data path overhead
     fsa_area_overhead_pct: float = 12.0  # total FSA-specific area overhead
-    exp_pwl_segments: int = 8        # piecewise linear segments for exp
+    exp_pwl_segments: int = 8  # piecewise linear segments for exp
 
     def total_mac_per_cycle(self) -> int:
         return self.sa_rows * self.sa_cols * self.ops_per_mac
@@ -54,6 +55,7 @@ class FSAConfig:
 # ═══════════════════════════════════════════════════════════════════
 # FSA Hardware Model
 # ═══════════════════════════════════════════════════════════════════
+
 
 @dataclass
 class FSAHardwareModel:
@@ -81,7 +83,10 @@ class FSAHardwareModel:
         return fsa_area
 
     def estimate_attention_latency(
-        self, seq_q: int, seq_k: int, head_dim: int,
+        self,
+        seq_q: int,
+        seq_k: int,
+        head_dim: int,
     ) -> int:
         """Estimate FlashAttention latency in cycles (FSA inline model).
 
@@ -118,7 +123,10 @@ class FSAHardwareModel:
         return phase1_cycles + phase2_cycles
 
     def estimate_mac_utilization(
-        self, seq_q: int, seq_k: int, head_dim: int,
+        self,
+        seq_q: int,
+        seq_k: int,
+        head_dim: int,
     ) -> float:
         """Estimate MAC utilization accounting for inline softmax overhead.
 
@@ -144,6 +152,7 @@ class FSAHardwareModel:
 # Caduceus Hardware Model (for comparison)
 # ═══════════════════════════════════════════════════════════════════
 
+
 @dataclass
 class CaduceusHardwareModel:
     """Models CaduceusCore: MXU + SFU + Vector pipeline."""
@@ -156,16 +165,18 @@ class CaduceusHardwareModel:
 
     # Area estimates (mm² @ 7nm)
     mxu_area_mm2: float = 0.85
-    sfu_area_mm2: float = 0.15   # softmax/layernorm/gelu/silu/rmsnorm/rope
+    sfu_area_mm2: float = 0.15  # softmax/layernorm/gelu/silu/rmsnorm/rope
     vector_area_mm2: float = 0.10  # SIMD ALU + reduce + convert + resid_add
-    sram_area_mm2: float = 0.30    # shared SRAM
+    sram_area_mm2: float = 0.30  # shared SRAM
 
     def total_area_mm2(self) -> float:
-        return (self.mxu_area_mm2 + self.sfu_area_mm2 +
-                self.vector_area_mm2 + self.sram_area_mm2)
+        return self.mxu_area_mm2 + self.sfu_area_mm2 + self.vector_area_mm2 + self.sram_area_mm2
 
     def estimate_attention_latency(
-        self, seq_q: int, seq_k: int, head_dim: int,
+        self,
+        seq_q: int,
+        seq_k: int,
+        head_dim: int,
     ) -> dict:
         """Estimate CaduceusCore attention latency broken down by unit.
 
@@ -202,13 +213,14 @@ class CaduceusHardwareModel:
 # Architecture Comparison
 # ═══════════════════════════════════════════════════════════════════
 
+
 @dataclass
 class ArchComparisonReport:
     """Head-to-head architecture comparison."""
 
     model_name: str = ""
-    seq_q: int = 1          # decode mode: 1 token
-    seq_kv: int = 1024      # typical KV cache length
+    seq_q: int = 1  # decode mode: 1 token
+    seq_kv: int = 1024  # typical KV cache length
     head_dim: int = 128
     num_heads: int = 32
     num_kv_heads: int = 8
@@ -229,25 +241,21 @@ class ArchComparisonReport:
     cad_total_cycles_per_layer: int = 0
 
     # Derived comparisons
-    fsa_area_saving_pct: float = 0.0      # positive = FSA smaller
-    fsa_latency_ratio: float = 0.0        # FSA / Caduceus (< 1 = FSA faster)
-    fsa_general_score: float = 0.0        # 0-100 flexibility score
+    fsa_area_saving_pct: float = 0.0  # positive = FSA smaller
+    fsa_latency_ratio: float = 0.0  # FSA / Caduceus (< 1 = FSA faster)
+    fsa_general_score: float = 0.0  # 0-100 flexibility score
 
     def compute_derived(self, freq_mhz: int = 1000):
         """Compute derived comparison metrics."""
         self.fsa_attn_us = self.fsa_attn_latency_cycles / freq_mhz
         self.cad_attn_us = self.cad_attn_latency_cycles / freq_mhz
-        self.fsa_area_saving_pct = (
-            (self.cad_area_mm2 - self.fsa_area_mm2) / self.cad_area_mm2 * 100
-        )
+        self.fsa_area_saving_pct = (self.cad_area_mm2 - self.fsa_area_mm2) / self.cad_area_mm2 * 100
         self.fsa_latency_ratio = (
-            self.fsa_attn_latency_cycles / self.cad_attn_latency_cycles
-            if self.cad_attn_latency_cycles > 0 else 0
+            self.fsa_attn_latency_cycles / self.cad_attn_latency_cycles if self.cad_attn_latency_cycles > 0 else 0
         )
         # FSA is attention-specialized; Caduceus has general-purpose SFU/Vector
         self.fsa_general_score = 45.0  # FSA: attention-only
         # Caduceus score reflects SFU handling ALL activation functions
-        cad_general_score = 90.0  # MXU+SFU+Vector: general-purpose
 
     def to_dict(self) -> dict:
         return {
@@ -305,20 +313,14 @@ def compare_architectures(
     # FSA latency per attention head
     fsa_per_head = fsa_hw.estimate_attention_latency(seq_q, seq_kv, head_dim)
     # All heads × all layers
-    report.fsa_attn_latency_cycles = (
-        fsa_per_head * num_kv_heads * num_layers
-    )
-    report.fsa_mac_util_pct = (
-        fsa_hw.estimate_mac_utilization(seq_q, seq_kv, head_dim) * 100
-    )
+    report.fsa_attn_latency_cycles = fsa_per_head * num_kv_heads * num_layers
+    report.fsa_mac_util_pct = fsa_hw.estimate_mac_utilization(seq_q, seq_kv, head_dim) * 100
 
     # ── CaduceusCore model ───────────────────────────────────────
     cad_hw = CaduceusHardwareModel()
     report.cad_area_mm2 = cad_hw.total_area_mm2()
     cad_per_head = cad_hw.estimate_attention_latency(seq_q, seq_kv, head_dim)
-    report.cad_attn_latency_cycles = (
-        cad_per_head["total"] * num_kv_heads * num_layers
-    )
+    report.cad_attn_latency_cycles = cad_per_head["total"] * num_kv_heads * num_layers
 
     report.compute_derived(freq_mhz=fsa_cfg.frequency_mhz)
     return report
@@ -327,25 +329,31 @@ def compare_architectures(
 def print_comparison(report: ArchComparisonReport):
     """Print human-readable architecture comparison table."""
     d = report.to_dict()
-    print(f"\n{'='*70}")
+    print(f"\n{'=' * 70}")
     print(f"  Architecture Comparison: {d['model']}")
     print(f"  Config: {d['config']}")
-    print(f"{'='*70}")
+    print(f"{'=' * 70}")
     print(f"  {'':<20} {'FSA (inline)':>18} {'CaduceusCore':>18}")
-    print(f"  {'─'*20} {'─'*18} {'─'*18}")
+    print(f"  {'─' * 20} {'─' * 18} {'─' * 18}")
     print(f"  {'Die Area (mm²)':<20} {d['fsa']['area_mm2']:>18.3f} {d['caduceus']['area_mm2']:>18.3f}")
     print(f"  {'Attn Latency (μs)':<20} {d['fsa']['attn_us']:>18.1f} {d['caduceus']['attn_us']:>18.1f}")
-    print(f"  {'Attn Latency (cycles)':<20} {d['fsa']['attn_latency_cycles']:>18,} {d['caduceus']['attn_latency_cycles']:>18,}")
+    print(
+        f"  {'Attn Latency (cycles)':<20} {d['fsa']['attn_latency_cycles']:>18,} {d['caduceus']['attn_latency_cycles']:>18,}"
+    )
     print(f"  {'MAC Utilization (%)':<20} {d['fsa']['mac_util_pct']:>18.1f} {'—':>18}")
-    print(f"  {'─'*20} {'─'*18} {'─'*18}")
+    print(f"  {'─' * 20} {'─' * 18} {'─' * 18}")
     print(f"  {'FSA vs Caduceus':<20}")
-    print(f"    Area:   FSA is {d['comparison']['fsa_area_saving_pct']:+.1f}% {'smaller' if d['comparison']['fsa_wins_area'] else 'larger'}")
-    print(f"    Latency: FSA is {d['comparison']['fsa_latency_ratio']:.2f}× Caduceus {'(faster)' if d['comparison']['fsa_wins_latency'] else '(slower)'}")
-    print(f"{'='*70}")
+    print(
+        f"    Area:   FSA is {d['comparison']['fsa_area_saving_pct']:+.1f}% {'smaller' if d['comparison']['fsa_wins_area'] else 'larger'}"
+    )
+    print(
+        f"    Latency: FSA is {d['comparison']['fsa_latency_ratio']:.2f}× Caduceus {'(faster)' if d['comparison']['fsa_wins_latency'] else '(slower)'}"
+    )
+    print(f"{'=' * 70}")
 
     # Trade-off analysis
-    print(f"\n  📐 Architecture Trade-off Analysis:")
-    print(f"  {'─'*60}")
+    print("\n  📐 Architecture Trade-off Analysis:")
+    print(f"  {'─' * 60}")
     print(f"  {'FSA wins:':<12} inline softmax eliminates MXU→SFU→Vector")
     print(f"  {'':<12} data movement, yielding {'better' if d['comparison']['fsa_wins_latency'] else 'comparable'}")
     print(f"  {'':<12} attention latency at {'lower' if d['comparison']['fsa_wins_area'] else 'higher'} die area.")
@@ -368,9 +376,9 @@ if __name__ == "__main__":
     print_comparison(report)
 
     # Extended: prefill scenario
-    print(f"\n\n{'─'*70}")
+    print(f"\n\n{'─' * 70}")
     print("  Extended Scenario: Prefill (128 token query, 1024 KV cache)")
-    print(f"{'─'*70}")
+    print(f"{'─' * 70}")
     prefill = compare_architectures(
         model_name="Qwen2.5-3B (prefill)",
         seq_q=128,

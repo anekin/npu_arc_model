@@ -2,14 +2,11 @@
 
 from __future__ import annotations
 
-import math
-
 import pytest
-
 from contracts.errors import ConfigError
-from scheduler.events import EventPhase
+from scheduler.events import Event, EventPhase
 from scheduler.kernel import DiscreteEventKernel, JobState, SchedulerError
-from scheduler.policies import PriorityClass, SchedulePolicy, edf_release_tie_break
+from scheduler.policies import PriorityClass, edf_release_tie_break
 
 
 def _noop_dispatch(kernel: DiscreteEventKernel, ready: list) -> None:
@@ -266,7 +263,7 @@ class TestPreemption:
     def test_priority_preempts_running_job(self) -> None:
         log = []
         preempted: dict[str, int] = {}
-        completion_events: dict[str, "Event"] = {}
+        completion_events: dict[str, Event] = {}
 
         def dispatch(kernel: DiscreteEventKernel, ready: list) -> None:
             ordered = edf_release_tie_break(ready + kernel.running_jobs())

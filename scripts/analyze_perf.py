@@ -23,7 +23,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import IO
 
-
 # ══════════════════════════════════════════════════════════════════════
 # Cycle formula — golden reference
 # ══════════════════════════════════════════════════════════════════════
@@ -56,7 +55,7 @@ def expected_cycles(M: int, K: int, N: int) -> int:
     total = 1  # READ_DIMS
     for mt in range(M_tiles):
         m_cur = min(64, M - mt * 64)
-        for nt in range(N_tiles):
+        for _nt in range(N_tiles):
             for kt in range(K_tiles):
                 k_cur = min(64, K - kt * 64)
                 total += 1 + 1 + (k_cur + 2)  # LOAD_W + LOAD_A + COMPUTE
@@ -241,15 +240,11 @@ def report_case(result: CaseResult) -> str:
     lines = [header, state_line]
 
     if result.tile_cycles:
-        tile_str = " ".join(
-            f"tile[{i}]={c}" for i, c in sorted(result.tile_cycles.items())
-        )
+        tile_str = " ".join(f"tile[{i}]={c}" for i, c in sorted(result.tile_cycles.items()))
         lines.append(f"  [{result.case_id}] tiles: {tile_str}")
 
     if result.gap_cycles:
-        gap_str = " ".join(
-            f"gap[{i}]={c}" for i, c in sorted(result.gap_cycles.items())
-        )
+        gap_str = " ".join(f"gap[{i}]={c}" for i, c in sorted(result.gap_cycles.items()))
         lines.append(f"  [{result.case_id}] gaps: {gap_str}")
 
     return "\n".join(lines)
@@ -270,9 +265,7 @@ def parse_shape(shape_str: str) -> tuple[int, int, int]:
     """Parse a comma-separated shape string ``M,N,K`` into integers."""
     parts = shape_str.split(",")
     if len(parts) != 3:
-        raise argparse.ArgumentTypeError(
-            f"shape must be M,N,K (3 integers, got {len(parts)}: {shape_str!r})"
-        )
+        raise argparse.ArgumentTypeError(f"shape must be M,N,K (3 integers, got {len(parts)}: {shape_str!r})")
     return tuple(int(p) for p in parts)  # type: ignore[return-value]
 
 

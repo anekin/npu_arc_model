@@ -9,16 +9,13 @@ Shared by:
   - sim/e2e_llamacpp.py verify_36layer_true_e2e (W1.6 L3 signoff)
 """
 
-import argparse
 import json
-import os
 import re
 import shutil
-import struct
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 
@@ -47,13 +44,14 @@ LLAMA_REF_DIR = _PROJECT / "llama_ref" / "refs"
 # Basic ops
 # ══════════════════════════════════════════════════════════════════════
 
+
 def rms_norm(x: np.ndarray, weight: np.ndarray, eps: float = 1e-6) -> np.ndarray:
     """RMSNorm: x / rms(x) * weight.
 
     Use float32 accumulation to match llama.cpp CPU backend behaviour.
     """
     x_f = x.astype(np.float32)
-    rms = np.sqrt(np.mean(x_f ** 2) + np.float32(eps))
+    rms = np.sqrt(np.mean(x_f**2) + np.float32(eps))
     return (x_f / rms).astype(np.float32) * weight.astype(np.float32)
 
 
@@ -113,13 +111,22 @@ def cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
 # Qwen2.5 Transformer Layer
 # ══════════════════════════════════════════════════════════════════════
 
+
 class Qwen25Layer:
     """Single Qwen2.5 transformer layer in float32 for golden reference."""
 
-    def __init__(self, weights: dict, layer_idx: int,
-                 hidden_size: int, intermediate_size: int,
-                 num_heads: int, num_kv_heads: int, head_dim: int,
-                 rope_theta: float = 1000000.0, rms_eps: float = 1e-6):
+    def __init__(
+        self,
+        weights: dict,
+        layer_idx: int,
+        hidden_size: int,
+        intermediate_size: int,
+        num_heads: int,
+        num_kv_heads: int,
+        head_dim: int,
+        rope_theta: float = 1000000.0,
+        rms_eps: float = 1e-6,
+    ):
         self.layer_idx = layer_idx
         self.hidden_size = hidden_size
         self.intermediate_size = intermediate_size
@@ -140,9 +147,9 @@ class Qwen25Layer:
         self.up_weight = weights[f"{prefix}ffn_up.weight"]
         self.down_weight = weights[f"{prefix}ffn_down.weight"]
 
-        self.q_bias = weights.get(f"{prefix}attn_q.bias", None)
-        self.k_bias = weights.get(f"{prefix}attn_k.bias", None)
-        self.v_bias = weights.get(f"{prefix}attn_v.bias", None)
+        self.q_bias = weights.get(f"{prefix}attn_q.bias")
+        self.k_bias = weights.get(f"{prefix}attn_k.bias")
+        self.v_bias = weights.get(f"{prefix}attn_v.bias")
 
         self.q_dim = self.num_heads * self.head_dim
         self.k_dim = self.num_kv_heads * self.head_dim
@@ -198,8 +205,7 @@ class Qwen25Layer:
 
         return x.astype(np.float32)
 
-    def forward_with_intermediates(self, hidden_states: np.ndarray,
-                                   position: int = 0) -> Dict[str, np.ndarray]:
+    def forward_with_intermediates(self, hidden_states: np.ndarray, position: int = 0) -> dict[str, np.ndarray]:
         """Run layer and return per-op intermediate outputs for decomposition."""
         residual = hidden_states.astype(np.float32).copy()
         x = hidden_states.astype(np.float32)
@@ -269,6 +275,7 @@ class Qwen25Layer:
 # Embedding
 # ══════════════════════════════════════════════════════════════════════
 
+
 def get_token_embedding(weights: dict, token_id: int) -> np.ndarray:
     """Get embedding vector for a token ID."""
     emb_w = weights["token_embd.weight"]
@@ -279,9 +286,10 @@ def get_token_embedding(weights: dict, token_id: int) -> np.ndarray:
 # Forward pass runner
 # ══════════════════════════════════════════════════════════════════════
 
-def run_forward_pass(gguf_path: str, layers: List[int], prompt: str = "Hello",
-                     n_tokens: int = 1,
-                     capture_intermediates: bool = False) -> Dict[str, Any]:
+
+def run_forward_pass(
+    gguf_path: str, layers: list[int], prompt: str = "Hello", n_tokens: int = 1, capture_intermediates: bool = False
+) -> dict[str, Any]:
     """Run a multi-layer forward pass through Qwen2.5.
 
     Args:
@@ -301,6 +309,7 @@ def run_forward_pass(gguf_path: str, layers: List[int], prompt: str = "Hello",
     print(f"  Loaded {len(weights)} tensors in {time.time() - t0:.1f}s")
 
     import gguf
+
     reader = gguf.GGUFReader(gguf_path)
 
     def _get_field(key, default=None):
@@ -330,7 +339,7 @@ def run_forward_pass(gguf_path: str, layers: List[int], prompt: str = "Hello",
         "model_file": gguf_path,
     }
 
-    print(f"\nModel parameters:")
+    print("\nModel parameters:")
     for k, v in params.items():
         print(f"  {k}: {v}")
 
@@ -395,18 +404,18 @@ def run_forward_pass(gguf_path: str, layers: List[int], prompt: str = "Hello",
 # Save golden .npz
 # ══════════════════════════════════════════════════════════════════════
 
-def save_golden_npz(results: Dict[str, Any], output_dir: Path,
-                    include_intermediates: bool = False):
+
+def save_golden_npz(results: dict[str, Any], output_dir: Path, include_intermediates: bool = False):
     """Save per-layer hidden states as .npz golden vectors."""
     output_dir.mkdir(parents=True, exist_ok=True)
 
     hidden_states = results["hidden_states"]
     params = results["model_params"]
     token_ids = results["token_ids"]
-    input_vec = results.get("input_embedding", None)
-    intermediates = results.get("intermediates", None)
+    input_vec = results.get("input_embedding")
+    intermediates = results.get("intermediates")
 
-    npz_data: Dict[str, Any] = {}
+    npz_data: dict[str, Any] = {}
     for layer_idx, hs in sorted(hidden_states.items()):
         key = f"layer_{layer_idx}_output"
         npz_data[key] = hs.astype(np.float32)
@@ -435,16 +444,11 @@ def save_golden_npz(results: Dict[str, Any], output_dir: Path,
 
     for layer_idx, hs in sorted(hidden_states.items()):
         layer_path = output_dir / f"expected_l{layer_idx}.npz"
-        np.savez(layer_path,
-                 output=hs.astype(np.float32),
-                 layer=layer_idx,
-                 metadata=json.dumps(metadata))
+        np.savez(layer_path, output=hs.astype(np.float32), layer=layer_idx, metadata=json.dumps(metadata))
         print(f"  Saved: {layer_path}")
 
     input_path = output_dir / "input.npz"
-    np.savez(input_path,
-             token_ids=np.array(token_ids, dtype=np.int32),
-             metadata=json.dumps(metadata))
+    np.savez(input_path, token_ids=np.array(token_ids, dtype=np.int32), metadata=json.dumps(metadata))
     print(f"  Saved: {input_path}")
 
 
@@ -452,7 +456,8 @@ def save_golden_npz(results: Dict[str, Any], output_dir: Path,
 # Llama.cpp reference
 # ══════════════════════════════════════════════════════════════════════
 
-def _load_llama_raw_with_ne(raw_file: Path, json_file: Path) -> Tuple[Optional[np.ndarray], List[int]]:
+
+def _load_llama_raw_with_ne(raw_file: Path, json_file: Path) -> tuple[np.ndarray | None, list[int]]:
     """Load a llama.cpp raw/json dump pair; return flat array + original ne."""
     with open(json_file) as f:
         meta = json.load(f)
@@ -469,14 +474,13 @@ def _load_llama_raw_with_ne(raw_file: Path, json_file: Path) -> Tuple[Optional[n
     return arr.astype(np.float32).flatten(), ne_all
 
 
-def _load_llama_raw(raw_file: Path, json_file: Path) -> Optional[np.ndarray]:
+def _load_llama_raw(raw_file: Path, json_file: Path) -> np.ndarray | None:
     """Load a llama.cpp raw/json dump pair into a flat float32 array."""
     arr, _ = _load_llama_raw_with_ne(raw_file, json_file)
     return arr
 
 
-def run_llamacpp_reference(gguf_path: str, prompt: str,
-                           ref_dir: Path, n_tokens: int = 1) -> Dict[str, Any]:
+def run_llamacpp_reference(gguf_path: str, prompt: str, ref_dir: Path, n_tokens: int = 1) -> dict[str, Any]:
     """Generate llama.cpp reference hidden states using dump_hidden_states."""
     dump_bin = _PROJECT / "llama_ref" / "dump_hidden_states"
 
@@ -489,15 +493,17 @@ def run_llamacpp_reference(gguf_path: str, prompt: str,
     ref_dir.mkdir(parents=True, exist_ok=True)
 
     lib_path = _PROJECT / "llama_ref" / "llama.cpp" / "build" / "bin"
-    cmd = (
-        f'LD_LIBRARY_PATH={lib_path} {dump_bin} '
-        f'-m {gguf_path} -p "{prompt}" -n {n_tokens}'
-    )
+    cmd = f'LD_LIBRARY_PATH={lib_path} {dump_bin} -m {gguf_path} -p "{prompt}" -n {n_tokens}'
     print(f"\nRunning llama.cpp reference:\n  {cmd}")
     import subprocess
+
     result = subprocess.run(
-        cmd, shell=True, capture_output=True, text=True,
-        cwd=str(ref_dir.parent), timeout=1800,
+        cmd,
+        shell=True,
+        capture_output=True,
+        text=True,
+        cwd=str(ref_dir.parent),
+        timeout=1800,
     )
     if result.stderr:
         print(result.stderr[:1000])
@@ -505,8 +511,8 @@ def run_llamacpp_reference(gguf_path: str, prompt: str,
         print(f"ERROR: dump_hidden_states failed: {result.stderr}")
         return {}
 
-    ref_outputs: Dict[str, Any] = {"per_layer": {}, "per_op": {}}
-    per_op_rank: Dict[str, int] = {}
+    ref_outputs: dict[str, Any] = {"per_layer": {}, "per_op": {}}
+    per_op_rank: dict[str, int] = {}
     for raw_file in sorted(ref_dir.glob("*.raw")):
         base = raw_file.stem
         json_file = ref_dir / f"{base}.json"
@@ -540,14 +546,14 @@ def run_llamacpp_reference(gguf_path: str, prompt: str,
     return ref_outputs
 
 
-
 # ══════════════════════════════════════════════════════════════════════
 # Comparison and reporting
 # ══════════════════════════════════════════════════════════════════════
 
-def compare_layer_outputs(fm_outputs: Dict[int, np.ndarray],
-                          llama_outputs: Dict[str, np.ndarray],
-                          layers: List[int]) -> Dict[str, Any]:
+
+def compare_layer_outputs(
+    fm_outputs: dict[int, np.ndarray], llama_outputs: dict[str, np.ndarray], layers: list[int]
+) -> dict[str, Any]:
     """Compare Func Model layer outputs against llama.cpp l_out references."""
     results = {"tests": len(layers), "passed": 0, "failed": 0, "per_layer": {}}
     print(f"\n{'=' * 60}")
@@ -560,13 +566,16 @@ def compare_layer_outputs(fm_outputs: Dict[int, np.ndarray],
             print(f"  Layer {layer_idx}: SKIP (no llama.cpp reference)")
             continue
         cos_sim = cosine_similarity(fm, ll)
-        rel_err = float(np.max(np.abs(fm.astype(np.float64) - ll.astype(np.float64)) /
-                               (np.abs(ll.astype(np.float64)) + 1e-8)))
+        rel_err = float(
+            np.max(np.abs(fm.astype(np.float64) - ll.astype(np.float64)) / (np.abs(ll.astype(np.float64)) + 1e-8))
+        )
         max_abs = float(np.max(np.abs(fm.astype(np.float64) - ll.astype(np.float64))))
         passed = cos_sim >= 0.999
         status = "PASS" if passed else "FAIL"
-        print(f"  [{status}] Layer {layer_idx}: cos_sim={cos_sim:.6f}, "
-              f"max_rel_err={rel_err:.2e}, max_abs_err={max_abs:.2e}")
+        print(
+            f"  [{status}] Layer {layer_idx}: cos_sim={cos_sim:.6f}, "
+            f"max_rel_err={rel_err:.2e}, max_abs_err={max_abs:.2e}"
+        )
         results["per_layer"][layer_idx] = {
             "cos_sim": cos_sim,
             "max_rel_err": rel_err,
@@ -581,8 +590,9 @@ def compare_layer_outputs(fm_outputs: Dict[int, np.ndarray],
     return results
 
 
-def compare_and_report(fm_outputs: Dict[int, np.ndarray], llama_outputs: Dict[str, np.ndarray],
-                       layers: List[int], evidence_path: Path) -> Dict[str, Any]:
+def compare_and_report(
+    fm_outputs: dict[int, np.ndarray], llama_outputs: dict[str, np.ndarray], layers: list[int], evidence_path: Path
+) -> dict[str, Any]:
     """Compare Func Model outputs against llama.cpp reference and write evidence."""
     results = compare_layer_outputs(fm_outputs, llama_outputs, layers)
     evidence_path.parent.mkdir(parents=True, exist_ok=True)
@@ -594,9 +604,11 @@ def compare_and_report(fm_outputs: Dict[int, np.ndarray], llama_outputs: Dict[st
             r = results["per_layer"].get(layer_idx, {})
             if r:
                 status = "PASS" if r["passed"] else "FAIL"
-                f.write(f"[{status}] Layer {layer_idx}: "
-                        f"cos_sim={r['cos_sim']:.6f}, "
-                        f"max_rel_err={r['max_rel_err']:.2e}, "
-                        f"max_abs_err={r['max_abs_err']:.2e}\n")
+                f.write(
+                    f"[{status}] Layer {layer_idx}: "
+                    f"cos_sim={r['cos_sim']:.6f}, "
+                    f"max_rel_err={r['max_rel_err']:.2e}, "
+                    f"max_abs_err={r['max_abs_err']:.2e}\n"
+                )
     print(f"\nEvidence saved: {evidence_path}")
     return results

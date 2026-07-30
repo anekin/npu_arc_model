@@ -48,9 +48,7 @@ def _conv_entry(
     groups: int = 1,
 ) -> dict[str, Any]:
     """Build a pointwise/standard convolution trace entry via map_conv_to_gemm."""
-    result = map_conv_to_gemm(
-        C_in, C_out, H, W, K, stride=stride, pad=pad, groups=groups
-    )
+    result = map_conv_to_gemm(C_in, C_out, H, W, K, stride=stride, pad=pad, groups=groups)
     trace_type = "depthwise_conv" if groups > 1 else "pointwise_conv"
     return {
         "type": trace_type,
@@ -221,24 +219,14 @@ def generate_yolov8n_trace() -> list[dict[str, Any]]:
     H = W = _IMAGE_SIZE
 
     # ---- Backbone -----------------------------------------------------------
-    H, W = _add_conv_with_silu(
-        trace, "backbone.stem", 3, 16, H, W, 3, stride=2, pad=1
-    )
-    H, W = _add_conv_with_silu(
-        trace, "backbone.stage1", 16, 32, H, W, 3, stride=2, pad=1
-    )
+    H, W = _add_conv_with_silu(trace, "backbone.stem", 3, 16, H, W, 3, stride=2, pad=1)
+    H, W = _add_conv_with_silu(trace, "backbone.stage1", 16, 32, H, W, 3, stride=2, pad=1)
     _c2f_block(trace, "backbone.stage2", 32, 32, 1, H, W)
-    H, W = _add_conv_with_silu(
-        trace, "backbone.stage3", 32, 64, H, W, 3, stride=2, pad=1
-    )
+    H, W = _add_conv_with_silu(trace, "backbone.stage3", 32, 64, H, W, 3, stride=2, pad=1)
     _c2f_block(trace, "backbone.stage4", 64, 64, 2, H, W)
-    H, W = _add_conv_with_silu(
-        trace, "backbone.stage5", 64, 128, H, W, 3, stride=2, pad=1
-    )
+    H, W = _add_conv_with_silu(trace, "backbone.stage5", 64, 128, H, W, 3, stride=2, pad=1)
     _c2f_block(trace, "backbone.stage6", 128, 128, 2, H, W)
-    H, W = _add_conv_with_silu(
-        trace, "backbone.stage7", 128, 256, H, W, 3, stride=2, pad=1
-    )
+    H, W = _add_conv_with_silu(trace, "backbone.stage7", 128, 256, H, W, 3, stride=2, pad=1)
     _c2f_block(trace, "backbone.stage8", 256, 256, 1, H, W)
     _sppf_block(trace, "backbone.sppf", 256, H, W)
 
@@ -264,16 +252,12 @@ def generate_yolov8n_trace() -> list[dict[str, Any]]:
     H_p3, W_p3 = H, W
 
     # P3 -> P4 downsample + concat + C2f
-    H, W = _add_conv_with_silu(
-        trace, "neck.conv_p4", C_p3, C_p3, H_p3, W_p3, 3, stride=2, pad=1
-    )
+    H, W = _add_conv_with_silu(trace, "neck.conv_p4", C_p3, C_p3, H_p3, W_p3, 3, stride=2, pad=1)
     trace.append(_misc_entry("neck.concat2", "concat"))
     _c2f_block(trace, "neck.c2f_p4_2", C_p3 + C_p4, 128, 1, H, W)
 
     # P4 -> P5 downsample + concat + C2f
-    H, W = _add_conv_with_silu(
-        trace, "neck.conv_p5", 128, 128, H, W, 3, stride=2, pad=1
-    )
+    H, W = _add_conv_with_silu(trace, "neck.conv_p5", 128, 128, H, W, 3, stride=2, pad=1)
     trace.append(_misc_entry("neck.concat3", "concat"))
     _c2f_block(trace, "neck.c2f_p5", 128 + C_sppf, 256, 1, H, W)
 
@@ -296,8 +280,7 @@ def generate_yolov8n_trace() -> list[dict[str, Any]]:
     # 2 * gemm_ops because literature counts multiply and add separately.
     total_macs = 2 * gemm_ops
     assert 8_000_000_000 <= total_macs <= 9_500_000_000, (
-        f"YOLOv8n total MACs {total_macs:,} outside expected range [8G, 9.5G] "
-        f"(raw GEMM ops = {gemm_ops:,})"
+        f"YOLOv8n total MACs {total_macs:,} outside expected range [8G, 9.5G] (raw GEMM ops = {gemm_ops:,})"
     )
 
     return trace
@@ -324,11 +307,7 @@ if __name__ == "__main__":
     # Save evidence to repository root .omo/evidence/.
     # File path: repo_root/CaduceusCore/sim/cv/traces/yolov8n_trace.py
     repo_root = os.path.dirname(
-        os.path.dirname(
-            os.path.dirname(
-                os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            )
-        )
+        os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
     )
     evidence_dir = os.path.join(repo_root, ".omo", "evidence")
     os.makedirs(evidence_dir, exist_ok=True)

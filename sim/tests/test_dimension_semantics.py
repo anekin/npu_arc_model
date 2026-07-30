@@ -11,7 +11,6 @@ Covers:
 from __future__ import annotations
 
 import pytest
-
 from workloads.dimensions import (
     ACTION_HORIZON_EDGES,
     AXIS_BATCH,
@@ -74,9 +73,7 @@ class TestDimensionOrthogonality:
             # All other fields should be None
             for other_name, _ in test_cases:
                 if other_name != field_name:
-                    assert getattr(b, other_name) is None, (
-                        f"Setting {field_name}={value} unexpectedly set {other_name}"
-                    )
+                    assert getattr(b, other_name) is None, f"Setting {field_name}={value} unexpectedly set {other_name}"
 
     def test_multiple_dimensions_set_independently(self):
         """Setting multiple dimensions at once should preserve all values independently."""
@@ -159,23 +156,23 @@ class TestEdgeBatchValues:
 
     def test_image_count_edges(self):
         """Image count edges should be {1, 2, 3, 4}."""
-        assert IMAGE_COUNT_EDGES == {1, 2, 3, 4}
+        assert {1, 2, 3, 4} == IMAGE_COUNT_EDGES
 
     def test_action_horizon_edges(self):
         """Action horizon edges should be {8, 10, 25, 50}."""
-        assert ACTION_HORIZON_EDGES == {8, 10, 25, 50}
+        assert {8, 10, 25, 50} == ACTION_HORIZON_EDGES
 
     def test_flow_steps_edges(self):
         """Flow steps edges should be {4, 8, 10}."""
-        assert FLOW_STEPS_EDGES == {4, 8, 10}
+        assert {4, 8, 10} == FLOW_STEPS_EDGES
 
     def test_resident_models_edges(self):
         """Resident model edges should be {4, 8}."""
-        assert RESIDENT_MODELS_EDGES == {4, 8}
+        assert {4, 8} == RESIDENT_MODELS_EDGES
 
     def test_inflight_jobs_edges(self):
         """Inflight jobs edges should be {4, 8, 16}."""
-        assert INFLIGHT_JOBS_EDGES == {4, 8, 16}
+        assert {4, 8, 16} == INFLIGHT_JOBS_EDGES
 
 
 class TestDimensionBindingsNegative:
@@ -199,7 +196,7 @@ class TestDimensionBindingsNegative:
     def test_frozen_after_creation(self):
         """DimensionBindings is immutable (frozen dataclass)."""
         b = DimensionBindings(request_batch=8)
-        with pytest.raises(Exception):
+        with pytest.raises(AttributeError):
             b.request_batch = 16  # type: ignore[misc]
 
 

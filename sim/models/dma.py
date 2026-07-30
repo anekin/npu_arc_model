@@ -2,10 +2,10 @@
 
 import math
 from dataclasses import dataclass
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 # Priority lookup for fixed_priority arbitration: higher value = higher priority.
-_REQUEST_TYPE_PRIORITY: Dict[str, int] = {
+_REQUEST_TYPE_PRIORITY: dict[str, int] = {
     "weight_load": 2,
     "kv_access": 1,
     "output_store": 0,
@@ -23,6 +23,7 @@ class DMARequest:
         block_count: Number of contiguous/scatter-gather blocks (default 1).
         priority: Arbitration priority (default 0, higher = more urgent).
     """
+
     request_type: str
     size_bytes: int
     direction: str
@@ -42,9 +43,9 @@ class DMAModel:
             weight_load (2) > kv_access (1) > output_store (0).
     """
 
-    def __init__(self, config: Dict[str, Any], memory_access_plan: Any = None):
+    def __init__(self, config: dict[str, Any], memory_access_plan: Any = None):
         dma = config["dma"]
-        self.burst_size = int(dma["burst_size_bytes"])          # 256
+        self.burst_size = int(dma["burst_size_bytes"])  # 256
         self.descriptor_overhead = int(dma["descriptor_overhead_cycles"])  # 5
         self.max_pending = int(dma.get("max_pending_descriptors", 16))
 
@@ -59,12 +60,11 @@ class DMAModel:
         self.arbitration = str(dma.get("arbitration", "round_robin"))
 
         # Per-channel request queues for FIFO backpressure modelling
-        self.channel_queues: List[List[DMARequest]] = [
-            [] for _ in range(self.num_channels)
-        ]
+        self.channel_queues: list[list[DMARequest]] = [[] for _ in range(self.num_channels)]
 
         mem = config["memory"]
         from contracts.units import bandwidth_gbps_to_bytes_per_cycle as _bw2bpc
+
         freq_mhz = float(config.get("mac_engine", config.get("mxu", {})).get("frequency_mhz", 1000))
         bw_gbps = float(mem.get("bandwidth_gbps", 51.2))
         self.bw_bytes_per_cycle = _bw2bpc(bw_gbps, freq_mhz)
@@ -90,7 +90,7 @@ class DMAModel:
         # Burst overhead: one cycle per burst for address handshake
         burst_overhead = num_bursts
 
-        total = (self.descriptor_overhead + transfer_cycles + burst_overhead)
+        total = self.descriptor_overhead + transfer_cycles + burst_overhead
         return int(math.ceil(total))
 
     def estimate_weight_load(self, K: int, N: int, weight_bits: int = 4) -> int:
@@ -202,12 +202,9 @@ class DMAModel:
         """
         if self.num_channels == 0:
             return 0
-        return max(
-            self.estimate_channel_cycles(ch) for ch in range(self.num_channels)
-        )
+        return max(self.estimate_channel_cycles(ch) for ch in range(self.num_channels))
 
-    def estimate_effective(self, transfer_cycles: int,
-                           compute_cycles: int) -> Tuple[int, int]:
+    def estimate_effective(self, transfer_cycles: int, compute_cycles: int) -> tuple[int, int]:
         """Calculate effective (non-overlapped) DMA cycles.
 
         Returns (effective_cycles, hidden_cycles).

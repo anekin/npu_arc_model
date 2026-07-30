@@ -5,12 +5,10 @@ L3 signoff helpers for Qwen2.5-3B 36-layer Func Model.
 
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
-
 from qwen25_forward import cosine_similarity
-
 
 # Mapping from Func Model intermediate name → llama.cpp dump base pattern.
 INTERMEDIATE_MAP = {
@@ -27,24 +25,21 @@ INTERMEDIATE_MAP = {
 }
 
 
-def parse_layers_arg(value: Any, num_hidden_layers: int) -> List[int]:
+def parse_layers_arg(value: Any, num_hidden_layers: int) -> list[int]:
     """Parse --layers argument: ints, '0..35', or --all-layers sentinel."""
     if value is None or value == "all":
         return list(range(num_hidden_layers))
 
-    tokens: List[str] = []
+    tokens: list[str] = []
     if isinstance(value, str):
         value = value.strip()
-        if ".." in value:
-            tokens = [value]
-        else:
-            tokens = value.split()
+        tokens = [value] if ".." in value else value.split()
     elif isinstance(value, (list, tuple)):
         tokens = [str(x) for x in value]
     else:
         tokens = [str(value)]
 
-    layers: List[int] = []
+    layers: list[int] = []
     for tok in tokens:
         tok = tok.strip()
         if ".." in tok:
@@ -57,7 +52,7 @@ def parse_layers_arg(value: Any, num_hidden_layers: int) -> List[int]:
     return sorted(set(layers))
 
 
-def drift_analysis(cos_sim_per_layer: Dict[int, float]) -> Dict[str, Any]:
+def drift_analysis(cos_sim_per_layer: dict[int, float]) -> dict[str, Any]:
     """Analyze cos_sim trend across layers for monotonic degradation."""
     layers = sorted(cos_sim_per_layer.keys())
     cos_vals = np.array([cos_sim_per_layer[L] for L in layers], dtype=np.float64)
@@ -91,11 +86,11 @@ def drift_analysis(cos_sim_per_layer: Dict[int, float]) -> Dict[str, Any]:
     }
 
 
-def worst_layer_decomposition(worst_layer: int,
-                              fm_intermediates: Dict[str, np.ndarray],
-                              llama_outputs: Dict[str, np.ndarray]) -> Dict[str, Any]:
+def worst_layer_decomposition(
+    worst_layer: int, fm_intermediates: dict[str, np.ndarray], llama_outputs: dict[str, np.ndarray]
+) -> dict[str, Any]:
     """Compute per-op cos_sim for the worst layer against llama.cpp dumps."""
-    per_op: Dict[str, Dict[str, Any]] = {}
+    per_op: dict[str, dict[str, Any]] = {}
     for op_name, pattern in INTERMEDIATE_MAP.items():
         key = pattern.format(layer=worst_layer)
         fm_arr = fm_intermediates.get(op_name)
@@ -118,12 +113,14 @@ def worst_layer_decomposition(worst_layer: int,
     return per_op
 
 
-def write_l3_evidence(evidence_path: Path,
-                      layer_results: Dict[str, Any],
-                      drift: Dict[str, Any],
-                      worst_layer: Optional[int],
-                      worst_per_op: Dict[str, Any],
-                      checkpoint_layers: List[int]) -> None:
+def write_l3_evidence(
+    evidence_path: Path,
+    layer_results: dict[str, Any],
+    drift: dict[str, Any],
+    worst_layer: int | None,
+    worst_per_op: dict[str, Any],
+    checkpoint_layers: list[int],
+) -> None:
     """Write the L3 signoff evidence file."""
     evidence_path.parent.mkdir(parents=True, exist_ok=True)
     per_layer = layer_results["per_layer"]
@@ -151,9 +148,11 @@ def write_l3_evidence(evidence_path: Path,
         f.write("## Per-layer cos_sim\n")
         for L in layers:
             r = per_layer.get(L, {})
-            f.write(f"  Layer {L}: cos_sim={r.get('cos_sim', 0.0):.6f}, "
-                    f"max_rel_err={r.get('max_rel_err', 0.0):.2e}, "
-                    f"max_abs_err={r.get('max_abs_err', 0.0):.2e}\n")
+            f.write(
+                f"  Layer {L}: cos_sim={r.get('cos_sim', 0.0):.6f}, "
+                f"max_rel_err={r.get('max_rel_err', 0.0):.2e}, "
+                f"max_abs_err={r.get('max_abs_err', 0.0):.2e}\n"
+            )
         f.write("\n")
 
         f.write("## Drift analysis\n")
@@ -168,9 +167,11 @@ def write_l3_evidence(evidence_path: Path,
             f.write(f"## Worst-layer per-op decomposition (layer {worst_layer})\n")
             for op_name in sorted(worst_per_op.keys()):
                 r = worst_per_op[op_name]
-                f.write(f"  {op_name:12s}: cos_sim={r['cos_sim']:.6f}, "
-                        f"max_rel_err={r['max_rel_err']:.2e}, "
-                        f"max_abs_err={r['max_abs_err']:.2e}\n")
+                f.write(
+                    f"  {op_name:12s}: cos_sim={r['cos_sim']:.6f}, "
+                    f"max_rel_err={r['max_rel_err']:.2e}, "
+                    f"max_abs_err={r['max_abs_err']:.2e}\n"
+                )
         else:
             f.write("## Worst-layer per-op decomposition: N/A\n")
 

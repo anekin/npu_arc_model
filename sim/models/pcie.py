@@ -2,7 +2,6 @@
 
 import struct
 from dataclasses import dataclass, field
-from typing import Tuple
 
 from models.crossbar import CrossbarModel
 
@@ -55,7 +54,7 @@ class PCIeModel:
         self.tag = (self.tag + 1) & 0xFF
         return tag
 
-    def _resolve_bar(self, addr: int) -> Tuple[bytearray, int]:
+    def _resolve_bar(self, addr: int) -> tuple[bytearray, int]:
         """Map SoC physical address to (memory, offset) via BAR.
 
         Keeps the legacy BAR-base validation; actual access goes through
@@ -108,7 +107,7 @@ class PCIeModel:
 
     def _split_payload(self, data: bytes, chunk_size: int) -> list[bytes]:
         """Split payload into chunks that fit into a single TLP."""
-        return [data[i:i + chunk_size] for i in range(0, len(data), chunk_size)]
+        return [data[i : i + chunk_size] for i in range(0, len(data), chunk_size)]
 
     def tlp_write(self, addr: int, data: bytes) -> None:
         """Host issues PCIe Memory Write TLP(s) to NPU address space."""
@@ -145,9 +144,7 @@ class PCIeModel:
             self.last_rx_headers.append(header)
             cpl_header = self._build_completion_header(length_dw)
             self._parse_completion_header(cpl_header)
-            data = self.crossbar.read(
-                CrossbarModel.MASTER_PCIE, cur_addr, length_dw * 4
-            )
+            data = self.crossbar.read(CrossbarModel.MASTER_PCIE, cur_addr, length_dw * 4)
             result.extend(data[:chunk_size])
             cur_addr += length_dw * 4
             remaining -= chunk_size
@@ -198,7 +195,7 @@ class DmaEngine:
     TLP_MWR_4DW = 0x60  # Fmt=011 (4-DW, data),  Type=00000 (MWr)
     TLP_MRD_3DW = 0x00  # Fmt=000 (3-DW, no data), Type=00000 (MRd)
     TLP_MRD_4DW = 0x20  # Fmt=001 (4-DW, no data), Type=00000 (MRd)
-    TLP_CPLD    = 0x4A  # Fmt=010 (3-DW, data),  Type=01010 (CplD)
+    TLP_CPLD = 0x4A  # Fmt=010 (3-DW, data),  Type=01010 (CplD)
 
     # ── Completion status codes ─────────────────────────────────────────────
     CPL_STATUS_SC = 0  # Successful Completion
@@ -206,10 +203,10 @@ class DmaEngine:
     CPL_STATUS_CA = 2  # Completer Abort
 
     # ── Descriptor error codes (mirrors m_axis_*_desc_status_error[3:0]) ────
-    DESC_ERR_NONE    = 0
-    DESC_ERR_UR      = 1  # bit 0: Unsupported Request completion
-    DESC_ERR_CA      = 2  # bit 1: Completer Abort
-    DESC_ERR_DECERR  = 4  # bit 2: AXI slave decode error
+    DESC_ERR_NONE = 0
+    DESC_ERR_UR = 1  # bit 0: Unsupported Request completion
+    DESC_ERR_CA = 2  # bit 1: Completer Abort
+    DESC_ERR_DECERR = 4  # bit 2: AXI slave decode error
     DESC_ERR_TIMEOUT = 8  # bit 3: completion timeout
 
     # MPS encoding: PCIe Device Control register value → bytes
@@ -235,7 +232,7 @@ class DmaEngine:
 
         # ── Tag pool ────────────────────────────────────────────────────────
         self._tag_free: set[int] = set(range(self.PCIE_TAG_COUNT))
-        self._tag_in_use: dict[int, "_DmaReadOp"] = {}
+        self._tag_in_use: dict[int, _DmaReadOp] = {}
 
         # ── Descriptor completion tracking ───────────────────────────────────
         self._desc_status: list[tuple[int, int]] = []  # (tag, error_code)
@@ -280,9 +277,7 @@ class DmaEngine:
     def _alloc_tag(self) -> int:
         """Allocate a free PCIe tag (0-255). Raises RuntimeError if exhausted."""
         if not self._tag_free:
-            raise RuntimeError(
-                f"DMA tag pool exhausted ({self.PCIE_TAG_COUNT} tags in use)"
-            )
+            raise RuntimeError(f"DMA tag pool exhausted ({self.PCIE_TAG_COUNT} tags in use)")
         tag = self._tag_free.pop()
         return tag
 
@@ -375,12 +370,7 @@ class DmaEngine:
         cid = completer_id if completer_id else self.completer_id
         dw0 = (self.TLP_CPLD << 24) | (length_dw & 0x3FF)
         dw1 = (cid << 16) | ((byte_count & 0xFF) << 8) | 0x80
-        dw2 = (
-            (self.requester_id << 16)
-            | ((tag & 0xFF) << 8)
-            | ((byte_count >> 8) & 0x3)
-            | ((status & 0xF) << 4)
-        )
+        dw2 = (self.requester_id << 16) | ((tag & 0xFF) << 8) | ((byte_count >> 8) & 0x3) | ((status & 0xF) << 4)
         return struct.pack(">III", dw0, dw1, dw2)
 
     # ═══════════════════════════════════════════════════════════════════════
@@ -415,9 +405,7 @@ class DmaEngine:
     def _split_payload(self, data: bytes, max_bytes: int | None = None) -> list[bytes]:
         """Split payload into TLP-sized chunks respecting MPS."""
         chunk_size = max_bytes if max_bytes is not None else self.max_payload_bytes
-        return [
-            data[i : i + chunk_size] for i in range(0, len(data), chunk_size)
-        ]
+        return [data[i : i + chunk_size] for i in range(0, len(data), chunk_size)]
 
     # ═══════════════════════════════════════════════════════════════════════
     # Public: TLP-level operations
@@ -517,8 +505,7 @@ class DmaEngine:
             if error_status != self.CPL_STATUS_SC:
                 self._free_tag(tag)
                 raise RuntimeError(
-                    f"MRd tag {tag} completed with error status {error_status} "
-                    f"({self._cpld_status_name(error_status)})"
+                    f"MRd tag {tag} completed with error status {error_status} ({self._cpld_status_name(error_status)})"
                 )
 
             # Simulate CPLD response from host memory
@@ -540,9 +527,7 @@ class DmaEngine:
 
         return bytes(all_data), read_headers
 
-    def tlp_read_with_reassembly(
-        self, pcie_addr: int, length: int
-    ) -> tuple[bytes, list[bytes], list[bytes]]:
+    def tlp_read_with_reassembly(self, pcie_addr: int, length: int) -> tuple[bytes, list[bytes], list[bytes]]:
         """Like tlp_read but returns CPLD headers for split-completion inspection.
 
         Simulates the RCB=128-byte split completion scenario: a single MRd
@@ -580,9 +565,7 @@ class DmaEngine:
             while byte_count_remaining > 0:
                 cpl_chunk = min(byte_count_remaining, rcb)
                 cpl_dw = (cpl_chunk + 3) // 4
-                cheader = self._build_cpld_header(
-                    cpl_dw, tag, byte_count_remaining, status=self.CPL_STATUS_SC
-                )
+                cheader = self._build_cpld_header(cpl_dw, tag, byte_count_remaining, status=self.CPL_STATUS_SC)
                 cpld_headers.append(cheader)
 
                 host_end = cpl_addr + cpl_chunk
@@ -639,9 +622,7 @@ class DmaEngine:
         # Read data from NPU memory
         if self._crossbar is not None:
             try:
-                data = self._crossbar.read(
-                    self._crossbar.MASTER_PCIE, axi_addr, length
-                )
+                data = self._crossbar.read(self._crossbar.MASTER_PCIE, axi_addr, length)
             except (ValueError, IndexError):
                 error_code = self.DESC_ERR_DECERR
                 data = b"\x00" * length
@@ -717,9 +698,7 @@ class DmaEngine:
             # Write data to NPU memory
             if self._crossbar is not None:
                 try:
-                    self._crossbar.write(
-                        self._crossbar.MASTER_PCIE, axi_addr, data
-                    )
+                    self._crossbar.write(self._crossbar.MASTER_PCIE, axi_addr, data)
                 except (ValueError, IndexError):
                     error_code = self.DESC_ERR_DECERR
             else:
@@ -797,34 +776,34 @@ if __name__ == "__main__":
 
     # ── 1. 3-DW MWr header format (32-bit addr) ──────────────────────────
     dma = DmaEngine()
-    headers = dma.tlp_write(0x12345678, b"\xAA" * 64)
+    headers = dma.tlp_write(0x12345678, b"\xaa" * 64)
     assert len(headers) == 1, f"Expected 1 header, got {len(headers)}"
     hdr = headers[0]
     assert len(hdr) == 12, f"3-DW header should be 12 bytes, got {len(hdr)}"
     dw0, dw1, dw2 = struct.unpack(">III", hdr)
     assert (dw0 >> 24) & 0xFF == DmaEngine.TLP_MWR_3DW, (
-        f"Expected Fmt+Type=0x{DmaEngine.TLP_MWR_3DW:02X}, got 0x{(dw0>>24)&0xFF:02X}"
+        f"Expected Fmt+Type=0x{DmaEngine.TLP_MWR_3DW:02X}, got 0x{(dw0 >> 24) & 0xFF:02X}"
     )
     assert (dw0 & 0x3FF) == 16, f"Expected length=16 DWs, got {dw0 & 0x3FF}"
     assert dw2 == 0x12345678, f"Expected addr=0x12345678, got 0x{dw2:08X}"
     passed += 1
-    print(f"  PASS 1/7: 3-DW MWr header format")
+    print("  PASS 1/7: 3-DW MWr header format")
 
     # ── 2. 4-DW MWr header format (64-bit addr) ──────────────────────────
     dma2 = DmaEngine()
     # Use an address above 4GB to trigger 4-DW header: 0x1_ABCD_0000
-    headers64 = dma2.tlp_write(0x1ABCD0000, b"\xBB" * 128)
+    headers64 = dma2.tlp_write(0x1ABCD0000, b"\xbb" * 128)
     assert len(headers64) == 1
     hdr64 = headers64[0]
     assert len(hdr64) == 16, f"4-DW header should be 16 bytes, got {len(hdr64)}"
     dw0, dw1, dw2, dw3 = struct.unpack(">IIII", hdr64)
     assert (dw0 >> 24) & 0xFF == DmaEngine.TLP_MWR_4DW, (
-        f"Expected Fmt+Type=0x{DmaEngine.TLP_MWR_4DW:02X}, got 0x{(dw0>>24)&0xFF:02X}"
+        f"Expected Fmt+Type=0x{DmaEngine.TLP_MWR_4DW:02X}, got 0x{(dw0 >> 24) & 0xFF:02X}"
     )
     assert dw2 == 0x00000001, f"Expected upper addr=1, got 0x{dw2:08X}"
     assert dw3 == 0xABCD0000, f"Expected lower addr=0xABCD0000, got 0x{dw3:08X}"
     passed += 1
-    print(f"  PASS 2/7: 4-DW MWr header format")
+    print("  PASS 2/7: 4-DW MWr header format")
 
     # ── 3. MRd header + single CPLD reassembly ───────────────────────────
     dma3 = DmaEngine()
@@ -838,16 +817,14 @@ if __name__ == "__main__":
     assert data[:5] == b"HELLO", f"Expected HELLO..., got {data[:5]}"
     assert len(data) == 52, f"Expected 52 bytes, got {len(data)}"
     passed += 1
-    print(f"  PASS 3/7: MRd header + single CPLD reassembly")
+    print("  PASS 3/7: MRd header + single CPLD reassembly")
 
     # ── 4. MRd split completion reassembly ───────────────────────────────
     dma4 = DmaEngine()
     dma4.host_mem[0:256] = bytes(range(256))
     data4, rd4, cpl4 = dma4.tlp_read_with_reassembly(0, 256)
     assert len(rd4) == 1, f"Expected 1 MRd, got {len(rd4)}"
-    assert len(cpl4) == 2, (
-        f"Expected 2 CPLD headers (RCB=128 split), got {len(cpl4)}"
-    )
+    assert len(cpl4) == 2, f"Expected 2 CPLD headers (RCB=128 split), got {len(cpl4)}"
     assert data4 == bytes(range(256)), "Split CPLD data mismatch"
     # Verify CPLD headers have correct byte counts
     _, tag0, bc0, st0 = DmaEngine._parse_cpld_header(cpl4[0])
@@ -856,31 +833,27 @@ if __name__ == "__main__":
     assert bc0 == 256, f"First CPLD byte_count should be 256, got {bc0}"
     assert bc1 == 128, f"Second CPLD byte_count should be 128, got {bc1}"
     passed += 1
-    print(f"  PASS 4/7: MRd split completion reassembly")
+    print("  PASS 4/7: MRd split completion reassembly")
 
     # ── 5. Max payload splitting (4096 bytes → 256-byte TLPs) ────────────
     dma5 = DmaEngine()
     payload_4k = bytes([i & 0xFF for i in range(4096)])
     headers_4k = dma5.tlp_write(0, payload_4k)
-    assert len(headers_4k) == 16, (
-        f"4096 bytes at MPS=256 → 16 MWr TLPs, got {len(headers_4k)}"
-    )
+    assert len(headers_4k) == 16, f"4096 bytes at MPS=256 → 16 MWr TLPs, got {len(headers_4k)}"
     for i, h in enumerate(headers_4k):
         assert len(h) == 12, f"TLP {i}: expected 3-DW header"
         dw0 = struct.unpack(">I", h[:4])[0]
         assert (dw0 & 0x3FF) == 64, f"TLP {i}: expected length=64 DWs, got {dw0 & 0x3FF}"
     assert dma5.host_mem[0:4096] == payload_4k, "Split write data mismatch"
     passed += 1
-    print(f"  PASS 5/7: Max payload splitting (4096→16×256)")
+    print("  PASS 5/7: Max payload splitting (4096→16×256)")
 
     # ── 6. Tag allocation/reuse after 256 ops ─────────────────────────────
     dma6 = DmaEngine()
     # Exhaust 256 tags
     for i in range(256):
         dma6.tlp_write(i * 256, b"\x00" * 256)
-    assert dma6.tags_free == 256, (
-        f"All 256 tags should be free after 256 single-chunk writes, got {dma6.tags_free}"
-    )
+    assert dma6.tags_free == 256, f"All 256 tags should be free after 256 single-chunk writes, got {dma6.tags_free}"
     # Do 257th operation — tags should cycle without exhaustion
     try:
         dma6.tlp_write(0, b"test")
@@ -893,12 +866,12 @@ if __name__ == "__main__":
     except RuntimeError as e:
         print(f"  FAIL 6/7: Tag exhaustion: {e}")
         sys.exit(1)
-    print(f"  PASS 6/7: Tag allocation/reuse after 256 ops")
+    print("  PASS 6/7: Tag allocation/reuse after 256 ops")
 
     # ── 7. UR completion error sets descriptor status error ──────────────
     dma7 = DmaEngine()
     # Setup host data at addr 0x2000
-    dma7.host_mem[0x2000:0x2100] = b"\xCC" * 256
+    dma7.host_mem[0x2000:0x2100] = b"\xcc" * 256
     # Inject UR error for tag 42
     dma7.inject_completion_error(42, DmaEngine.CPL_STATUS_UR)
     dma7.submit_read_desc(pcie_addr=0x2000, axi_addr=0x1000, length=64, tag=42)
@@ -906,13 +879,11 @@ if __name__ == "__main__":
     assert len(statuses) == 1, f"Expected 1 descriptor status, got {len(statuses)}"
     tag, err = statuses[0]
     assert tag == 42, f"Expected tag=42, got {tag}"
-    assert err == DmaEngine.DESC_ERR_UR, (
-        f"Expected UR error (1), got {err}"
-    )
+    assert err == DmaEngine.DESC_ERR_UR, f"Expected UR error (1), got {err}"
     assert dma7.irq, "IRQ should be asserted on descriptor completion"
     passed += 1
-    print(f"  PASS 7/7: UR completion error → descriptor status error")
+    print("  PASS 7/7: UR completion error → descriptor status error")
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"  ALL {passed}/{total} ASSERTIONS PASSED")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")

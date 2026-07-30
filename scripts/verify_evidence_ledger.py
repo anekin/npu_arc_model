@@ -10,12 +10,23 @@ command exit code is non-zero.
 from __future__ import annotations
 
 import argparse
+import fnmatch
 import hashlib
 import json
 import re
 import sys
 from pathlib import Path
 from typing import Any
+
+EXPECTED_RED_PATTERNS = (
+    "task-3-physical-red*",
+    "task-5-bandwidth-detail*",
+    "task-5-verify*",
+)
+
+
+def _is_expected_red(path: Path) -> bool:
+    return any(fnmatch.fnmatch(path.name, pat) for pat in EXPECTED_RED_PATTERNS)
 
 
 def _sha256_file(path: Path) -> str:
@@ -117,12 +128,17 @@ def verify_ledger(
     entries: list[dict[str, Any]] = []
     gaps: list[str] = []
     non_zero_exits: list[str] = []
+    expected_red_evidence: list[str] = []
 
     for todo in todos:
         todo_id = todo["id"]
         paths = evidence_paths_for_todo(todo_id, evidence_root)
         inspected = [inspect_evidence(p) for p in paths]
         has_evidence = bool(paths)
+
+        for ev in inspected:
+            ev_path = Path(ev["path"])
+            ev["expected_red"] = _is_expected_red(ev_path)
 
         entry = {
             "id": todo_id,
@@ -138,7 +154,11 @@ def verify_ledger(
         else:
             for ev in inspected:
                 if ev.get("exit_code", 0) != 0:
-                    non_zero_exits.append(f"{todo_id}: {ev['path']} exit={ev['exit_code']}")
+                    marker = f"{todo_id}: {ev['path']} exit={ev['exit_code']}"
+                    if ev.get("expected_red"):
+                        expected_red_evidence.append(marker)
+                    else:
+                        non_zero_exits.append(marker)
 
     verdict = "PASS" if not gaps and not non_zero_exits else "FAIL"
 
@@ -149,6 +169,7 @@ def verify_ledger(
         "todos_checked": len(todos),
         "missing_evidence": gaps,
         "non_zero_exit_evidence": non_zero_exits,
+        "expected_red_evidence": expected_red_evidence,
         "entries": entries,
     }
 

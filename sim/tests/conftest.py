@@ -3,7 +3,6 @@
 import copy
 
 import pytest
-
 from config.npu_config import load_config
 
 

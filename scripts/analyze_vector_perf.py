@@ -25,20 +25,18 @@ import argparse
 import math
 import re
 import sys
-from typing import Optional
-
 
 # ══════════════════════════════════════════════════════════════════════
 # Cycle formulas
 # ══════════════════════════════════════════════════════════════════════
 
 VECTOR_FORMULAS: dict[str, str] = {
-    "add":   "ceil(N/128) * 4 + 2",
-    "mul":   "ceil(N/128) * 4 + 2",
-    "max":   "ceil(N/128) * 10 + 2",  # MAX routes through reduce_tree, not ALU
+    "add": "ceil(N/128) * 4 + 2",
+    "mul": "ceil(N/128) * 4 + 2",
+    "max": "ceil(N/128) * 10 + 2",  # MAX routes through reduce_tree, not ALU
     "resid": "ceil(N/128) * 4 + 2",
-    "sum":   "ceil(N/128) * 10 + 2",
-    "conv":  "ceil(N/128) * 259 + 2", # CONV_FEED(N) + CONV_CAPTURE(N) = 2N, not N
+    "sum": "ceil(N/128) * 10 + 2",
+    "conv": "ceil(N/128) * 259 + 2",  # CONV_FEED(N) + CONV_CAPTURE(N) = 2N, not N
 }
 
 
@@ -47,12 +45,12 @@ def expected_cycles(op: str, dim: int) -> int:
     chunks = math.ceil(dim / 128)
 
     formulas: dict[str, int] = {
-        "add":   chunks * 4 + 2,
-        "mul":   chunks * 4 + 2,
-        "max":   chunks * 10 + 2,   # MAX routes through reduce_tree, not ALU
+        "add": chunks * 4 + 2,
+        "mul": chunks * 4 + 2,
+        "max": chunks * 10 + 2,  # MAX routes through reduce_tree, not ALU
         "resid": chunks * 4 + 2,
-        "sum":   chunks * 10 + 2,
-        "conv":  chunks * 259 + 2,  # CONV_FEED(N) + CONV_CAPTURE(N) sequential
+        "sum": chunks * 10 + 2,
+        "conv": chunks * 259 + 2,  # CONV_FEED(N) + CONV_CAPTURE(N) sequential
     }
     result = formulas.get(op.lower())
     if result is None:
@@ -64,9 +62,7 @@ def expected_cycles(op: str, dim: int) -> int:
 # PERF log parsing
 # ══════════════════════════════════════════════════════════════════════
 
-PERF_LINE_RE = re.compile(
-    r"PERF\|case=([^|]+)\|op=([^|]+)\|event=([^|]+)\|cycles=(\d+)"
-)
+PERF_LINE_RE = re.compile(r"PERF\|case=([^|]+)\|op=([^|]+)\|event=([^|]+)\|cycles=(\d+)")
 
 
 def parse_perf_log(log_path: str) -> list[dict]:
@@ -76,16 +72,18 @@ def parse_perf_log(log_path: str) -> list[dict]:
         for line in f:
             m = PERF_LINE_RE.search(line)
             if m:
-                entries.append({
-                    "case": m.group(1),
-                    "op": m.group(2),
-                    "event": m.group(3),
-                    "cycles": int(m.group(4)),
-                })
+                entries.append(
+                    {
+                        "case": m.group(1),
+                        "op": m.group(2),
+                        "event": m.group(3),
+                        "cycles": int(m.group(4)),
+                    }
+                )
     return entries
 
 
-def analyze_entries(entries: list[dict], case_id: Optional[str] = None) -> dict:
+def analyze_entries(entries: list[dict], case_id: str | None = None) -> dict:
     """Analyze parsed PERF entries and return a verdict dict."""
     results: dict = {
         "total_cycles": None,
@@ -147,8 +145,7 @@ def analyze_entries(entries: list[dict], case_id: Optional[str] = None) -> dict:
     results["dim"] = dim
     results["pass"] = passed
     results["verdict"] = (
-        f"{'PASS' if passed else 'FAIL'}"
-        f" (measured={measured}, expected={expected}, delta={delta}, tol={tol})"
+        f"{'PASS' if passed else 'FAIL'} (measured={measured}, expected={expected}, delta={delta}, tol={tol})"
     )
     return results
 
@@ -170,7 +167,7 @@ def print_dry_run(op: str, dim: int, case_id: str = "") -> None:
     print(f"  = ceil({dim}/128) * per_chunk_cycles + 2")
     print(f"  = {chunks} * {expected - 2} + 2")
     print(f"  = {expected}")
-    print(f"Tolerance: |delta| <= 1")
+    print("Tolerance: |delta| <= 1")
     print(f"[{case_id or op}] op={op},dim={dim} expected={expected} — PASS (dry-run, formula check only)")
 
 
@@ -189,7 +186,9 @@ def print_report(results: dict, case_id: str = "") -> None:
     dim = results.get("dim", 0)
     chunks = results.get("chunks")
 
-    print(f"[{case_id}] op={op_name},dim={dim} expected={expected} measured={measured} delta={delta} {'PASS' if passed else 'FAIL'}")
+    print(
+        f"[{case_id}] op={op_name},dim={dim} expected={expected} measured={measured} delta={delta} {'PASS' if passed else 'FAIL'}"
+    )
     if chunks is not None:
         print(f"  Chunk count: {chunks}")
 
@@ -199,7 +198,7 @@ def print_report(results: dict, case_id: str = "") -> None:
             print(f"    {state}: {cycles}")
 
     if not passed and expected is not None:
-        excess = abs(delta) - tol
+        abs(delta) - tol
         print(f"  FAIL: measured={measured} exceeds expected={expected} by {delta} (tolerance {tol})")
 
 
@@ -255,7 +254,7 @@ def main() -> int:
         results = analyze_entries(filtered, args.case)
     else:
         # Full log mode: group by case
-        cases = sorted(set(e["case"] for e in entries))
+        cases = sorted({e["case"] for e in entries})
         all_pass = True
         for case in cases:
             results = analyze_entries(entries, case)
@@ -272,7 +271,7 @@ def main() -> int:
         print_report(results, args.case)
 
     passed = results.get("pass", False)
-    print(f"PASS" if passed else "FAIL")
+    print("PASS" if passed else "FAIL")
     return 0 if passed else 1
 
 

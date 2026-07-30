@@ -9,7 +9,7 @@ a backlog.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, Generic, TypeVar
+from typing import Generic, TypeVar
 
 
 class QueueFullError(RuntimeError):
@@ -53,9 +53,7 @@ class BoundedFIFO(Generic[T]):
         """
         if self.is_full:
             self.queue_full = True
-            raise QueueFullError(
-                f"FIFO {self.name!r} is full (capacity={self.capacity})"
-            )
+            raise QueueFullError(f"FIFO {self.name!r} is full (capacity={self.capacity})")
         seq = self._sequence
         self._items.append((seq, item))
         self._sequence += 1
@@ -91,8 +89,8 @@ class MailboxLatest(Generic[T]):
     """
 
     name: str = "mailbox"
-    _pending: Dict[str, tuple[int, T]] = field(default_factory=dict, repr=False)
-    _arrival_ps: Dict[str, int] = field(default_factory=dict, repr=False)
+    _pending: dict[str, tuple[int, T]] = field(default_factory=dict, repr=False)
+    _arrival_ps: dict[str, int] = field(default_factory=dict, repr=False)
     replacement_count: int = field(default=0, init=False)
 
     @property

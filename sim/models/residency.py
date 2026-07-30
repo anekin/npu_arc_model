@@ -15,13 +15,12 @@ can hold them; activations and scratch may be split across tiers (partial).
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Tuple
-
-from pydantic import BaseModel, ConfigDict, Field
+from typing import Any
 
 from contracts.errors import ConfigError, CoverageError
 from contracts.identity import digest_sha256
 from models.memory_hierarchy import MemoryHierarchy, MemoryTier, MemoryTierName
+from pydantic import BaseModel, ConfigDict, Field
 from workloads.schema import Precision, WorkloadGraphV1
 
 
@@ -61,7 +60,7 @@ _KV_PRIORITY = 1
 _ACTIVATION_PRIORITY = 2
 _QUEUE_PRIORITY = 3
 
-_CATEGORY_PRIORITY: Dict[str, int] = {
+_CATEGORY_PRIORITY: dict[str, int] = {
     "weight": _WEIGHT_PRIORITY,
     "kv": _KV_PRIORITY,
     "activation": _ACTIVATION_PRIORITY,
@@ -99,7 +98,7 @@ class TensorPlacement(BaseModel):
 
     state: str = Field(..., pattern=r"^(full|partial|spill)$")
     destination_tier: str = Field(..., description="Tier holding the resident portion")
-    spill_tier: Optional[str] = Field(default=None, description="Tier/host receiving the spilled portion")
+    spill_tier: str | None = Field(default=None, description="Tier/host receiving the spilled portion")
 
     full_bytes: int = Field(default=0, ge=0)
     partial_bytes: int = Field(default=0, ge=0)
@@ -147,15 +146,15 @@ class MemoryAccessPlan(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     hierarchy: MemoryHierarchy
-    placements: Tuple[TensorPlacement, ...]
-    tier_summaries: Tuple[TierSummary, ...]
-    access_streams: Tuple[AccessStream, ...]
-    total_access_bytes: Dict[str, int]
+    placements: tuple[TensorPlacement, ...]
+    tier_summaries: tuple[TierSummary, ...]
+    access_streams: tuple[AccessStream, ...]
+    total_access_bytes: dict[str, int]
     spill_bytes_total: int
     resident_bytes_total: int
     digest: str
 
-    def placements_for_category(self, category: str) -> Tuple[TensorPlacement, ...]:
+    def placements_for_category(self, category: str) -> tuple[TensorPlacement, ...]:
         """Return all placements for a given category."""
         return tuple(p for p in self.placements if p.category == category)
 
@@ -174,7 +173,7 @@ class MemoryAccessPlan(BaseModel):
         """Return total resident bytes for a category."""
         return sum(p.full_bytes + p.partial_bytes for p in self.placements if p.category == category)
 
-    def fastest_allocated_tier(self, category: str) -> Optional[str]:
+    def fastest_allocated_tier(self, category: str) -> str | None:
         """Return the fastest tier that holds any bytes of ``category``."""
         tier_names = {p.destination_tier for p in self.placements if p.category == category}
         for tier in self.hierarchy.tiers:
@@ -182,7 +181,7 @@ class MemoryAccessPlan(BaseModel):
                 return tier.name
         return None
 
-    def to_canonical_dict(self) -> Dict[str, Any]:
+    def to_canonical_dict(self) -> dict[str, Any]:
         """Return a deterministic dict suitable for hashing."""
         return {
             "hierarchy": self.hierarchy.model_dump(mode="json"),
@@ -232,7 +231,7 @@ def _classify_tensor(graph: WorkloadGraphV1, tensor_id: str) -> str:
     return "activation"
 
 
-def _eligible_tiers(category: str, hierarchy: MemoryHierarchy) -> Tuple[MemoryTier, ...]:
+def _eligible_tiers(category: str, hierarchy: MemoryHierarchy) -> tuple[MemoryTier, ...]:
     """Return tiers eligible for ``category``, ordered fastest to slowest.
 
     Weights skip SRAM: their fastest eligible tier is on-chip 3D DRAM if
@@ -265,8 +264,7 @@ def _validate_alias(graph: WorkloadGraphV1, tensor_id: str) -> None:
     source_bytes = _tensor_footprint_bytes(tensor)
     if target_bytes != source_bytes:
         raise ConfigError(
-            f"alias {tensor_id!r} ({source_bytes} B) must match "
-            f"target {alias_of!r} ({target_bytes} B)",
+            f"alias {tensor_id!r} ({source_bytes} B) must match target {alias_of!r} ({target_bytes} B)",
             field_path=f"tensors.{tensor_id}.bytes",
         )
 
@@ -276,8 +274,8 @@ def _placement_for_tensor(
     tensor_id: str,
     category: str,
     hierarchy: MemoryHierarchy,
-    allocations: Dict[str, int],
-    reserves: Dict[str, int],
+    allocations: dict[str, int],
+    reserves: dict[str, int],
     resident_models: int,
 ) -> TensorPlacement:
     """Place one tensor and return its immutable placement."""
@@ -295,7 +293,7 @@ def _placement_for_tensor(
         )
 
     atomic = category in _ATOMIC_CATEGORIES
-    parts: List[Tuple[str, int]] = []
+    parts: list[tuple[str, int]] = []
     remaining = effective
 
     if atomic:
@@ -326,7 +324,7 @@ def _placement_for_tensor(
     if not parts:
         state = "spill"
         destination = eligible[-1].name
-        spill_tier: Optional[str] = None
+        spill_tier: str | None = None
         full_bytes = 0
         partial_bytes = 0
         spill_bytes = effective
@@ -377,13 +375,13 @@ def _placement_for_tensor(
 
 
 def _queue_placements(
-    queue_buffers: Dict[str, int],
+    queue_buffers: dict[str, int],
     hierarchy: MemoryHierarchy,
-    allocations: Dict[str, int],
-    reserves: Dict[str, int],
-) -> List[TensorPlacement]:
+    allocations: dict[str, int],
+    reserves: dict[str, int],
+) -> list[TensorPlacement]:
     """Create splittable placements for explicit queue buffers."""
-    placements: List[TensorPlacement] = []
+    placements: list[TensorPlacement] = []
     alignment = hierarchy.default_alignment_bytes
     eligible = _eligible_tiers("queue", hierarchy)
     first_eligible = eligible[0] if eligible else None
@@ -396,7 +394,7 @@ def _queue_placements(
             )
         aligned = _align_up(size_bytes, alignment)
         effective = aligned
-        parts: List[Tuple[str, int]] = []
+        parts: list[tuple[str, int]] = []
         remaining = effective
         for tier in eligible:
             if remaining <= 0:
@@ -466,12 +464,12 @@ def _queue_placements(
 
 def _build_tier_summaries(
     hierarchy: MemoryHierarchy,
-    allocations: Dict[str, int],
-    spill_in: Dict[str, int],
-    spill_out: Dict[str, int],
-) -> Tuple[TierSummary, ...]:
+    allocations: dict[str, int],
+    spill_in: dict[str, int],
+    spill_out: dict[str, int],
+) -> tuple[TierSummary, ...]:
     """Return immutable tier summaries sorted by tier name."""
-    summaries: List[TierSummary] = []
+    summaries: list[TierSummary] = []
     for tier in hierarchy.tiers:
         reserve = tier.reserve_bytes
         allocated = allocations[tier.name]
@@ -494,7 +492,7 @@ def build_memory_access_plan(
     hierarchy: MemoryHierarchy,
     *,
     resident_models: int = 1,
-    queue_buffers: Optional[Dict[str, int]] = None,
+    queue_buffers: dict[str, int] | None = None,
     allow_spill: bool = True,
 ) -> MemoryAccessPlan:
     """Build an immutable memory access plan from a workload graph.
@@ -524,16 +522,15 @@ def build_memory_access_plan(
     for tier in hierarchy.tiers:
         if tier.reserve_bytes > tier.capacity_bytes:
             raise ConfigError(
-                f"tier {tier.name!r} reserve {tier.reserve_bytes} B exceeds "
-                f"capacity {tier.capacity_bytes} B",
+                f"tier {tier.name!r} reserve {tier.reserve_bytes} B exceeds capacity {tier.capacity_bytes} B",
                 field_path=f"hierarchy.{tier.name}.reserve_fraction",
             )
 
-    allocations: Dict[str, int] = {tier.name: 0 for tier in hierarchy.tiers}
-    reserves: Dict[str, int] = {tier.name: tier.reserve_bytes for tier in hierarchy.tiers}
+    allocations: dict[str, int] = {tier.name: 0 for tier in hierarchy.tiers}
+    reserves: dict[str, int] = {tier.name: tier.reserve_bytes for tier in hierarchy.tiers}
 
     # Classify and sort tensors by priority, then by size descending.
-    classified: List[Tuple[str, str, int]] = []
+    classified: list[tuple[str, str, int]] = []
     for tensor in graph.tensors:
         _validate_alias(graph, tensor.tensor_id)
         category = _classify_tensor(graph, tensor.tensor_id)
@@ -542,7 +539,7 @@ def build_memory_access_plan(
 
     classified.sort(key=lambda item: (item[2], -graph.get_tensor(item[0]).bytes))
 
-    placements: List[TensorPlacement] = []
+    placements: list[TensorPlacement] = []
     for tensor_id, category, _ in classified:
         placement = _placement_for_tensor(
             graph=graph,
@@ -570,34 +567,27 @@ def build_memory_access_plan(
     spill_total = sum(p.spill_bytes for p in placements)
     if not allow_spill and spill_total > 0:
         raise CoverageError(
-            f"memory hierarchy cannot hold all tensors: {spill_total} bytes spill "
-            "beyond the slowest tier",
+            f"memory hierarchy cannot hold all tensors: {spill_total} bytes spill beyond the slowest tier",
             missing_axes=["hierarchy.capacity_bytes"],
         )
 
     # Build access streams and per-tier access bytes.
-    total_access: Dict[str, int] = {}
-    spill_in: Dict[str, int] = {tier.name: 0 for tier in hierarchy.tiers}
-    spill_out: Dict[str, int] = {tier.name: 0 for tier in hierarchy.tiers}
-    streams: List[AccessStream] = []
+    total_access: dict[str, int] = {}
+    spill_in: dict[str, int] = {tier.name: 0 for tier in hierarchy.tiers}
+    spill_out: dict[str, int] = {tier.name: 0 for tier in hierarchy.tiers}
+    streams: list[AccessStream] = []
 
     for placement in placements:
         # Resident portion is read from its destination tier.
         resident = placement.full_bytes + placement.partial_bytes
         if resident > 0:
-            total_access[placement.destination_tier] = (
-                total_access.get(placement.destination_tier, 0) + resident
-            )
+            total_access[placement.destination_tier] = total_access.get(placement.destination_tier, 0) + resident
         if placement.spill_bytes > 0:
             # Spilled bytes are read from the spill tier (host or next tier).
-            spill_tier = placement.spill_tier or (
-                hierarchy.tiers[-1].name if hierarchy.tiers else "host"
-            )
+            spill_tier = placement.spill_tier or (hierarchy.tiers[-1].name if hierarchy.tiers else "host")
             total_access[spill_tier] = total_access.get(spill_tier, 0) + placement.spill_bytes
             spill_in[spill_tier] = spill_in.get(spill_tier, 0) + placement.spill_bytes
-            spill_out[placement.destination_tier] = (
-                spill_out.get(placement.destination_tier, 0) + placement.spill_bytes
-            )
+            spill_out[placement.destination_tier] = spill_out.get(placement.destination_tier, 0) + placement.spill_bytes
             streams.append(
                 AccessStream(
                     stream_id=f"{placement.tensor_id}_spill",

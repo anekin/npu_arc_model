@@ -20,7 +20,7 @@ Reference: ``.omo/plans/arc-model-scenario-driven-dse-development.md`` Todo 9.
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -104,27 +104,27 @@ class EngineMetrics(BaseModel):
     efficiency_tok_per_mm2: float = Field(default=0.0)
 
     # Optional per-engine drill-down
-    completed_throughput_hz: Optional[float] = Field(default=None)
-    mac_count: Optional[int] = Field(default=None, description="Total MAC operations")
-    op_count: Optional[int] = Field(default=None, description="Total arithmetic operations (2× MAC)")
-    total_cycles: Optional[int] = Field(default=None)
-    utilization: Optional[float] = Field(default=None, ge=0.0, le=1.0)
+    completed_throughput_hz: float | None = Field(default=None)
+    mac_count: int | None = Field(default=None, description="Total MAC operations")
+    op_count: int | None = Field(default=None, description="Total arithmetic operations (2× MAC)")
+    total_cycles: int | None = Field(default=None)
+    utilization: float | None = Field(default=None, ge=0.0, le=1.0)
 
     # CV-specific
-    sram_spill_mb: Optional[float] = Field(default=None)
-    depthwise_util_pct: Optional[float] = Field(default=None)
+    sram_spill_mb: float | None = Field(default=None)
+    depthwise_util_pct: float | None = Field(default=None)
 
     # Latency breakdown (seconds) — filled when temporal data is available
-    avg_latency_s: Optional[float] = Field(default=None)
-    p50_latency_s: Optional[float] = Field(default=None)
-    p99_latency_s: Optional[float] = Field(default=None)
-    max_latency_s: Optional[float] = Field(default=None)
-    deadline_miss_count: Optional[int] = Field(default=None)
-    drop_count: Optional[int] = Field(default=None)
+    avg_latency_s: float | None = Field(default=None)
+    p50_latency_s: float | None = Field(default=None)
+    p99_latency_s: float | None = Field(default=None)
+    max_latency_s: float | None = Field(default=None)
+    deadline_miss_count: int | None = Field(default=None)
+    drop_count: int | None = Field(default=None)
 
-    memory_footprint_gib: Optional[float] = Field(default=None)
-    spill_bytes: Optional[int] = Field(default=None)
-    energy_joules: Optional[float] = Field(default=None)
+    memory_footprint_gib: float | None = Field(default=None)
+    spill_bytes: int | None = Field(default=None)
+    energy_joules: float | None = Field(default=None)
 
 
 class CalibrationRef(BaseModel):
@@ -161,10 +161,10 @@ class DesignPointResult(BaseModel):
     trust_level: RunTrustLevel = Field(default=RunTrustLevel.exploratory)
 
     # Metrics populated on success; None on failure/filter
-    metrics: Optional[EngineMetrics] = Field(default=None)
+    metrics: EngineMetrics | None = Field(default=None)
 
     # Error populated on failure; None on success
-    error: Optional[ErrorRecord] = Field(default=None)
+    error: ErrorRecord | None = Field(default=None)
 
 
 class ResultSummary(BaseModel):
@@ -217,8 +217,7 @@ def release_recommendation(result_set: DesignSpaceResultV2) -> list[DesignPointR
     # Whole-set trust
     if result_set.trust_level != RunTrustLevel.authoritative:
         raise NonAuthoritativeRunError(
-            f"Cannot produce release recommendation: "
-            f"result-set trust level is {result_set.trust_level.value}",
+            f"Cannot produce release recommendation: result-set trust level is {result_set.trust_level.value}",
             reason=f"trust_level={result_set.trust_level.value}",
         )
 
@@ -272,6 +271,3 @@ def result_standalone_from_ppa(
         trust_level=trust_level,
         metrics=metrics,
     )
-
-
-

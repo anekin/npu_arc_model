@@ -52,9 +52,9 @@ def policy_key(
     """
     return (
         -priority_class_level,  # higher level first
-        absolute_deadline_ps,   # earliest deadline first
-        release_ps,             # earliest release first
-        job_id,                 # stable deterministic tie-break
+        absolute_deadline_ps,  # earliest deadline first
+        release_ps,  # earliest release first
+        job_id,  # stable deterministic tie-break
     )
 
 

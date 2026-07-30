@@ -28,7 +28,10 @@ def _load_golden():
 def _run_npu_sim(*extra_args, cwd=REPO_ROOT):
     """Run sim/npu_sim.py with the given extra args."""
     cmd = [sys.executable, str(SIM_DIR / "npu_sim.py"), *extra_args]
-    env = {"PYTHONPATH": str(SIM_DIR), "PATH": str(Path(sys.executable).parent) + ":" + (Path(sys.executable).parent / ".." / ".." / "bin").as_posix()}
+    env = {
+        "PYTHONPATH": str(SIM_DIR),
+        "PATH": str(Path(sys.executable).parent) + ":" + (Path(sys.executable).parent / ".." / ".." / "bin").as_posix(),
+    }
     return subprocess.run(
         cmd, capture_output=True, text=True, cwd=str(cwd), env={**__import__("os").environ, **env}, timeout=60
     )
@@ -37,7 +40,10 @@ def _run_npu_sim(*extra_args, cwd=REPO_ROOT):
 def _run_dse(*extra_args, cwd=REPO_ROOT):
     """Run sim/design_space_explorer.py with the given extra args."""
     cmd = [sys.executable, str(SIM_DIR / "design_space_explorer.py"), *extra_args]
-    env = {"PYTHONPATH": str(SIM_DIR), "PATH": str(Path(sys.executable).parent) + ":" + (Path(sys.executable).parent / ".." / ".." / "bin").as_posix()}
+    env = {
+        "PYTHONPATH": str(SIM_DIR),
+        "PATH": str(Path(sys.executable).parent) + ":" + (Path(sys.executable).parent / ".." / ".." / "bin").as_posix(),
+    }
     return subprocess.run(
         cmd, capture_output=True, text=True, cwd=str(cwd), env={**__import__("os").environ, **env}, timeout=60
     )
@@ -199,7 +205,9 @@ class TestLegacyCLISnapshot:
         for field_name, spec in golden_fields.items():
             assert field_name in dse, f"Field '{field_name}' missing from DSE output"
             if spec["type"] == "integer":
-                assert isinstance(dse[field_name], int), f"Field '{field_name}' should be int, got {type(dse[field_name])}"
+                assert isinstance(dse[field_name], int), (
+                    f"Field '{field_name}' should be int, got {type(dse[field_name])}"
+                )
             elif spec["type"] == "array":
                 assert isinstance(dse[field_name], list), f"Field '{field_name}' should be list"
             elif spec["type"] == "string":

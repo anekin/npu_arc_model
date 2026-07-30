@@ -46,9 +46,7 @@ def _conv(
     groups: int = 1,
 ) -> dict[str, Any]:
     """Build a pointwise/standard convolution trace entry via map_conv_to_gemm."""
-    result = map_conv_to_gemm(
-        C_in, C_out, H, W, K, stride=stride, pad=pad, groups=groups
-    )
+    result = map_conv_to_gemm(C_in, C_out, H, W, K, stride=stride, pad=pad, groups=groups)
     trace_type = "pointwise_conv" if K == 1 and groups == 1 else "gemm"
     return {
         "type": trace_type,
@@ -164,30 +162,22 @@ def generate_resnet50_trace() -> list[dict[str, Any]]:
     # ---- conv2_x: 3 blocks, 64 -> 256 ---------------------------------------
     H, W = _bottleneck_block(trace, "layer1.0", 64, 64, 256, H, W, stride=1, downsample=True)
     for i in range(1, 3):
-        H, W = _bottleneck_block(
-            trace, f"layer1.{i}", 256, 64, 256, H, W, stride=1, downsample=False
-        )
+        H, W = _bottleneck_block(trace, f"layer1.{i}", 256, 64, 256, H, W, stride=1, downsample=False)
 
     # ---- conv3_x: 4 blocks, 128 -> 512 --------------------------------------
     H, W = _bottleneck_block(trace, "layer2.0", 256, 128, 512, H, W, stride=2, downsample=True)
     for i in range(1, 4):
-        H, W = _bottleneck_block(
-            trace, f"layer2.{i}", 512, 128, 512, H, W, stride=1, downsample=False
-        )
+        H, W = _bottleneck_block(trace, f"layer2.{i}", 512, 128, 512, H, W, stride=1, downsample=False)
 
     # ---- conv4_x: 6 blocks, 256 -> 1024 -------------------------------------
     H, W = _bottleneck_block(trace, "layer3.0", 512, 256, 1024, H, W, stride=2, downsample=True)
     for i in range(1, 6):
-        H, W = _bottleneck_block(
-            trace, f"layer3.{i}", 1024, 256, 1024, H, W, stride=1, downsample=False
-        )
+        H, W = _bottleneck_block(trace, f"layer3.{i}", 1024, 256, 1024, H, W, stride=1, downsample=False)
 
     # ---- conv5_x: 3 blocks, 512 -> 2048 -------------------------------------
     H, W = _bottleneck_block(trace, "layer4.0", 1024, 512, 2048, H, W, stride=2, downsample=True)
     for i in range(1, 3):
-        H, W = _bottleneck_block(
-            trace, f"layer4.{i}", 2048, 512, 2048, H, W, stride=1, downsample=False
-        )
+        H, W = _bottleneck_block(trace, f"layer4.{i}", 2048, 512, 2048, H, W, stride=1, downsample=False)
 
     # ---- global average pool + classifier -----------------------------------
     trace.append(_pool("avgpool", 2048 * H * W, "avg_pool"))

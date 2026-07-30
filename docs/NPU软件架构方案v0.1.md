@@ -103,7 +103,7 @@
 ```python
 model = AutoModelForCausalLM.from_pretrained("Qwen2.5-3B")
 # 或
-model = torch.hub.load('ultralytics', 'yolov8n')
+model = torch.hub.load("ultralytics", "yolov8n")
 ```
 
 **输出**：StableHLO MLIR 文本

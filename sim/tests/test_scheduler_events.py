@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import pytest
-
 from scheduler.events import Event, EventPhase, EventQueue, event_key
 
 

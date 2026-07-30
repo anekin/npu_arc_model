@@ -14,8 +14,9 @@ GMMA = Block Engine 的异步升级版:
 """
 
 import math
-from typing import Any, Dict
-from engine.mac_engine import MACEngine, EngineResult
+from typing import Any
+
+from engine.mac_engine import EngineResult, MACEngine
 
 
 class GMMAEngine(MACEngine):
@@ -50,24 +51,18 @@ class GMMAEngine(MACEngine):
     GMMA_PIPELINE_SCALE = 0.05
 
     TMA_AREA_MM2 = 2.0
-    SHMEM_KB = 4096    # 4MB shared memory for weights
+    SHMEM_KB = 4096  # 4MB shared memory for weights
 
-    def _parse_config(self, config: Dict[str, Any]) -> None:
+    def _parse_config(self, config: dict[str, Any]) -> None:
         """Parse common config plus GMMA-specific calibration parameters."""
         super()._parse_config(config)
-        scale = config.get("gmma", {}).get(
-            "pipeline_scale", self.GMMA_PIPELINE_SCALE
-        )
+        scale = config.get("gmma", {}).get("pipeline_scale", self.GMMA_PIPELINE_SCALE)
         try:
             scale = float(scale)
         except (TypeError, ValueError) as exc:
-            raise ValueError(
-                f"gmma.pipeline_scale must be a number, got {scale!r}"
-            ) from exc
+            raise ValueError(f"gmma.pipeline_scale must be a number, got {scale!r}") from exc
         if not (0 < scale <= 1):
-            raise ValueError(
-                f"gmma.pipeline_scale must be in (0, 1], got {scale}"
-            )
+            raise ValueError(f"gmma.pipeline_scale must be in (0, 1], got {scale}")
         self.pipeline_scale = scale
 
     @property
@@ -78,8 +73,7 @@ class GMMAEngine(MACEngine):
         """Systolic pipeline depth per K-tile, scaled by GMMA's async pipeline."""
         return max(1, math.ceil((self.H + M + self.W) * self.pipeline_scale))
 
-    def estimate(self, M: int, K: int, N: int,
-                 weight_preloaded: bool = False) -> EngineResult:
+    def estimate(self, M: int, K: int, N: int, weight_preloaded: bool = False) -> EngineResult:
         """GMMA GEMM — K-tiling + correct activation DMA + TMA overlap."""
         K_tiles = math.ceil(K / self.H)
         N_tiles = math.ceil(N / self.W)
@@ -91,10 +85,7 @@ class GMMAEngine(MACEngine):
 
         # SRAM efficiency
         weight_dram_eff = self._dram_eff_for_bytes(total_weight_bytes)
-        if weight_dram_eff <= 0:
-            weight_dma_cycles = 0
-        else:
-            weight_dma_cycles = total_weight_bytes / (self.eff_bw * weight_dram_eff)
+        weight_dma_cycles = 0 if weight_dram_eff <= 0 else total_weight_bytes / (self.eff_bw * weight_dram_eff)
 
         act_dma_cycles = act_bytes / self.eff_bw
         total_dma = weight_dma_cycles + act_dma_cycles
@@ -133,7 +124,8 @@ class GMMAEngine(MACEngine):
             weight_bytes=int(total_weight_bytes),
             bottleneck="dma" if total_dma > total_compute else "compute",
             details={
-                "K_tiles": K_tiles, "N_tiles": N_tiles,
+                "K_tiles": K_tiles,
+                "N_tiles": N_tiles,
                 "per_tile_compute": per_tile_compute,
                 "per_tile_dma": round(per_tile_dma_val, 1),
                 "raw_dma_cycles": int(total_dma),
@@ -174,10 +166,7 @@ class GMMAEngine(MACEngine):
         bottleneck = max(per_tile_compute, per_tile_dma_raw)
         first_tile = per_tile_dma_raw + per_tile_compute
 
-        if total_tiles > 1:
-            total = int(first_tile + (total_tiles - 1) * bottleneck)
-        else:
-            total = int(first_tile)
+        total = int(first_tile + (total_tiles - 1) * bottleneck) if total_tiles > 1 else int(first_tile)
 
         total_macs = M * K * N * 2
         total_weight_bytes = total_tiles * (dual_weight_bytes + tile_act_bytes)

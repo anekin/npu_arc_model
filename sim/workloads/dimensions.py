@@ -18,10 +18,9 @@ Dimensions (from the plan):
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, Optional, Set
 
 from contracts.errors import DimensionBindingError
-
+from workloads.schema import WorkloadGraphV1
 
 # ── Named symbolic axis ──────────────────────────────────────────────────────
 
@@ -35,52 +34,54 @@ AXIS_FLOW_STEPS = "flow_steps"
 AXIS_RESIDENT_MODELS = "resident_models"
 AXIS_INFLIGHT_JOBS = "inflight_jobs"
 
-ALL_AXES: Set[str] = frozenset({
-    AXIS_BATCH,
-    AXIS_SEQUENCES,
-    AXIS_TOKEN_BLOCK,
-    AXIS_IMAGE_COUNT,
-    AXIS_ACTION_HORIZON,
-    AXIS_FLOW_STEPS,
-    AXIS_RESIDENT_MODELS,
-    AXIS_INFLIGHT_JOBS,
-})
+ALL_AXES: set[str] = frozenset(
+    {
+        AXIS_BATCH,
+        AXIS_SEQUENCES,
+        AXIS_TOKEN_BLOCK,
+        AXIS_IMAGE_COUNT,
+        AXIS_ACTION_HORIZON,
+        AXIS_FLOW_STEPS,
+        AXIS_RESIDENT_MODELS,
+        AXIS_INFLIGHT_JOBS,
+    }
+)
 """Frozen set of all canonical symbolic axis names."""
 
 
 # ── Edge batch values (acceptance criteria) ──────────────────────────────────
 
-STANDARD_BATCH_EDGES: Dict[str, Set[int]] = {
+STANDARD_BATCH_EDGES: dict[str, set[int]] = {
     AXIS_BATCH: {1, 2, 4, 8},
     AXIS_SEQUENCES: {1, 2, 4, 8},
 }
 """Standard batch edges from the plan."""
 
-STRESS_BATCH_EDGES: Dict[str, Set[int]] = {
+STRESS_BATCH_EDGES: dict[str, set[int]] = {
     AXIS_BATCH: {16},
     AXIS_SEQUENCES: {16},
 }
 """Stress batch edges from the plan."""
 
-TOKEN_BLOCK_EDGES: Set[int] = {16, 32, 64, 128, 256}
+TOKEN_BLOCK_EDGES: set[int] = {16, 32, 64, 128, 256}
 """Standard token block sizes."""
 
-TOKEN_BLOCK_VLM_VLA_EXT: Set[int] = {512, 1024}
+TOKEN_BLOCK_VLM_VLA_EXT: set[int] = {512, 1024}
 """Extended token block sizes for VLM/VLA scenarios."""
 
-IMAGE_COUNT_EDGES: Set[int] = {1, 2, 3, 4}
+IMAGE_COUNT_EDGES: set[int] = {1, 2, 3, 4}
 """Image count edges."""
 
-ACTION_HORIZON_EDGES: Set[int] = {8, 10, 25, 50}
+ACTION_HORIZON_EDGES: set[int] = {8, 10, 25, 50}
 """Action horizon edges."""
 
-FLOW_STEPS_EDGES: Set[int] = {4, 8, 10}
+FLOW_STEPS_EDGES: set[int] = {4, 8, 10}
 """Flow steps edges."""
 
-RESIDENT_MODELS_EDGES: Set[int] = {4, 8}
+RESIDENT_MODELS_EDGES: set[int] = {4, 8}
 """Resident model count edges."""
 
-INFLIGHT_JOBS_EDGES: Set[int] = {4, 8, 16}
+INFLIGHT_JOBS_EDGES: set[int] = {4, 8, 16}
 """Inflight jobs edges."""
 
 
@@ -99,32 +100,32 @@ class DimensionBindings:
     ``active_sequences`` or ``token_block``.  Each dimension is independent.
     """
 
-    request_batch: Optional[int] = None
+    request_batch: int | None = None
     """Number of simultaneous requests in a batch.  Maps to axis ``batch``."""
 
-    active_sequences: Optional[int] = None
+    active_sequences: int | None = None
     """Number of concurrently active sequences (decode).  Maps to axis ``active_sequences``."""
 
-    token_block: Optional[int] = None
+    token_block: int | None = None
     """Token block size for prefill chunking.  Maps to axis ``token_block``."""
 
-    image_count: Optional[int] = None
+    image_count: int | None = None
     """Number of images per inference (VLM/VLA).  Maps to axis ``image_count``."""
 
-    action_horizon: Optional[int] = None
+    action_horizon: int | None = None
     """VLA action horizon — number of future steps predicted.  Maps to axis ``action_horizon``."""
 
-    flow_steps: Optional[int] = None
+    flow_steps: int | None = None
     """Number of continuous flow model steps.  Maps to axis ``flow_steps``."""
 
-    resident_models: Optional[int] = None
+    resident_models: int | None = None
     """Number of models resident in memory.  Maps to axis ``resident_models``."""
 
-    inflight_jobs: Optional[int] = None
+    inflight_jobs: int | None = None
     """Number of concurrently executing jobs.  Maps to axis ``inflight_jobs``."""
 
     # Arbitrary additional bindings for schema symbols not in canonical list
-    extra: Dict[str, int] = field(default_factory=dict)
+    extra: dict[str, int] = field(default_factory=dict)
     """Additional symbolic dimension bindings beyond the canonical set."""
 
     def __post_init__(self):
@@ -150,21 +151,23 @@ class DimensionBindings:
         # Warn about extra keys that overlap canonical names
         for key in self.extra:
             if key in {
-                "request_batch", "active_sequences", "token_block",
-                "image_count", "action_horizon", "flow_steps",
-                "resident_models", "inflight_jobs",
+                "request_batch",
+                "active_sequences",
+                "token_block",
+                "image_count",
+                "action_horizon",
+                "flow_steps",
+                "resident_models",
+                "inflight_jobs",
             }:
-                raise ValueError(
-                    f"extra dimension {key!r} shadows canonical field — "
-                    f"use the dedicated field instead"
-                )
+                raise ValueError(f"extra dimension {key!r} shadows canonical field — use the dedicated field instead")
 
-    def to_dict(self) -> Dict[str, int]:
+    def to_dict(self) -> dict[str, int]:
         """Return all bound dimensions as a flat dict (name → int).
 
         Unset dimensions are excluded.
         """
-        result: Dict[str, int] = {}
+        result: dict[str, int] = {}
         axis_map = [
             (AXIS_BATCH, self.request_batch),
             (AXIS_SEQUENCES, self.active_sequences),
@@ -181,7 +184,7 @@ class DimensionBindings:
         result.update(self.extra)
         return result
 
-    def unbound(self, required_axes: Set[str]) -> Set[str]:
+    def unbound(self, required_axes: set[str]) -> set[str]:
         """Return the set of required axes that are not bound.
 
         Args:
@@ -192,9 +195,9 @@ class DimensionBindings:
 
 
 def apply_bindings(
-    graph: "WorkloadGraphV1",
+    graph: WorkloadGraphV1,
     bindings: DimensionBindings,
-) -> "WorkloadGraphV1":
+) -> WorkloadGraphV1:
     """Return a new graph with all symbolic dimensions replaced by bound values.
 
     Args:
@@ -204,7 +207,7 @@ def apply_bindings(
     Raises:
         DimensionBindingError: if a symbolic dimension is unbound.
     """
-    from workloads.schema import TensorSpec  # local import avoids circular dependency
+    from workloads.schema import TensorSpec  # local imports avoid circular dependency
 
     binding_dict = bindings.to_dict()
     new_tensors: list[TensorSpec] = []

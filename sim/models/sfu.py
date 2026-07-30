@@ -7,7 +7,7 @@ v2 改进：
 - 匹配 WeChat 文章分析的四大瓶颈
 """
 
-from typing import Any, Dict, Tuple
+from typing import Any
 
 
 class SFUModel:
@@ -19,7 +19,7 @@ class SFUModel:
     - gelu: tanh_approx(SFU) + mul(Vector)
     """
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: dict[str, Any]):
         sfu = config["sfu"]
         self.width = int(sfu["width"])
         self.freq_mhz = int(config.get("mxu", {}).get("frequency_mhz", 1000))
@@ -41,9 +41,9 @@ class SFUModel:
             # unified softmax (kept for backward compat)
             "softmax": int(sfu.get("pipeline_cycles", {}).get("softmax", 8)),
             # CV-specific ops
-            "h_swish": 4,                                          # clip+add+mul+div pipeline
-            "hard_sigmoid": 3,                                     # clip+add+mul pipeline
-            "global_avg_pool": 8,                                  # reduction tree
+            "h_swish": 4,  # clip+add+mul+div pipeline
+            "hard_sigmoid": 3,  # clip+add+mul pipeline
+            "global_avg_pool": 8,  # reduction tree
             "maxpool": int(sfu.get("pipeline_cycles", {}).get("maxpool", 3)),
             "avgpool": int(sfu.get("pipeline_cycles", {}).get("avgpool", 3)),
         }
@@ -54,7 +54,7 @@ class SFUModel:
         batches = (num_elements + self.width - 1) // self.width
         return batches * latency
 
-    def estimate_softmax_decomposed(self, num_elements: int) -> Dict[str, int]:
+    def estimate_softmax_decomposed(self, num_elements: int) -> dict[str, int]:
         """Decomposed softmax: returns SFU-only portions.
 
         Softmax(x) = exp(x - max) / sum(exp(x - max))
@@ -71,8 +71,7 @@ class SFUModel:
             "div": batches * self.latency_map["div"],
         }
 
-    def estimate_attention_sfu(self, hidden_size: int,
-                                num_heads: int = 32) -> Dict[str, int]:
+    def estimate_attention_sfu(self, hidden_size: int, num_heads: int = 32) -> dict[str, int]:
         """Estimate SFU portion of attention for one decode token.
 
         Per head: softmax over head_dim × seq_len
@@ -90,7 +89,7 @@ class SFUModel:
         Returns SFU cycle counts for one attention block.
         """
         # Per-head softmax: head_dim elements per head
-        head_dim = hidden_size // num_heads
+        hidden_size // num_heads
         # Actually, softmax is over the attention scores, which is seq_len per head
         # For simplicity, use hidden_size as a proxy for total attention compute
         decomposed = self.estimate_softmax_decomposed(hidden_size)
@@ -99,8 +98,9 @@ class SFUModel:
             "attn_div": decomposed["div"],
         }
 
-    def estimate_all_layer(self, hidden_size: int, intermediate_size: int,
-                           has_attention: bool = True, has_rope: bool = True) -> Tuple[int, Dict[str, int]]:
+    def estimate_all_layer(
+        self, hidden_size: int, intermediate_size: int, has_attention: bool = True, has_rope: bool = True
+    ) -> tuple[int, dict[str, int]]:
         """Estimate ALL SFU operations for one transformer layer.
 
         Returns (total_cycles, breakdown_dict)

@@ -1,27 +1,27 @@
 #!/usr/bin/env python3
 """硬件优化三层对比 — 一键跑 L0/L1/L2 配置，输出性能对比表"""
 
-import sys, subprocess
+import subprocess
+import sys
 from pathlib import Path
 
 SIM_DIR = Path(__file__).parent
 CONFIGS = [
-    ("L0: Baseline", "config/npu_config.yaml",
-     "128×128, 64-bit LPDDR5, INT4"),
-    ("L1: +Weight Cache", "config/npu_config_l1_cache.yaml",
-     "PE双weight寄存器, gate+up合并"),
-    ("L2: +DMA×2", "config/npu_config_l2_dma.yaml",
-     "128-bit DRAM 或 4ch DMA"),
+    ("L0: Baseline", "config/npu_config.yaml", "128×128, 64-bit LPDDR5, INT4"),
+    ("L1: +Weight Cache", "config/npu_config_l1_cache.yaml", "PE双weight寄存器, gate+up合并"),
+    ("L2: +DMA×2", "config/npu_config_l2_dma.yaml", "128-bit DRAM 或 4ch DMA"),
 ]
 
 
 def run_config(name, config_path, desc):
     """Run npu_sim.py with given config and parse tok/s."""
-    import json, re
+    import json
+    import re
+
     result = subprocess.run(
-        [sys.executable, str(SIM_DIR / "npu_sim.py"),
-         "-c", config_path, "--json"],
-        capture_output=True, text=True,
+        [sys.executable, str(SIM_DIR / "npu_sim.py"), "-c", config_path, "--json"],
+        capture_output=True,
+        text=True,
         timeout=120,
         cwd=str(SIM_DIR),
     )
@@ -61,10 +61,10 @@ def main():
             print(f"ERROR: {e}")
 
     # Summary table
-    print(f"\n{'='*70}")
-    print(f"  性能对比")
+    print(f"\n{'=' * 70}")
+    print("  性能对比")
     print(f"  {'Level':<25} {'tok/s':>8} {'μs/token':>12} {'改善':>8}")
-    print(f"  {'-'*60}")
+    print(f"  {'-' * 60}")
 
     base_tok = results[0]["tok_s"] if results else 15
     for r in results:
@@ -72,17 +72,17 @@ def main():
         print(f"  {r['name']:<25} {r['tok_s']:>7.1f} {r['per_token_us']:>10.0f}  {delta:>+6.1f}")
 
     # Hardware cost
-    print(f"\n  硬件代价")
+    print("\n  硬件代价")
     cost_table = [
-        ("L0: Baseline",           "27mm²", "—"),
-        ("L1: +Weight Cache",      "28mm²", "PE +15%, +1mm²"),
-        ("L2: +DMA×2",            "28mm²", "128-bit PHY 或 DMA引擎×2"),
+        ("L0: Baseline", "27mm²", "—"),
+        ("L1: +Weight Cache", "28mm²", "PE +15%, +1mm²"),
+        ("L2: +DMA×2", "28mm²", "128-bit PHY 或 DMA引擎×2"),
     ]
     for name, area, note in cost_table:
         print(f"  {name:<25} {area:>8}  {note}")
 
     # Combined with batching
-    print(f"\n  叠加 M=2 Batching")
+    print("\n  叠加 M=2 Batching")
     for r in results:
         # Rough estimate: 2× with ~5% contention penalty
         batch_tok = r["tok_s"] * 2 * 0.95

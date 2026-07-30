@@ -14,29 +14,28 @@ Hardware spec reference: NPU硬件详细架构设计v0.2
 
 import hashlib
 import math
-import struct
 from dataclasses import dataclass, field, replace
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
-
 from models.dma import DMAModel
 
 # ══════════════════════════════════════════════════════════════════════
 # Constants from hardware spec
 # ══════════════════════════════════════════════════════════════════════
 
-ARRAY_H = 64           # broadcast-based block array height
-ARRAY_W = 64           # broadcast-based block array width
+ARRAY_H = 64  # broadcast-based block array height
+ARRAY_W = 64  # broadcast-based block array width
 SRAM_SIZE = 4 * 1024 * 1024  # 4 MB Unified Buffer (L2 configurable 2-8 MB)
-L1_SRAM = 256 * 1024   # 256 KB L1 per core
+L1_SRAM = 256 * 1024  # 256 KB L1 per core
 INT32_MAX = 2**31 - 1
-INT32_MIN = -2**31
+INT32_MIN = -(2**31)
 
 
 # ══════════════════════════════════════════════════════════════════════
 # Phase A-1: GoldenMXU — pure INT32 tile accumulation
 # ══════════════════════════════════════════════════════════════════════
+
 
 class GoldenMXU:
     """Bit-accurate MXU: INT4 weights × INT8 activations → INT32 accumulate.
@@ -87,9 +86,7 @@ class GoldenMXU:
 
     # ── Core matmul ─────────────────────────────────────────────────
 
-    def matmul_int32(self, activation: np.ndarray,
-                     weight_packed: np.ndarray,
-                     M: int, K: int, N: int) -> np.ndarray:
+    def matmul_int32(self, activation: np.ndarray, weight_packed: np.ndarray, M: int, K: int, N: int) -> np.ndarray:
         """INT4 weights × INT8 activations → INT32 accumulation.
 
         Bit-exact to hardware: per-tile integer dot product, no float32 intermediate.
@@ -110,7 +107,7 @@ class GoldenMXU:
         A = np.asarray(activation, dtype=np.int8)
         if A.size < M * K:
             A = np.pad(A.flatten(), (0, M * K - A.size), constant_values=0)
-        A = A.flatten()[:M * K].reshape(M, K)
+        A = A.flatten()[: M * K].reshape(M, K)
 
         result = np.zeros((M, N), dtype=np.int32)
 
@@ -134,9 +131,9 @@ class GoldenMXU:
 
         return result
 
-    def matmul_from_sram(self, M: int, K: int, N: int,
-                         act_sram_addr: int, wgt_sram_addr: int,
-                         sram: np.ndarray) -> np.ndarray:
+    def matmul_from_sram(
+        self, M: int, K: int, N: int, act_sram_addr: int, wgt_sram_addr: int, sram: np.ndarray
+    ) -> np.ndarray:
         """Execute MMUL reading activation and weight from SRAM.
 
         SRAM layout: unified byte array, activations and weights at given offsets.
@@ -144,20 +141,19 @@ class GoldenMXU:
         """
         # Read activation: M×K INT8 values from sram[act_sram_addr:]
         act_bytes = M * K  # INT8 = 1 byte each
-        act = sram[act_sram_addr:act_sram_addr + act_bytes].astype(np.int8).reshape(M, K)
+        act = sram[act_sram_addr : act_sram_addr + act_bytes].astype(np.int8).reshape(M, K)
 
         # Read weights: K×N INT4 values (packed 2/byte) from sram[wgt_sram_addr:]
         wgt_packed_bytes = (K * N + 1) // 2
-        wgt_packed = sram[wgt_sram_addr:wgt_sram_addr + wgt_packed_bytes].astype(np.uint8)
+        wgt_packed = sram[wgt_sram_addr : wgt_sram_addr + wgt_packed_bytes].astype(np.uint8)
 
         return self.matmul_int32(act, wgt_packed, M, K, N)
 
     # ── Per-channel matmul ──────────────────────────────────────────
 
-    def matmul_int4_per_channel(self, activation: np.ndarray,
-                                weight_packed: np.ndarray,
-                                weight_scales: np.ndarray,
-                                M: int, K: int, N: int) -> np.ndarray:
+    def matmul_int4_per_channel(
+        self, activation: np.ndarray, weight_packed: np.ndarray, weight_scales: np.ndarray, M: int, K: int, N: int
+    ) -> np.ndarray:
         """INT4 per-channel: INT32 accumulate → FP16 scale per output channel.
 
         Hardware flow:
@@ -182,17 +178,21 @@ class GoldenMXU:
         # Step 2: Per-channel scale (hardware: column accumulator × FP16 scale)
         # scales shape (N,) → broadcast to (M, N)
         scales_fp32 = np.asarray(weight_scales, dtype=np.float32)
-        assert scales_fp32.shape == (N,), \
-            f"Expected scales shape ({N},), got {scales_fp32.shape}"
+        assert scales_fp32.shape == (N,), f"Expected scales shape ({N},), got {scales_fp32.shape}"
 
         fp32_result = int32_result.astype(np.float32) * scales_fp32[np.newaxis, :]
         return fp32_result
 
-    def matmul_int4_per_block(self, activation: np.ndarray,
-                              weight_packed: np.ndarray,
-                              block_scales: np.ndarray,
-                              M: int, K: int, N: int,
-                              group_size: int = 128) -> np.ndarray:
+    def matmul_int4_per_block(
+        self,
+        activation: np.ndarray,
+        weight_packed: np.ndarray,
+        block_scales: np.ndarray,
+        M: int,
+        K: int,
+        N: int,
+        group_size: int = 128,
+    ) -> np.ndarray:
         """INT4 per-block: K-dimension split into blocks, each with per-channel scales.
 
         Hardware flow (matches 64×64 block array tiling):
@@ -226,12 +226,11 @@ class GoldenMXU:
         A = np.asarray(activation, dtype=np.int8)
         if A.size < M * K:
             A = np.pad(A.flatten(), (0, M * K - A.size), constant_values=0)
-        A = A.flatten()[:M * K].reshape(M, K)
+        A = A.flatten()[: M * K].reshape(M, K)
 
         scales = np.asarray(block_scales, dtype=np.float32)
         num_blocks = (K + group_size - 1) // group_size
-        assert scales.shape == (num_blocks, N), \
-            f"Expected block_scales ({num_blocks},{N}), got {scales.shape}"
+        assert scales.shape == (num_blocks, N), f"Expected block_scales ({num_blocks},{N}), got {scales.shape}"
 
         # Accumulate in float32 (hardware: FP32 accumulator after scale multiply)
         result = np.zeros((M, N), dtype=np.float32)
@@ -245,11 +244,11 @@ class GoldenMXU:
                 k_start = b * group_size
                 k_end = min(k_start + group_size, K)
 
-                a_block = A[:, k_start:k_end].astype(np.int32)          # (M, block_size)
+                a_block = A[:, k_start:k_end].astype(np.int32)  # (M, block_size)
                 w_block = W[k_start:k_end, n_start:n_end].astype(np.int32)  # (block_size, N_tile)
 
                 # INT32 matmul for this block × tile
-                partial = np.dot(a_block, w_block)   # (M, N_tile)
+                partial = np.dot(a_block, w_block)  # (M, N_tile)
                 partial = np.clip(partial, INT32_MIN, INT32_MAX)
 
                 # Scale by block's per-channel scales
@@ -266,7 +265,7 @@ class GoldenMXU:
         return hashlib.md5(np.asarray(arr, dtype=np.int32).tobytes()).hexdigest()[:16]
 
     @staticmethod
-    def max_error(golden: np.ndarray, test: np.ndarray) -> Dict[str, float]:
+    def max_error(golden: np.ndarray, test: np.ndarray) -> dict[str, float]:
         """Compute error metrics between golden and test arrays."""
         diff = np.abs(golden.astype(np.float64) - test.astype(np.float64))
         rel = diff / (np.abs(golden.astype(np.float64)) + 1e-8)
@@ -281,6 +280,7 @@ class GoldenMXU:
 # ══════════════════════════════════════════════════════════════════════
 # Phase A-2: GoldenSFU — hardware-equivalent LUT/fixed-point
 # ══════════════════════════════════════════════════════════════════════
+
 
 class GoldenSFU:
     """Hardware-equivalent SFU: LUT-based activation functions.
@@ -348,10 +348,7 @@ class GoldenSFU:
             frac = idx_f - idx_lo
 
             # Linear interpolation
-            result[valid] = (
-                self.exp_lut[idx_lo] * (1.0 - frac) +
-                self.exp_lut[idx_hi] * frac
-            ).astype(np.float32)
+            result[valid] = (self.exp_lut[idx_lo] * (1.0 - frac) + self.exp_lut[idx_hi] * frac).astype(np.float32)
 
         # Above 0 → 1.0 (values > 0 shouldn't appear after max-subtract)
         result[x > 0] = 1.0
@@ -400,9 +397,7 @@ class GoldenSFU:
         self.gelu_lut_step = (x_max - x_min) / (entries - 1)
 
         xs = np.linspace(x_min, x_max, entries, dtype=np.float64)
-        self.gelu_lut = (0.5 * xs * (
-            1.0 + np.tanh(np.sqrt(2.0 / np.pi) * (xs + 0.044715 * xs**3))
-        )).astype(np.float32)
+        self.gelu_lut = (0.5 * xs * (1.0 + np.tanh(np.sqrt(2.0 / np.pi) * (xs + 0.044715 * xs**3)))).astype(np.float32)
 
     def gelu_hw(self, x: np.ndarray) -> np.ndarray:
         """Hardware-equivalent GELU: 64-entry LUT with linear interpolation."""
@@ -426,19 +421,14 @@ class GoldenSFU:
             idx_hi = np.minimum(idx_lo + 1, self.gelu_lut_entries - 1)
             frac = idx_f - idx_lo
 
-            result[in_range] = (
-                self.gelu_lut[idx_lo] * (1.0 - frac) +
-                self.gelu_lut[idx_hi] * frac
-            ).astype(np.float32)
+            result[in_range] = (self.gelu_lut[idx_lo] * (1.0 - frac) + self.gelu_lut[idx_hi] * frac).astype(np.float32)
 
         return result
 
     def gelu_ref(self, x: np.ndarray) -> np.ndarray:
         """Reference GELU: tanh approximation (float64)."""
         x = np.asarray(x, dtype=np.float64)
-        return (0.5 * x * (1.0 + np.tanh(
-            np.sqrt(2.0 / np.pi) * (x + 0.044715 * x**3)
-        ))).astype(np.float32)
+        return (0.5 * x * (1.0 + np.tanh(np.sqrt(2.0 / np.pi) * (x + 0.044715 * x**3)))).astype(np.float32)
 
     # ── SiLU ────────────────────────────────────────────────────────
 
@@ -455,11 +445,7 @@ class GoldenSFU:
         # For x >= 0: exp(-x) is in [0, 1]
         # For x < 0: exp(-x) > 1, sigmoid ≈ exp(x) / (1 + exp(x))
         neg_exp = self._exp_hw(-np.abs(x))  # exp(-|x|)
-        sigmoid = np.where(
-            x >= 0,
-            1.0 / (1.0 + neg_exp),
-            neg_exp / (1.0 + neg_exp)
-        )
+        sigmoid = np.where(x >= 0, 1.0 / (1.0 + neg_exp), neg_exp / (1.0 + neg_exp))
         return x * sigmoid
 
     # ── ReLU ────────────────────────────────────────────────────────
@@ -492,7 +478,7 @@ class GoldenSFU:
         - Output: (x - mean) / sqrt(var + eps)
         """
         x = GoldenSFU._flush_f16_subnormals(x)
-        N = x.shape[-1]
+        x.shape[-1]
         mean = np.mean(x, axis=-1, keepdims=True)
         var = np.var(x, axis=-1, keepdims=True)
         # Quantize intermediate to BF16 precision (simulate hardware)
@@ -523,20 +509,14 @@ class GoldenSFU:
         Reference uses float64 for verification.
         """
         x = GoldenSFU._flush_f16_subnormals(x)
-        if x.ndim == 1:
-            mean_xsq = np.mean(x ** 2)
-        else:
-            mean_xsq = np.mean(x ** 2, axis=-1, keepdims=True)
+        mean_xsq = np.mean(x**2) if x.ndim == 1 else np.mean(x**2, axis=-1, keepdims=True)
         return (x / np.sqrt(mean_xsq + eps)).astype(np.float32)
 
     @staticmethod
     def rmsnorm_ref(x: np.ndarray, eps: float = 1e-5) -> np.ndarray:
         """Reference RMSNorm: float64."""
         x = np.asarray(x, dtype=np.float64)
-        if x.ndim == 1:
-            mean_xsq = np.mean(x ** 2)
-        else:
-            mean_xsq = np.mean(x ** 2, axis=-1, keepdims=True)
+        mean_xsq = np.mean(x**2) if x.ndim == 1 else np.mean(x**2, axis=-1, keepdims=True)
         return (x / np.sqrt(mean_xsq + eps)).astype(np.float32)
 
     # ── RoPE (CORDIC-equivalent) ────────────────────────────────────
@@ -552,7 +532,7 @@ class GoldenSFU:
         # CORDIC gain: product_i cos(atan(2^-i)) ≈ 0.607253
         self.cordic_gain = np.prod(np.cos(self.cordic_angles))
 
-    def _cordic_rotate(self, x0: float, y0: float, theta: float) -> Tuple[float, float]:
+    def _cordic_rotate(self, x0: float, y0: float, theta: float) -> tuple[float, float]:
         """CORDIC rotation: (x0, y0) rotated by theta radians.
 
         Hardware: 12-stage iterative shift-add.
@@ -579,12 +559,9 @@ class GoldenSFU:
         z = theta
 
         for i in range(self.cordic_iterations):
-            if z >= 0:
-                d = 1
-            else:
-                d = -1
-            x_new = x - d * y * (2.0 ** -i)
-            y_new = y + d * x * (2.0 ** -i)
+            d = 1 if z >= 0 else -1
+            x_new = x - d * y * (2.0**-i)
+            y_new = y + d * x * (2.0**-i)
             z = z - d * float(self.cordic_angles[i])
             x, y = x_new, y_new
 
@@ -592,9 +569,15 @@ class GoldenSFU:
             x, y = -x, -y
         return x, y
 
-    def rope_hw(self, x_q: np.ndarray, x_k: np.ndarray, position: int,
-                num_heads: int = 32, head_dim: int = 128,
-                theta: float = 10000.0) -> Tuple[np.ndarray, np.ndarray]:
+    def rope_hw(
+        self,
+        x_q: np.ndarray,
+        x_k: np.ndarray,
+        position: int,
+        num_heads: int = 32,
+        head_dim: int = 128,
+        theta: float = 10000.0,
+    ) -> tuple[np.ndarray, np.ndarray]:
         """Hardware-equivalent RoPE: CORDIC rotation.
 
         Hardware uses 12-stage CORDIC, producing precision equivalent to ~11-bit angle.
@@ -610,18 +593,22 @@ class GoldenSFU:
             x = x.reshape(n_heads, head_dim).copy()
             for h in range(n_heads):
                 for i in range(0, head_dim, 2):
-                    x_rot, y_rot = self._cordic_rotate(
-                        float(x[h, i]), float(x[h, i + 1]), float(angles[i // 2])
-                    )
+                    x_rot, y_rot = self._cordic_rotate(float(x[h, i]), float(x[h, i + 1]), float(angles[i // 2]))
                     x[h, i] = x_rot
                     x[h, i + 1] = y_rot
             return x.reshape(-1)
 
         return rotate_cordic(x_q, num_heads), rotate_cordic(x_k, 2)
 
-    def rope_ref(self, x_q: np.ndarray, x_k: np.ndarray, position: int,
-                 num_heads: int = 32, head_dim: int = 128,
-                 theta: float = 10000.0) -> Tuple[np.ndarray, np.ndarray]:
+    def rope_ref(
+        self,
+        x_q: np.ndarray,
+        x_k: np.ndarray,
+        position: int,
+        num_heads: int = 32,
+        head_dim: int = 128,
+        theta: float = 10000.0,
+    ) -> tuple[np.ndarray, np.ndarray]:
         """Reference RoPE: float64 trig."""
         x_q = np.asarray(x_q, dtype=np.float64)
         x_k = np.asarray(x_k, dtype=np.float64)
@@ -641,14 +628,14 @@ class GoldenSFU:
                     x[h, i + 1] = x1 * c + x0 * s
             return x.reshape(-1)
 
-        return (rotate_ref(x_q, num_heads).astype(np.float32),
-                rotate_ref(x_k, 2).astype(np.float32))
+        return (rotate_ref(x_q, num_heads).astype(np.float32), rotate_ref(x_k, 2).astype(np.float32))
 
     # ── Error metrics ───────────────────────────────────────────────
 
     @staticmethod
-    def compare_hw_vs_ref(hw: np.ndarray, ref: np.ndarray,
-                          tol_abs: float = 1e-3, tol_rel: float = 1e-3) -> Dict[str, Any]:
+    def compare_hw_vs_ref(
+        hw: np.ndarray, ref: np.ndarray, tol_abs: float = 1e-3, tol_rel: float = 1e-3
+    ) -> dict[str, Any]:
         """Compare hardware-equivalent vs reference implementation."""
         hw = np.asarray(hw, dtype=np.float64)
         ref = np.asarray(ref, dtype=np.float64)
@@ -665,6 +652,7 @@ class GoldenSFU:
 # ══════════════════════════════════════════════════════════════════════
 # Phase D-1: GoldenVector — bit-accurate Vector Unit
 # ══════════════════════════════════════════════════════════════════════
+
 
 class GoldenVector:
     """Bit-accurate Vector Unit: element-wise ops, reductions, type conversion.
@@ -778,7 +766,7 @@ class GoldenVector:
         delta_i32 = delta.astype(np.int32)
         result = orig_i32.astype(np.int64) + delta_i32.astype(np.int64)
         # Saturate to INT32
-        return np.clip(result, -2**31, 2**31 - 1).astype(np.int32)
+        return np.clip(result, -(2**31), 2**31 - 1).astype(np.int32)
 
     # ── Softmax decomposition helpers ───────────────────────────────
 
@@ -800,6 +788,7 @@ class GoldenVector:
 # Phase D-2: GoldenDMA — DMA engine behavior model
 # ══════════════════════════════════════════════════════════════════════
 
+
 @dataclass
 class DMADescriptor:
     """DMA descriptor: one transfer unit in a descriptor chain.
@@ -813,12 +802,13 @@ class DMADescriptor:
       [2]     last              — 1=last descriptor in chain
       [1:0]   channel           — 0=weight, 1=data
     """
+
     dram_addr: int
     sram_addr: int
     size: int
     direction: int = 0  # 0=load, 1=store
     last: bool = False
-    channel: int = 0   # 0=weight, 1=data
+    channel: int = 0  # 0=weight, 1=data
     cycle_cost: int = 0  # computed by DMA model
 
     def __post_init__(self):
@@ -849,7 +839,7 @@ class DMADescriptor:
         desc |= (sz & 0xFFF) << 4
         desc |= (self.direction & 1) << 3
         desc |= (1 if self.last else 0) << 2
-        desc |= (self.channel & 3)
+        desc |= self.channel & 3
         return desc
 
     @classmethod
@@ -873,24 +863,22 @@ class GoldenDMA:
     """
 
     def __init__(self):
-        self.channel_active: Dict[int, bool] = {0: False, 1: False}
+        self.channel_active: dict[int, bool] = {0: False, 1: False}
 
-    def execute_load(self, sram: "SRAM", desc: DMADescriptor,
-                     dram_data: np.ndarray):
+    def execute_load(self, sram: "SRAM", desc: DMADescriptor, dram_data: np.ndarray):
         """Execute a DMA load: DRAM → SRAM."""
         sz = desc.actual_size
-        sram.write_bytes(desc.sram_addr,
-                         dram_data[desc.dram_addr:desc.dram_addr + sz])
+        sram.write_bytes(desc.sram_addr, dram_data[desc.dram_addr : desc.dram_addr + sz])
 
-    def execute_store(self, sram: "SRAM", desc: DMADescriptor,
-                      dram_data: np.ndarray):
+    def execute_store(self, sram: "SRAM", desc: DMADescriptor, dram_data: np.ndarray):
         """Execute a DMA store: SRAM → DRAM."""
         sz = desc.actual_size
         data = sram.read_bytes(desc.sram_addr, sz)
-        dram_data[desc.dram_addr:desc.dram_addr + sz] = data
+        dram_data[desc.dram_addr : desc.dram_addr + sz] = data
 
-    def build_weight_load_chain(self, sram_base: int, dram_base: int,
-                                 total_bytes: int, chunk_size: int = 4096) -> List[DMADescriptor]:
+    def build_weight_load_chain(
+        self, sram_base: int, dram_base: int, total_bytes: int, chunk_size: int = 4096
+    ) -> list[DMADescriptor]:
         """Build descriptor chain for loading weights from DRAM to SRAM.
 
         Splits large weight transfer into chunks, interleaved for ping-pong buffering.
@@ -901,14 +889,16 @@ class GoldenDMA:
 
         while remaining > 0:
             size = min(chunk_size, remaining)
-            descriptors.append(DMADescriptor(
-                dram_addr=dram_base + offset,
-                sram_addr=sram_base + offset,
-                size=size,
-                direction=0,  # load
-                last=(remaining <= chunk_size),
-                channel=0,    # weight channel
-            ))
+            descriptors.append(
+                DMADescriptor(
+                    dram_addr=dram_base + offset,
+                    sram_addr=sram_base + offset,
+                    size=size,
+                    direction=0,  # load
+                    last=(remaining <= chunk_size),
+                    channel=0,  # weight channel
+                )
+            )
             offset += size
             remaining -= size
 
@@ -918,6 +908,7 @@ class GoldenDMA:
 # ══════════════════════════════════════════════════════════════════════
 # Phase D-3: GoldenNoC — NoC functional model
 # ══════════════════════════════════════════════════════════════════════
+
 
 @dataclass
 class NoCPacket:
@@ -931,6 +922,7 @@ class NoCPacket:
         priority: packet priority (0=lowest, higher=more urgent)
         size_bytes: size of data payload in bytes
     """
+
     src_id: int
     dst_id: int
     payload: np.ndarray
@@ -964,16 +956,13 @@ class GoldenNoC:
         Returns:
             True if routable, False if blocked.
         """
-        active = network_state.get("active_nodes", None)
+        active = network_state.get("active_nodes")
         if active is not None and packet.dst_id not in active:
             return False
 
         congestion = network_state.get("congestion", {})
         link = (packet.src_id, packet.dst_id)
-        if link in congestion and congestion[link] > 0:
-            return False
-
-        return True
+        return not (link in congestion and congestion[link] > 0)
 
     @staticmethod
     def deliver_payload(packet: NoCPacket, sram: bytearray, addr: int) -> None:
@@ -984,14 +973,11 @@ class GoldenNoC:
         raw = packet.payload.tobytes()
         end = addr + len(raw)
         if end > len(sram):
-            raise ValueError(
-                f"NoC payload overflow: addr={addr:#x} + {len(raw)}B > sram {len(sram)}B"
-            )
+            raise ValueError(f"NoC payload overflow: addr={addr:#x} + {len(raw)}B > sram {len(sram)}B")
         sram[addr:end] = raw
 
     @staticmethod
-    def build_transfer_packet(src: int, dst: int, data: np.ndarray,
-                              priority: int = 0) -> NoCPacket:
+    def build_transfer_packet(src: int, dst: int, data: np.ndarray, priority: int = 0) -> NoCPacket:
         """Build a NoC transfer packet from source to destination.
 
         Args:
@@ -1018,9 +1004,11 @@ class GoldenNoC:
 # Phase B: SRAM memory model
 # ══════════════════════════════════════════════════════════════════════
 
+
 @dataclass
 class SRAMRegion:
     """Named region in SRAM address space."""
+
     name: str
     start: int
     size: int
@@ -1045,7 +1033,7 @@ class SRAM:
 
     def __init__(self):
         self.data = np.zeros(SRAM_SIZE, dtype=np.uint8)
-        self.regions: Dict[str, SRAMRegion] = {}
+        self.regions: dict[str, SRAMRegion] = {}
 
     def define_region(self, name: str, start: int, size: int):
         """Define a named memory region."""
@@ -1055,14 +1043,14 @@ class SRAM:
         """Read n_bytes from SRAM at given address."""
         if addr + n_bytes > SRAM_SIZE:
             raise ValueError(f"SRAM read overflow: addr={addr:#x} + {n_bytes} > {SRAM_SIZE:#x}")
-        return self.data[addr:addr + n_bytes].copy()
+        return self.data[addr : addr + n_bytes].copy()
 
     def write_bytes(self, addr: int, data: np.ndarray):
         """Write bytes to SRAM at given address."""
         n = len(data)
         if addr + n > SRAM_SIZE:
             raise ValueError(f"SRAM write overflow: addr={addr:#x} + {n} > {SRAM_SIZE:#x}")
-        self.data[addr:addr + n] = np.asarray(data, dtype=np.uint8).flatten()
+        self.data[addr : addr + n] = np.asarray(data, dtype=np.uint8).flatten()
 
     def write_int32(self, addr: int, data: np.ndarray):
         """Write INT32 array to SRAM (little-endian)."""
@@ -1097,12 +1085,12 @@ class SRAM:
     def checksum_region(self, name: str) -> str:
         """MD5 checksum of a named region."""
         r = self.regions[name]
-        return hashlib.md5(self.data[r.start:r.end].tobytes()).hexdigest()[:16]
+        return hashlib.md5(self.data[r.start : r.end].tobytes()).hexdigest()[:16]
 
     def zero_region(self, name: str):
         """Zero out a named region."""
         r = self.regions[name]
-        self.data[r.start:r.end] = 0
+        self.data[r.start : r.end] = 0
 
 
 # ══════════════════════════════════════════════════════════════════════
@@ -1112,8 +1100,9 @@ class SRAM:
 # Import ISA types (from sibling engine/isa.py)
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).parent.parent / "sim"))
-from engine.isa import NPUInstruction, OpCode, NPUDecoder, NPUEncoder
+from engine.isa import NPUInstruction, OpCode
 
 
 @dataclass
@@ -1123,13 +1112,14 @@ class ExecutorState:
     For RTL verification: capture state after each instruction,
     compare against RTL's internal state at the same point.
     """
+
     cycle: int = 0
     pc: int = 0  # program counter (instruction index)
     sram_checksum: str = ""
     mxu_output_hash: str = ""
     sfu_output_hash: str = ""
 
-    def snapshot(self, sram: SRAM) -> Dict[str, Any]:
+    def snapshot(self, sram: SRAM) -> dict[str, Any]:
         return {
             "cycle": self.cycle,
             "pc": self.pc,
@@ -1151,17 +1141,19 @@ class GoldenExecutor:
         self.sfu = GoldenSFU()
         self.vector = GoldenVector()
         self.dma = GoldenDMA()
-        self.dma_model = DMAModel({
-            "dma": {
-                "channels": 2,
-                "burst_size_bytes": 256,
-                "descriptor_overhead_cycles": 5,
-                "max_pending_descriptors": 16,
-            },
-            "memory": {
-                "bandwidth_bytes_per_cycle": 51.2,
-            },
-        })
+        self.dma_model = DMAModel(
+            {
+                "dma": {
+                    "channels": 2,
+                    "burst_size_bytes": 256,
+                    "descriptor_overhead_cycles": 5,
+                    "max_pending_descriptors": 16,
+                },
+                "memory": {
+                    "bandwidth_bytes_per_cycle": 51.2,
+                },
+            }
+        )
         self.noc = GoldenNoC()
         self.sram = SRAM()
         self.dram = np.zeros(256 * 1024 * 1024, dtype=np.uint8)  # 256 MB DRAM model
@@ -1170,10 +1162,10 @@ class GoldenExecutor:
         # Default memory map
         self.sram.define_region("weight_ping", 0x000000, 1 * 1024 * 1024)
         self.sram.define_region("weight_pong", 0x100000, 1 * 1024 * 1024)
-        self.sram.define_region("activation",  0x200000, 512 * 1024)
+        self.sram.define_region("activation", 0x200000, 512 * 1024)
         self.sram.define_region("accumulator", 0x280000, 256 * 1024)
-        self.sram.define_region("sfu_io",      0x2C0000, 256 * 1024)
-        self.sram.define_region("vector_io",   0x300000, 256 * 1024)  # v2
+        self.sram.define_region("sfu_io", 0x2C0000, 256 * 1024)
+        self.sram.define_region("vector_io", 0x300000, 256 * 1024)  # v2
 
         # Dtype bookkeeping for automatic inter-op VCONV insertion.
         # Primary input dtype is the dtype the chained operand must present
@@ -1195,7 +1187,7 @@ class GoldenExecutor:
             OpCode.VRED_SUM: "int32",
             OpCode.VCONV: "int32",
             OpCode.VCONV_F16_I32: "fp16",
-            OpCode.VRESID: "int32",   # chained delta operand (sb)
+            OpCode.VRESID: "int32",  # chained delta operand (sb)
         }
         self._OPCODE_OUTPUT_DTYPE = {
             OpCode.MMUL: "int32",
@@ -1241,7 +1233,7 @@ class GoldenExecutor:
             ia = ops.get("ia", 0)  # input activation address
             oa = ops.get("oa", 0)  # output address
             N = ops.get("N", 2560)  # output dimension
-            M = ops.get("M", 1)     # decode: 1 token
+            M = ops.get("M", 1)  # decode: 1 token
             K = ops.get("K", 2560)  # hidden_size
 
             result = self.mxu.matmul_from_sram(M, K, N, ia, wa, self.sram.data)
@@ -1260,9 +1252,7 @@ class GoldenExecutor:
             inp = self.sram.read_float16(sa, length).astype(np.float32)
             out = self.sfu.softmax_hw(inp)
             self.sram.write_float16(da, out.astype(np.float16))
-            self.state.sfu_output_hash = hashlib.md5(
-                out.astype(np.float16).tobytes()
-            ).hexdigest()[:16]
+            self.state.sfu_output_hash = hashlib.md5(out.astype(np.float16).tobytes()).hexdigest()[:16]
             self.state.cycle += length // self.sfu.exp_lut_entries + 8
 
         elif op == OpCode.LAYERNORM:
@@ -1273,9 +1263,7 @@ class GoldenExecutor:
             inp = self.sram.read_float16(sa, length).astype(np.float32)
             out = self.sfu.layernorm_hw(inp)
             self.sram.write_float16(da, out.astype(np.float16))
-            self.state.sfu_output_hash = hashlib.md5(
-                out.astype(np.float16).tobytes()
-            ).hexdigest()[:16]
+            self.state.sfu_output_hash = hashlib.md5(out.astype(np.float16).tobytes()).hexdigest()[:16]
             self.state.cycle += length // 128 + 6  # 6-stage pipeline
 
         elif op == OpCode.GELU:
@@ -1286,9 +1274,7 @@ class GoldenExecutor:
             inp = self.sram.read_float16(sa, length).astype(np.float32)
             out = self.sfu.gelu_hw(inp)
             self.sram.write_float16(da, out.astype(np.float16))
-            self.state.sfu_output_hash = hashlib.md5(
-                out.astype(np.float16).tobytes()
-            ).hexdigest()[:16]
+            self.state.sfu_output_hash = hashlib.md5(out.astype(np.float16).tobytes()).hexdigest()[:16]
             self.state.cycle += length // 128 + 4
 
         elif op == OpCode.SILU:
@@ -1299,9 +1285,7 @@ class GoldenExecutor:
             inp = self.sram.read_float16(sa, length).astype(np.float32)
             out = self.sfu.silu_hw(inp)
             self.sram.write_float16(da, out.astype(np.float16))
-            self.state.sfu_output_hash = hashlib.md5(
-                out.astype(np.float16).tobytes()
-            ).hexdigest()[:16]
+            self.state.sfu_output_hash = hashlib.md5(out.astype(np.float16).tobytes()).hexdigest()[:16]
             self.state.cycle += length // 128 + 4
 
         elif op == OpCode.RELU:
@@ -1312,9 +1296,7 @@ class GoldenExecutor:
             inp = self.sram.read_float16(sa, length).astype(np.float32)
             out = self.sfu.relu_hw(inp)
             self.sram.write_float16(da, out.astype(np.float16))
-            self.state.sfu_output_hash = hashlib.md5(
-                out.astype(np.float16).tobytes()
-            ).hexdigest()[:16]
+            self.state.sfu_output_hash = hashlib.md5(out.astype(np.float16).tobytes()).hexdigest()[:16]
             self.state.cycle += length // 128 + 1
 
         elif op == OpCode.ROPE:
@@ -1327,16 +1309,11 @@ class GoldenExecutor:
             # Split into Q and K portions
             mid = length // 2
             q_in = inp[:mid]
-            k_in = inp[mid:mid + mid // 8]  # GQA: 2 KV heads vs 32 Q heads
-            q_out, k_out = self.sfu.rope_hw(
-                q_in, k_in, position=ops.get("pos", 0),
-                num_heads=32, head_dim=128
-            )
+            k_in = inp[mid : mid + mid // 8]  # GQA: 2 KV heads vs 32 Q heads
+            q_out, k_out = self.sfu.rope_hw(q_in, k_in, position=ops.get("pos", 0), num_heads=32, head_dim=128)
             out = np.concatenate([q_out, k_out])
             self.sram.write_float16(da, out.astype(np.float16))
-            self.state.sfu_output_hash = hashlib.md5(
-                out.astype(np.float16).tobytes()
-            ).hexdigest()[:16]
+            self.state.sfu_output_hash = hashlib.md5(out.astype(np.float16).tobytes()).hexdigest()[:16]
             self.state.cycle += length // 128 + 12
 
         elif op == OpCode.RMSNORM:
@@ -1349,9 +1326,7 @@ class GoldenExecutor:
             inp = self.sram.read_float16(sa, elements).astype(np.float32)
             out = self.sfu.rmsnorm_hw(inp)
             self.sram.write_float16(da, out.astype(np.float16))
-            self.state.sfu_output_hash = hashlib.md5(
-                out.astype(np.float16).tobytes()
-            ).hexdigest()[:16]
+            self.state.sfu_output_hash = hashlib.md5(out.astype(np.float16).tobytes()).hexdigest()[:16]
             self.state.cycle += elements // 128 * 2 + 10  # two-pass: square-sum + normalize
 
         elif op == OpCode.MAXPOOL:
@@ -1366,7 +1341,7 @@ class GoldenExecutor:
             out = np.zeros((out_h, out_w), dtype=np.float32)
             for i in range(out_h):
                 for j in range(out_w):
-                    window = inp[i*2:i*2+2, j*2:j*2+2]
+                    window = inp[i * 2 : i * 2 + 2, j * 2 : j * 2 + 2]
                     out[i, j] = np.max(window)
             self.sram.write_float16(da, out.astype(np.float16).flatten())
             self.state.cycle += out_h * out_w // 128 + 2
@@ -1383,7 +1358,7 @@ class GoldenExecutor:
             out = np.zeros((out_h, out_w), dtype=np.float32)
             for i in range(out_h):
                 for j in range(out_w):
-                    window = inp[i*2:i*2+2, j*2:j*2+2]
+                    window = inp[i * 2 : i * 2 + 2, j * 2 : j * 2 + 2]
                     out[i, j] = np.mean(window)
             self.sram.write_float16(da, out.astype(np.float16).flatten())
             self.state.cycle += out_h * out_w // 128 + 2
@@ -1393,7 +1368,7 @@ class GoldenExecutor:
             dram = ops.get("dram", 0)
             sram_addr = ops.get("sram", 0)
             size = ops.get("size", 0)
-            self.sram.write_bytes(sram_addr, self.dram[dram:dram + size])
+            self.sram.write_bytes(sram_addr, self.dram[dram : dram + size])
             self.state.cycle += self.dma_model.estimate_transfer(size, "load")
 
         elif op == OpCode.DMA_ST:
@@ -1402,7 +1377,7 @@ class GoldenExecutor:
             dram = ops.get("dram", 0)
             size = ops.get("size", 0)
             data = self.sram.read_bytes(sram_addr, size)
-            self.dram[dram:dram + size] = data
+            self.dram[dram : dram + size] = data
             self.state.cycle += self.dma_model.estimate_transfer(size, "store")
 
         elif op == OpCode.DMA_LDD:
@@ -1411,8 +1386,8 @@ class GoldenExecutor:
             # Read 64-bit descriptors until 'last' flag
             offset = 0
             while True:
-                raw = self.dram[desc_addr + offset:desc_addr + offset + 8]
-                word = int.from_bytes(raw.tobytes(), 'little')
+                raw = self.dram[desc_addr + offset : desc_addr + offset + 8]
+                word = int.from_bytes(raw.tobytes(), "little")
                 desc = DMADescriptor.decode(word)
                 self.dma.execute_load(self.sram, desc, self.dram)
                 self.state.cycle += self.dma_model.estimate_transfer(desc.actual_size, "load")
@@ -1425,8 +1400,8 @@ class GoldenExecutor:
             desc_addr = ops.get("sa", 0)
             offset = 0
             while True:
-                raw = self.dram[desc_addr + offset:desc_addr + offset + 8]
-                word = int.from_bytes(raw.tobytes(), 'little')
+                raw = self.dram[desc_addr + offset : desc_addr + offset + 8]
+                word = int.from_bytes(raw.tobytes(), "little")
                 desc = DMADescriptor.decode(word)
                 self.dma.execute_store(self.sram, desc, self.dram)
                 self.state.cycle += self.dma_model.estimate_transfer(desc.actual_size, "store")
@@ -1515,8 +1490,9 @@ class GoldenExecutor:
         self.state.pc += 1
         return ExecutorState(**state_before)
 
-    def execute_program(self, program: List[NPUInstruction],
-                        auto_insert_dtype_converters: bool = False) -> List[ExecutorState]:
+    def execute_program(
+        self, program: list[NPUInstruction], auto_insert_dtype_converters: bool = False
+    ) -> list[ExecutorState]:
         """Execute full ISA program, return trace of per-instruction states."""
         if auto_insert_dtype_converters:
             return self.run_op_chain(program)
@@ -1527,11 +1503,11 @@ class GoldenExecutor:
         return trace
 
     @staticmethod
-    def _get_dst_addr(instr: NPUInstruction) -> Optional[int]:
+    def _get_dst_addr(instr: NPUInstruction) -> int | None:
         return instr.operands.get("da") or instr.operands.get("oa")
 
     @staticmethod
-    def _get_src_addr(instr: NPUInstruction) -> Optional[int]:
+    def _get_src_addr(instr: NPUInstruction) -> int | None:
         op = instr.opcode
         if op == OpCode.MMUL:
             return instr.operands.get("ia")
@@ -1559,17 +1535,16 @@ class GoldenExecutor:
             return ops.get("elements", 0)
         return ops.get("len", 0)
 
-    def _insert_dtype_converters(self, program: List[NPUInstruction],
-                                 scratch_base: int = 0x380000) -> List[Any]:
+    def _insert_dtype_converters(self, program: list[NPUInstruction], scratch_base: int = 0x380000) -> list[Any]:
         """Expand *program* by inserting VCONV/VCONV_F16_I32 between mismatched ops.
 
         For FP16 -> INT8 transitions an explicit INT32 -> INT8 clip/rewrite is
         needed because there is no dedicated INT8 cast opcode; this is handled
         at execution time by :meth:`run_op_chain`.
         """
-        expanded: List[Any] = []
+        expanded: list[Any] = []
         scratch = scratch_base
-        prev: Optional[NPUInstruction] = None
+        prev: NPUInstruction | None = None
 
         for instr in program:
             if prev is None:
@@ -1630,8 +1605,7 @@ class GoldenExecutor:
 
         return expanded
 
-    def run_op_chain(self, program: List[NPUInstruction],
-                     scratch_base: int = 0x380000) -> List[ExecutorState]:
+    def run_op_chain(self, program: list[NPUInstruction], scratch_base: int = 0x380000) -> list[ExecutorState]:
         """Execute a program with automatic dtype-converter insertion.
 
         Adjacent ops whose output/input dtypes differ receive an implicit
@@ -1670,13 +1644,15 @@ class GoldenExecutor:
 # Phase C: Test vector generation + verification framework
 # ══════════════════════════════════════════════════════════════════════
 
+
 @dataclass
 class TestVector:
     """Self-contained test case for RTL verification."""
+
     name: str
     # Inputs
-    weight_packed: np.ndarray   # INT4 packed as uint8
-    activation: np.ndarray      # INT8
+    weight_packed: np.ndarray  # INT4 packed as uint8
+    activation: np.ndarray  # INT8
     M: int
     K: int
     N: int
@@ -1694,9 +1670,7 @@ class TestVector:
         return w_ok and a_ok and g_ok
 
 
-def generate_random_test(M: int, K: int, N: int,
-                         name: str = "random",
-                         seed: int = 42) -> TestVector:
+def generate_random_test(M: int, K: int, N: int, name: str = "random", seed: int = 42) -> TestVector:
     """Generate a random test vector with golden output."""
     rng = np.random.RandomState(seed)
 
@@ -1715,13 +1689,15 @@ def generate_random_test(M: int, K: int, N: int,
         name=name,
         weight_packed=w_packed,
         activation=activation,
-        M=M, K=K, N=N,
+        M=M,
+        K=K,
+        N=N,
         golden_int32=golden,
         golden_hash=GoldenMXU.hash_output(golden),
     )
 
 
-def generate_smoke_tests() -> List[TestVector]:
+def generate_smoke_tests() -> list[TestVector]:
     """Generate comprehensive smoke test suite."""
     tests = []
     configs = [
@@ -1743,9 +1719,9 @@ def generate_smoke_tests() -> List[TestVector]:
     return tests
 
 
-def compare_float32_legacy(golden_int32: np.ndarray, activation: np.ndarray,
-                           weight_packed: np.ndarray,
-                           M: int, K: int, N: int) -> Dict[str, Any]:
+def compare_float32_legacy(
+    golden_int32: np.ndarray, activation: np.ndarray, weight_packed: np.ndarray, M: int, K: int, N: int
+) -> dict[str, Any]:
     """Compare new INT32 golden vs old float32-based computation.
 
     Measures the error introduced by the float32 intermediate casting.
@@ -1755,7 +1731,7 @@ def compare_float32_legacy(golden_int32: np.ndarray, activation: np.ndarray,
     w_flat = mxu.unpack_int4(weight_packed).astype(np.float32)
     if len(w_flat) < K * N:
         w_flat = np.pad(w_flat, (0, K * N - len(w_flat)))
-    W = w_flat[:K * N].reshape(K, N)
+    W = w_flat[: K * N].reshape(K, N)
     A = activation.astype(np.float32)
     legacy = np.matmul(A, W).astype(np.int32)
 
@@ -1773,7 +1749,7 @@ def compare_float32_legacy(golden_int32: np.ndarray, activation: np.ndarray,
     }
 
 
-def verify_sfu_precision() -> Dict[str, Any]:
+def verify_sfu_precision() -> dict[str, Any]:
     """Verify SFU hardware-equivalent precision vs float64 reference."""
     sfu = GoldenSFU()
     rng = np.random.RandomState(12345)
@@ -1820,18 +1796,19 @@ def verify_sfu_precision() -> Dict[str, Any]:
 # CLI
 # ══════════════════════════════════════════════════════════════════════
 
+
 def main():
     import argparse
+
     parser = argparse.ArgumentParser(description="Golden Executor — NPU RTL verification model")
     sub = parser.add_subparsers(dest="cmd")
 
     # Smoke tests
     smoke = sub.add_parser("smoke", help="Run MXU precision smoke tests")
-    smoke.add_argument("--legacy-compare", action="store_true",
-                       help="Compare INT32 golden vs float32 legacy")
+    smoke.add_argument("--legacy-compare", action="store_true", help="Compare INT32 golden vs float32 legacy")
 
     # SFU precision
-    sfu_cmd = sub.add_parser("sfu-verify", help="Verify SFU hardware precision")
+    sub.add_parser("sfu-verify", help="Verify SFU hardware precision")
 
     # ISA execution
     isa_cmd = sub.add_parser("run", help="Execute ISA program")
@@ -1839,8 +1816,7 @@ def main():
 
     # Test vector generation
     gen_cmd = sub.add_parser("gen-test", help="Generate RTL test vectors")
-    gen_cmd.add_argument("-o", "--output", default="test_vectors",
-                         help="Output directory")
+    gen_cmd.add_argument("-o", "--output", default="test_vectors", help="Output directory")
     gen_cmd.add_argument("-M", type=int, default=1)
     gen_cmd.add_argument("-K", type=int, default=2560)
     gen_cmd.add_argument("-N", type=int, default=4096)
@@ -1864,16 +1840,16 @@ def main():
             status = "PASS" if exact else "FAIL"
             if not exact:
                 all_passed = False
-            print(f"  [{status}] {tv.name:30s} M={tv.M:4d} K={tv.K:4d} N={tv.N:4d}  "
-                  f"hash={tv.golden_hash}")
+            print(f"  [{status}] {tv.name:30s} M={tv.M:4d} K={tv.K:4d} N={tv.N:4d}  hash={tv.golden_hash}")
 
             if args.legacy_compare:
-                cmp = compare_float32_legacy(tv.golden_int32, tv.activation,
-                                             tv.weight_packed, tv.M, tv.K, tv.N)
+                cmp = compare_float32_legacy(tv.golden_int32, tv.activation, tv.weight_packed, tv.M, tv.K, tv.N)
                 if cmp["max_abs_diff"] > 0:
-                    print(f"         Legacy diff: max={cmp['max_abs_diff']} "
-                          f"mean={cmp['mean_abs_diff']:.2f} "
-                          f"mismatch={cmp['mismatch_pct']:.1f}%")
+                    print(
+                        f"         Legacy diff: max={cmp['max_abs_diff']} "
+                        f"mean={cmp['mean_abs_diff']:.2f} "
+                        f"mismatch={cmp['mismatch_pct']:.1f}%"
+                    )
 
         print(f"\n  {'ALL PASSED' if all_passed else 'SOME FAILED'}")
 
@@ -1885,13 +1861,13 @@ def main():
         results = verify_sfu_precision()
         for name, r in results.items():
             status = "PASS" if r["within_tolerance"] else "FAIL"
-            print(f"  [{status}] {name:20s}  max_abs={r['max_abs_err']:.2e}  "
-                  f"max_rel={r['max_rel_err']:.2e}")
+            print(f"  [{status}] {name:20s}  max_abs={r['max_abs_err']:.2e}  max_rel={r['max_rel_err']:.2e}")
 
     elif args.cmd == "run":
         # Read ISA program
         text = Path(args.program).read_text()
         from engine.isa import parse_isa_program
+
         program = parse_isa_program(text)
 
         executor = GoldenExecutor()
@@ -1900,12 +1876,14 @@ def main():
 
         print(f"\nFinal SRAM checksum: {hashlib.md5(executor.sram.data.tobytes()).hexdigest()[:16]}")
         print(f"Total cycles: {executor.state.cycle}")
-        print(f"\nInstruction trace:")
+        print("\nInstruction trace:")
         for i, state in enumerate(trace):
-            print(f"  [{i:3d}] cycle={state['cycle']:6d}  "
-                  f"sram={state['sram_checksum']}  "
-                  f"mxu={state['mxu_output_hash'] or '-':16s}  "
-                  f"sfu={state['sfu_output_hash'] or '-':16s}")
+            print(
+                f"  [{i:3d}] cycle={state['cycle']:6d}  "
+                f"sram={state['sram_checksum']}  "
+                f"mxu={state['mxu_output_hash'] or '-':16s}  "
+                f"sfu={state['sfu_output_hash'] or '-':16s}"
+            )
 
     elif args.cmd == "gen-test":
         out_dir = Path(args.output)
@@ -1935,9 +1913,12 @@ def main():
 
         # Manifest
         import json
+
         manifest = {
             "name": tv.name,
-            "M": tv.M, "K": tv.K, "N": tv.N,
+            "M": tv.M,
+            "K": tv.K,
+            "N": tv.N,
             "golden_hash": tv.golden_hash,
             "files": {
                 "weight": "weight.hex",
@@ -1956,9 +1937,11 @@ def main():
         print(f"Generated test vector: {out_dir}")
         print(f"  M={tv.M}, K={tv.K}, N={tv.N}")
         print(f"  Golden hash: {tv.golden_hash}")
-        print(f"  Files: weight.hex ({len(tv.weight_packed)}B), "
-              f"activation.hex ({tv.activation.size}B), "
-              f"golden.hex ({tv.golden_int32.size * 4}B)")
+        print(
+            f"  Files: weight.hex ({len(tv.weight_packed)}B), "
+            f"activation.hex ({tv.activation.size}B), "
+            f"golden.hex ({tv.golden_int32.size * 4}B)"
+        )
 
     else:
         parser.print_help()

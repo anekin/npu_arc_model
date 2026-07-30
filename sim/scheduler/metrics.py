@@ -22,10 +22,9 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from contracts.errors import ConfigError
-
 
 # ── Unit conversions ─────────────────────────────────────────────────────────
 
@@ -73,22 +72,22 @@ class JobMetricRecord:
     is_warmup: bool = False
     is_measurement: bool = False
     work_ps: int = 0
-    resource_requirements: Dict[str, int] = field(default_factory=dict)
-    start_ps: Optional[int] = None
-    complete_ps: Optional[int] = None
+    resource_requirements: dict[str, int] = field(default_factory=dict)
+    start_ps: int | None = None
+    complete_ps: int | None = None
     outcome: str = JobOutcome.COMPLETED
     observation_age_ps: int = 0
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     @property
-    def latency_ps(self) -> Optional[int]:
+    def latency_ps(self) -> int | None:
         """Arrival-to-complete latency; None if not completed."""
         if self.complete_ps is None:
             return None
         return self.complete_ps - self.arrival_ps
 
     @property
-    def start_latency_ps(self) -> Optional[int]:
+    def start_latency_ps(self) -> int | None:
         """Arrival-to-start latency; None if never started."""
         if self.start_ps is None:
             return None
@@ -157,16 +156,16 @@ class ScenarioMetrics:
     peak_queue: int
     bytes_total: int
     energy_joules: float
-    resource_utilization: Tuple[ResourceUtilization, ...]
-    class_metrics: Tuple[ClassMetrics, ...]
-    recovery_time_ps: Optional[int] = None
+    resource_utilization: tuple[ResourceUtilization, ...]
+    class_metrics: tuple[ClassMetrics, ...]
+    recovery_time_ps: int | None = None
     stable: bool = False
 
 
 # ── Percentile helpers ───────────────────────────────────────────────────────
 
 
-def nearest_rank_percentile(sorted_values: List[float], percentile: float) -> float:
+def nearest_rank_percentile(sorted_values: list[float], percentile: float) -> float:
     """Return nearest-rank percentile (1-indexed, no interpolation).
 
     Args:
@@ -185,7 +184,7 @@ def nearest_rank_percentile(sorted_values: List[float], percentile: float) -> fl
     return sorted_values[rank - 1]
 
 
-def _percentile_ms(values_ps: List[int]) -> Tuple[float, float, float]:
+def _percentile_ms(values_ps: list[int]) -> tuple[float, float, float]:
     """Return (p50, p99, max) in milliseconds for a list of picosecond values."""
     sorted_ms = sorted(ps_to_ms(v) for v in values_ps)
     p50 = nearest_rank_percentile(sorted_ms, 50.0)
@@ -197,7 +196,7 @@ def _percentile_ms(values_ps: List[int]) -> Tuple[float, float, float]:
 # ── Interval union for utilization ───────────────────────────────────────────
 
 
-def _union_intervals_length(intervals: List[Tuple[int, int]]) -> int:
+def _union_intervals_length(intervals: list[tuple[int, int]]) -> int:
     """Return total covered length of a list of [start, end) intervals."""
     if not intervals:
         return 0
@@ -221,13 +220,13 @@ class MetricsCollector:
     """Collect per-job and per-resource events and produce ``ScenarioMetrics``."""
 
     def __init__(self) -> None:
-        self._jobs: Dict[str, JobMetricRecord] = {}
-        self._resource_intervals: Dict[str, List[Tuple[int, int]]] = {}
-        self._class_resource_intervals: Dict[str, List[Tuple[int, int]]] = {}
-        self._queue_sizes: Dict[str, List[Tuple[int, int]]] = {}
+        self._jobs: dict[str, JobMetricRecord] = {}
+        self._resource_intervals: dict[str, list[tuple[int, int]]] = {}
+        self._class_resource_intervals: dict[str, list[tuple[int, int]]] = {}
+        self._queue_sizes: dict[str, list[tuple[int, int]]] = {}
         self._bytes_total: int = 0
         self._energy_joules: float = 0.0
-        self._recovery_time_ps: Optional[int] = None
+        self._recovery_time_ps: int | None = None
 
     # ── Job lifecycle ────────────────────────────────────────────────────────
 
@@ -241,7 +240,7 @@ class MetricsCollector:
         is_warmup: bool = False,
         is_measurement: bool = False,
         work_ps: int = 0,
-        resource_requirements: Optional[Dict[str, int]] = None,
+        resource_requirements: dict[str, int] | None = None,
     ) -> JobMetricRecord:
         """Record a job arrival and return its metric record."""
         if job_id in self._jobs:
@@ -298,7 +297,7 @@ class MetricsCollector:
         resource_name: str,
         start_ps: int,
         end_ps: int,
-        class_id: Optional[str] = None,
+        class_id: str | None = None,
     ) -> None:
         """Record a busy interval for ``resource_name`` and optionally ``class_id``."""
         if end_ps <= start_ps:
@@ -331,8 +330,8 @@ class MetricsCollector:
 
     def compute(
         self,
-        window_start_ps: Optional[int] = None,
-        window_end_ps: Optional[int] = None,
+        window_start_ps: int | None = None,
+        window_end_ps: int | None = None,
         compute_capacity: int = 1,
     ) -> ScenarioMetrics:
         """Compute final metrics from collected records.
@@ -340,9 +339,7 @@ class MetricsCollector:
         If ``window_start_ps`` or ``window_end_ps`` are not provided, they are
         derived from the earliest and latest measurement-job arrivals.
         """
-        measurement_jobs = [
-            j for j in self._jobs.values() if j.is_measurement and not j.is_warmup
-        ]
+        measurement_jobs = [j for j in self._jobs.values() if j.is_measurement and not j.is_warmup]
         if not measurement_jobs:
             measurement_jobs = [j for j in self._jobs.values() if not j.is_warmup]
 
@@ -357,7 +354,7 @@ class MetricsCollector:
         window_time_ps = max(0, window_end_ps - window_start_ps)
 
         # Global counters over measurement window.
-        released = [j for j in measurement_jobs]
+        released = list(measurement_jobs)
         completed = [j for j in released if j.outcome == JobOutcome.COMPLETED]
         dropped = [j for j in released if j.outcome == JobOutcome.DROPPED]
         replaced = [j for j in released if j.outcome == JobOutcome.REPLACED]
@@ -368,16 +365,13 @@ class MetricsCollector:
             j
             for j in released
             if (
-                (j.outcome == JobOutcome.COMPLETED and j.complete_ps is not None
-                 and j.complete_ps > j.deadline_ps)
+                (j.outcome == JobOutcome.COMPLETED and j.complete_ps is not None and j.complete_ps > j.deadline_ps)
                 or j.outcome in (JobOutcome.DROPPED, JobOutcome.REPLACED, JobOutcome.TIMEOUT)
             )
         ]
 
         completed_latencies_ps = [j.latency_ps for j in completed if j.latency_ps is not None]
-        start_latencies_ps = [
-            j.start_latency_ps for j in released if j.start_latency_ps is not None
-        ]
+        start_latencies_ps = [j.start_latency_ps for j in released if j.start_latency_ps is not None]
         observation_ages_ps = [j.observation_age_ps for j in released if j.observation_age_ps > 0]
 
         lat_p50, lat_p99, lat_max = _percentile_ms(completed_latencies_ps)
@@ -390,7 +384,7 @@ class MetricsCollector:
 
         # Per-class metrics.
         class_ids = sorted({j.class_id for j in released})
-        class_metrics_list: List[ClassMetrics] = []
+        class_metrics_list: list[ClassMetrics] = []
         for cid in class_ids:
             class_jobs = [j for j in released if j.class_id == cid]
             class_completed = [j for j in class_jobs if j.outcome == JobOutcome.COMPLETED]
@@ -402,20 +396,13 @@ class MetricsCollector:
                 j
                 for j in class_jobs
                 if (
-                    (j.outcome == JobOutcome.COMPLETED and j.complete_ps is not None
-                     and j.complete_ps > j.deadline_ps)
+                    (j.outcome == JobOutcome.COMPLETED and j.complete_ps is not None and j.complete_ps > j.deadline_ps)
                     or j.outcome in (JobOutcome.DROPPED, JobOutcome.REPLACED, JobOutcome.TIMEOUT)
                 )
             ]
-            class_latencies = [
-                j.latency_ps for j in class_completed if j.latency_ps is not None
-            ]
-            class_starts = [
-                j.start_latency_ps for j in class_jobs if j.start_latency_ps is not None
-            ]
-            class_ages = [
-                j.observation_age_ps for j in class_jobs if j.observation_age_ps > 0
-            ]
+            class_latencies = [j.latency_ps for j in class_completed if j.latency_ps is not None]
+            class_starts = [j.start_latency_ps for j in class_jobs if j.start_latency_ps is not None]
+            class_ages = [j.observation_age_ps for j in class_jobs if j.observation_age_ps > 0]
             c_lat_p50, c_lat_p99, c_lat_max = _percentile_ms(class_latencies)
             c_start_p50, c_start_p99, _ = _percentile_ms(class_starts)
             c_age_p50, c_age_p99, _ = _percentile_ms(class_ages)
@@ -431,8 +418,7 @@ class MetricsCollector:
                     timeout_count=len(class_timeouts),
                     deadline_miss_count=len(class_misses),
                     completed_throughput_hz=(
-                        len(class_completed) * _PS_PER_S / window_time_ps
-                        if window_time_ps > 0 else 0.0
+                        len(class_completed) * _PS_PER_S / window_time_ps if window_time_ps > 0 else 0.0
                     ),
                     latency_p50_ms=c_lat_p50,
                     latency_p99_ms=c_lat_p99,
@@ -445,26 +431,26 @@ class MetricsCollector:
                         sum(j.work_ps for j in class_jobs)
                         * max(j.resource_requirements.get("compute", 1) for j in class_jobs)
                         / (window_time_ps * compute_capacity)
-                        if window_time_ps > 0 and class_jobs else 0.0
+                        if window_time_ps > 0 and class_jobs
+                        else 0.0
                     ),
                     achieved_utilization=(
                         _union_intervals_length(
                             [
                                 (max(start, window_start_ps), min(end, window_end_ps))
-                                for start, end in self._class_resource_intervals.get(
-                                    f"{cid}:compute", []
-                                )
+                                for start, end in self._class_resource_intervals.get(f"{cid}:compute", [])
                                 if end > window_start_ps and start < window_end_ps
                             ]
                         )
                         / (window_time_ps * compute_capacity)
-                        if window_time_ps > 0 else 0.0
+                        if window_time_ps > 0
+                        else 0.0
                     ),
                 )
             )
 
         # Resource utilization.
-        resource_utils: List[ResourceUtilization] = []
+        resource_utils: list[ResourceUtilization] = []
         for name in sorted(self._resource_intervals):
             intervals = self._resource_intervals[name]
             clipped = [
@@ -490,12 +476,7 @@ class MetricsCollector:
                 if size > peak_queue:
                     peak_queue = size
 
-        stable = (
-            len(dropped) == 0
-            and len(replaced) == 0
-            and len(timed_out) == 0
-            and len(deadline_misses) == 0
-        )
+        stable = len(dropped) == 0 and len(replaced) == 0 and len(timed_out) == 0 and len(deadline_misses) == 0
 
         return ScenarioMetrics(
             window_start_ps=window_start_ps,

@@ -13,11 +13,10 @@ fake implementation can all satisfy the same contract.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Literal, Optional
-
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from typing import Literal
 
 from contracts.errors import ConfigError
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class MemoryAccessPattern(BaseModel):
@@ -81,7 +80,7 @@ class ValidityEnvelope(BaseModel):
     capacity_gb_min: float = Field(..., ge=0)
     capacity_gb_max: float = Field(..., ge=0)
     bandwidth_gbps_min: float = Field(..., ge=0)
-    bandwidth_gbps_max: float = (...)
+    bandwidth_gbps_max: float = ...
     read_bytes_max: int = Field(default=1 << 40, ge=0)
     write_bytes_max: int = Field(default=1 << 40, ge=0)
     trust_level: Literal["T0", "T1", "T2", "T3"] = Field(
@@ -92,7 +91,7 @@ class ValidityEnvelope(BaseModel):
         default="engineering_assumption",
         description="Provenance status of this estimate",
     )
-    reason: Optional[str] = Field(default=None, description="Reason for exploratory marking")
+    reason: str | None = Field(default=None, description="Reason for exploratory marking")
 
     @field_validator("bandwidth_gbps_max")
     @classmethod
@@ -136,11 +135,11 @@ class MemoryResponse(BaseModel):
     active_power_w: float = Field(..., ge=0, description="dynamic_energy_j / active_time")
     thermal_proxy_c: float = Field(..., ge=0, description="Proxy for thermal stress")
     validity: ValidityEnvelope
-    components: Dict[str, float] = Field(
+    components: dict[str, float] = Field(
         default_factory=dict,
         description="Breakdown of area/power/energy by component",
     )
-    notes: List[str] = Field(default_factory=list, description="Human-readable caveats")
+    notes: list[str] = Field(default_factory=list, description="Human-readable caveats")
 
 
 class MemoryBackend(ABC):
@@ -168,8 +167,8 @@ class MemoryBackend(ABC):
 
 def validate_component_manifest(
     topology: MemoryTopology,
-    required: Optional[List[str]] = None,
-    excluded: Optional[List[str]] = None,
+    required: list[str] | None = None,
+    excluded: list[str] | None = None,
 ) -> None:
     """Validate that a topology obeys a component manifest.
 
@@ -192,7 +191,7 @@ def validate_component_manifest(
 
 
 def _has_component(topology: MemoryTopology, component: str) -> bool:
-    mapping: Dict[str, bool] = {
+    mapping: dict[str, bool] = {
         "dram_phy": topology.include_phy,
         "tsv": topology.include_tsv,
         "package": topology.include_package,

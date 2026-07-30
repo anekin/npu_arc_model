@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
-from typing import Any, Dict, Literal
+from typing import Any, Literal
 
 from contracts.errors import ConfigError
 
@@ -35,13 +35,12 @@ class CapacityResource:
     name: str
     capacity: int = 1
     allow_partial: bool = False
-    _allocated: Dict[str, int] = field(default_factory=dict, repr=False)
+    _allocated: dict[str, int] = field(default_factory=dict, repr=False)
 
     def __post_init__(self) -> None:
         if self.capacity <= 0:
             raise ResourceError(
-                f"capacity resource {self.name!r} must have positive capacity, "
-                f"got {self.capacity}",
+                f"capacity resource {self.name!r} must have positive capacity, got {self.capacity}",
                 resource=self.name,
             )
 
@@ -100,13 +99,12 @@ class BoundedResource:
 
     name: str
     capacity: int = 1
-    _holders: Dict[str, int] = field(default_factory=dict, repr=False)
+    _holders: dict[str, int] = field(default_factory=dict, repr=False)
 
     def __post_init__(self) -> None:
         if self.capacity <= 0:
             raise ResourceError(
-                f"bounded resource {self.name!r} must have positive capacity, "
-                f"got {self.capacity}",
+                f"bounded resource {self.name!r} must have positive capacity, got {self.capacity}",
                 resource=self.name,
             )
 
@@ -162,13 +160,12 @@ class ByteServer:
     name: str
     bandwidth_bytes_per_ps: float
     qos_mode: Literal["equal_share", "strict_priority"] = "equal_share"
-    _members: Dict[str, Dict[str, Any]] = field(default_factory=dict, repr=False)
+    _members: dict[str, dict[str, Any]] = field(default_factory=dict, repr=False)
 
     def __post_init__(self) -> None:
         if self.bandwidth_bytes_per_ps <= 0:
             raise ResourceError(
-                f"byte server {self.name!r} bandwidth must be positive, "
-                f"got {self.bandwidth_bytes_per_ps}",
+                f"byte server {self.name!r} bandwidth must be positive, got {self.bandwidth_bytes_per_ps}",
                 resource=self.name,
             )
         if self.qos_mode not in ("equal_share", "strict_priority"):
@@ -259,7 +256,7 @@ class ByteServer:
             share = self.bandwidth_bytes_per_ps / len(self._members)
             if share <= 0:
                 raise ResourceError(
-                    f"equal-share bandwidth per member became non-positive",
+                    "equal-share bandwidth per member became non-positive",
                     resource=self.name,
                 )
             for member_id in sorted(self._members):
@@ -274,10 +271,7 @@ class ByteServer:
             )
             for member_id in ordered:
                 remaining = int(self._members[member_id]["bytes_remaining"])
-                duration = (
-                    math.ceil(remaining / self.bandwidth_bytes_per_ps)
-                    if remaining > 0 else 0
-                )
+                duration = math.ceil(remaining / self.bandwidth_bytes_per_ps) if remaining > 0 else 0
                 self._members[member_id]["completion_ps"] = now_ps + elapsed + duration
                 elapsed += duration
 

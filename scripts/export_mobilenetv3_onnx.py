@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
 """Export MobileNetV3-Small from torchvision to ONNX with opset>=14."""
+
+import os
+
+import onnx
 import torch
 import torchvision
-import onnx
-import os
 
 MODEL_PATH = os.path.join(os.path.dirname(__file__), "..", "assets", "mobilenetv3_small.onnx")
 EVIDENCE_PATH = os.path.join(os.path.dirname(__file__), "..", "build", "evidence", "cv-task-1-onnx.txt")
+
 
 def main():
     # Load pretrained model, eval mode
@@ -50,10 +53,10 @@ def main():
     lines.append(f"TorchVision: {torchvision.__version__}")
     lines.append(f"ONNX:      {onnx.__version__}")
     lines.append(f"Opset:     {opset_version}")
-    lines.append(f"Model:     MobileNetV3-Small (pretrained)")
-    lines.append(f"Input:     (1, 3, 224, 224)")
+    lines.append("Model:     MobileNetV3-Small (pretrained)")
+    lines.append("Input:     (1, 3, 224, 224)")
     lines.append(f"Output:    {MODEL_PATH}")
-    lines.append(f"ONNX check: PASSED")
+    lines.append("ONNX check: PASSED")
     lines.append(f"Total nodes: {len(nodes)}")
     lines.append("")
     lines.append("Operator list (sorted by count):")

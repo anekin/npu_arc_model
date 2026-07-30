@@ -10,7 +10,6 @@ Covers the plan acceptance criteria:
 """
 
 import pytest
-
 from contracts.units import (
     bandwidth_gbps_to_bytes_per_cycle,
     bytes_per_cycle_to_bandwidth_gbps,

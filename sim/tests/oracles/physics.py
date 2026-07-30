@@ -17,8 +17,6 @@ Bounds enforced:
 """
 
 import math
-from typing import Dict, Set, Tuple
-
 
 # ── Atomic conservation laws ──────────────────────────────────────────────
 
@@ -33,8 +31,7 @@ def op_count(M: int, K: int, N: int) -> int:
     return 2 * mac_count(M, K, N)
 
 
-def peak_macs_per_cycle(array_height: int, array_width: int,
-                        ops_per_mac: int = 2) -> float:
+def peak_macs_per_cycle(array_height: int, array_width: int, ops_per_mac: int = 2) -> float:
     """Theoretical peak MACs per cycle from array dimensions."""
     return array_height * array_width * ops_per_mac
 
@@ -62,26 +59,19 @@ def weight_bytes(K: int, N: int, weight_precision_bits: int) -> int:
     return K * N * weight_precision_bits // 8
 
 
-def activation_bytes(M: int, K: int,
-                     activation_precision_bits: int) -> int:
+def activation_bytes(M: int, K: int, activation_precision_bits: int) -> int:
     """M × K activation matrix bytes."""
     return M * K * activation_precision_bits // 8
 
 
-def raw_transfer_bytes(M: int, K: int, N: int,
-                       weight_precision_bits: int,
-                       activation_precision_bits: int) -> int:
+def raw_transfer_bytes(M: int, K: int, N: int, weight_precision_bits: int, activation_precision_bits: int) -> int:
     """Total raw DMA bytes: weights + activations (no caching assumed)."""
-    return (weight_bytes(K, N, weight_precision_bits) +
-            activation_bytes(M, K, activation_precision_bits))
+    return weight_bytes(K, N, weight_precision_bits) + activation_bytes(M, K, activation_precision_bits)
 
 
-def weight_cache_pair_bytes(M: int, K: int, N: int,
-                            weight_precision_bits: int,
-                            activation_precision_bits: int) -> int:
+def weight_cache_pair_bytes(M: int, K: int, N: int, weight_precision_bits: int, activation_precision_bits: int) -> int:
     """Gate+up pair: 2 × weight bytes + 1 × activation bytes."""
-    return (2 * weight_bytes(K, N, weight_precision_bits) +
-            activation_bytes(M, K, activation_precision_bits))
+    return 2 * weight_bytes(K, N, weight_precision_bits) + activation_bytes(M, K, activation_precision_bits)
 
 
 # ── Lower bounds (ceil) ───────────────────────────────────────────────────
@@ -97,9 +87,7 @@ def compute_lower_bound(macs: int, peak_macs: float) -> int:
 def dma_lower_bound(total_bytes: int, eff_bytes_per_cycle: float) -> int:
     """Cycles cannot be less than ceil(bytes / effective_bytes_per_cycle)."""
     if eff_bytes_per_cycle <= 0:
-        raise ValueError(
-            f"eff_bytes_per_cycle must be positive, got {eff_bytes_per_cycle}"
-        )
+        raise ValueError(f"eff_bytes_per_cycle must be positive, got {eff_bytes_per_cycle}")
     if total_bytes < 0:
         raise ValueError(f"total_bytes must be non-negative, got {total_bytes}")
     if total_bytes == 0:
@@ -107,9 +95,7 @@ def dma_lower_bound(total_bytes: int, eff_bytes_per_cycle: float) -> int:
     return math.ceil(total_bytes / eff_bytes_per_cycle)
 
 
-def combined_lower_bound(macs: int, peak_macs: float,
-                         total_bytes: int,
-                         eff_bytes_per_cycle: float) -> int:
+def combined_lower_bound(macs: int, peak_macs: float, total_bytes: int, eff_bytes_per_cycle: float) -> int:
     """Max of compute floor and DMA floor."""
     return max(
         compute_lower_bound(macs, peak_macs),
@@ -120,16 +106,14 @@ def combined_lower_bound(macs: int, peak_macs: float,
 # ── Utilization bounds ────────────────────────────────────────────────────
 
 
-def utilization_lower(macs: int, peak_macs: float,
-                      total_cycles: int) -> float:
+def utilization_lower(macs: int, peak_macs: float, total_cycles: int) -> float:
     """Ideal utilization = mac_count / (peak_macs × total_cycles)."""
     if total_cycles <= 0 or peak_macs <= 0:
         return 0.0
     return macs / (peak_macs * total_cycles)
 
 
-def validate_utilization(macs: int, peak_macs: float,
-                         total_cycles: int) -> Tuple[bool, str]:
+def validate_utilization(macs: int, peak_macs: float, total_cycles: int) -> tuple[bool, str]:
     """Return (is_valid, message) for utilization in (0, 1]."""
     if total_cycles <= 0:
         return False, "total_cycles must be positive for utilization"
@@ -144,25 +128,22 @@ def validate_utilization(macs: int, peak_macs: float,
 # ── Monotonicity helpers ──────────────────────────────────────────────────
 
 
-def validate_m_monotonic(results: Dict[int, int]) -> Tuple[bool, str]:
+def validate_m_monotonic(results: dict[int, int]) -> tuple[bool, str]:
     """M increase must not decrease total_cycles: tot_cycles non-decreasing."""
     sorted_ms = sorted(results.keys())
     for i in range(len(sorted_ms) - 1):
         m_lo, m_hi = sorted_ms[i], sorted_ms[i + 1]
         if results[m_hi] < results[m_lo]:
-            return False, (
-                f"M={m_lo}→{m_hi}: total_cycles decreased "
-                f"({results[m_lo]} → {results[m_hi]})"
-            )
+            return False, (f"M={m_lo}→{m_hi}: total_cycles decreased ({results[m_lo]} → {results[m_hi]})")
     return True, "M-monotonic (non-decreasing)"
 
 
 def validate_bandwidth_monotonic(
-    bw_results: Dict[float, int],
+    bw_results: dict[float, int],
     compute_floor: int,
     tolerance_pct: float = 5.0,
     require_saturation: bool = True,
-) -> Tuple[bool, str]:
+) -> tuple[bool, str]:
     """Bandwidth increase must not increase total_cycles.
 
     As bandwidth grows, DMA shrinks. Total cycles should approach
@@ -179,13 +160,10 @@ def validate_bandwidth_monotonic(
             continue
         if cycles_hi > cycles_lo * 1.01:  # >1% increase is wrong
             return False, (
-                f"BW {bw_lo}→{bw_hi} GB/s: total_cycles increased "
-                f"({cycles_lo} → {cycles_hi}) — violates monotonicity"
+                f"BW {bw_lo}→{bw_hi} GB/s: total_cycles increased ({cycles_lo} → {cycles_hi}) — violates monotonicity"
             )
     if not require_saturation:
-        return True, (
-            f"BW-monotonic, highest-BW {bw_results[sorted_bws[-1]]:,}c"
-        )
+        return True, (f"BW-monotonic, highest-BW {bw_results[sorted_bws[-1]]:,}c")
     # Check saturation near compute floor
     highest_bw = sorted_bws[-1]
     if bw_results[highest_bw] > 0 and compute_floor > 0:
@@ -197,42 +175,60 @@ def validate_bandwidth_monotonic(
                 f"should saturate within {tolerance_pct}%"
             )
     return True, (
-        f"BW-monotonic, highest-BW {bw_results[highest_bw]:,}c "
-        f"vs floor {compute_floor:,}c (tol {tolerance_pct}%)"
+        f"BW-monotonic, highest-BW {bw_results[highest_bw]:,}c vs floor {compute_floor:,}c (tol {tolerance_pct}%)"
     )
 
 
 # ── Required diagnostics ──────────────────────────────────────────────────
 
 
-_REQUIRED_DIAGNOSTICS: Dict[str, Set[str]] = {
-    "systolic": {"K_tiles", "N_tiles", "per_tile_compute",
-                 "per_tile_dma", "pipeline_fill", "pipeline_drain"},
-    "block": {"M_tiles", "K_tiles", "N_tiles", "per_tile_compute",
-              "weight_dram_eff", "token_multiplex"},
-    "os_systolic": {"K_tiles", "N_tiles", "per_tile_compute",
-                    "broadcast_sync", "k_reduction_cycles",
-                    "raw_dma_cycles", "total_compute_cycles",
-                    "bottleneck_reason", "dataflow"},
-    "input_stationary": {"per_tile_compute", "per_tile_dma",
-                         "K_tiles"},
-    "tensor_core": {"sub_K", "sub_M", "sub_N",
-                    "total_invocations", "num_tcs", "waves",
-                    "per_wave_payload_cycles", "per_wave_dma",
-                    "per_wave_compute", "descriptor_cycles_per_wave",
-                    "total_descriptor_cycles", "subtile_size"},
-    "wmma": {"total_fragments", "fragments_per_tile",
-             "per_fragment_compute", "per_fragment_dma"},
-    "gmma": {"K_tiles", "N_tiles", "per_tile_compute",
-             "per_tile_dma", "raw_dma_cycles",
-             "tma_hidden_dma", "tma_exposed_dma",
-             "pipeline_scale", "tma_overlap", "weight_dram_eff"},
-    "fsa": {"tiles_k", "tiles_m", "tiles_n",
-            "pipe_depth", "engine", "inline_softmax", "dram_eff"},
+_REQUIRED_DIAGNOSTICS: dict[str, set[str]] = {
+    "systolic": {"K_tiles", "N_tiles", "per_tile_compute", "per_tile_dma", "pipeline_fill", "pipeline_drain"},
+    "block": {"M_tiles", "K_tiles", "N_tiles", "per_tile_compute", "weight_dram_eff", "token_multiplex"},
+    "os_systolic": {
+        "K_tiles",
+        "N_tiles",
+        "per_tile_compute",
+        "broadcast_sync",
+        "k_reduction_cycles",
+        "raw_dma_cycles",
+        "total_compute_cycles",
+        "bottleneck_reason",
+        "dataflow",
+    },
+    "input_stationary": {"per_tile_compute", "per_tile_dma", "K_tiles"},
+    "tensor_core": {
+        "sub_K",
+        "sub_M",
+        "sub_N",
+        "total_invocations",
+        "num_tcs",
+        "waves",
+        "per_wave_payload_cycles",
+        "per_wave_dma",
+        "per_wave_compute",
+        "descriptor_cycles_per_wave",
+        "total_descriptor_cycles",
+        "subtile_size",
+    },
+    "wmma": {"total_fragments", "fragments_per_tile", "per_fragment_compute", "per_fragment_dma"},
+    "gmma": {
+        "K_tiles",
+        "N_tiles",
+        "per_tile_compute",
+        "per_tile_dma",
+        "raw_dma_cycles",
+        "tma_hidden_dma",
+        "tma_exposed_dma",
+        "pipeline_scale",
+        "tma_overlap",
+        "weight_dram_eff",
+    },
+    "fsa": {"tiles_k", "tiles_m", "tiles_n", "pipe_depth", "engine", "inline_softmax", "dram_eff"},
 }
 
 
-def required_diagnostics(engine_type: str) -> Set[str]:
+def required_diagnostics(engine_type: str) -> set[str]:
     """Return the set of required detail keys for the given engine type.
 
     Raises ValueError for unknown engine types.
@@ -243,8 +239,7 @@ def required_diagnostics(engine_type: str) -> Set[str]:
     return keys
 
 
-def validate_diagnostics(engine_type: str,
-                         details: dict) -> Tuple[bool, str]:
+def validate_diagnostics(engine_type: str, details: dict) -> tuple[bool, str]:
     """Return (is_valid, message) for diagnostics completeness check."""
     required = required_diagnostics(engine_type)
     missing = required - set(details.keys())

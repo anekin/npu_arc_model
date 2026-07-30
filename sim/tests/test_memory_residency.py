@@ -14,15 +14,14 @@ Covers:
 from __future__ import annotations
 
 import copy
-from typing import Any, Dict
+from typing import Any
 
 import pytest
-
 from contracts.errors import ConfigError, CoverageError
 from engine.mac_engine import create_engine
 from engine.registry import canonical_engine_ids
-from models.memory_hierarchy import MemoryHierarchy, MemoryTier, build_hierarchy_from_config
-from models.residency import TensorPlacement, build_memory_access_plan
+from models.memory_hierarchy import MemoryHierarchy, MemoryTier
+from models.residency import build_memory_access_plan
 from tests.oracles.memory import (
     boundary_check,
     capacity_conservation_ok,
@@ -68,9 +67,7 @@ def _make_hierarchy(
                 alignment_bytes=256,
             )
         )
-    tiers.append(
-        _tier("on_chip_3d_dram", onchip_gb, 500.0)
-    )
+    tiers.append(_tier("on_chip_3d_dram", onchip_gb, 500.0))
     tiers.append(
         MemoryTier(
             name="lpddr5",
@@ -85,7 +82,7 @@ def _make_hierarchy(
     return MemoryHierarchy(tiers=tuple(tiers))
 
 
-def _make_config(onchip_gb: float, external_bw_gbps: float = 51.2) -> Dict[str, Any]:
+def _make_config(onchip_gb: float, external_bw_gbps: float = 51.2) -> dict[str, Any]:
     """Return a minimal config dict with the requested on-chip capacity."""
     return {
         "mac_engine": {
@@ -197,6 +194,7 @@ def _make_queue_graph(queue_bytes: int) -> WorkloadGraphV1:
 # Happy path
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.parametrize("capacity_gb", [0.001, 0.1, 5.0, 16.0])
 def test_capacity_sweep_reports_distinct_residency(capacity_gb):
     """0.001/0.1/5/16 GB capacities must not all report full resident."""
@@ -215,9 +213,7 @@ def test_capacity_conservation_holds(capacity_gb):
     hierarchy = _make_hierarchy(capacity_gb)
     plan = build_memory_access_plan(graph, hierarchy)
 
-    allocated = {
-        s.name: s.allocated_bytes for s in plan.tier_summaries
-    }
+    allocated = {s.name: s.allocated_bytes for s in plan.tier_summaries}
     ok, msg = capacity_conservation_ok(hierarchy, allocated)
     assert ok, msg
 
@@ -249,9 +245,7 @@ def test_full_partial_spill_monotonic_with_capacity():
 
     # Spill bytes must be non-increasing as capacity grows.
     for i in range(1, len(states)):
-        assert states[i][2] <= states[i - 1][2], (
-            f"spill bytes increased from {states[i-1]} to {states[i]}"
-        )
+        assert states[i][2] <= states[i - 1][2], f"spill bytes increased from {states[i - 1]} to {states[i]}"
 
 
 @pytest.mark.parametrize("capacity_gb", [0.001, 0.1, 5.0, 16.0])
@@ -278,6 +272,7 @@ def test_spill_never_decreases_memory_traffic(capacity_gb):
 # ---------------------------------------------------------------------------
 # Capacity boundary tests
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.parametrize(
     "capacity_bytes,expected_state",
@@ -311,13 +306,10 @@ def test_capacity_boundary_aligned_256(capacity_bytes, expected_state):
     plan = build_memory_access_plan(graph, hierarchy)
     weight = next(p for p in plan.placements if p.category == "weight")
     assert weight.state == expected_state, (
-        f"capacity={capacity_bytes}, size={tensor_size}: expected {expected_state}, "
-        f"got {weight.state}"
+        f"capacity={capacity_bytes}, size={tensor_size}: expected {expected_state}, got {weight.state}"
     )
 
-    expected_state_oracle, resident, spill = boundary_check(
-        tensor_size, capacity_bytes, 256
-    )
+    expected_state_oracle, resident, spill = boundary_check(tensor_size, capacity_bytes, 256)
     assert weight.state == expected_state_oracle
     assert weight.spill_bytes == spill
 
@@ -325,6 +317,7 @@ def test_capacity_boundary_aligned_256(capacity_bytes, expected_state):
 # ---------------------------------------------------------------------------
 # Multi-resident-model and KV/queue
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.parametrize("resident_models", [1, 2, 4, 8])
 def test_resident_models_replicate_weight_footprint(resident_models):
@@ -380,6 +373,7 @@ def test_queue_buffer_placement():
 # Cross-engine determinism
 # ---------------------------------------------------------------------------
 
+
 def _engine_plan_digest(engine_type: str) -> str:
     config = _make_config(5.0)
     graph = _make_graph(weight_bytes=1_000_000, activation_bytes=500_000)
@@ -398,6 +392,7 @@ def test_engine_plan_digests_are_identical():
 # ---------------------------------------------------------------------------
 # Negative paths
 # ---------------------------------------------------------------------------
+
 
 def test_reserve_fraction_exceeds_capacity_rejects():
     """A tier whose reserve equals/exceeds capacity leaves no room and must fail."""
@@ -500,6 +495,7 @@ def test_negative_resident_models_rejects():
 # ---------------------------------------------------------------------------
 # Oracle independence sanity
 # ---------------------------------------------------------------------------
+
 
 def test_oracle_total_required_bytes_matches_plan():
     """The independent oracle's required-bytes bound matches the plan footprint."""

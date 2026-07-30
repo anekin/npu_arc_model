@@ -29,10 +29,7 @@ class TestStandaloneAssets:
     def test_required_asset_exists(self, asset):
         """Every file in the REQUIRED_ASSETS list must be present."""
         full_path = REPO_ROOT / asset
-        assert full_path.exists(), (
-            f"Required standalone asset not found: {asset}\n"
-            f"  expected at: {full_path}"
-        )
+        assert full_path.exists(), f"Required standalone asset not found: {asset}\n  expected at: {full_path}"
 
     def test_missing_asset_detected(self, tmp_path):
         """tmp_path smoke test: verify that a non-existent file in an

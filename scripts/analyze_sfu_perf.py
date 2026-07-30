@@ -28,32 +28,30 @@ from __future__ import annotations
 import argparse
 import re
 import sys
-from typing import Optional
-
 
 # ══════════════════════════════════════════════════════════════════════
 # Cycle formulas
 # ══════════════════════════════════════════════════════════════════════
 
 SFU_FORMULAS: dict[str, str] = {
-    "gelu":      "N + 7",
-    "silu":      "N + 7",
-    "rope":      "N + 19",
-    "softmax":   "3*N + 33",
+    "gelu": "N + 7",
+    "silu": "N + 7",
+    "rope": "N + 19",
+    "softmax": "3*N + 33",
     "layernorm": "3*N + 17",
-    "rmsnorm":   "2*N + 21",
+    "rmsnorm": "2*N + 21",
 }
 
 
 def expected_cycles(op: str, dim: int) -> int:
     """Return the expected cycle count for an SFU operation and dimension."""
     formulas = {
-        "gelu":      lambda n: n + 7,
-        "silu":      lambda n: n + 7,
-        "rope":      lambda n: n + 19,
-        "softmax":   lambda n: 3 * n + 33,
+        "gelu": lambda n: n + 7,
+        "silu": lambda n: n + 7,
+        "rope": lambda n: n + 19,
+        "softmax": lambda n: 3 * n + 33,
         "layernorm": lambda n: 3 * n + 17,
-        "rmsnorm":   lambda n: 2 * n + 21,
+        "rmsnorm": lambda n: 2 * n + 21,
     }
     fn = formulas.get(op.lower())
     if fn is None:
@@ -73,9 +71,7 @@ def tolerance_for(op: str) -> int:
 # PERF log parsing
 # ══════════════════════════════════════════════════════════════════════
 
-PERF_LINE_RE = re.compile(
-    r"PERF\|case=([^|]+)\|op=([^|]+)\|event=([^|]+)\|cycles=(\d+)"
-)
+PERF_LINE_RE = re.compile(r"PERF\|case=([^|]+)\|op=([^|]+)\|event=([^|]+)\|cycles=(\d+)")
 
 
 def parse_perf_log(log_path: str) -> list[dict]:
@@ -88,16 +84,18 @@ def parse_perf_log(log_path: str) -> list[dict]:
         for line in f:
             m = PERF_LINE_RE.search(line)
             if m:
-                entries.append({
-                    "case": m.group(1),
-                    "op": m.group(2),
-                    "event": m.group(3),
-                    "cycles": int(m.group(4)),
-                })
+                entries.append(
+                    {
+                        "case": m.group(1),
+                        "op": m.group(2),
+                        "event": m.group(3),
+                        "cycles": int(m.group(4)),
+                    }
+                )
     return entries
 
 
-def analyze_entries(entries: list[dict], case_id: Optional[str] = None) -> dict:
+def analyze_entries(entries: list[dict], case_id: str | None = None) -> dict:
     """Analyze parsed PERF entries and return a verdict dict."""
     results: dict = {
         "total_cycles": None,
@@ -153,8 +151,7 @@ def analyze_entries(entries: list[dict], case_id: Optional[str] = None) -> dict:
     results["dim"] = dim
     results["pass"] = passed
     results["verdict"] = (
-        f"{'PASS' if passed else 'FAIL'}"
-        f" (measured={measured}, expected={expected}, delta={delta}, tol={tol})"
+        f"{'PASS' if passed else 'FAIL'} (measured={measured}, expected={expected}, delta={delta}, tol={tol})"
     )
     return results
 
@@ -193,7 +190,9 @@ def print_report(results: dict, case_id: str = "") -> None:
     op_name = results.get("op", "?")
     dim = results.get("dim", 0)
 
-    print(f"[{case_id}] op={op_name},dim={dim} expected={expected} measured={measured} delta={delta} {'PASS' if passed else 'FAIL'}")
+    print(
+        f"[{case_id}] op={op_name},dim={dim} expected={expected} measured={measured} delta={delta} {'PASS' if passed else 'FAIL'}"
+    )
 
     if results.get("per_state"):
         print("  Per-state breakdown:")
@@ -250,7 +249,7 @@ def main() -> int:
         filtered = [e for e in entries if e["op"].startswith(op_prefix)]
 
         if not filtered:
-            print(f"[{args.case}] FAIL: no PERF entries for op={op_field}")
+            print(f"[{args.case}] FAIL: no PERF entries for {op_prefix}")
             return 1
 
         # If we have all entries with a case filter, use that
@@ -260,7 +259,7 @@ def main() -> int:
         results = analyze_entries(filtered, args.case)
     else:
         # Full log mode: group by case and analyze each
-        cases = sorted(set(e["case"] for e in entries))
+        cases = sorted({e["case"] for e in entries})
         all_pass = True
         for case in cases:
             results = analyze_entries(entries, case)
@@ -277,7 +276,7 @@ def main() -> int:
         print_report(results, args.case)
 
     passed = results.get("pass", False)
-    print(f"PASS" if passed else "FAIL")
+    print("PASS" if passed else "FAIL")
     return 0 if passed else 1
 
 

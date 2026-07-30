@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Any, Dict, Tuple
+from dataclasses import dataclass
+from typing import Any
 
-from contracts.errors import ConfigError
-from contracts.hardware import DEFAULT_NODE_SCALE_PROVENANCE
 from models.memory_backend import (
     MemoryAccessPattern,
     MemoryBackend,
@@ -34,8 +32,10 @@ class PPA:
         self.efficiency_tok_per_mm2 = self.tok_s / max(self.area_mm2, 0.1)
 
     def __repr__(self):
-        return (f"PPA(tok={self.tok_s:.0f}/s, {self.area_mm2:.0f}mm², "
-                f"{self.power_w:.1f}W, {self.efficiency_tok_per_watt:.1f}tok/W)")
+        return (
+            f"PPA(tok={self.tok_s:.0f}/s, {self.area_mm2:.0f}mm², "
+            f"{self.power_w:.1f}W, {self.efficiency_tok_per_watt:.1f}tok/W)"
+        )
 
 
 def _node_scale_factor(process_node_nm: float) -> float:
@@ -59,7 +59,7 @@ class AreaModel:
     不是旧版的 (12/7)² = 2.94×）。
     """
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: dict[str, Any]):
         am = config.get("area_model", {})
         node = float(am.get("process_node_nm", am.get("process_node", 7.0)))
         self.node_scale = _node_scale_factor(node)
@@ -67,13 +67,23 @@ class AreaModel:
         # ── PE 面积基线 @7nm (128×128 array) ──
         # 来源: TPUv1 ISCA 2017 die-shot 反推，见 references/area_sources.md
         self.systolic_pe_baseline = float(am.get("systolic_pe_area_mm2", 2.0)) * self.node_scale
-        self.block_pe_baseline       = float(am.get("block_pe_area_mm2", 4.0)) * self.node_scale       # 2× systolic (local acc + broadcast)
-        self.os_pe_baseline          = float(am.get("os_pe_area_mm2", 4.0)) * self.node_scale          # output stationary ≈ block
-        self.input_stationary_pe_baseline = float(am.get("is_pe_area_mm2", 4.0)) * self.node_scale     # input stationary ≈ block
-        self.tensor_core_pe_baseline = float(am.get("tc_pe_area_mm2", 4.0)) * self.node_scale          # TC ≈ block
-        self.wmma_pe_baseline        = float(am.get("wmma_pe_area_mm2", 6.0)) * self.node_scale        # ~1.5× block (warp-level control)
-        self.gmma_pe_baseline        = float(am.get("gmma_pe_area_mm2", 7.0)) * self.node_scale        # ~1.75× block (async copy + TMA)
-        self.fsa_pe_baseline         = float(am.get("fsa_pe_area_mm2", 2.2)) * self.node_scale         # 1.1× systolic (CMP + Split overhead)
+        self.block_pe_baseline = (
+            float(am.get("block_pe_area_mm2", 4.0)) * self.node_scale
+        )  # 2× systolic (local acc + broadcast)
+        self.os_pe_baseline = float(am.get("os_pe_area_mm2", 4.0)) * self.node_scale  # output stationary ≈ block
+        self.input_stationary_pe_baseline = (
+            float(am.get("is_pe_area_mm2", 4.0)) * self.node_scale
+        )  # input stationary ≈ block
+        self.tensor_core_pe_baseline = float(am.get("tc_pe_area_mm2", 4.0)) * self.node_scale  # TC ≈ block
+        self.wmma_pe_baseline = (
+            float(am.get("wmma_pe_area_mm2", 6.0)) * self.node_scale
+        )  # ~1.5× block (warp-level control)
+        self.gmma_pe_baseline = (
+            float(am.get("gmma_pe_area_mm2", 7.0)) * self.node_scale
+        )  # ~1.75× block (async copy + TMA)
+        self.fsa_pe_baseline = (
+            float(am.get("fsa_pe_area_mm2", 2.2)) * self.node_scale
+        )  # 1.1× systolic (CMP + Split overhead)
         self.sfu = float(am.get("sfu_area_mm2", 1.5)) * self.node_scale
         self.l1_per_kb = float(am.get("l1_sram_per_kb_mm2", 0.002)) * self.node_scale
         self.l2_per_kb = float(am.get("l2_sram_per_kb_mm2", 0.0015)) * self.node_scale
@@ -90,14 +100,14 @@ class AreaModel:
         self.tsv_overhead_pct = float(am.get("tsv_overhead_pct", 0.10))
 
         # CV-specific hardware units
-        self.im2col_feeder = float(am.get("im2col_feeder_mm2", 0.002))   # scales with array
-        self.pool2d = float(am.get("pool2d_mm2", 0.05))                   # fixed cost
-        self.conv_sfu = float(am.get("conv_sfu_mm2", 0.10))               # fixed cost
+        self.im2col_feeder = float(am.get("im2col_feeder_mm2", 0.002))  # scales with array
+        self.pool2d = float(am.get("pool2d_mm2", 0.05))  # fixed cost
+        self.conv_sfu = float(am.get("conv_sfu_mm2", 0.10))  # fixed cost
 
         # Parametric memory backend for memory-dependent area/power.
         self._memory_backend: MemoryBackend = Parametric3DMemoryBackend()
 
-    def _memory_type(self, config: Dict[str, Any]) -> str:
+    def _memory_type(self, config: dict[str, Any]) -> str:
         """Classify memory subsystem as on_chip_3d_dram, hbm, or lpddr."""
         onchip = config.get("on_chip_memory", {})
         if float(onchip.get("capacity_gb", 0)) > 0:
@@ -111,7 +121,7 @@ class AreaModel:
             return "lpddr5x"
         return "lpddr5"
 
-    def _memory_area_estimate(self, config: Dict[str, Any]) -> Dict[str, float]:
+    def _memory_area_estimate(self, config: dict[str, Any]) -> dict[str, float]:
         """Estimate memory-die, PHY, TSV, and package area using the backend.
 
         Returns a dict with memory_die_area_mm2, interface_area_mm2,
@@ -158,7 +168,7 @@ class AreaModel:
             "tsv_area_mm2": response.components.get("tsv_area_mm2", 0.0),
         }
 
-    def estimate(self, config: Dict[str, Any], engine_type: str) -> Dict[str, float]:
+    def estimate(self, config: dict[str, Any], engine_type: str) -> dict[str, float]:
         """估算总面积"""
         mac = config.get("mac_engine", {})
         H = int(mac.get("array_height", 128))
@@ -206,14 +216,27 @@ class AreaModel:
         package_area = memory["package_area_mm2"]
 
         # CV hardware units
-        im2col_feeder_area = self.im2col_feeder * scale     # scales with array size
+        im2col_feeder_area = self.im2col_feeder * scale  # scales with array size
         pool2d_area = self.pool2d
         conv_sfu_area = self.conv_sfu
 
-        total = (pe_area + self.sfu + self.riscv + pcie_area +
-                 self.crossbar + l1 + l2 + dma_area + dram_phy_area +
-                 memory_die_area + tsv_area + package_area +
-                 im2col_feeder_area + pool2d_area + conv_sfu_area)
+        total = (
+            pe_area
+            + self.sfu
+            + self.riscv
+            + pcie_area
+            + self.crossbar
+            + l1
+            + l2
+            + dma_area
+            + dram_phy_area
+            + memory_die_area
+            + tsv_area
+            + package_area
+            + im2col_feeder_area
+            + pool2d_area
+            + conv_sfu_area
+        )
 
         return {
             "total_mm2": round(total, 1),
@@ -230,14 +253,14 @@ class AreaModel:
 class PowerModel:
     """功耗估算模型 — 粗略 but proportional"""
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: dict[str, Any]):
         # 12nm: ~0.5 W/mm² for logic, ~0.1 W/mm² for SRAM (active)
-        self.logic_power_density = 0.5   # W/mm²
-        self.sram_power_density = 0.1    # W/mm²
-        self.dram_phy_power = 3.0        # W (fixed overhead)
+        self.logic_power_density = 0.5  # W/mm²
+        self.sram_power_density = 0.1  # W/mm²
+        self.dram_phy_power = 3.0  # W (fixed overhead)
         self._memory_backend: MemoryBackend = Parametric3DMemoryBackend()
 
-    def _memory_type(self, config: Dict[str, Any]) -> str:
+    def _memory_type(self, config: dict[str, Any]) -> str:
         onchip = config.get("on_chip_memory", {})
         if float(onchip.get("capacity_gb", 0)) > 0:
             return "on_chip_3d_dram"
@@ -250,7 +273,7 @@ class PowerModel:
             return "lpddr5x"
         return "lpddr5"
 
-    def _memory_power_estimate(self, area_model: AreaModel, config: Dict[str, Any]) -> float:
+    def _memory_power_estimate(self, area_model: AreaModel, config: dict[str, Any]) -> float:
         """Return memory-related static + active power proxy."""
         mem_type = self._memory_type(config)
         onchip = config.get("on_chip_memory", {})
@@ -290,8 +313,7 @@ class PowerModel:
         response = self._memory_backend.estimate(request)
         return response.static_power_w + response.active_power_w
 
-    def estimate(self, area_model: AreaModel, config: Dict[str, Any],
-                 engine_type: str) -> float:
+    def estimate(self, area_model: AreaModel, config: dict[str, Any], engine_type: str) -> float:
         """粗略功耗估算"""
         mac = config.get("mac_engine", {})
         H = int(mac.get("array_height", 128))
@@ -330,10 +352,18 @@ class PowerModel:
 
         # CV unit power
         cv_area = area_model.estimate(config, engine_type)
-        im2col_power = cv_area["im2col_feeder_mm2"] * 0.1    # SRAM-dense logic
-        pool2d_power = cv_area["pool2d_mm2"] * 0.5           # combinational logic
-        conv_sfu_power = cv_area["conv_sfu_mm2"] * 0.3       # LUT + control
+        im2col_power = cv_area["im2col_feeder_mm2"] * 0.1  # SRAM-dense logic
+        pool2d_power = cv_area["pool2d_mm2"] * 0.5  # combinational logic
+        conv_sfu_power = cv_area["conv_sfu_mm2"] * 0.3  # LUT + control
 
-        total = (logic_power + sram_power + dram_phy_power + mem_power + 2.0  # +2W misc
-                 + im2col_power + pool2d_power + conv_sfu_power)
+        total = (
+            logic_power
+            + sram_power
+            + dram_phy_power
+            + mem_power
+            + 2.0  # +2W misc
+            + im2col_power
+            + pool2d_power
+            + conv_sfu_power
+        )
         return round(total, 1)

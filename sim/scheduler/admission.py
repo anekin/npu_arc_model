@@ -11,7 +11,7 @@ Checks four independent dimensions before a job is admitted:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict
+from typing import Any
 
 
 @dataclass(frozen=True)
@@ -20,7 +20,7 @@ class AdmissionResult:
 
     admitted: bool
     reason: str = ""
-    checks: Dict[str, bool] = field(default_factory=dict)
+    checks: dict[str, bool] = field(default_factory=dict)
 
 
 class AdmissionController:
@@ -33,22 +33,16 @@ class AdmissionController:
         max_bandwidth_fraction: float = 1.0,
     ) -> None:
         if memory_available_bytes < 0:
-            raise ValueError(
-                f"memory_available_bytes must be non-negative, got {memory_available_bytes}"
-            )
+            raise ValueError(f"memory_available_bytes must be non-negative, got {memory_available_bytes}")
         if max_inflight_jobs <= 0:
-            raise ValueError(
-                f"max_inflight_jobs must be positive, got {max_inflight_jobs}"
-            )
+            raise ValueError(f"max_inflight_jobs must be positive, got {max_inflight_jobs}")
         if not 0.0 < max_bandwidth_fraction <= 1.0:
-            raise ValueError(
-                f"max_bandwidth_fraction must be in (0, 1], got {max_bandwidth_fraction}"
-            )
+            raise ValueError(f"max_bandwidth_fraction must be in (0, 1], got {max_bandwidth_fraction}")
         self.memory_available_bytes = memory_available_bytes
         self.max_inflight_jobs = max_inflight_jobs
         self.max_bandwidth_fraction = max_bandwidth_fraction
         self._memory_used_bytes: int = 0
-        self._inflight: Dict[str, Dict[str, Any]] = {}
+        self._inflight: dict[str, dict[str, Any]] = {}
         self._bandwidth_fraction_used: float = 0.0
 
     @property
@@ -74,7 +68,7 @@ class AdmissionController:
         bandwidth_fraction: float = 0.0,
         priority: int = 0,
         exclusive_resources: set[str] | None = None,
-        lower_priority_holders: Dict[str, int] | None = None,
+        lower_priority_holders: dict[str, int] | None = None,
     ) -> AdmissionResult:
         """Return an admission result without modifying state."""
         exclusive_resources = exclusive_resources or set()
@@ -82,17 +76,11 @@ class AdmissionController:
 
         memory_ok = self.memory_free_bytes >= memory_bytes
         inflight_ok = self.inflight_count < self.max_inflight_jobs
-        bw_ok = (
-            self._bandwidth_fraction_used + bandwidth_fraction
-            <= self.max_bandwidth_fraction + 1e-12
-        )
+        bw_ok = self._bandwidth_fraction_used + bandwidth_fraction <= self.max_bandwidth_fraction + 1e-12
 
         # A higher-priority job is blocked if any required exclusive resource
         # is held by a job with strictly lower priority.
-        blocking = any(
-            lower_priority_holders.get(res, float("inf")) < priority
-            for res in exclusive_resources
-        )
+        blocking = any(lower_priority_holders.get(res, float("inf")) < priority for res in exclusive_resources)
         blocking_ok = not blocking
 
         checks = {
@@ -117,7 +105,7 @@ class AdmissionController:
         bandwidth_fraction: float = 0.0,
         priority: int = 0,
         exclusive_resources: set[str] | None = None,
-        lower_priority_holders: Dict[str, int] | None = None,
+        lower_priority_holders: dict[str, int] | None = None,
     ) -> AdmissionResult:
         """Admit ``job_id`` if all checks pass and record the reservation."""
         result = self.check(

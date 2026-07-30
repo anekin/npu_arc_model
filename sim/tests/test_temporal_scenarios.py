@@ -6,11 +6,9 @@ from pathlib import Path
 
 import pytest
 import yaml
-
+from scenario_runner import run_scenario
 from scenarios.compiler import compile_scenario
 from scenarios.schema import ArrivalMode, ArrivalPattern, Scenario, WorkloadClass
-from scenario_runner import run_scenario
-
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 SIM_DIR = REPO_ROOT / "sim"
@@ -74,7 +72,7 @@ class TestScenarioSchema:
         assert times[-1] == 45_000_000_000
 
     def test_trace_must_be_sorted(self) -> None:
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError):
             ArrivalPattern(mode=ArrivalMode.TRACE, releases_ms=[10.0, 5.0])
 
     def test_workload_class_deadline_defaults_to_work(self) -> None:
@@ -91,7 +89,7 @@ class TestScenarioSchema:
         assert cls.timeout_ms == 7.0
 
     def test_unique_class_ids_required(self) -> None:
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError):
             Scenario(
                 name="dup",
                 classes=[

@@ -26,9 +26,9 @@ from __future__ import annotations
 
 import json
 import math
-from typing import Any
 import os as _os
 import sys as _sys
+from typing import Any
 
 # ---- Path setup: ensure CaduceusCore/sim is importable when run directly ---
 _sim_dir = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
@@ -39,7 +39,6 @@ if _sim_dir not in _sys.path:
 from contracts.errors import UnsupportedOperatorError
 from cv.conv_mapper import map_conv_to_gemm
 from cv.onnx_importer import import_mobilenetv3
-from workloads.operators import DEFAULT_REGISTRY
 
 # ---------------------------------------------------------------------------
 # Constants (aligned with sim/config/npu_config.yaml)
@@ -73,6 +72,7 @@ SFU_TYPES: frozenset[str] = frozenset({"hard_swish", "hard_sigmoid", "relu"})
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _element_count(shape: list[int] | None) -> int:
     """Compute total element count from a tensor shape.
@@ -124,7 +124,14 @@ def _conv_from_layer(layer: dict[str, Any]) -> dict[str, Any]:
     groups = layer.get("groups", 1)
 
     result = map_conv_to_gemm(
-        C_in, C_out, H, W, K, stride=stride, pad=pad, groups=groups,
+        C_in,
+        C_out,
+        H,
+        W,
+        K,
+        stride=stride,
+        pad=pad,
+        groups=groups,
     )
 
     # Determine trace type. The importer already marks depthwise convs
@@ -173,6 +180,7 @@ def _gemm_from_layer(layer: dict[str, Any]) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
 
 def generate_mobilenetv3_trace(onnx_path: str) -> list[dict[str, Any]]:
     """Generate a CV accelerator trace from a MobileNetV3-Small ONNX file.
@@ -227,28 +235,32 @@ def generate_mobilenetv3_trace(onnx_path: str) -> list[dict[str, Any]]:
         # ---- SFU activation layers ---------------------------------------
         elif op_type in ("HardSwish", "HardSigmoid", "Relu"):
             trace_type = TYPE_MAP.get(op_type, op_type.lower())
-            trace.append({
-                "type": trace_type,
-                "name": name,
-                "M": 0,
-                "K": 0,
-                "N": 0,
-                "im2col_overhead_cycles": 0,
-                "sfu_cycles": _compute_sfu_cycles(out_shape),
-            })
+            trace.append(
+                {
+                    "type": trace_type,
+                    "name": name,
+                    "M": 0,
+                    "K": 0,
+                    "N": 0,
+                    "im2col_overhead_cycles": 0,
+                    "sfu_cycles": _compute_sfu_cycles(out_shape),
+                }
+            )
 
         # ---- Element-wise / shape / misc ops -----------------------------
         elif op_type in TYPE_MAP:
             trace_type = TYPE_MAP[op_type]
-            trace.append({
-                "type": trace_type,
-                "name": name,
-                "M": 0,
-                "K": 0,
-                "N": 0,
-                "im2col_overhead_cycles": 0,
-                "sfu_cycles": 0,
-            })
+            trace.append(
+                {
+                    "type": trace_type,
+                    "name": name,
+                    "M": 0,
+                    "K": 0,
+                    "N": 0,
+                    "im2col_overhead_cycles": 0,
+                    "sfu_cycles": 0,
+                }
+            )
 
         else:
             # Fail-closed: unknown operators are not silently mapped to 0-cycle metadata.
@@ -260,9 +272,7 @@ def generate_mobilenetv3_trace(onnx_path: str) -> list[dict[str, Any]]:
 
     # ---- Validation -------------------------------------------------------
     total_macs = sum(entry["M"] * entry["K"] * entry["N"] for entry in trace)
-    assert 50_000_000 <= total_macs <= 62_000_000, (
-        f"Total MACs {total_macs:,} is outside expected range [50M, 62M]"
-    )
+    assert 50_000_000 <= total_macs <= 62_000_000, f"Total MACs {total_macs:,} is outside expected range [50M, 62M]"
 
     return trace
 
@@ -307,14 +317,16 @@ if __name__ == "__main__":
     os.makedirs(evidence_dir, exist_ok=True)
     evidence_path = os.path.join(evidence_dir, "cv-task-6-trace.txt")
     with open(evidence_path, "w") as f:
-        f.write(f"cv_trace.py - MobileNetV3-Small trace generation\n")
-        f.write(f"===============================================\n\n")
+        f.write("cv_trace.py - MobileNetV3-Small trace generation\n")
+        f.write("===============================================\n\n")
         f.write(f"ONNX file: {default_onnx}\n")
         f.write(f"Trace entries: {len(trace)}\n")
         f.write(f"Total MACs: {total_macs:,}\n")
         f.write(f"MACs in range [50M, 62M]: {50_000_000 <= total_macs <= 62_000_000}\n\n")
         f.write("Layer-by-layer breakdown:\n")
-        f.write(f"{'#':>4} {'Type':20s} {'Name':40s} {'M':>8} {'K':>8} {'N':>8} {'MACs':>12} {'im2col':>10} {'SFU':>6}\n")
+        f.write(
+            f"{'#':>4} {'Type':20s} {'Name':40s} {'M':>8} {'K':>8} {'N':>8} {'MACs':>12} {'im2col':>10} {'SFU':>6}\n"
+        )
         f.write("-" * 120 + "\n")
         for i, entry in enumerate(trace):
             macs = entry["M"] * entry["K"] * entry["N"]

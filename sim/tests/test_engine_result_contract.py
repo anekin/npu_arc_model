@@ -7,19 +7,17 @@ failures — no skip permitted.
 """
 
 import copy
-from typing import Any, Dict
+from typing import Any
 
 import pytest
-
 from engine.mac_engine import EngineResult, create_engine
-from engine.registry import canonical_engine_ids, is_valid_engine
+from engine.registry import canonical_engine_ids
 from tests.oracles.physics import required_diagnostics
-
 
 ENGINE_TYPES = list(canonical_engine_ids())
 
 
-def _typed_config(engine_config: Dict[str, Any], engine_type: str) -> Dict[str, Any]:
+def _typed_config(engine_config: dict[str, Any], engine_type: str) -> dict[str, Any]:
     """Return a deep-copied config with the requested engine type."""
     cfg = copy.deepcopy(engine_config)
     cfg["mxu"]["type"] = engine_type
@@ -31,22 +29,14 @@ def _validate_base(result: EngineResult, M: int, K: int, N: int) -> None:
     assert result.total_cycles > 0, "total_cycles must be positive"
     assert result.compute_cycles >= 0, "compute_cycles must be non-negative"
     assert result.dma_cycles >= 0, "dma_cycles must be non-negative"
-    assert 0 < result.utilization <= 1.0, (
-        f"utilization must be in (0, 1], got {result.utilization}"
-    )
-    assert result.mac_count >= M * K * N, (
-        f"mac_count {result.mac_count} must cover the full GEMM volume {M * K * N}"
-    )
+    assert 0 < result.utilization <= 1.0, f"utilization must be in (0, 1], got {result.utilization}"
+    assert result.mac_count >= M * K * N, f"mac_count {result.mac_count} must cover the full GEMM volume {M * K * N}"
     assert result.op_count == result.mac_count * 2, (
         f"op_count {result.op_count} must equal 2 × mac_count {result.mac_count}"
     )
-    assert result.bottleneck in {"compute", "dma"}, (
-        f"bottleneck must be 'compute' or 'dma', got {result.bottleneck!r}"
-    )
+    assert result.bottleneck in {"compute", "dma"}, f"bottleneck must be 'compute' or 'dma', got {result.bottleneck!r}"
     assert result.weight_bytes >= 0, "weight_bytes must be non-negative"
-    assert isinstance(result.details, dict) and result.details, (
-        "details must be a non-empty dict"
-    )
+    assert isinstance(result.details, dict) and result.details, "details must be a non-empty dict"
     assert result.ideal_compute_cycles >= 0, "ideal_compute_cycles must be non-negative"
     assert result.raw_dma_cycles >= 0, "raw_dma_cycles must be non-negative"
 
@@ -55,16 +45,11 @@ def _validate_engine_specific(engine_type: str, result: EngineResult) -> None:
     """Validate that all required diagnostics are present (hard failure if missing)."""
     required = required_diagnostics(engine_type)
     is_cache_pair = bool(result.details.get("weight_cache"))
-    if is_cache_pair:
-        # Cache-pair paths don't include per_fragment_dma
-        check_required = required - {"per_fragment_dma"}
-    else:
-        check_required = required
+    # Cache-pair paths don't include per_fragment_dma
+    check_required = required - {"per_fragment_dma"} if is_cache_pair else required
 
     missing = check_required - set(result.details.keys())
-    assert not missing, (
-        f"Missing required diagnostics for {engine_type}: {missing}"
-    )
+    assert not missing, f"Missing required diagnostics for {engine_type}: {missing}"
 
 
 @pytest.mark.parametrize("engine_type", ENGINE_TYPES)
@@ -131,7 +116,7 @@ def test_invalid_engine_results_are_rejected():
         ("empty details", {**base, "details": {}}),
     ]
 
-    for name, kwargs in invalid_cases:
+    for _name, kwargs in invalid_cases:
         bad = EngineResult(**kwargs)
         with pytest.raises(AssertionError):
             _validate_base(bad, M, K, N)
@@ -140,7 +125,7 @@ def test_invalid_engine_results_are_rejected():
 def test_engine_result_rejects_non_finite_values():
     """EngineResult construction rejects NaN/Inf values."""
     M, K, N = 64, 64, 64
-    import math
+
     with pytest.raises(ValueError):
         EngineResult(
             compute_cycles=float("nan"),

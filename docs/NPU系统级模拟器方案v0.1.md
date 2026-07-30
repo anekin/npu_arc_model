@@ -155,14 +155,14 @@ activation_load_time = (M * K * 16bit) / 8 / bandwidth_activation
 
 ```python
 SFU_LATENCY = {
-    "softmax":   8,   # 指数查表 + 分段减法 → 8 cycles
-    "layernorm": 6,   # 并行均值/方差 + 融合乘加 → 6 cycles
-    "gelu":      4,   # 分段查表 → 4 cycles
-    "relu":      1,   # 纯组合逻辑 → 1 cycle
-    "rope":     12,   # CORDIC 旋转 → 12 cycles
-    "silu":      4,   # 复用 GELU 查表
-    "maxpool":   3,   # 4→1 比较器
-    "avgpool":   3,   # 加法 + 移位
+    "softmax": 8,  # 指数查表 + 分段减法 → 8 cycles
+    "layernorm": 6,  # 并行均值/方差 + 融合乘加 → 6 cycles
+    "gelu": 4,  # 分段查表 → 4 cycles
+    "relu": 1,  # 纯组合逻辑 → 1 cycle
+    "rope": 12,  # CORDIC 旋转 → 12 cycles
+    "silu": 4,  # 复用 GELU 查表
+    "maxpool": 3,  # 4→1 比较器
+    "avgpool": 3,  # 加法 + 移位
 }
 ```
 
@@ -284,18 +284,19 @@ riscv_overhead = 28 × 14 × 7 = 2,744 cycles ≈ 2.7 μs  @ 1GHz
 ```python
 class CoreTimeline:
     """单核时间轴：记录每层各模块的起止时间"""
-    
+
     def add_event(self, module, start_cycle, end_cycle):
         self.events.append((module, start_cycle, end_cycle))
-    
+
     def merge(self):
         """合并重叠事件 → 实际总时间"""
         # MXU 和 DMA 可重叠，MXU 和 SFU 串行（数据依赖）
         pass
 
+
 class MultiCoreTimeline:
     """多核时间轴：加上 FIFO 传递"""
-    
+
     def simulate_decode(self, num_tokens):
         for token in range(num_tokens):
             for layer in range(num_layers):
@@ -498,7 +499,7 @@ class NPUSimulator:
         """L2: NPU 指令序列 → 性能报告 + 功能验证"""
         for instr in isa_sequence:
             op, args = self.decoder.decode(instr)
-            cycles = self.dispatch(op, args)   # 同一套 MXU/SFU/DMA 模型
+            cycles = self.dispatch(op, args)  # 同一套 MXU/SFU/DMA 模型
             self.timeline.add(op, cycles)
 ```
 
@@ -527,8 +528,8 @@ Simulator 加 `mode="functional"` 切换为 golden model，RTL 仿真时同步�
 ### 模式切换
 
 ```python
-sim = NPUSimulator(config, mode="performance")   # 只数 cycles
-sim = NPUSimulator(config, mode="functional")    # 真算数值 + 数 cycles
+sim = NPUSimulator(config, mode="performance")  # 只数 cycles
+sim = NPUSimulator(config, mode="functional")  # 真算数值 + 数 cycles
 ```
 
 ### 三个验证精度层次
@@ -573,10 +574,10 @@ NPU Simulator    RTL Sim       实际芯片
 # test_mxu.py — RTL testbench 调用的 Python 参考
 from npu_sim.golden import mxu_golden
 
+
 def verify_mxu(rtl_output: np.ndarray, input_a: np.ndarray, weight_w: np.ndarray):
     expected = mxu_golden(input_a, weight_w)
-    assert np.array_equal(rtl_output, expected), \
-        f"MXU mismatch at {np.where(rtl_output != expected)}"
+    assert np.array_equal(rtl_output, expected), f"MXU mismatch at {np.where(rtl_output != expected)}"
     return True
 ```
 

@@ -11,7 +11,6 @@ Address routing (matches rtl/soc/axi_crossbar.v):
 """
 
 import threading
-from typing import List, Optional, Tuple
 
 from sim.regmap import Addr
 
@@ -33,7 +32,7 @@ class CrossbarModel:
         self,
         sram: bytearray,
         dram: bytearray,
-        boot_rom: Optional[bytearray] = None,
+        boot_rom: bytearray | None = None,
     ):
         """Initialize crossbar with shared memory references.
 
@@ -47,8 +46,8 @@ class CrossbarModel:
         self.boot_rom = boot_rom
 
         # Per-slave last granted master, independent for AW/W and AR/R.
-        self._aw_last_granted: List[Optional[int]] = [None] * self.NUM_SLAVES
-        self._ar_last_granted: List[Optional[int]] = [None] * self.NUM_SLAVES
+        self._aw_last_granted: list[int | None] = [None] * self.NUM_SLAVES
+        self._ar_last_granted: list[int | None] = [None] * self.NUM_SLAVES
 
         # Per-master AXI transaction ID counters.
         self._txn_ids = [0] * self.NUM_MASTERS
@@ -58,13 +57,12 @@ class CrossbarModel:
         self._ar_locks = [threading.Lock() for _ in range(self.NUM_SLAVES)]
 
         # Grant history for fairness / ordering verification.
-        self._aw_grants: List[Tuple[int, int]] = []
-        self._ar_grants: List[Tuple[int, int]] = []
+        self._aw_grants: list[tuple[int, int]] = []
+        self._ar_grants: list[tuple[int, int]] = []
 
     def __repr__(self) -> str:
         return (
-            f"CrossbarModel(M={self.NUM_MASTERS}, S={self.NUM_SLAVES}, "
-            f"sram={len(self.sram)}B, dram={len(self.dram)}B)"
+            f"CrossbarModel(M={self.NUM_MASTERS}, S={self.NUM_SLAVES}, sram={len(self.sram)}B, dram={len(self.dram)}B)"
         )
 
     # ── Public master-facing API ─────────────────────────────────────
@@ -97,7 +95,7 @@ class CrossbarModel:
         with self._ar_locks[slave_idx]:
             self._grant(slave_idx, master_id, is_write=False)
             off = addr - base
-            data = bytes(mem[off:off + size])
+            data = bytes(mem[off : off + size])
 
         # Expose the composed ID for testability.
         self._last_axi_id = axi_id
@@ -124,13 +122,13 @@ class CrossbarModel:
         with self._aw_locks[slave_idx]:
             self._grant(slave_idx, master_id, is_write=True)
             off = addr - base
-            mem[off:off + len(data)] = data
+            mem[off : off + len(data)] = data
 
         self._last_axi_id = axi_id
 
     # ── Address decode ───────────────────────────────────────────────
 
-    def _decode(self, addr: int) -> Tuple[int, bytearray]:
+    def _decode(self, addr: int) -> tuple[int, bytearray]:
         """Decode physical address to (slave_idx, memory).
 
         Returns:
@@ -187,6 +185,7 @@ class CrossbarModel:
 
 # ── APB Decoder ─────────────────────────────────────────────────────
 
+
 class APBDecoder:
     """APB address decoder — 1 master -> 7 slaves, 4 KB windows.
 
@@ -213,9 +212,7 @@ class APBDecoder:
     }
 
     def __init__(self):
-        self._slave_map = {
-            idx: (base, 0x1000) for idx, (_, base) in self.SLAVES.items()
-        }
+        self._slave_map = {idx: (base, 0x1000) for idx, (_, base) in self.SLAVES.items()}
 
     def decode(self, paddr: int) -> int:
         """Decode APB address to slave index (0–6).

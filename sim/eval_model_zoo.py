@@ -2,7 +2,6 @@
 """Batch-run Arc Model DSE over the Model Zoo LLM models."""
 
 import argparse
-import json
 import subprocess
 import sys
 import time
@@ -22,11 +21,16 @@ def run_dse(alias: str, batch_m: int, quick: bool, top_n: int) -> Path:
     out_dir.mkdir(parents=True, exist_ok=True)
     out_path = out_dir / f"pareto{suffix}.json"
     cmd = [
-        sys.executable, str(DSE),
-        "--model-spec", alias,
-        "--batch-m", str(batch_m),
-        "--top", str(top_n),
-        "--output", str(out_path),
+        sys.executable,
+        str(DSE),
+        "--model-spec",
+        alias,
+        "--batch-m",
+        str(batch_m),
+        "--top",
+        str(top_n),
+        "--output",
+        str(out_path),
     ]
     if quick:
         cmd.append("--quick")
@@ -52,7 +56,7 @@ def main():
             if args.resume and out_path.exists():
                 print(f"[SKIP] {alias} M={batch_m}: {out_path} exists")
                 continue
-            print(f"[{completed+1}/{total}] {alias} M={batch_m} ...")
+            print(f"[{completed + 1}/{total}] {alias} M={batch_m} ...")
             t0 = time.time()
             run_dse(alias, batch_m, args.quick, args.top)
             elapsed = time.time() - t0

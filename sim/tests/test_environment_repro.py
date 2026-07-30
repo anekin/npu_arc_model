@@ -62,10 +62,7 @@ class TestEnvironmentReproducibility:
     def test_lock_file_exists(self):
         """uv.lock must be present in the repository root."""
         lock_path = REPO_ROOT / "uv.lock"
-        assert lock_path.exists(), (
-            f"uv.lock not found at {lock_path}. "
-            "Run 'uv lock' to generate the lock file."
-        )
+        assert lock_path.exists(), f"uv.lock not found at {lock_path}. Run 'uv lock' to generate the lock file."
 
     @pytest.mark.clean
     def test_lock_file_not_empty(self):
@@ -115,6 +112,7 @@ class TestOfflineFixtures:
         path = REPO_ROOT / "sim" / "tests" / "golden" / "legacy_cli_contract.json"
         assert path.exists(), f"Golden contract not found: {path}"
         import json
+
         data = json.loads(path.read_text())
         assert "_meta" in data, "Golden contract missing _meta section"
         assert "npu_sim_cli" in data, "Golden contract missing npu_sim_cli"

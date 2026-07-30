@@ -8,17 +8,13 @@ power, or energy.
 
 from __future__ import annotations
 
-import math
-from typing import Dict, List, Literal
+from typing import Literal
 
 import pytest
-
 from contracts.errors import ConfigError
 from models.memory_backend import (
     MemoryAccessPattern,
-    MemoryBackend,
     MemoryRequest,
-    MemoryResponse,
     MemoryTopology,
 )
 from models.onchip_dram import Parametric3DMemoryBackend
@@ -124,9 +120,7 @@ def test_access_bytes_monotonic_energy(read_bytes, write_bytes):
 def test_oracle_reproduces_production_ppa(capacity_gb, bandwidth_gbps, read_bytes):
     """Oracle recomputes production backend numbers for 3D DRAM without calling it."""
     backend = Parametric3DMemoryBackend()
-    response = backend.estimate(
-        _request(capacity_gb=capacity_gb, bandwidth_gbps=bandwidth_gbps, read_bytes=read_bytes)
-    )
+    response = backend.estimate(_request(capacity_gb=capacity_gb, bandwidth_gbps=bandwidth_gbps, read_bytes=read_bytes))
     oracle = memory_ppa_oracle(
         tier="on_chip_3d_dram",
         capacity_gb=capacity_gb,
@@ -165,7 +159,9 @@ def test_tier_ppa_component_breakdown(tier):
     assert response.components["memory_die_area_mm2"] >= 0
     assert response.components["tsv_area_mm2"] >= 0
     if tier in {"on_chip_3d_dram", "lpddr5"}:
-        assert response.components["phy_area_mm2"] == (0.0 if tier == "on_chip_3d_dram" else pytest.approx(5.0, rel=1e-9))
+        assert response.components["phy_area_mm2"] == (
+            0.0 if tier == "on_chip_3d_dram" else pytest.approx(5.0, rel=1e-9)
+        )
 
 
 def test_invalid_onchip_with_phy_rejects():
@@ -217,6 +213,4 @@ def test_active_power_equals_energy_over_time():
     """active_power_w == dynamic_energy_j / active_time_seconds."""
     backend = Parametric3DMemoryBackend()
     response = backend.estimate(_request())
-    assert response.active_power_w == pytest.approx(
-        response.dynamic_energy_j / 1e-6, rel=1e-9
-    )
+    assert response.active_power_w == pytest.approx(response.dynamic_energy_j / 1e-6, rel=1e-9)

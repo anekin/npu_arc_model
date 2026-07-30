@@ -26,7 +26,6 @@ from workloads.schema import (
     WorkloadProvenance,
 )
 
-
 # Map legacy CV trace entry "type" strings to workload op types.
 CV_TRACE_TYPE_MAP: dict[str, str] = {
     "pointwise_conv": "pointwise_conv",

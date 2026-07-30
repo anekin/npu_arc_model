@@ -17,7 +17,6 @@ from pathlib import Path
 
 import pytest
 import yaml
-
 from contracts.errors import ConfigError, DimensionBindingError
 from workloads.catalog import (
     CATALOG_DIR,
@@ -52,18 +51,20 @@ from workloads.validate import validate_all
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 GOLDEN_PATH = REPO_ROOT / "sim" / "tests" / "golden" / "workload_catalog.json"
 
-EXPECTED_FIXTURES = frozenset({
-    "llm-qwen25-3b",
-    "cv-yolov8n",
-    "cv-vit-b16",
-    "smolvla-class",
-    "pi0-class",
-    "openvla-baseline",
-    "openvla-oft",
-    "openvla-fast",
-    "helix-multirate",
-    "physical-ai-multijob",
-})
+EXPECTED_FIXTURES = frozenset(
+    {
+        "llm-qwen25-3b",
+        "cv-yolov8n",
+        "cv-vit-b16",
+        "smolvla-class",
+        "pi0-class",
+        "openvla-baseline",
+        "openvla-oft",
+        "openvla-fast",
+        "helix-multirate",
+        "physical-ai-multijob",
+    }
+)
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -293,7 +294,7 @@ class TestCatalogNegative:
 
     def test_missing_dimension_binding_rejected(self):
         """A fixture with an unbound symbolic dimension fails validation."""
-        valid = load_fixture(CATALOG_DIR / "cv-vit-b16.yaml")
+        load_fixture(CATALOG_DIR / "cv-vit-b16.yaml")
         data = {
             "name": "missing-dim",
             "version": "1",

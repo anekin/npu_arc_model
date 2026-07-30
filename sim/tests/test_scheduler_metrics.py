@@ -3,17 +3,10 @@
 from __future__ import annotations
 
 import math
-from typing import List
-
-import pytest
 
 from scheduler.metrics import (
-    ClassMetrics,
-    JobOutcome,
     MetricsCollector,
-    ScenarioMetrics,
     nearest_rank_percentile,
-    ps_to_ms,
 )
 
 
@@ -164,9 +157,7 @@ class TestMetricsCollector:
             if i < 4:
                 end_ps = (i * 10 + 4) * ps
                 collector.record_complete(f"j{i}", end_ps)
-                collector.record_resource_busy(
-                    "compute", i * 10 * ps, end_ps, class_id="A"
-                )
+                collector.record_resource_busy("compute", i * 10 * ps, end_ps, class_id="A")
         collector.record_drop("j4")
         metrics = collector.compute(window_start_ps=0, window_end_ps=50 * ps, compute_capacity=1)
         cm = metrics.class_metrics[0]

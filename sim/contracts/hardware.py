@@ -16,10 +16,9 @@ Reference: ``.omo/plans/arc-model-ppa-corrections.md``
 from __future__ import annotations
 
 from enum import Enum
-from typing import Annotated, Any, Literal, Optional
+from typing import Annotated, Any, Literal
 
-from pydantic import AfterValidator, BaseModel, ConfigDict, Field, ValidationInfo, field_validator, model_validator
-
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, field_validator, model_validator
 
 # ── provenance ──────────────────────────────────────────────────────────────
 
@@ -46,11 +45,11 @@ class Provenance(BaseModel):
 
     source: str = Field(..., description="Human-readable source description")
     trust_level: TrustLevel = Field(..., description="T0-T3 as defined above")
-    calibration_range: Optional[str] = Field(
+    calibration_range: str | None = Field(
         default=None,
         description="Optional range this value was calibrated within",
     )
-    reference_uri: Optional[str] = Field(
+    reference_uri: str | None = Field(
         default=None,
         description="Optional URI/DOI/path to source document",
     )
@@ -96,6 +95,7 @@ def _nonnegative_float(v: Any) -> float:
 def _isfinite(v: float) -> bool:
     """Return True if v is finite (not NaN or Inf)."""
     import math
+
     return math.isfinite(v)
 
 
@@ -123,7 +123,7 @@ class MACEngineConfig(BaseModel):
     double_buffer: bool = Field(default=True)
     ops_per_mac: PositiveInt = Field(default=2, description="multiply + accumulate = 2 ops/MAC")
 
-    provenance: Optional[Provenance] = None
+    provenance: Provenance | None = None
 
     @field_validator(
         "array_height",
@@ -169,7 +169,7 @@ class MemoryConfig(BaseModel):
     tRAS_cycles: PositiveInt = Field(default=42)
     refresh_overhead_percent: NonNegativeFloat = Field(default=3.0)
 
-    provenance: Optional[Provenance] = None
+    provenance: Provenance | None = None
 
     @field_validator("bandwidth_gbps", "dram_width_bits", "tRC_cycles", "tRAS_cycles", mode="before")
     @classmethod

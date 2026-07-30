@@ -1,20 +1,26 @@
 #!/usr/bin/env python3
 """Arc Model — INT4 quantization validation (simplified, fast)."""
-import sys, time, numpy as np
-from pathlib import Path
-_HERE = Path(__file__).resolve().parent
-sys.path.insert(0, str(_HERE))                                    # sim/
-sys.path.insert(0, str(_HERE.parent / "ggml-npu"))                # ggml-npu/
 
-from q4_dequant import load_weights_from_gguf
+import sys
+import time
+from pathlib import Path
+
+import numpy as np
+
+_HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(_HERE))  # sim/
+sys.path.insert(0, str(_HERE.parent / "ggml-npu"))  # ggml-npu/
+
 from golden_executor import GoldenMXU
-from quantize import quantize_int4_per_channel, quantize_int4_per_block
+from q4_dequant import load_weights_from_gguf
+from quantize import quantize_int4_per_block, quantize_int4_per_channel
+
 
 def validate_model(gguf_path):
     print(f"Model: {gguf_path}")
     t0 = time.time()
     weights = load_weights_from_gguf(gguf_path)
-    print(f"Loaded {len(weights)} tensors in {time.time()-t0:.1f}s\n")
+    print(f"Loaded {len(weights)} tensors in {time.time() - t0:.1f}s\n")
 
     mxu = GoldenMXU()
     rng = np.random.RandomState(42)
@@ -52,13 +58,15 @@ def validate_model(gguf_path):
 
     if np.mean(pb_cos) > np.mean(pc_cos) + 0.01:
         print("→ Recommend: per-block (g=128)")
-        print(f"  +{np.mean(pb_cos)-np.mean(pc_cos):.4f} cos_sim improvement over per-channel")
+        print(f"  +{np.mean(pb_cos) - np.mean(pc_cos):.4f} cos_sim improvement over per-channel")
     else:
         print("→ Recommend: per-channel")
         print("  Comparable accuracy, simpler hardware (+3% area)")
 
+
 if __name__ == "__main__":
     import argparse
+
     p = argparse.ArgumentParser()
     p.add_argument("--model", default="")
     a = p.parse_args()

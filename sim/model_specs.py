@@ -4,7 +4,7 @@ from dataclasses import dataclass
 @dataclass(frozen=True)
 class ModelSpec:
     name: str
-    qkv_dim: int       # num_heads * head_dim
+    qkv_dim: int  # num_heads * head_dim
     hidden: int
     intermediate: int
     layers: int
@@ -16,8 +16,7 @@ class ModelSpec:
 
     def __getitem__(self, idx: int):
         """Preserve legacy tuple access: (qkv, hidden, intermediate, layers, num_heads, kv_heads)."""
-        return (self.qkv_dim, self.hidden, self.intermediate,
-                self.layers, self.num_heads, self.kv_heads)[idx]
+        return (self.qkv_dim, self.hidden, self.intermediate, self.layers, self.num_heads, self.kv_heads)[idx]
 
     def __len__(self) -> int:
         return 6
@@ -25,20 +24,25 @@ class ModelSpec:
 
 MODELS = {
     "qwen2.5-1.5b": ModelSpec("qwen2.5-1.5b", 1536, 1536, 8960, 28, 12, 2, head_dim=128),
-    "qwen2.5-3b":   ModelSpec("qwen2.5-3b",   2048, 2048, 11008, 36, 16, 16, head_dim=128),
-    "qwen2.5-7b":   ModelSpec("qwen2.5-7b",   3584, 3584, 18944, 28, 28, 4, head_dim=128),
-    "qwen3-8b":     ModelSpec("qwen3-8b",     4096, 4096, 12288, 32, 32, 4, head_dim=128),
-    "gemma-4-12b":  ModelSpec("gemma-4-12b",  4096, 4096, 16384, 40, 16, 8, head_dim=256),
-    "mobilenetv3":  ModelSpec("mobilenetv3",  0, 0, 0, 0, 0, 0, head_dim=0,
-                              model_type="cv", cv_trace_module="sim.cv.cv_trace"),
-    "resnet18":     ModelSpec("resnet18",     0, 0, 0, 0, 0, 0, head_dim=0,
-                              model_type="cv", cv_trace_module="sim.cv.traces.resnet18_trace"),
-    "resnet50":     ModelSpec("resnet50",     0, 0, 0, 0, 0, 0, head_dim=0,
-                              model_type="cv", cv_trace_module="sim.cv.traces.resnet50_trace"),
-    "vit-b16":      ModelSpec("vit-b16",      0, 0, 0, 0, 0, 0, head_dim=0,
-                              model_type="cv", cv_trace_module="sim.cv.traces.vit_trace"),
-    "yolov8n":      ModelSpec("yolov8n",      0, 0, 0, 0, 0, 0, head_dim=0,
-                              model_type="cv", cv_trace_module="sim.cv.traces.yolov8n_trace"),
+    "qwen2.5-3b": ModelSpec("qwen2.5-3b", 2048, 2048, 11008, 36, 16, 16, head_dim=128),
+    "qwen2.5-7b": ModelSpec("qwen2.5-7b", 3584, 3584, 18944, 28, 28, 4, head_dim=128),
+    "qwen3-8b": ModelSpec("qwen3-8b", 4096, 4096, 12288, 32, 32, 4, head_dim=128),
+    "gemma-4-12b": ModelSpec("gemma-4-12b", 4096, 4096, 16384, 40, 16, 8, head_dim=256),
+    "mobilenetv3": ModelSpec(
+        "mobilenetv3", 0, 0, 0, 0, 0, 0, head_dim=0, model_type="cv", cv_trace_module="sim.cv.cv_trace"
+    ),
+    "resnet18": ModelSpec(
+        "resnet18", 0, 0, 0, 0, 0, 0, head_dim=0, model_type="cv", cv_trace_module="sim.cv.traces.resnet18_trace"
+    ),
+    "resnet50": ModelSpec(
+        "resnet50", 0, 0, 0, 0, 0, 0, head_dim=0, model_type="cv", cv_trace_module="sim.cv.traces.resnet50_trace"
+    ),
+    "vit-b16": ModelSpec(
+        "vit-b16", 0, 0, 0, 0, 0, 0, head_dim=0, model_type="cv", cv_trace_module="sim.cv.traces.vit_trace"
+    ),
+    "yolov8n": ModelSpec(
+        "yolov8n", 0, 0, 0, 0, 0, 0, head_dim=0, model_type="cv", cv_trace_module="sim.cv.traces.yolov8n_trace"
+    ),
 }
 
 

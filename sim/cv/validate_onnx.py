@@ -14,7 +14,6 @@ Verification: ONNX Runtime inference with random input, top-5 logits,
 
 from __future__ import annotations
 
-import math
 import os
 import sys
 from typing import Any
@@ -27,32 +26,28 @@ _sim_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _sim_dir not in sys.path:
     sys.path.insert(0, _sim_dir)
 
-from cv.cv_trace import generate_mobilenetv3_trace
+import contextlib
 
+from cv.cv_trace import generate_mobilenetv3_trace
 
 # ---------------------------------------------------------------------------
 # Shape helper
 # ---------------------------------------------------------------------------
+
 
 def _build_name_to_shape(graph: onnx.GraphProto) -> dict[str, list[int]]:
     """Build a name -> shape lookup from graph inputs, outputs,
     value_info and initializers."""
     mapping: dict[str, list[int]] = {}
     for v in graph.input:
-        try:
+        with contextlib.suppress(Exception):
             mapping[v.name] = [d.dim_value for d in v.type.tensor_type.shape.dim]
-        except Exception:
-            pass
     for v in graph.output:
-        try:
+        with contextlib.suppress(Exception):
             mapping[v.name] = [d.dim_value for d in v.type.tensor_type.shape.dim]
-        except Exception:
-            pass
     for v in graph.value_info:
-        try:
+        with contextlib.suppress(Exception):
             mapping[v.name] = [d.dim_value for d in v.type.tensor_type.shape.dim]
-        except Exception:
-            pass
     for init in graph.initializer:
         mapping[init.name] = list(init.dims)
     return mapping
@@ -61,6 +56,7 @@ def _build_name_to_shape(graph: onnx.GraphProto) -> dict[str, list[int]]:
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
 
 def count_onnx_macs(onnx_path: str) -> int:
     """Count theoretical MACs from ONNX graph nodes.
@@ -157,11 +153,7 @@ def count_onnx_macs(onnx_path: str) -> int:
             M = max(1, a_shape[0])
             K = a_shape[1]
 
-            if transB:
-                # B is stored as [N, K], unfolded during matmul
-                N = b_shape[0]
-            else:
-                N = b_shape[1]
+            N = b_shape[0] if transB else b_shape[1]
 
             macs = M * K * N
             total_macs += macs
@@ -202,6 +194,7 @@ def validate_macs(onnx_path: str) -> dict[str, Any]:
 # Verification helpers
 # ---------------------------------------------------------------------------
 
+
 def _run_onnx_inference(onnx_path: str) -> np.ndarray:
     """Run ONNX Runtime with random input and return top-5 class indices."""
     import onnxruntime as ort
@@ -216,9 +209,9 @@ def _run_onnx_inference(onnx_path: str) -> np.ndarray:
     top5_logits = logits[0][top5]
 
     print("\n--- ONNX Runtime Inference ---")
-    print(f"Input shape:  (1, 3, 224, 224)")
+    print("Input shape:  (1, 3, 224, 224)")
     print(f"Output shape: {logits.shape}")
-    for rank, (idx, val) in enumerate(zip(top5, top5_logits), start=1):
+    for rank, (idx, val) in enumerate(zip(top5, top5_logits, strict=False), start=1):
         print(f"  #{rank}: class {idx:5d}  logit={val:.4f}")
 
     return top5, top5_logits
@@ -241,9 +234,7 @@ if __name__ == "__main__":
     print(f"Delta:      {result['delta_pct']:>11.2f}%")
 
     # --- Assert -----------------------------------------------------------------
-    assert result["delta_pct"] < 5.0, (
-        f"MAC delta {result['delta_pct']:.2f}% exceeds 5% threshold"
-    )
+    assert result["delta_pct"] < 5.0, f"MAC delta {result['delta_pct']:.2f}% exceeds 5% threshold"
     print("PASS: delta < 5%")
 
     # --- ONNX Runtime inference verification ------------------------------
@@ -260,8 +251,8 @@ if __name__ == "__main__":
         f.write(f"Arc  MACs:  {result['arc_macs']:>12,}\n")
         f.write(f"ONNX MACs:  {result['onnx_macs']:>12,}\n")
         f.write(f"Delta:      {result['delta_pct']:>11.2f}%\n")
-        f.write(f"Threshold:  < 5.0%\n")
+        f.write("Threshold:  < 5.0%\n")
         f.write(f"PASS:       {result['delta_pct'] < 5.0}\n")
-        f.write(f"\nONNX Runtime inference: OK (random input, top-5 logits printed)\n")
+        f.write("\nONNX Runtime inference: OK (random input, top-5 logits printed)\n")
 
     print(f"\nEvidence written to {evidence_path}")

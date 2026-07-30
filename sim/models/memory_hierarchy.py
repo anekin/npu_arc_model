@@ -15,11 +15,10 @@ currently modeled memory technologies:
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any, Dict, Optional, Tuple
-
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from typing import Any
 
 from contracts.errors import ConfigError
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class MemoryTierName(str, Enum):
@@ -33,8 +32,8 @@ class MemoryTierName(str, Enum):
     HBM3 = "hbm3"
 
 
-SUPPORTED_TIER_NAMES: Tuple[str, ...] = tuple(t.value for t in MemoryTierName)
-EXTERNAL_TIER_NAMES: Tuple[str, ...] = (
+SUPPORTED_TIER_NAMES: tuple[str, ...] = tuple(t.value for t in MemoryTierName)
+EXTERNAL_TIER_NAMES: tuple[str, ...] = (
     MemoryTierName.LPDDR5.value,
     MemoryTierName.LPDDR5X.value,
     MemoryTierName.HBM2E.value,
@@ -116,7 +115,7 @@ class MemoryHierarchy(BaseModel):
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    tiers: Tuple[MemoryTier, ...] = Field(..., description="Ordered tiers, fastest first")
+    tiers: tuple[MemoryTier, ...] = Field(..., description="Ordered tiers, fastest first")
     default_alignment_bytes: int = Field(default=256, ge=1)
 
     def get_tier(self, name: str) -> MemoryTier:
@@ -144,7 +143,7 @@ class MemoryHierarchy(BaseModel):
             raise ConfigError("memory hierarchy has no tiers", field_path="hierarchy.tiers")
         return self.tiers[0]
 
-    def external_tier(self) -> Optional[MemoryTier]:
+    def external_tier(self) -> MemoryTier | None:
         """Return the first external DRAM tier, if any."""
         for tier in self.tiers:
             if tier.name in EXTERNAL_TIER_NAMES:
@@ -176,7 +175,7 @@ def _infer_external_tier_name(mem_type: str) -> str:
     return MemoryTierName.LPDDR5.value
 
 
-def build_hierarchy_from_config(config: Dict[str, Any]) -> MemoryHierarchy:
+def build_hierarchy_from_config(config: dict[str, Any]) -> MemoryHierarchy:
     """Build a ``MemoryHierarchy`` from a legacy-style config dict.
 
     The config is expected to contain ``sram``, ``memory``, and optionally

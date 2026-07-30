@@ -17,8 +17,7 @@ The oracle models:
 
 from __future__ import annotations
 
-from typing import Dict, List, Literal
-
+from typing import Literal
 
 NODE_DENSITY_RATIO_12NM = 2.70  # TSMC 12FFC density ratio vs 7nm baseline
 
@@ -42,7 +41,7 @@ def memory_ppa_oracle(
     write_bytes: int,
     active_time_seconds: float = 1e-6,
     process_node_nm: float = 12.0,
-) -> Dict[str, float]:
+) -> dict[str, float]:
     """Return an oracle-estimated PPA/energy dict.
 
     The returned dict mirrors the fields in ``models.memory_backend.MemoryResponse``
@@ -86,9 +85,7 @@ def memory_ppa_oracle(
 
     latency = _ACCESS_LATENCY_NS * 1e-9 + 1.0 / max(bandwidth_gbps * 1e9, 1.0)
 
-    thermal_proxy = (
-        (static_power + active_power) / max(total_area, 1.0) * _THERMAL_PROXY_FACTOR
-    )
+    thermal_proxy = (static_power + active_power) / max(total_area, 1.0) * _THERMAL_PROXY_FACTOR
 
     return {
         "latency_seconds": latency,
@@ -130,18 +127,16 @@ def _component_flags(
 
 def component_manifest_ok(
     tier: Literal["on_chip_3d_dram", "hbm2e", "hbm3", "lpddr5", "lpddr5x"],
-    components: List[str],
+    components: list[str],
 ) -> bool:
     """Return True if ``components`` satisfies the tier manifest rules."""
     required, excluded = _manifest_rules(tier)
-    return (
-        all(c in components for c in required) and not any(c in components for c in excluded)
-    )
+    return all(c in components for c in required) and not any(c in components for c in excluded)
 
 
 def _manifest_rules(
     tier: Literal["on_chip_3d_dram", "hbm2e", "hbm3", "lpddr5", "lpddr5x"],
-) -> tuple[List[str], List[str]]:
+) -> tuple[list[str], list[str]]:
     """Return (required, excluded) component lists for a tier."""
     if tier == "on_chip_3d_dram":
         return ["pcie", "tsv"], ["dram_phy"]

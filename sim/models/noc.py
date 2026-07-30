@@ -7,7 +7,7 @@ estimate_transfer / estimate_contention / estimate_total methods.
 
 import math
 from dataclasses import dataclass
-from typing import Any, Dict, List
+from typing import Any
 
 
 @dataclass
@@ -52,7 +52,7 @@ class NoCModel:
     ====================  =======  =================================
     """
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: dict[str, Any]):
         ic = config["interconnect"]
         self.topology = str(ic.get("type", "crossbar"))
         self.ports = int(ic.get("ports", 4))
@@ -117,8 +117,7 @@ class NoCModel:
 
     # ── public API ─────────────────────────────────────────────
 
-    def estimate_transfer(self, size_bytes: int, src_id: int,
-                          dst_id: int) -> int:
+    def estimate_transfer(self, size_bytes: int, src_id: int, dst_id: int) -> int:
         """Estimate cycles for a single NoC transfer.
 
         Components:
@@ -150,8 +149,7 @@ class NoCModel:
         buf_penalty = self.buffer_depth * hop_count
         return int(hop_cycles + serial_cycles + buf_penalty)
 
-    def estimate_contention(self, num_active_ports: int,
-                            total_ports: int) -> float:
+    def estimate_contention(self, num_active_ports: int, total_ports: int) -> float:
         """Return a contention factor in [0.0, 1.0].
 
         Formula: ``max(0, active - 1) / total_ports``.
@@ -161,7 +159,7 @@ class NoCModel:
             return 0.0
         return max(0.0, float(num_active_ports - 1)) / float(total_ports)
 
-    def estimate_total(self, transfers: List[NoCTransfer]) -> int:
+    def estimate_total(self, transfers: list[NoCTransfer]) -> int:
         """Aggregate cycles for a batch of transfers.
 
         Uses ``max(individual cycles)`` as the ideal-parallel base,
@@ -169,10 +167,7 @@ class NoCModel:
         """
         if not transfers:
             return 0
-        individual = [
-            self.estimate_transfer(t.size_bytes, t.src_id, t.dst_id)
-            for t in transfers
-        ]
+        individual = [self.estimate_transfer(t.size_bytes, t.src_id, t.dst_id) for t in transfers]
         base = max(individual)
         contention = self.estimate_contention(len(transfers), self.ports)
         return int(base * (1.0 + contention))

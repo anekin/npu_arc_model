@@ -11,14 +11,14 @@ from __future__ import annotations
 import itertools
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from contracts.errors import ConfigError
 from contracts.identity import digest_sha256
 from dse.config_loader import build_axes, build_constraints, load_axes_config, load_base_config
 from dse.hardware_builder import build_hardware_config
 from dse.manifest import CoverageManifest, ExclusionRecord
-from dse.models import AxisSpec, Constraint, DesignPoint
+from dse.models import Constraint, DesignPoint
 from scenarios.schema import Scenario
 
 SIM_DIR = Path(__file__).resolve().parent.parent
@@ -43,8 +43,8 @@ _TEMPORAL_AXES = {
 class GenerationResult:
     """Output of ``DesignSpace.generate_with_exclusions``."""
 
-    points: Tuple[DesignPoint, ...]
-    exclusions: Tuple[ExclusionRecord, ...]
+    points: tuple[DesignPoint, ...]
+    exclusions: tuple[ExclusionRecord, ...]
 
 
 class DesignSpace:
@@ -54,9 +54,9 @@ class DesignSpace:
         self,
         scenario: Scenario,
         *,
-        axes_config: Optional[Dict[str, Any]] = None,
+        axes_config: dict[str, Any] | None = None,
         mode: str = "full",
-        base_config: Optional[Dict[str, Any]] = None,
+        base_config: dict[str, Any] | None = None,
     ) -> None:
         if mode not in ("full", "ci_all_axes"):
             raise ConfigError(f"unknown DSE mode {mode!r}", field_path="mode")
@@ -76,7 +76,7 @@ class DesignSpace:
         self.defaults = dict(sorted(axes_config.get("defaults", {}).items()))
         self.reason_codes = axes_config.get("reason_codes", {})
 
-    def generate(self) -> List[DesignPoint]:
+    def generate(self) -> list[DesignPoint]:
         """Generate design points according to ``self.mode``."""
         return list(self.generate_with_exclusions().points)
 
@@ -92,7 +92,7 @@ class DesignSpace:
         points = tuple(self._build_point(combo) for combo in combos)
         return GenerationResult(points=points, exclusions=tuple(exclusions))
 
-    def build_manifest(self, result: Optional[GenerationResult] = None) -> CoverageManifest:
+    def build_manifest(self, result: GenerationResult | None = None) -> CoverageManifest:
         """Build a ``CoverageManifest`` from a generation result."""
         if result is None:
             result = self.generate_with_exclusions()
@@ -102,14 +102,14 @@ class DesignSpace:
         """Return human-readable text for a reason code."""
         return self.reason_codes.get(reason_code, reason_code)
 
-    def _full_combinations(self) -> Tuple[List[Dict[str, Any]], List[ExclusionRecord]]:
+    def _full_combinations(self) -> tuple[list[dict[str, Any]], list[ExclusionRecord]]:
         axis_names = list(self.axes.keys())
         value_lists = [list(self.axes[name].values) for name in axis_names]
-        valid: List[Dict[str, Any]] = []
-        exclusions: List[ExclusionRecord] = []
+        valid: list[dict[str, Any]] = []
+        exclusions: list[ExclusionRecord] = []
 
         for raw_values in itertools.product(*value_lists):
-            combo = dict(zip(axis_names, raw_values))
+            combo = dict(zip(axis_names, raw_values, strict=False))
             ok, exclusion = self._check(combo)
             if ok:
                 valid.append(combo)
@@ -117,18 +117,18 @@ class DesignSpace:
                 exclusions.append(exclusion)
         return valid, exclusions
 
-    def _ci_all_axes_combinations(self) -> Tuple[List[Dict[str, Any]], List[ExclusionRecord]]:
-        seen: Dict[Tuple[Any, ...], Dict[str, Any]] = {}
+    def _ci_all_axes_combinations(self) -> tuple[list[dict[str, Any]], list[ExclusionRecord]]:
+        seen: dict[tuple[Any, ...], dict[str, Any]] = {}
         axis_names = list(self.axes.keys())
-        exclusions: List[ExclusionRecord] = []
+        exclusions: list[ExclusionRecord] = []
 
-        def add(combo: Dict[str, Any]) -> None:
+        def add(combo: dict[str, Any]) -> None:
             key = tuple(combo.get(a) for a in axis_names)
             if key not in seen:
                 seen[key] = combo
 
         def record_repair_exclusion(
-            axis_name: str, value: Any, changes: List[Tuple[str, Any, Any, Constraint]]
+            axis_name: str, value: Any, changes: list[tuple[str, Any, Any, Constraint]]
         ) -> None:
             for changed_axis, original, _, constraint in changes:
                 if changed_axis == axis_name and original == value:
@@ -163,11 +163,9 @@ class DesignSpace:
 
         return list(seen.values()), exclusions
 
-    def _repair(
-        self, combo: Dict[str, Any]
-    ) -> Tuple[Dict[str, Any], List[Tuple[str, Any, Any, Constraint]]]:
+    def _repair(self, combo: dict[str, Any]) -> tuple[dict[str, Any], list[tuple[str, Any, Any, Constraint]]]:
         combo = dict(combo)
-        changes: List[Tuple[str, Any, Any, Constraint]] = []
+        changes: list[tuple[str, Any, Any, Constraint]] = []
         for _ in range(10):
             changed = False
             for constraint in self.constraints:
@@ -185,7 +183,7 @@ class DesignSpace:
                 break
         return combo, changes
 
-    def _is_valid(self, combo: Dict[str, Any]) -> bool:
+    def _is_valid(self, combo: dict[str, Any]) -> bool:
         for constraint in self.constraints:
             if not constraint.matches(combo):
                 continue
@@ -195,7 +193,7 @@ class DesignSpace:
                 return False
         return True
 
-    def _check(self, combo: Dict[str, Any]) -> Tuple[bool, Optional[ExclusionRecord]]:
+    def _check(self, combo: dict[str, Any]) -> tuple[bool, ExclusionRecord | None]:
         for constraint in self.constraints:
             if not constraint.matches(combo):
                 continue
@@ -218,7 +216,7 @@ class DesignSpace:
                 )
         return True, None
 
-    def _build_point(self, combo: Dict[str, Any]) -> DesignPoint:
+    def _build_point(self, combo: dict[str, Any]) -> DesignPoint:
         hw = build_hardware_config(self.base_config, combo)
         temporal = {axis: combo[axis] for axis in self.axes if axis in _TEMPORAL_AXES}
         id_source = {

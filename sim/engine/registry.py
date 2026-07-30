@@ -6,15 +6,18 @@ derives its engine list from this registry. No second handwritten list.
 
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, List, Tuple
+from collections.abc import Callable
+from typing import Any
 
 from contracts.errors import ConfigError
+from models.residency import MemoryAccessPlan
+from workloads.schema import WorkloadGraphV1
 
 # ── Canonical engine IDs and metadata ────────────────────────────────────────
 
-_EngineFactory = Callable[[Dict[str, Any]], Any]
+_EngineFactory = Callable[[dict[str, Any]], Any]
 
-_CANONICAL_IDS: Tuple[str, ...] = (
+_CANONICAL_IDS: tuple[str, ...] = (
     "systolic",
     "os_systolic",
     "block",
@@ -25,35 +28,35 @@ _CANONICAL_IDS: Tuple[str, ...] = (
     "fsa",
 )
 
-_ENGINE_LABELS: Dict[str, str] = {
-    "systolic":         "Weight-Stationary Systolic Array (TPUv1)",
-    "os_systolic":      "Output-Stationary Systolic (Gemmini)",
-    "block":            "Block Engine — full parallel MAC (TPUv4 VMU)",
-    "tensor_core":      "Multi 16×16 Tensor Cores (A100 style)",
-    "wmma":             "16×16 Warp MMA (Volta/Ampere style)",
-    "gmma":             "Group MMA + TMA async DMA (Hopper H100 style)",
+_ENGINE_LABELS: dict[str, str] = {
+    "systolic": "Weight-Stationary Systolic Array (TPUv1)",
+    "os_systolic": "Output-Stationary Systolic (Gemmini)",
+    "block": "Block Engine — full parallel MAC (TPUv4 VMU)",
+    "tensor_core": "Multi 16×16 Tensor Cores (A100 style)",
+    "wmma": "16×16 Warp MMA (Volta/Ampere style)",
+    "gmma": "Group MMA + TMA async DMA (Hopper H100 style)",
     "input_stationary": "Input-Stationary (Eyeriss)",
-    "fsa":              "FSA — inline FlashAttention on systolic array",
+    "fsa": "FSA — inline FlashAttention on systolic array",
 }
 
-_ENGINE_QUICK_IDS: Tuple[str, ...] = ("systolic", "block", "gmma")
+_ENGINE_QUICK_IDS: tuple[str, ...] = ("systolic", "block", "gmma")
 
 # Lazy-loaded factory functions — imported on first access to avoid circular imports
-_factories: Dict[str, _EngineFactory] = {}
+_factories: dict[str, _EngineFactory] = {}
 
 
 def _init_factories() -> None:
     """Lazy-import all engine factory functions."""
     if _factories:
         return
-    from engine.systolic_engine import SystolicEngine
-    from engine.os_systolic_engine import OutputStationaryEngine
     from engine.block_engine import BlockEngine
-    from engine.tensor_core_engine import TensorCoreEngine
-    from engine.wmma_engine import WMMAEngine
+    from engine.fsa_engine import FSAEngine
     from engine.gmma_engine import GMMAEngine
     from engine.is_systolic_engine import InputStationaryEngine
-    from engine.fsa_engine import FSAEngine
+    from engine.os_systolic_engine import OutputStationaryEngine
+    from engine.systolic_engine import SystolicEngine
+    from engine.tensor_core_engine import TensorCoreEngine
+    from engine.wmma_engine import WMMAEngine
 
     _factories["systolic"] = lambda cfg, **kw: SystolicEngine(cfg, **kw)
     _factories["os_systolic"] = lambda cfg, **kw: OutputStationaryEngine(cfg, **kw)
@@ -68,7 +71,7 @@ def _init_factories() -> None:
 # ── Public API ────────────────────────────────────────────────────────────────
 
 
-def canonical_engine_ids() -> Tuple[str, ...]:
+def canonical_engine_ids() -> tuple[str, ...]:
     """Return all 8 canonical engine IDs in registration order.
 
     Consumers MUST derive their engine lists from this function — never
@@ -77,7 +80,7 @@ def canonical_engine_ids() -> Tuple[str, ...]:
     return _CANONICAL_IDS
 
 
-def quick_engine_ids() -> Tuple[str, ...]:
+def quick_engine_ids() -> tuple[str, ...]:
     """Return the 3 priority engine IDs for quick-mode DSE."""
     return _ENGINE_QUICK_IDS
 
@@ -96,7 +99,7 @@ def engine_label(engine_id: str) -> str:
         ) from None
 
 
-def engine_choices() -> List[str]:
+def engine_choices() -> list[str]:
     """Return the CLI choices list (sorted alphabetically)."""
     return sorted(_CANONICAL_IDS)
 
@@ -109,21 +112,21 @@ def engine_listing() -> str:
     return "\n".join(lines)
 
 
-def engine_full_ids() -> List[str]:
+def engine_full_ids() -> list[str]:
     """Return the list of all 8 canonical IDs for DSE full-mode enumeration."""
     return list(_CANONICAL_IDS)
 
 
-def engine_quick_ids_list() -> List[str]:
+def engine_quick_ids_list() -> list[str]:
     """Return the list of priority IDs for DSE quick-mode enumeration."""
     return list(_ENGINE_QUICK_IDS)
 
 
 def create_engine_by_type(
     engine_type: str,
-    config: Dict[str, Any],
-    graph: "WorkloadGraphV1 | None" = None,
-    memory_access_plan: "MemoryAccessPlan | None" = None,
+    config: dict[str, Any],
+    graph: WorkloadGraphV1 | None = None,
+    memory_access_plan: MemoryAccessPlan | None = None,
 ) -> Any:
     """Create an engine instance from the canonical engine type string.
 

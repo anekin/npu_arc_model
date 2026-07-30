@@ -13,20 +13,17 @@ idle dispatch, which the kernel accepts as progress.
 
 from __future__ import annotations
 
+import contextlib
 import math
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Set, Tuple
 
-from contracts.errors import ConfigError
-from scheduler.admission import AdmissionController
+from scenarios.compiler import CompiledScenario, JobRelease
+from scenarios.schema import QueuePolicy, WorkloadClass
 from scheduler.events import Event, EventPhase
 from scheduler.kernel import DiscreteEventKernel, JobState, SchedulerError
 from scheduler.metrics import MetricsCollector, ScenarioMetrics, ms_to_ps
 from scheduler.policies import policy_key
 from scheduler.queues import BoundedFIFO, MailboxLatest, QueueFullError
-from scheduler.resources import CapacityResource
-from scenarios.compiler import CompiledScenario, JobRelease
-from scenarios.schema import QueuePolicy, Scenario, WorkloadClass
 
 
 @dataclass
@@ -47,15 +44,15 @@ class ScenarioRunner:
         self.kernel = DiscreteEventKernel(frequency_mhz=1000)
 
         # Resource tracking
-        self._resource_used: Dict[str, int] = {name: 0 for name in compiled.resources}
-        self._running: Dict[str, Event] = {}
-        self._preempted: Set[str] = set()
-        self._preempted_remaining: Dict[str, int] = {}
-        self._start_times: Dict[str, int] = {}
+        self._resource_used: dict[str, int] = dict.fromkeys(compiled.resources, 0)
+        self._running: dict[str, Event] = {}
+        self._preempted: set[str] = set()
+        self._preempted_remaining: dict[str, int] = {}
+        self._start_times: dict[str, int] = {}
 
         # Queue handles
-        self._fifo_queues: Dict[str, BoundedFIFO[str]] = {}
-        self._mailboxes: Dict[str, MailboxLatest[str]] = {}
+        self._fifo_queues: dict[str, BoundedFIFO[str]] = {}
+        self._mailboxes: dict[str, MailboxLatest[str]] = {}
         for key, q in compiled.queues.items():
             if isinstance(q, BoundedFIFO):
                 self._fifo_queues[key] = q
@@ -63,10 +60,8 @@ class ScenarioRunner:
                 self._mailboxes[key] = q
 
         # Release bookkeeping
-        self._release_by_id: Dict[str, JobRelease] = {
-            r.job_id: r for r in compiled.releases
-        }
-        self._admitted: Set[str] = set()
+        self._release_by_id: dict[str, JobRelease] = {r.job_id: r for r in compiled.releases}
+        self._admitted: set[str] = set()
 
         self._recovery_phase_start_ps: int = (
             ms_to_ps(self.scenario.recovery_phase_start_ms)
@@ -102,7 +97,7 @@ class ScenarioRunner:
 
     # ── Policy helpers ─────────────────────────────────────────────────────────
 
-    def _policy_key(self, job_id: str) -> Tuple[int, int, int, str]:
+    def _policy_key(self, job_id: str) -> tuple[int, int, int, str]:
         release = self._release_by_id[job_id]
         cls = self.scenario.get_class(release.class_id)
         return policy_key(
@@ -200,9 +195,9 @@ class ScenarioRunner:
         self._maybe_record_recovery()
         self._schedule_dispatch()
 
-    def _lower_priority_holders(self, priority: int) -> Dict[str, int]:
+    def _lower_priority_holders(self, priority: int) -> dict[str, int]:
         """Return resources held by running jobs with lower priority."""
-        holders: Dict[str, int] = {}
+        holders: dict[str, int] = {}
         for job_id in self._running:
             cls = self._class_for(job_id)
             if cls.priority < priority:
@@ -220,9 +215,7 @@ class ScenarioRunner:
 
     def _schedule_dispatch(self) -> None:
         """Schedule a dispatch event at the current time."""
-        self.kernel.schedule(
-            self.kernel.now_ps, EventPhase.DISPATCH, lambda k: self._dispatch(k)
-        )
+        self.kernel.schedule(self.kernel.now_ps, EventPhase.DISPATCH, lambda k: self._dispatch(k))
 
     # ── Dispatch ───────────────────────────────────────────────────────────────
 
@@ -234,7 +227,7 @@ class ScenarioRunner:
             return
 
         candidates.sort(key=lambda c: self._policy_key(c.job_id))
-        seen: Set[str] = set()
+        seen: set[str] = set()
         for candidate in candidates:
             if candidate.job_id in seen or candidate.job_id in self._running:
                 continue
@@ -248,9 +241,9 @@ class ScenarioRunner:
 
         self._maybe_record_recovery()
 
-    def _collect_candidates(self) -> List[_Candidate]:
+    def _collect_candidates(self) -> list[_Candidate]:
         """Collect dispatch candidates from preempted, FIFO, and mailbox sources."""
-        candidates: List[_Candidate] = []
+        candidates: list[_Candidate] = []
 
         for job_id in list(self._preempted):
             if job_id not in self._running:
@@ -382,10 +375,8 @@ class ScenarioRunner:
         if job_id not in self._running:
             return
         self._running.pop(job_id)
-        try:
+        with contextlib.suppress(SchedulerError):
             self.kernel.complete_job(job_id)
-        except SchedulerError:
-            pass
         start_ps = self._start_times.pop(job_id, self.kernel.now_ps)
         self.collector.record_resource_busy(
             "compute", start_ps, self.kernel.now_ps, class_id=self._class_for(job_id).id
@@ -403,9 +394,7 @@ class ScenarioRunner:
     def _backlog_count(self) -> int:
         """Return current number of queued or running jobs."""
         queued = sum(q.size for q in self._fifo_queues.values())
-        pending_mailbox = sum(
-            1 for stream, mb in self._mailboxes.items() if mb.has_pending(stream)
-        )
+        pending_mailbox = sum(1 for stream, mb in self._mailboxes.items() if mb.has_pending(stream))
         return queued + pending_mailbox + len(self._running) + len(self._preempted)
 
     def _maybe_record_recovery(self) -> None:

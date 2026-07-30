@@ -25,9 +25,8 @@ op in the graph triggers ``UnsupportedOperatorError``.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, FrozenSet, Optional
 
 from contracts.errors import UnsupportedOperatorError
 from workloads.schema import WorkloadProvenance
@@ -65,26 +64,23 @@ class OperatorEntry:
     description: str = ""
     """Human-readable description."""
 
-    fused_into: Optional[str] = None
+    fused_into: str | None = None
     """For ``EXPLICITLY_FREE_OR_FUSED``: what operation this is fused into."""
 
-    provenance: Optional[WorkloadProvenance] = None
+    provenance: WorkloadProvenance | None = None
     """Source of the registration decision."""
 
     def __post_init__(self):
         if not self.op_type or not self.op_type.strip():
             raise ValueError("op_type must not be empty")
-        if self.disposition == OperatorDisposition.EXPLICITLY_FREE_OR_FUSED:
-            if not self.fused_into:
-                raise ValueError(
-                    f"free/fused op {self.op_type!r} must record fused_into"
-                )
+        if self.disposition == OperatorDisposition.EXPLICITLY_FREE_OR_FUSED and not self.fused_into:
+            raise ValueError(f"free/fused op {self.op_type!r} must record fused_into")
 
 
 # ── Built-in registry ────────────────────────────────────────────────────────
 
 # Modeled ops: compute-bound operations with known cost models
-_MODELED_OPS: Dict[str, OperatorEntry] = {
+_MODELED_OPS: dict[str, OperatorEntry] = {
     "gemm": OperatorEntry(
         op_type="gemm",
         disposition=OperatorDisposition.MODELED,
@@ -168,7 +164,7 @@ _MODELED_OPS: Dict[str, OperatorEntry] = {
 }
 
 # Explicitly free or fused ops: zero-cycle only when fused into another op
-_FREE_FUSED_OPS: Dict[str, OperatorEntry] = {
+_FREE_FUSED_OPS: dict[str, OperatorEntry] = {
     "reshape": OperatorEntry(
         op_type="reshape",
         disposition=OperatorDisposition.EXPLICITLY_FREE_OR_FUSED,
@@ -202,7 +198,7 @@ _FREE_FUSED_OPS: Dict[str, OperatorEntry] = {
 }
 
 # Explicitly unsupported ops — must fail-closed
-_UNSUPPORTED_OPS: Dict[str, OperatorEntry] = {
+_UNSUPPORTED_OPS: dict[str, OperatorEntry] = {
     "gather": OperatorEntry(
         op_type="gather",
         disposition=OperatorDisposition.UNSUPPORTED,
@@ -248,7 +244,7 @@ class OperatorRegistry:
     """
 
     def __init__(self):
-        self._entries: Dict[str, OperatorEntry] = {}
+        self._entries: dict[str, OperatorEntry] = {}
         self._entries.update(_MODELED_OPS)
         self._entries.update(_FREE_FUSED_OPS)
         self._entries.update(_UNSUPPORTED_OPS)
@@ -279,7 +275,7 @@ class OperatorRegistry:
             )
         return entry
 
-    def lookup_or_none(self, op_type: str) -> Optional[OperatorEntry]:
+    def lookup_or_none(self, op_type: str) -> OperatorEntry | None:
         """Look up without raising — returns None for unregistered ops.
 
         This is used for introspection; callers that plan to execute should
@@ -310,28 +306,21 @@ class OperatorRegistry:
         return self.check(op_type) == OperatorDisposition.UNSUPPORTED
 
     @property
-    def modeled_ops(self) -> FrozenSet[str]:
+    def modeled_ops(self) -> frozenset[str]:
         """Frozen set of modeled operator type keys."""
-        return frozenset(
-            k for k, v in self._entries.items()
-            if v.disposition == OperatorDisposition.MODELED
-        )
+        return frozenset(k for k, v in self._entries.items() if v.disposition == OperatorDisposition.MODELED)
 
     @property
-    def free_fused_ops(self) -> FrozenSet[str]:
+    def free_fused_ops(self) -> frozenset[str]:
         """Frozen set of explicitly free/fused operator type keys."""
         return frozenset(
-            k for k, v in self._entries.items()
-            if v.disposition == OperatorDisposition.EXPLICITLY_FREE_OR_FUSED
+            k for k, v in self._entries.items() if v.disposition == OperatorDisposition.EXPLICITLY_FREE_OR_FUSED
         )
 
     @property
-    def unsupported_ops(self) -> FrozenSet[str]:
+    def unsupported_ops(self) -> frozenset[str]:
         """Frozen set of explicitly unsupported operator type keys."""
-        return frozenset(
-            k for k, v in self._entries.items()
-            if v.disposition == OperatorDisposition.UNSUPPORTED
-        )
+        return frozenset(k for k, v in self._entries.items() if v.disposition == OperatorDisposition.UNSUPPORTED)
 
     def register(self, entry: OperatorEntry) -> None:
         """Register or override an operator entry.

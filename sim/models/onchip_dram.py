@@ -18,11 +18,9 @@ response with ``validity.status='engineering_assumption'`` and ``trust_level='T0
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field
-
 from contracts.errors import ConfigError
 from contracts.hardware import Provenance, TrustLevel
 from models.memory_backend import (
@@ -30,10 +28,9 @@ from models.memory_backend import (
     MemoryBackend,
     MemoryRequest,
     MemoryResponse,
-    MemoryTopology,
     ValidityEnvelope,
-    validate_component_manifest,
 )
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class MacroParameter(BaseModel):
@@ -48,7 +45,7 @@ class MacroParameter(BaseModel):
         default="engineering_assumption",
         pattern=r"^(engineering_assumption|calibrated_estimate|authoritative)$",
     )
-    range: Dict[str, float] = Field(default_factory=dict, description="min/max sweep range")
+    range: dict[str, float] = Field(default_factory=dict, description="min/max sweep range")
 
 
 class MemoryMacroTable(BaseModel):
@@ -132,16 +129,12 @@ class Parametric3DMemoryBackend(MemoryBackend):
         latency = base_latency_s + bw_latency_s
 
         # Thermal proxy scales with power density.
-        thermal_proxy = (
-            (static_power + active_power)
-            / max(total_area, 1.0)
-            * m.thermal_proxy_per_w_per_mm2_c.value
-        )
+        thermal_proxy = (static_power + active_power) / max(total_area, 1.0) * m.thermal_proxy_per_w_per_mm2_c.value
 
         # Determine trust/status from calibration envelope.
         validity = self._validity_for_request(env, capacity_gb, bandwidth_gbps, access)
 
-        components: Dict[str, float] = {
+        components: dict[str, float] = {
             "memory_die_area_mm2": memory_die_area,
             "tsv_area_mm2": tsv_area,
             "phy_area_mm2": phy_area,
@@ -155,9 +148,7 @@ class Parametric3DMemoryBackend(MemoryBackend):
 
         notes: list[str] = []
         if validity.status == "engineering_assumption":
-            notes.append(
-                f"Parameters outside calibrated envelope: {validity.reason}"
-            )
+            notes.append(f"Parameters outside calibrated envelope: {validity.reason}")
 
         return MemoryResponse(
             latency_seconds=latency,
@@ -182,13 +173,10 @@ class Parametric3DMemoryBackend(MemoryBackend):
     ) -> ValidityEnvelope:
         reasons: list[str] = []
         if capacity_gb < env.capacity_gb_min or capacity_gb > env.capacity_gb_max:
-            reasons.append(
-                f"capacity_gb={capacity_gb} outside [{env.capacity_gb_min}, {env.capacity_gb_max}]"
-            )
+            reasons.append(f"capacity_gb={capacity_gb} outside [{env.capacity_gb_min}, {env.capacity_gb_max}]")
         if bandwidth_gbps < env.bandwidth_gbps_min or bandwidth_gbps > env.bandwidth_gbps_max:
             reasons.append(
-                f"bandwidth_gbps={bandwidth_gbps} outside "
-                f"[{env.bandwidth_gbps_min}, {env.bandwidth_gbps_max}]"
+                f"bandwidth_gbps={bandwidth_gbps} outside [{env.bandwidth_gbps_min}, {env.bandwidth_gbps_max}]"
             )
         if access.read_bytes > env.read_bytes_max:
             reasons.append(f"read_bytes={access.read_bytes} > {env.read_bytes_max}")
@@ -329,8 +317,8 @@ def _default_macros() -> MemoryMacroTable:
 
 def load_macro_table(path: str | Path) -> MemoryMacroTable:
     """Load a ``MemoryMacroTable`` from a YAML file."""
-    with open(path, "r", encoding="utf-8") as f:
-        data: Dict[str, Any] = yaml.safe_load(f)
+    with open(path, encoding="utf-8") as f:
+        data: dict[str, Any] = yaml.safe_load(f)
     if not isinstance(data, dict):
         raise ConfigError(f"macro file {path!r} must contain a mapping", field_path="path")
     return MemoryMacroTable.model_validate(data)

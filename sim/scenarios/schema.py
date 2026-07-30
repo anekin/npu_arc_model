@@ -17,11 +17,10 @@ Measurement windows:
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any, Dict, List, Literal, Optional
-
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from typing import Any
 
 from contracts.errors import ConfigError
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from scheduler.metrics import ms_to_ps
 
 
@@ -45,29 +44,29 @@ class ArrivalPattern(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     mode: ArrivalMode = Field(..., description="periodic or trace")
-    period_ms: Optional[float] = Field(
+    period_ms: float | None = Field(
         default=None,
         description="Period for periodic arrivals (ms)",
     )
-    count: Optional[int] = Field(
+    count: int | None = Field(
         default=None,
         description="Number of releases for periodic arrivals",
     )
     offset_ms: float = Field(default=0.0, description="First release offset (ms)")
-    releases_ms: List[float] = Field(
+    releases_ms: list[float] = Field(
         default_factory=list,
         description="Sorted explicit release times for trace arrivals (ms)",
     )
 
     @field_validator("count")
     @classmethod
-    def _count_positive(cls, v: Optional[int]) -> Optional[int]:
+    def _count_positive(cls, v: int | None) -> int | None:
         if v is not None and v <= 0:
             raise ValueError("count must be positive")
         return v
 
     @model_validator(mode="after")
-    def _mode_consistency(self) -> "ArrivalPattern":
+    def _mode_consistency(self) -> ArrivalPattern:
         if self.mode == ArrivalMode.PERIODIC:
             if self.period_ms is None or self.period_ms <= 0:
                 raise ValueError("periodic mode requires positive period_ms")
@@ -91,14 +90,11 @@ class ArrivalPattern(BaseModel):
             raise ValueError("period_ps only defined for periodic arrivals")
         return ms_to_ps(self.period_ms)
 
-    def release_times_ps(self) -> List[int]:
+    def release_times_ps(self) -> list[int]:
         """Return all release times in picoseconds."""
         if self.mode == ArrivalMode.PERIODIC:
             assert self.period_ms is not None and self.count is not None
-            return [
-                ms_to_ps(self.offset_ms + i * self.period_ms)
-                for i in range(self.count)
-            ]
+            return [ms_to_ps(self.offset_ms + i * self.period_ms) for i in range(self.count)]
         return [ms_to_ps(r) for r in self.releases_ms]
 
 
@@ -110,22 +106,22 @@ class WorkloadClass(BaseModel):
     id: str = Field(..., description="Stable class identifier")
     arrival: ArrivalPattern = Field(..., description="Arrival pattern")
     work_ms: float = Field(..., gt=0, description="Service time (ms)")
-    relative_deadline_ms: Optional[float] = Field(
+    relative_deadline_ms: float | None = Field(
         default=None,
         description="Relative deadline (ms); defaults to work_ms",
     )
-    timeout_ms: Optional[float] = Field(
+    timeout_ms: float | None = Field(
         default=None,
         description="Hard timeout (ms); defaults to relative_deadline_ms",
     )
     priority: int = Field(default=0, description="Higher value = higher priority")
     queue_policy: QueuePolicy = Field(default=QueuePolicy.FIFO)
     queue_capacity: int = Field(default=1000, ge=1, description="Max queued items")
-    stream_id: Optional[str] = Field(
+    stream_id: str | None = Field(
         default=None,
         description="Stream identifier for mailbox_latest replacement",
     )
-    resource_requirements: Dict[str, int] = Field(
+    resource_requirements: dict[str, int] = Field(
         default_factory=lambda: {"compute": 1},
         description="Resource units required while running",
     )
@@ -135,7 +131,7 @@ class WorkloadClass(BaseModel):
         default=False,
         description="If True, bypass admission control (for baseline hand cases)",
     )
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
     @field_validator("id")
     @classmethod
@@ -145,7 +141,7 @@ class WorkloadClass(BaseModel):
         return v
 
     @model_validator(mode="after")
-    def _deadline_defaults(self) -> "WorkloadClass":
+    def _deadline_defaults(self) -> WorkloadClass:
         if self.relative_deadline_ms is None:
             self.relative_deadline_ms = self.work_ms
         if self.timeout_ms is None:
@@ -165,7 +161,6 @@ class WorkloadClass(BaseModel):
         return ms_to_ps(self.timeout_ms or self.relative_deadline_ms or self.work_ms)
 
 
-
 class Scenario(BaseModel):
     """A deterministic temporal scenario."""
 
@@ -181,20 +176,20 @@ class Scenario(BaseModel):
         default=1_000_000.0,
         description="Absolute simulation wall-clock limit (ms)",
     )
-    recovery_phase_start_ms: Optional[float] = Field(
+    recovery_phase_start_ms: float | None = Field(
         default=None,
         description="Time after which backlog draining to zero is recorded as recovery (ms)",
     )
 
-    workload_ref: Optional[str] = Field(
+    workload_ref: str | None = Field(
         default=None,
         description="Optional workload fixture name for memory/resource planning",
     )
-    classes: List[WorkloadClass] = Field(..., min_length=1)
+    classes: list[WorkloadClass] = Field(..., min_length=1)
 
     # Global resources and admission
     compute_capacity: int = Field(default=1, ge=1)
-    resources: Dict[str, int] = Field(
+    resources: dict[str, int] = Field(
         default_factory=dict,
         description="Additional named resource capacities",
     )
@@ -202,7 +197,7 @@ class Scenario(BaseModel):
     max_inflight_jobs: int = Field(default=128, ge=1)
     max_bandwidth_fraction: float = Field(default=1.0, gt=0.0, le=1.0)
     preemption_enabled: bool = Field(default=True)
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
     @field_validator("name")
     @classmethod
@@ -212,7 +207,7 @@ class Scenario(BaseModel):
         return v
 
     @model_validator(mode="after")
-    def _unique_class_ids(self) -> "Scenario":
+    def _unique_class_ids(self) -> Scenario:
         ids = [c.id for c in self.classes]
         if len(ids) != len(set(ids)):
             raise ValueError("workload class ids must be unique")

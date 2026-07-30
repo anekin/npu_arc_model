@@ -8,11 +8,9 @@ Then:  all the Todo 9 acceptance criteria pass.
 import json
 import subprocess
 import sys
-from copy import deepcopy
 from pathlib import Path
 
 import pytest
-
 from contracts.errors import NonAuthoritativeRunError
 from contracts.identity import digest_sha256
 from contracts.legacy_result import (
@@ -33,6 +31,7 @@ from contracts.result import (
     release_recommendation,
     result_standalone_from_ppa,
 )
+from pydantic import ValidationError
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 SIM_DIR = REPO_ROOT / "sim"
@@ -118,7 +117,7 @@ class TestErrorRecord:
         assert err.details["num"] == 42
 
     def test_extra_fields_forbidden(self):
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             ErrorRecord(design_point_id="abc", code="E", unknown_field="bad")
 
 
@@ -348,7 +347,9 @@ class TestLegacyProjection:
     def test_project_v2_to_legacy_cv_preserves_fields(self):
         cfg = _make_base_config()
         dp_id = digest_sha256(cfg)
-        metrics = EngineMetrics(tok_per_s=100.0, area_mm2=50.0, power_w=10.0, sram_spill_mb=3.5, depthwise_util_pct=0.42)
+        metrics = EngineMetrics(
+            tok_per_s=100.0, area_mm2=50.0, power_w=10.0, sram_spill_mb=3.5, depthwise_util_pct=0.42
+        )
         v2 = DesignSpaceResultV2(
             trust_level=RunTrustLevel.exploratory,
             summary=ResultSummary(generated=5, evaluated=5, complete=5),
@@ -390,13 +391,15 @@ class TestDSEV2Output:
             sys.executable,
             str(SIM_DIR / "design_space_explorer.py"),
             "--quick",
-            "--result-schema", "v2",
-            "--output", str(output),
+            "--result-schema",
+            "v2",
+            "--output",
+            str(output),
         ]
         env = {
             "PYTHONPATH": str(SIM_DIR),
             "PATH": str(Path(sys.executable).parent),
-            **{k: v for k, v in __import__("os").environ.items()},
+            **dict(__import__("os").environ.items()),
         }
         result = subprocess.run(cmd, capture_output=True, text=True, env=env, cwd=str(REPO_ROOT), timeout=120)
         assert result.returncode == 0, f"stderr: {result.stderr}"
@@ -431,13 +434,15 @@ class TestDSEV2Output:
             str(SIM_DIR / "design_space_explorer.py"),
             "--quick",
             "--allow-partial",
-            "--result-schema", "v2",
-            "--output", str(output),
+            "--result-schema",
+            "v2",
+            "--output",
+            str(output),
         ]
         env = {
             "PYTHONPATH": str(SIM_DIR),
             "PATH": str(Path(sys.executable).parent),
-            **{k: v for k, v in __import__("os").environ.items()},
+            **dict(__import__("os").environ.items()),
         }
         result = subprocess.run(cmd, capture_output=True, text=True, env=env, cwd=str(REPO_ROOT), timeout=120)
         assert result.returncode == 0, f"stderr: {result.stderr}"
@@ -456,12 +461,13 @@ class TestDSEV2Output:
             sys.executable,
             str(SIM_DIR / "design_space_explorer.py"),
             "--quick",
-            "--output", str(output),
+            "--output",
+            str(output),
         ]
         env = {
             "PYTHONPATH": str(SIM_DIR),
             "PATH": str(Path(sys.executable).parent),
-            **{k: v for k, v in __import__("os").environ.items()},
+            **dict(__import__("os").environ.items()),
         }
         result = subprocess.run(cmd, capture_output=True, text=True, env=env, cwd=str(REPO_ROOT), timeout=120)
         assert result.returncode == 0, f"stderr: {result.stderr}"

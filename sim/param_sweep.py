@@ -11,21 +11,19 @@
 """
 
 import json
-import math
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
 
 import yaml
 
 sys.path.insert(0, str(Path(__file__).parent))
 
+from engine.timeline import CoreTimeline
+from models.dma import DMAModel
+from models.dram import DRAMModel
+from models.kv_cache import KVCacheModel
 from models.mxu import MXUModel
 from models.sfu import SFUModel
-from models.dma import DMAModel
-from models.kv_cache import KVCacheModel
-from models.dram import DRAMModel
-from engine.timeline import CoreTimeline, SimulationReport, breakdown_events
 
 
 class ParamSweeper:
@@ -35,7 +33,7 @@ class ParamSweeper:
         with open(base_config_path) as f:
             self.base_config = yaml.safe_load(f)
 
-    def sweep(self) -> List[Dict]:
+    def sweep(self) -> list[dict]:
         """Run full parameter sweep."""
         results = []
 
@@ -64,15 +62,17 @@ class ParamSweeper:
                     result["config_id"] = count
                     result["total_configs"] = total_configs
                     results.append(result)
-                    print(f"[{count}/{total_configs}] {H}×{W} @{freq}MHz "
-                          f"L2={l2_kb//1024}MB → {result['decode_tok_per_s']:.0f} tok/s")
+                    print(
+                        f"[{count}/{total_configs}] {H}×{W} @{freq}MHz "
+                        f"L2={l2_kb // 1024}MB → {result['decode_tok_per_s']:.0f} tok/s"
+                    )
 
         # Add multi-core projections
         self._add_multicore(results, num_cores)
 
         return results
 
-    def _build_config(self, H: int, W: int, freq: int, l2_kb: int) -> Dict:
+    def _build_config(self, H: int, W: int, freq: int, l2_kb: int) -> dict:
         config = dict(self.base_config)  # shallow copy
         config["mxu"] = dict(config["mxu"])
         config["mxu"]["array_height"] = H
@@ -82,21 +82,21 @@ class ParamSweeper:
         config["sram"]["l2_shared_kb"] = l2_kb
         return config
 
-    def _evaluate(self, config: Dict, gemms: List[Tuple]) -> Dict:
+    def _evaluate(self, config: dict, gemms: list[tuple]) -> dict:
         """Run decode simulation for this config."""
         mxu = MXUModel(config)
         sfu = SFUModel(config)
-        dma = DMAModel(config)
+        DMAModel(config)
         kv = KVCacheModel(config)
         dram = DRAMModel(config)
         kv.configure_for_model(num_kv_heads=2, head_dim=128, num_layers=28)
 
-        timeline = CoreTimeline()
+        CoreTimeline()
         total_mxu = 0
 
         # Simulate 28 layers × 7 matmuls
-        for layer in range(28):
-            for (M, K, N, op_name) in gemms:
+        for _layer in range(28):
+            for M, K, N, _op_name in gemms:
                 r = mxu.estimate(M, K, N)  # v2: weight_preloaded removed, default False
                 total_mxu += r.total_cycles
             # SFU per layer
@@ -133,7 +133,7 @@ class ParamSweeper:
             "meets_target": decode_tok_per_s >= 21,  # matches overnight_loop.py TARGET_TOK_S=21
         }
 
-    def _add_multicore(self, results: List[Dict], num_cores: List[int]):
+    def _add_multicore(self, results: list[dict], num_cores: list[int]):
         """Add multi-core projections to each result."""
         for r in results:
             r["multicore"] = {}
@@ -154,26 +154,30 @@ def main():
         json.dump(results, f, indent=2)
 
     # Pareto summary
-    print(f"\n{'='*70}")
-    print(f"  PARETO FRONTIER: meets 21 tok/s target, sorted by area")
-    print(f"{'='*70}")
+    print(f"\n{'=' * 70}")
+    print("  PARETO FRONTIER: meets 21 tok/s target, sorted by area")
+    print(f"{'=' * 70}")
     print(f"{'MXU':>8s} {'MHz':>5s} {'L2':>4s} {'Area':>6s} {'Power':>6s} {'Decode':>8s} {'2c':>8s} {'4c':>8s}")
-    print(f"{'─'*60}")
+    print(f"{'─' * 60}")
 
     pareto = [r for r in results if r["meets_target"]]
     pareto.sort(key=lambda r: r["area_mm2"])
     for r in pareto:
-        print(f"{r['mxu_size']:>8s} {r['freq_mhz']:>5d} {r['l2_mb']:>3d}MB "
-              f"{r['area_mm2']:>5.1f}mm² {r['power_w']:>5.1f}W "
-              f"{r['decode_tok_per_s']:>6.0f}t/s "
-              f"{r['multicore']['2c']:>6.0f} "
-              f"{r['multicore']['4c']:>6.0f}")
+        print(
+            f"{r['mxu_size']:>8s} {r['freq_mhz']:>5d} {r['l2_mb']:>3d}MB "
+            f"{r['area_mm2']:>5.1f}mm² {r['power_w']:>5.1f}W "
+            f"{r['decode_tok_per_s']:>6.0f}t/s "
+            f"{r['multicore']['2c']:>6.0f} "
+            f"{r['multicore']['4c']:>6.0f}"
+        )
 
     if pareto:
         best = pareto[0]
-        print(f"\n  RECOMMENDED: {best['mxu_size']} @{best['freq_mhz']}MHz "
-              f"L2={best['l2_mb']}MB → {best['decode_tok_per_s']:.0f} tok/s, "
-              f"{best['area_mm2']}mm²")
+        print(
+            f"\n  RECOMMENDED: {best['mxu_size']} @{best['freq_mhz']}MHz "
+            f"L2={best['l2_mb']}MB → {best['decode_tok_per_s']:.0f} tok/s, "
+            f"{best['area_mm2']}mm²"
+        )
     print(f"\n  Results saved to: {out_path}")
 
 

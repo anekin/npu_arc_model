@@ -3,15 +3,14 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 import yaml
-
 from contracts.errors import ConfigError
 from dse.models import AxisSpec, Constraint
 
 
-def load_axes_config(path: Path) -> Dict[str, Any]:
+def load_axes_config(path: Path) -> dict[str, Any]:
     """Load the declarative axes YAML."""
     with path.open("r", encoding="utf-8") as f:
         raw = yaml.safe_load(f)
@@ -20,7 +19,7 @@ def load_axes_config(path: Path) -> Dict[str, Any]:
     return raw
 
 
-def load_base_config(path: Path) -> Dict[str, Any]:
+def load_base_config(path: Path) -> dict[str, Any]:
     """Load the base hardware config YAML."""
     with path.open("r", encoding="utf-8") as f:
         raw = yaml.safe_load(f)
@@ -29,9 +28,9 @@ def load_base_config(path: Path) -> Dict[str, Any]:
     return raw
 
 
-def build_axes(axes_config: Dict[str, Any]) -> Dict[str, AxisSpec]:
+def build_axes(axes_config: dict[str, Any]) -> dict[str, AxisSpec]:
     """Build ordered AxisSpec mapping from config."""
-    axes: Dict[str, AxisSpec] = {}
+    axes: dict[str, AxisSpec] = {}
     for name, spec in axes_config.get("axes", {}).items():
         values = tuple(spec.get("values", []))
         if not values:
@@ -45,9 +44,9 @@ def build_axes(axes_config: Dict[str, Any]) -> Dict[str, AxisSpec]:
     return axes
 
 
-def build_constraints(axes_config: Dict[str, Any]) -> List[Constraint]:
+def build_constraints(axes_config: dict[str, Any]) -> list[Constraint]:
     """Build Constraint objects from config."""
-    constraints: List[Constraint] = []
+    constraints: list[Constraint] = []
     for idx, raw in enumerate(axes_config.get("constraints", [])):
         when = _normalize_rule(raw.get("when", {}))
         require = _normalize_rule(raw.get("require", {}))
@@ -65,12 +64,9 @@ def build_constraints(axes_config: Dict[str, Any]) -> List[Constraint]:
     return constraints
 
 
-def _normalize_rule(rule: Dict[str, Any]) -> Dict[str, Tuple[Any, ...]]:
+def _normalize_rule(rule: dict[str, Any]) -> dict[str, tuple[Any, ...]]:
     """Normalize a constraint rule dict to tuple-of-values form."""
-    return {
-        axis: tuple(values if isinstance(values, (list, tuple)) else [values])
-        for axis, values in rule.items()
-    }
+    return {axis: tuple(values if isinstance(values, (list, tuple)) else [values]) for axis, values in rule.items()}
 
 
 __all__ = [

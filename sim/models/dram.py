@@ -2,15 +2,14 @@
 
 .. warning::
    This module is **DEAD CODE** as of Todo 6 (frequency/bandwidth unit repair).
-   The engine path does **not** use ``DRAMModel.effective_bandwidth_bytes_per_cycle()``.
    Only ``add_refresh_overhead()`` is called (from ``npu_sim.py``), and it only uses
-   the refresh fraction, not the bandwidth-per-cycle model.
-   
-   The canonical bandwidth-to-cycles conversion is in ``contracts.units.bandwidth_gbps_to_bytes_per_cycle()``.
+   the refresh fraction, not the bandwidth model.
+
+   The canonical bandwidth-to-cycles conversion is in ``contracts.units``.
    All engines now compute ``bytes_per_cycle`` directly from ``bandwidth_gbps`` at construction time.
 """
 
-from typing import Any, Dict
+from typing import Any
 
 
 class DRAMModel:
@@ -26,7 +25,7 @@ class DRAMModel:
     At 1GHz: 1 cycle = 1 ns
     """
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: dict[str, Any]):
         mem = config["memory"]
         self.f_mhz = float(config["mxu"]["frequency_mhz"])
         self.bw_gbps = float(mem["bandwidth_gbps"])
@@ -34,29 +33,18 @@ class DRAMModel:
         # Convert ns to cycles at operating frequency
         ns_per_cycle = 1000.0 / self.f_mhz  # 1ns at 1GHz
 
-        self.tRC_cycles = int(float(mem.get("tRC_cycles", 48)))     # 48
-        self.tRAS_cycles = int(float(mem.get("tRAS_cycles", 42)))   # 42
+        self.tRC_cycles = int(float(mem.get("tRC_cycles", 48)))  # 48
+        self.tRAS_cycles = int(float(mem.get("tRAS_cycles", 42)))  # 42
 
         # LPDDR5 refresh: tRFC ≈ 210ns, tREFI ≈ 3900ns
-        self.tRFC = 210 / ns_per_cycle     # refresh command time
-        self.tREFI = 3900 / ns_per_cycle   # refresh interval
+        self.tRFC = 210 / ns_per_cycle  # refresh command time
+        self.tREFI = 3900 / ns_per_cycle  # refresh interval
         self.refresh_overhead_pct = (self.tRFC / self.tREFI) * 100  # ~5.4%
 
         # Effective bandwidth: accounting for refresh + row conflicts
         # Row conflict probability depends on access pattern
         # Conservative: 85% bandwidth efficiency
         self.row_conflict_prob = 0.15  # 15% chance of row miss → need precharge+activate
-
-    def effective_bandwidth_bytes_per_cycle(self) -> float:
-        """Effective bandwidth after refresh + timing overhead.
-
-        At 1GHz, LPDDR5-6400 = 51.2 GB/s raw.
-        Effective = raw × (1 - refresh_pct) × row_efficiency
-        """
-        raw_bw = self.bw_gbps  # 51.2
-        refresh_efficiency = 1.0 - (self.refresh_overhead_pct / 100)
-        row_efficiency = 1.0 - (self.row_conflict_prob * 0.3)  # 30% penalty per conflict
-        return raw_bw * refresh_efficiency * row_efficiency
 
     def add_refresh_overhead(self, total_cycles: int) -> int:
         """Add DRAM refresh cycles proportional to total compute time.
@@ -83,7 +71,7 @@ class DRAMModel:
         tRCD = 18
         tCAS = 14  # CAS latency
         tBURST = 4  # 4 cycles per burst (32B at 8B/cycle on 64-bit bus)
-        tWR = 16   # write recovery
+        tWR = 16  # write recovery
 
         latency = tRCD + tCAS  # row open + first CAS
 

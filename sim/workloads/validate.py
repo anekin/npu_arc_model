@@ -12,8 +12,6 @@ Each validator returns ``None`` on success and raises a typed error on failure.
 
 from __future__ import annotations
 
-from typing import Set
-
 from contracts.errors import (
     ConfigError,
     DimensionBindingError,
@@ -21,7 +19,7 @@ from contracts.errors import (
 )
 from workloads.dimensions import DimensionBindings
 from workloads.operators import OperatorRegistry
-from workloads.schema import NodeSpec, TensorSpec, WorkloadGraphV1
+from workloads.schema import WorkloadGraphV1
 
 
 def validate_graph_dag(graph: WorkloadGraphV1) -> None:
@@ -34,13 +32,13 @@ def validate_graph_dag(graph: WorkloadGraphV1) -> None:
     Raises:
         ConfigError: if duplicate IDs, cycles, or dangling references are found.
     """
-    node_ids: Set[str] = set()
+    node_ids: set[str] = set()
     for node in graph.nodes:
         if node.node_id in node_ids:
             raise ConfigError(f"duplicate node_id: {node.node_id!r}", field_path="nodes")
         node_ids.add(node.node_id)
 
-    tensor_ids: Set[str] = set()
+    tensor_ids: set[str] = set()
     for tensor in graph.tensors:
         if tensor.tensor_id in tensor_ids:
             raise ConfigError(f"duplicate tensor_id: {tensor.tensor_id!r}", field_path="tensors")
@@ -71,7 +69,7 @@ def validate_dimensions(
         DimensionBindingError: if any symbolic dimension is unbound.
     """
     # Collect all symbolic names used in tensor shapes
-    used_symbols: Set[str] = set()
+    used_symbols: set[str] = set()
     for tensor in graph.tensors:
         for dim in tensor.shape:
             if isinstance(dim, str):
@@ -173,8 +171,7 @@ def validate_tensor_lifetime(graph: WorkloadGraphV1) -> None:
             prod = producer_map.get(out_id)
             if prod and prod != node.node_id:
                 raise ConfigError(
-                    f"tensor {out_id!r} is listed as output of node {node.node_id!r} "
-                    f"but producer_node is {prod!r}",
+                    f"tensor {out_id!r} is listed as output of node {node.node_id!r} but producer_node is {prod!r}",
                     field_path=f"nodes.{node.node_id}",
                 )
 

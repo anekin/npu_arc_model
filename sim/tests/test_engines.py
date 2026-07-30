@@ -6,11 +6,9 @@ import subprocess
 from pathlib import Path
 
 import pytest
-
 from engine.mac_engine import create_engine
-from models.mxu import MXUModel
 from model_specs import get_spec
-
+from models.mxu import MXUModel
 
 _BASE_CONFIG = {
     "mac_engine": {
@@ -21,7 +19,7 @@ _BASE_CONFIG = {
         "activation_precision_bits": 8,
     },
     "memory": {
-        "bandwidth_bytes_per_cycle": 51.2,
+        "bandwidth_gbps": 51.2,
         "dram_efficiency": 0.85,
     },
 }
@@ -63,9 +61,7 @@ def test_block_decode():
     )
 
     # Block engine must be DMA-bound for this representative decode config.
-    assert r_block.bottleneck == "dma", (
-        f"Expected DMA-bound block engine, got {r_block.bottleneck}"
-    )
+    assert r_block.bottleneck == "dma", f"Expected DMA-bound block engine, got {r_block.bottleneck}"
 
     # Sanity: broadcast pipeline overhead is now documented and non-trivial.
     assert r_block.details["per_tile_compute"] >= 3
@@ -83,8 +79,7 @@ def test_block_weight_cache():
     r_two = r_single.total_cycles * 2
 
     assert r_pair.total_cycles < r_two, (
-        f"Weight-cache pair ({r_pair.total_cycles}) not faster than "
-        f"two separate estimates ({r_two})"
+        f"Weight-cache pair ({r_pair.total_cycles}) not faster than two separate estimates ({r_two})"
     )
 
     # Sanity: pair reports positive weight-cache savings.
@@ -92,9 +87,7 @@ def test_block_weight_cache():
     assert r_pair.details["weight_cache_savings"] > 0
 
     # Pair is still DMA-bound for the representative decode config.
-    assert r_pair.bottleneck == "dma", (
-        f"Expected DMA-bound weight-cache pair, got {r_pair.bottleneck}"
-    )
+    assert r_pair.bottleneck == "dma", f"Expected DMA-bound weight-cache pair, got {r_pair.bottleneck}"
 
 
 def test_wmma_decode():
@@ -109,20 +102,16 @@ def test_wmma_decode():
     wmma = create_engine(_engine_config("wmma"))
     r_wmma = wmma.estimate(M, K, N)
 
-    other_types = ["systolic", "block", "tensor_core", "gmma",
-                   "os_systolic", "input_stationary"]
+    other_types = ["systolic", "block", "tensor_core", "gmma", "os_systolic", "input_stationary"]
     for engine_type in other_types:
         engine = create_engine(_engine_config(engine_type))
         r_other = engine.estimate(M, K, N)
         assert r_wmma.total_cycles > r_other.total_cycles * 10, (
-            f"WMMA ({r_wmma.total_cycles}) not >> {engine_type} "
-            f"({r_other.total_cycles})"
+            f"WMMA ({r_wmma.total_cycles}) not >> {engine_type} ({r_other.total_cycles})"
         )
 
     wmma_tok_s = _tok_s(r_wmma)
-    assert wmma_tok_s < 10, (
-        f"WMMA tok/s={wmma_tok_s:.2f} should be < 10 for FFN_down"
-    )
+    assert wmma_tok_s < 10, f"WMMA tok/s={wmma_tok_s:.2f} should be < 10 for FFN_down"
 
     assert r_wmma.details["total_fragments"] == 88064
     assert r_wmma.details["fragments_per_tile"] == 16  # (64/16)^2 = 16 on 64×64
@@ -147,8 +136,7 @@ def test_tensor_core_decode():
     )
 
     assert tc_tok_s < block_tok_s, (
-        f"TensorCore tok/s ({tc_tok_s:.1f}) should be below "
-        f"BlockEngine ({block_tok_s:.1f}) for large K/N decode"
+        f"TensorCore tok/s ({tc_tok_s:.1f}) should be below BlockEngine ({block_tok_s:.1f}) for large K/N decode"
     )
 
     # Sanity: model uses the expected 64×16×16 sub-tile geometry.
@@ -169,7 +157,7 @@ _SYSTOLIC_CONFIG = {
         "double_buffer": True,
     },
     "memory": {
-        "bandwidth_bytes_per_cycle": 51.2,
+        "bandwidth_gbps": 51.2,
         "dram_efficiency": 0.85,
     },
 }
@@ -234,9 +222,7 @@ def test_os_systolic_decode():
     os_tok_s = _tok_s(r_os)
     block_tok_s = _tok_s(r_block)
 
-    assert r_os.bottleneck == "dma", (
-        f"Expected DMA-bound OS-Systolic engine, got {r_os.bottleneck}"
-    )
+    assert r_os.bottleneck == "dma", f"Expected DMA-bound OS-Systolic engine, got {r_os.bottleneck}"
     assert os_tok_s >= block_tok_s, (
         f"OS-Systolic tok/s ({os_tok_s:.1f}) should be >= "
         f"BlockEngine tok/s ({block_tok_s:.1f}) for M=1 decode at 128×128; "
@@ -291,9 +277,7 @@ def test_systolic_vs_mxumodel_decode(M, op_name):
     """SystolicEngine decode total_cycles match MXUModel byte-for-byte."""
     systolic, mxumodel = _make_engines()
 
-    _, M_used, K, N = next(
-        item for item in _qwen3b_geometries(M) if item[0] == op_name
-    )
+    _, M_used, K, N = next(item for item in _qwen3b_geometries(M) if item[0] == op_name)
 
     r_sys = systolic.estimate(M_used, K, N)
     r_mxu = mxumodel.estimate(M_used, K, N)
@@ -313,8 +297,7 @@ def test_systolic_vs_mxumodel_prefill():
         r_mxu = mxumodel.estimate(M_used, K, N)
 
         assert r_sys.total_cycles == r_mxu.total_cycles, (
-            f"[{name}] SystolicEngine total_cycles={r_sys.total_cycles} "
-            f"≠ MXUModel total_cycles={r_mxu.total_cycles}"
+            f"[{name}] SystolicEngine total_cycles={r_sys.total_cycles} ≠ MXUModel total_cycles={r_mxu.total_cycles}"
         )
 
 
@@ -326,12 +309,8 @@ def test_gmma_decode():
     r = gmma.estimate(M, K, N)
 
     tok_s = _tok_s(r)
-    assert tok_s > 0 and math.isfinite(tok_s), (
-        f"GMMA decode tok/s invalid: {tok_s}"
-    )
-    assert r.bottleneck == "dma", (
-        f"Expected DMA-bound GMMA decode, got {r.bottleneck}"
-    )
+    assert tok_s > 0 and math.isfinite(tok_s), f"GMMA decode tok/s invalid: {tok_s}"
+    assert r.bottleneck == "dma", f"Expected DMA-bound GMMA decode, got {r.bottleneck}"
 
     assert r.details.get("tma_overlap") == 0.5
     assert r.details["tma_exposed_dma"] < r.details["per_tile_dma"]
@@ -368,7 +347,8 @@ def test_systolic_npu_sim_baseline():
     result = subprocess.run(
         ["python", "npu_sim.py", "--engine", "systolic", "--json"],
         cwd=str(sim_dir),
-        capture_output=True, text=True,
+        capture_output=True,
+        text=True,
         timeout=30,
     )
     assert result.returncode == 0, f"npu_sim.py failed:\n{result.stderr}"
@@ -377,9 +357,7 @@ def test_systolic_npu_sim_baseline():
     tok_per_s = output["decode"]["tok_per_s"]
 
     # Baseline recalibrated post-Wave-1 SystolicEngine unified M-tiling fix.
-    assert tok_per_s == pytest.approx(13.23, rel=0.01), (
-        f"Systolic decode tok/s={tok_per_s} not within ±1% of 13.23"
-    )
+    assert tok_per_s == pytest.approx(13.23, rel=0.01), f"Systolic decode tok/s={tok_per_s} not within ±1% of 13.23"
 
 
 def test_block_npu_sim_baseline():
@@ -388,7 +366,9 @@ def test_block_npu_sim_baseline():
     result = subprocess.run(
         ["python", "npu_sim.py", "--json"],
         cwd=str(sim_dir),
-        capture_output=True, text=True, timeout=30,
+        capture_output=True,
+        text=True,
+        timeout=30,
     )
     assert result.returncode == 0
     output = json.loads(result.stdout)

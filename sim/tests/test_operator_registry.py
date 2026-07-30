@@ -12,7 +12,6 @@ Covers:
 from __future__ import annotations
 
 import pytest
-
 from contracts.errors import UnsupportedOperatorError
 from workloads.operators import (
     DEFAULT_REGISTRY,
@@ -26,18 +25,28 @@ class TestModeledOps:
     """Test that all expected ops are registered as modeled."""
 
     MODELED_EXPECTED = [
-        "gemm", "pointwise_conv", "depthwise_conv", "softmax",
-        "layernorm", "rms_norm", "gelu", "relu",
-        "hard_swish", "hard_sigmoid", "global_avg_pool", "max_pool",
-        "add", "mul", "matmul", "conv",
+        "gemm",
+        "pointwise_conv",
+        "depthwise_conv",
+        "softmax",
+        "layernorm",
+        "rms_norm",
+        "gelu",
+        "relu",
+        "hard_swish",
+        "hard_sigmoid",
+        "global_avg_pool",
+        "max_pool",
+        "add",
+        "mul",
+        "matmul",
+        "conv",
     ]
 
     def test_all_expected_modeled_ops_registered(self):
         """Every expected modeled op should be in the default registry."""
         for op_type in self.MODELED_EXPECTED:
-            assert DEFAULT_REGISTRY.is_modeled(op_type), (
-                f"Expected {op_type!r} to be modeled"
-            )
+            assert DEFAULT_REGISTRY.is_modeled(op_type), f"Expected {op_type!r} to be modeled"
             disposition = DEFAULT_REGISTRY.check(op_type)
             assert disposition == OperatorDisposition.MODELED
 
@@ -52,9 +61,7 @@ class TestModeledOps:
         """Modeled ops should not have fused_into set (it's for free/fused only)."""
         for op_type in self.MODELED_EXPECTED:
             entry = DEFAULT_REGISTRY.lookup(op_type)
-            assert entry.fused_into is None, (
-                f"Modeled op {op_type!r} should not have fused_into"
-            )
+            assert entry.fused_into is None, f"Modeled op {op_type!r} should not have fused_into"
 
     def test_modeled_ops_frozen_set(self):
         """modeled_ops property should return a frozenset."""
@@ -68,27 +75,25 @@ class TestFreeFusedOps:
     """Test that free/fused ops are correctly registered with fused_into."""
 
     FREE_FUSED_EXPECTED = [
-        "reshape", "reduce_mean", "shape", "concat", "transpose",
+        "reshape",
+        "reduce_mean",
+        "shape",
+        "concat",
+        "transpose",
     ]
 
     def test_all_expected_free_fused_ops_registered(self):
         """Every expected free/fused op should be in the default registry."""
         for op_type in self.FREE_FUSED_EXPECTED:
-            assert DEFAULT_REGISTRY.is_free_or_fused(op_type), (
-                f"Expected {op_type!r} to be explicitly free_or_fused"
-            )
+            assert DEFAULT_REGISTRY.is_free_or_fused(op_type), f"Expected {op_type!r} to be explicitly free_or_fused"
 
     def test_free_fused_ops_have_fused_into(self):
         """Every free/fused op must carry a fused_into value."""
         for op_type in self.FREE_FUSED_EXPECTED:
             entry = DEFAULT_REGISTRY.lookup(op_type)
             assert entry.disposition == OperatorDisposition.EXPLICITLY_FREE_OR_FUSED
-            assert entry.fused_into is not None, (
-                f"Free/fused op {op_type!r} must record fused_into"
-            )
-            assert len(entry.fused_into) > 0, (
-                f"Free/fused op {op_type!r} fused_into must not be empty"
-            )
+            assert entry.fused_into is not None, f"Free/fused op {op_type!r} must record fused_into"
+            assert len(entry.fused_into) > 0, f"Free/fused op {op_type!r} fused_into must not be empty"
 
     def test_free_fused_ops_not_counted_as_modeled(self):
         """Free/fused ops should NOT be counted as modeled."""
@@ -124,16 +129,18 @@ class TestUnsupportedOps:
     """Test that unsupported ops are correctly marked and fail-closed."""
 
     UNSUPPORTED_EXPECTED = [
-        "gather", "scatter", "instance_norm", "group_norm",
-        "batch_norm", "upsample",
+        "gather",
+        "scatter",
+        "instance_norm",
+        "group_norm",
+        "batch_norm",
+        "upsample",
     ]
 
     def test_all_expected_unsupported_ops_registered(self):
         """Every expected unsupported op should be in the default registry."""
         for op_type in self.UNSUPPORTED_EXPECTED:
-            assert DEFAULT_REGISTRY.is_unsupported(op_type), (
-                f"Expected {op_type!r} to be unsupported"
-            )
+            assert DEFAULT_REGISTRY.is_unsupported(op_type), f"Expected {op_type!r} to be unsupported"
 
     def test_unsupported_ops_raise_on_lookup(self):
         """Lookup on unsupported ops must raise UnsupportedOperatorError."""
@@ -195,11 +202,13 @@ class TestRegistryApi:
         """register() should add a new modeled op."""
         reg = OperatorRegistry()
         assert not reg.is_modeled("new_op_type")
-        reg.register(OperatorEntry(
-            op_type="new_op_type",
-            disposition=OperatorDisposition.MODELED,
-            description="A test operator",
-        ))
+        reg.register(
+            OperatorEntry(
+                op_type="new_op_type",
+                disposition=OperatorDisposition.MODELED,
+                description="A test operator",
+            )
+        )
         assert reg.is_modeled("new_op_type")
         entry = reg.lookup("new_op_type")
         assert entry.description == "A test operator"
@@ -208,10 +217,12 @@ class TestRegistryApi:
         """register() should override an existing entry."""
         reg = OperatorRegistry()
         assert reg.is_modeled("gemm")
-        reg.register(OperatorEntry(
-            op_type="gemm",
-            disposition=OperatorDisposition.UNSUPPORTED,
-        ))
+        reg.register(
+            OperatorEntry(
+                op_type="gemm",
+                disposition=OperatorDisposition.UNSUPPORTED,
+            )
+        )
         assert reg.is_unsupported("gemm")
 
     def test_register_invalid_op_type(self):

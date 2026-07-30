@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
 """NPU 性能瓶颈逐层分析 — 定位最大开销来源"""
-import sys, math
+
+import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).parent))
 
-from models.mxu import MXUModel
 import yaml
+from models.mxu import MXUModel
 
 # Load config
-config = yaml.safe_load(open("config/npu_config.yaml"))
+with open("config/npu_config.yaml") as _config_file:
+    config = yaml.safe_load(_config_file)
 mxu = MXUModel(config)
 
 HIDDEN = 2560
@@ -16,13 +19,13 @@ INTERMEDIATE = 9728
 NUM_LAYERS = 28
 
 matmuls = [
-    ("Q_proj",    1, HIDDEN, 4096),
-    ("K_proj",    1, HIDDEN, 256),
-    ("V_proj",    1, HIDDEN, 256),
-    ("O_proj",    1, 4096, HIDDEN),
-    ("FFN_gate",  1, HIDDEN, INTERMEDIATE),
-    ("FFN_up",    1, HIDDEN, INTERMEDIATE),
-    ("FFN_down",  1, INTERMEDIATE, HIDDEN),
+    ("Q_proj", 1, HIDDEN, 4096),
+    ("K_proj", 1, HIDDEN, 256),
+    ("V_proj", 1, HIDDEN, 256),
+    ("O_proj", 1, 4096, HIDDEN),
+    ("FFN_gate", 1, HIDDEN, INTERMEDIATE),
+    ("FFN_up", 1, HIDDEN, INTERMEDIATE),
+    ("FFN_down", 1, INTERMEDIATE, HIDDEN),
 ]
 
 print("=" * 75)
@@ -65,7 +68,7 @@ total_weight_gb = total_weight_bytes * NUM_LAYERS / 1e9
 bw_needed = total_weight_gb / (total_28_us / 1e6)
 bw_available = 51.2 * 0.85
 
-print(f"\n--- Bandwidth ---")
+print("\n--- Bandwidth ---")
 print(f"  Weights/token:  {total_weight_gb:.2f} GB")
 print(f"  BW needed:      {bw_needed:.1f} GB/s")
 print(f"  BW available:   {bw_available:.1f} GB/s (85% eff)")
@@ -74,30 +77,30 @@ print(f"  Headroom:       {bw_available - bw_needed:.1f} GB/s")
 # Bottleneck breakdown
 ffn_cycles = sum(c for name, c, _, _, _ in per_matmuls if "FFN" in name)
 attn_cycles = sum(c for name, c, _, _, _ in per_matmuls if "FFN" not in name)
-print(f"\n--- Bottleneck Breakdown ---")
-print(f"  Attention (Q/K/V/O):  {attn_cycles/total_per_layer*100:.0f}% of layer")
-print(f"  FFN (gate/up/down):   {ffn_cycles/total_per_layer*100:.0f}% of layer")
+print("\n--- Bottleneck Breakdown ---")
+print(f"  Attention (Q/K/V/O):  {attn_cycles / total_per_layer * 100:.0f}% of layer")
+print(f"  FFN (gate/up/down):   {ffn_cycles / total_per_layer * 100:.0f}% of layer")
 print(f"  Per-tile overhead:    {mxu.H + mxu.W} fill + {1 + mxu.H} drain = {mxu.H + mxu.W + 1 + mxu.H} cycles")
 print(f"  Useful MACs per tile: {mxu.H} (M=1)")
 print(f"  Overhead/MAC ratio:   {(mxu.H + mxu.W + 1 + mxu.H) / mxu.H:.1f}x")
 
 # Optimization paths
-print(f"\n--- Optimization Paths ---")
-print(f"  Path A: Wider array (fewer tiles)")
+print("\n--- Optimization Paths ---")
+print("  Path A: Wider array (fewer tiles)")
 for h, w, area in [(128, 256, 42), (256, 256, 108), (128, 384, 60)]:
     # Quick scan: change config and re-estimate
     mxu2 = MXUModel({**config, "mxu": {**config["mxu"], "array_height": h, "array_width": w}})
     t = sum(mxu2.estimate(M, K, N).total_cycles for _, M, K, N in matmuls)
     ts = 1e6 / (t * NUM_LAYERS / 1000)
-    print(f"    {h}×{w} ({area}mm²): {ts:.0f} tok/s, {area/ts:.1f} mm²/tok")
+    print(f"    {h}×{w} ({area}mm²): {ts:.0f} tok/s, {area / ts:.1f} mm²/tok")
 
-print(f"\n  Path B: Continuous batching (M≥2)")
+print("\n  Path B: Continuous batching (M≥2)")
 for M in [2, 4, 8]:
     t = sum(mxu.estimate(M, K, N).total_cycles for _, _, K, N in matmuls)
     ts = M * 1e6 / (t * NUM_LAYERS / 1000)
     print(f"    M={M}: {ts:.0f} tok/s (same 27mm²)")
 
-print(f"\n  Path C: Reduce FFN intermediate (9728→6912)")
+print("\n  Path C: Reduce FFN intermediate (9728→6912)")
 mxu3 = MXUModel(config)
 t = 0
 for name, _, K, N in matmuls:

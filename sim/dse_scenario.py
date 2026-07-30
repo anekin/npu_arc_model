@@ -12,15 +12,13 @@ Phase 2 (post-sweep):
   5. 交叉校验 — 最优配置 vs 已知产品对比
 """
 
-import math
-from pathlib import Path
-from typing import Dict, Any, List, Optional, Tuple
 from enum import Enum
+from pathlib import Path
+from typing import Any
 
 import yaml
-
 from dse.manifest import CoverageManifest
-from dse.space import DesignSpace, load_design_space_from_yaml
+from dse.space import load_design_space_from_yaml
 from scenarios.compiler import compile_scenario
 from scenarios.schema import ArrivalMode, ArrivalPattern, QueuePolicy, Scenario, WorkloadClass
 
@@ -28,10 +26,10 @@ SIM_DIR = Path(__file__).parent
 
 
 class Confidence(Enum):
-    EXPLICIT = "explicit"       # 用户显式提供
-    INFERRED = "inferred"       # 从场景名/模型名推导
-    DEFAULTED = "defaulted"     # 用了默认值
-    MISSING = "missing"         # 完全缺失
+    EXPLICIT = "explicit"  # 用户显式提供
+    INFERRED = "inferred"  # 从场景名/模型名推导
+    DEFAULTED = "defaulted"  # 用了默认值
+    MISSING = "missing"  # 完全缺失
 
 
 # ═══════════════════════════════════════════════════════════
@@ -91,14 +89,14 @@ _MODEL_TO_WORKLOAD_REF = {
 }
 
 
-def _map_model_to_workload_ref(model_name: Optional[str]) -> Optional[str]:
+def _map_model_to_workload_ref(model_name: str | None) -> str | None:
     """Return the workload fixture reference for a legacy model name."""
     if not model_name:
         return None
-    return _MODEL_TO_WORKLOAD_REF.get(model_name.lower(), None)
+    return _MODEL_TO_WORKLOAD_REF.get(model_name.lower())
 
 
-def _build_scenario_model(scenario_name: str, data: Dict[str, Any]) -> Scenario:
+def _build_scenario_model(scenario_name: str, data: dict[str, Any]) -> Scenario:
     """Convert a legacy scenarios.yaml entry into a ``scenarios.schema.Scenario``."""
     mem = data.get("memory", {})
     memory_type = mem.get("type", "lpddr5")
@@ -145,7 +143,7 @@ def _build_scenario_model(scenario_name: str, data: Dict[str, Any]) -> Scenario:
     )
 
 
-def check_requirements(scenario_name: str, config: Dict[str, Any] = None) -> Dict[str, Any]:
+def check_requirements(scenario_name: str, config: dict[str, Any] = None) -> dict[str, Any]:
     """Phase -1: Check what information is available vs what needs clarification.
 
     Args:
@@ -250,10 +248,7 @@ def check_requirements(scenario_name: str, config: Dict[str, Any] = None) -> Dic
 
         # Warnings for DEFAULTED high-impact fields
         if confidence == Confidence.DEFAULTED and spec.get("impact", "").startswith("High"):
-            warnings.append(
-                f"⚠ {field_name}={value} (DEFAULTED, may not match your use case). "
-                f"{spec['why']}"
-            )
+            warnings.append(f"⚠ {field_name}={value} (DEFAULTED, may not match your use case). {spec['why']}")
 
         if not valid:
             warnings.append(f"⚠ {field_name}={value} (INVALID value — check scenario config)")
@@ -269,19 +264,19 @@ def check_requirements(scenario_name: str, config: Dict[str, Any] = None) -> Dic
     }
 
 
-def print_requirements_check(rc: Dict[str, Any]):
+def print_requirements_check(rc: dict[str, Any]):
     """Print a human-readable Phase -1 requirements report."""
     if "error" in rc:
         print(f"  ✗ {rc['error']}")
         return
 
-    print(f"\n{'='*65}")
+    print(f"\n{'=' * 65}")
     print(f"  Phase -1 — Requirements Clarification: {rc['scenario_name']}")
-    print(f"{'='*65}")
+    print(f"{'=' * 65}")
 
     # Critical fields table
     print(f"  {'Field':<16s} {'Value':<12s} {'Confidence':<12s} {'Source'}")
-    print(f"  {'-'*55}")
+    print(f"  {'-' * 55}")
     for name, f in rc["fields"].items():
         val_str = str(f["value"]) if f["value"] is not None else "—"
         conf_icon = {
@@ -293,62 +288,70 @@ def print_requirements_check(rc: Dict[str, Any]):
         print(f"  {name:<16s} {val_str:<12s} {conf_icon:<12s} {f['source']}")
 
     if rc["questions"]:
-        print(f"\n  ══ Questions to Resolve ══")
+        print("\n  ══ Questions to Resolve ══")
         for i, q in enumerate(rc["questions"], 1):
             print(f"\n  [{i}] {q}")
 
     if rc["warnings"]:
-        print(f"\n  ══ Warnings ══")
+        print("\n  ══ Warnings ══")
         for w in rc["warnings"]:
             print(f"  {w}")
 
     if rc["ready"]:
-        print(f"\n  ✓ All critical fields resolved. Ready for Phase 0.")
+        print("\n  ✓ All critical fields resolved. Ready for Phase 0.")
     else:
         print(f"\n  ⚠ {len(rc['questions'])} question(s) need resolution before proceeding.")
+
 
 def _extract_params_b(model_name: str) -> float:
     """Extract parameter count in billions from model name."""
     import re
-    m = re.search(r'(\d+\.?\d*)\s*b', model_name.lower())
+
+    m = re.search(r"(\d+\.?\d*)\s*b", model_name.lower())
     if m:
         return float(m.group(1))
     return 3.0  # default
 
-def _estimate_min_tops(params_b: float, seq_len: int, constraints: Dict) -> float:
+
+def _estimate_min_tops(params_b: float, seq_len: int, constraints: dict) -> float:
     """Estimate minimum TOPS needed to meet TTFT constraint.
-    
+
     Prefill FLOPs ≈ 2 × params × seq_len (per-token, per-layer is implicit).
     TTFT = FLOPs / TOPS → TOPS_min = FLOPs / TTFT_max
     """
-    ttft_max = constraints.get('ttft_ms_max', 200)
+    ttft_max = constraints.get("ttft_ms_max", 200)
     # params_b in billions, convert to trillion ops
     flops = 2 * params_b * seq_len / 1000  # TOPS-seconds
     min_tops = flops / (ttft_max / 1000)  # TTFT in seconds
     return min_tops
 
+
 # ═══════════════════════════════════════════════════════════
 # Phase 0: Pre-sweep analysis
 # ═══════════════════════════════════════════════════════════
 
-def _load_scenarios() -> Dict:
+
+def _load_scenarios() -> dict:
     path = SIM_DIR / "config" / "scenarios.yaml"
     with open(path) as f:
         return yaml.safe_load(f)
 
-def list_scenarios() -> List[str]:
+
+def list_scenarios() -> list[str]:
     """List available scenario names."""
     data = _load_scenarios()
     return list(data.get("scenarios", {}).keys())
 
-def load_scenario(name: str) -> Optional[Dict]:
+
+def load_scenario(name: str) -> dict | None:
     """Load a named scenario definition."""
     data = _load_scenarios()
     return data.get("scenarios", {}).get(name)
 
-def predict_bottleneck(scenario: Dict) -> Dict[str, Any]:
+
+def predict_bottleneck(scenario: dict) -> dict[str, Any]:
     """Pre-sweep: predict whether bandwidth or compute is the bottleneck.
-    
+
     For decode (M=1):
       - BW-limited TPS = effective_BW_GBps / model_size_GB_per_token
         where model_size_GB_per_token = params_INT4_GB (all weights accessed)
@@ -357,21 +360,21 @@ def predict_bottleneck(scenario: Dict) -> Dict[str, Any]:
     mem = scenario.get("memory", {})
     bw = mem.get("effective_bw_gbps", mem.get("bandwidth_gbps", 51.2))
     model_gb = scenario.get("model_params_gb", 1.5)
-    
+
     # Bandwidth ceiling: all weights must stream per token in decode
     bw_tps_ceiling = bw / model_gb
-    
+
     # Compute ceiling: 2 ops per parameter per token (M×K + accumulation)
     # This depends on TOPS, which is array-dependent. We estimate with a range.
     # A 128×128 @ 1GHz = 16.4 TOPS → ceil = 16.4e12 / (2 × params × 1e9)
-    
+
     # Extract params from model name
     model_name = scenario.get("model", "")
     params_b = 3 if "3b" in model_name.lower() else 7 if "7b" in model_name.lower() else 1
-    
+
     # Use a "reasonable TOPS range" for the prediction
     typical_tops = [6, 16, 49, 131]  # H=4,16,32,128 for 1536-wide array
-    
+
     compute_ceilings = []
     for tops in typical_tops:
         # TOPS = Tera (10^12) ops/sec. params_b = billions.
@@ -380,35 +383,39 @@ def predict_bottleneck(scenario: Dict) -> Dict[str, Any]:
         ops_per_token = 2 * params_b  # billion ops
         compute_tps = tops * 500 / ops_per_token  # 500 = 1000/2
         compute_ceilings.append(compute_tps)
-    
+
     # Which is lower?
     conclusion = []
-    min_compute = min(compute_ceilings)
-    max_compute = max(compute_ceilings)
+    min(compute_ceilings)
+    max(compute_ceilings)
     # ── TTFT / TOPS prediction ──
-    seq_len = scenario.get('seq_len', 128)
-    params_b = _extract_params_b(scenario.get('model', ''))
-    constraints = scenario.get('constraints', {})
+    seq_len = scenario.get("seq_len", 128)
+    params_b = _extract_params_b(scenario.get("model", ""))
+    constraints = scenario.get("constraints", {})
     min_tops_needed = _estimate_min_tops(params_b, seq_len, constraints)
-    ttft_max = constraints.get('ttft_ms_max', 200)
-    
+    ttft_max = constraints.get("ttft_ms_max", 200)
+
     # Which is lower: BW or compute?
     conclusion = []
     if bw_tps_ceiling < min(compute_ceilings):
-        conclusion.append(f"BANDWIDTH BOTTLENECK: BW ceiling {bw_tps_ceiling:.0f} TPS "
-                         f"< compute floor {min(compute_ceilings):.0f} TPS")
+        conclusion.append(
+            f"BANDWIDTH BOTTLENECK: BW ceiling {bw_tps_ceiling:.0f} TPS < compute floor {min(compute_ceilings):.0f} TPS"
+        )
         conclusion.append("→ Engine type and TOPS are secondary; focus on maximizing BW utilization.")
         if bw < 200:
             conclusion.append("→ SRAM size matters (affects tile granularity and BW efficiency).")
     elif bw_tps_ceiling > max(compute_ceilings):
-        conclusion.append(f"COMPUTE BOTTLENECK: BW ceiling {bw_tps_ceiling:.0f} TPS "
-                         f"> compute ceiling {max(compute_ceilings):.0f} TPS")
+        conclusion.append(
+            f"COMPUTE BOTTLENECK: BW ceiling {bw_tps_ceiling:.0f} TPS > compute ceiling {max(compute_ceilings):.0f} TPS"
+        )
         conclusion.append("→ Array dimensions (TOPS) are the primary lever; BW is not limiting.")
     else:
-        conclusion.append(f"MIXED: BW ceiling {bw_tps_ceiling:.0f} TPS within compute range "
-                         f"[{min(compute_ceilings):.0f}, {max(compute_ceilings):.0f}] TPS")
+        conclusion.append(
+            f"MIXED: BW ceiling {bw_tps_ceiling:.0f} TPS within compute range "
+            f"[{min(compute_ceilings):.0f}, {max(compute_ceilings):.0f}] TPS"
+        )
         conclusion.append("→ Both TOPS and BW utilization matter; sweep both dimensions.")
-    
+
     return {
         "bw_ceiling_tps": round(bw_tps_ceiling, 1),
         "compute_ceiling_tps_range": [round(c, 1) for c in compute_ceilings],
@@ -421,22 +428,23 @@ def predict_bottleneck(scenario: Dict) -> Dict[str, Any]:
         "model_size_gb": model_gb,
     }
 
-def validate_components(scenario: Dict, config: Dict[str, Any]) -> List[str]:
+
+def validate_components(scenario: dict, config: dict[str, Any]) -> list[str]:
     """Validate that the DSE config matches the scenario's component checklist.
-    
+
     Returns a list of warnings (empty = all good).
     """
     warnings = []
     comp = scenario.get("components", {})
     required = comp.get("required", [])
     excluded = comp.get("excluded", [])
-    
+
     oc = config.get("on_chip_memory", {})
     has_onchip = float(oc.get("capacity_gb", 0)) > 0
-    
+
     mem = config.get("memory", {})
     has_ddr = float(mem.get("bandwidth_gbps", 0)) > 0
-    
+
     # Check required components
     if "dram_phy" in required and not has_ddr:
         warnings.append("MISSING: scenario requires DRAM PHY but memory.bandwidth_gbps=0")
@@ -445,24 +453,26 @@ def validate_components(scenario: Dict, config: Dict[str, Any]) -> List[str]:
         pass
     if "tsv" in required and not has_onchip:
         warnings.append("MISSING: scenario requires TSV but on_chip_memory.capacity_gb=0")
-    
+
     # Check excluded components
     if "dram_phy" in excluded and has_ddr:
         warnings.append("EXCESS: scenario excludes DRAM PHY but memory.bandwidth_gbps > 0")
     if "tsv" in excluded and has_onchip:
         warnings.append("EXCESS: scenario excludes TSV but on_chip_memory is configured")
-    
+
     # TSV overhead check
     if "tsv" in required:
         expected_tsv = comp.get("tsv_overhead_pct") or scenario.get("memory", {}).get("tsv_overhead_pct", 0.10)
         actual_tsv = float(config.get("area_model", {}).get("tsv_overhead_pct", 0))
         if abs(actual_tsv - expected_tsv) > 0.01:
-            warnings.append(f"TSV MISMATCH: scenario expects {expected_tsv:.0%} but "
-                          f"area_model.tsv_overhead_pct={actual_tsv:.0%}")
-    
+            warnings.append(
+                f"TSV MISMATCH: scenario expects {expected_tsv:.0%} but area_model.tsv_overhead_pct={actual_tsv:.0%}"
+            )
+
     return warnings
 
-def preflight(scenario_name: str, config: Dict[str, Any]) -> Dict[str, Any]:
+
+def preflight(scenario_name: str, config: dict[str, Any]) -> dict[str, Any]:
     """Run full Phase 0 pre-sweep analysis on a scenario + config.
 
     Preflight now uses the same ``scenarios.schema.Scenario`` model and
@@ -483,8 +493,7 @@ def preflight(scenario_name: str, config: Dict[str, Any]) -> Dict[str, Any]:
     """
     scenario = load_scenario(scenario_name)
     if not scenario:
-        return {"error": f"Scenario '{scenario_name}' not found. "
-                f"Available: {list_scenarios()}"}
+        return {"error": f"Scenario '{scenario_name}' not found. Available: {list_scenarios()}"}
 
     scenario_model = _build_scenario_model(scenario_name, scenario)
     compiled_scenario = compile_scenario(scenario_model)
@@ -507,8 +516,8 @@ def preflight(scenario_name: str, config: Dict[str, Any]) -> Dict[str, Any]:
     component_warnings = validate_components(scenario, config)
 
     recommendations = []
-    if "BANDWIDTH BOTTLENECK" in (bottleneck.get('conclusion', [''])[0]):
-        bw_actual = bottleneck.get('effective_bw_gbps', 0)
+    if "BANDWIDTH BOTTLENECK" in (bottleneck.get("conclusion", [""])[0]):
+        bw_actual = bottleneck.get("effective_bw_gbps", 0)
         if bw_actual >= 200:
             recommendations.append(
                 f"SRAM: sweep from 512KB. BW={bw_actual:.0f}GB/s is high — "
@@ -523,16 +532,16 @@ def preflight(scenario_name: str, config: Dict[str, Any]) -> Dict[str, Any]:
     else:
         recommendations.append("SRAM: 512KB-1MB likely sufficient. Start sweep from 512KB.")
 
-    ttft_min = bottleneck.get('ttft_min_tops_needed', 0)
-    sl = bottleneck.get('seq_len', 128)
+    ttft_min = bottleneck.get("ttft_min_tops_needed", 0)
+    sl = bottleneck.get("seq_len", 128)
     if ttft_min > 16:
         recommendations.append(
             f"Array: TTFT requires ≥{ttft_min:.0f} TOPS (seq_len={sl}). "
-            f"Sweep from {max(4, int(ttft_min/1.5))} TOPS upward."
+            f"Sweep from {max(4, int(ttft_min / 1.5))} TOPS upward."
         )
-    elif "BANDWIDTH BOTTLENECK" in (bottleneck.get('conclusion', [''])[0]):
+    elif "BANDWIDTH BOTTLENECK" in (bottleneck.get("conclusion", [""])[0]):
         recommendations.append("Array: BW-limited → oversizing array wastes area. Prefer smaller array (≤16 TOPS).")
-    elif "COMPUTE BOTTLENECK" in (bottleneck.get('conclusion', [''])[0]):
+    elif "COMPUTE BOTTLENECK" in (bottleneck.get("conclusion", [""])[0]):
         recommendations.append("Array: compute-limited → increase array size or frequency.")
 
     return {
@@ -547,28 +556,30 @@ def preflight(scenario_name: str, config: Dict[str, Any]) -> Dict[str, Any]:
         "scenario_name": scenario_name,
     }
 
+
 # ═══════════════════════════════════════════════════════════
 # Phase 2: Post-sweep cross-validation
 # ═══════════════════════════════════════════════════════════
 
-def cross_validate(best_config: Dict[str, Any], scenario_name: str) -> Dict[str, Any]:
+
+def cross_validate(best_config: dict[str, Any], scenario_name: str) -> dict[str, Any]:
     """Compare the best DSE result against known products.
-    
+
     best_config: dict with keys like 'tok_s', 'area_mm2', 'tops_int8', 'process_nm'
     """
     data = _load_scenarios()
     scenario = data.get("scenarios", {}).get(scenario_name, {})
     product_db = data.get("product_database", {})
     benchmarks = scenario.get("benchmarks", [])
-    
+
     process_nm = best_config.get("process_nm", 12)
     area = best_config.get("area_mm2", 0)
     tops = best_config.get("tops_int8", 0)
     tps = best_config.get("tok_s", 0)
-    
+
     comparisons = []
     warnings = []
-    
+
     for bm in benchmarks:
         name = bm.get("name", "unknown")
         # Look up detailed product data if available
@@ -576,33 +587,33 @@ def cross_validate(best_config: Dict[str, Any], scenario_name: str) -> Dict[str,
         bm_process = bm.get("process_nm") or product.get("process_nm", 12)
         bm_area = bm.get("area_mm2") or product.get("area_mm2", 0)
         bm_tops = bm.get("tops_int8") or product.get("tops_int8", 0)
-        
+
         if not bm_area or not bm_tops:
             continue
-        
+
         # Scale to our process node for fair comparison
         scale = (process_nm / bm_process) ** 2
         bm_area_scaled = bm_area * scale
         bm_tops_scaled = bm_tops  # TOPS doesn't scale linearly with process
-        
+
         our_mm2_per_tops = area / max(tops, 0.01)
         bm_mm2_per_tops = bm_area_scaled / max(bm_tops_scaled, 0.01)
         ratio_tops = our_mm2_per_tops / max(bm_mm2_per_tops, 0.01)
-        
+
         # Also compare TPS efficiency (more relevant for BW-bottlenecked designs)
-        tps_warning = ""
         bm_tps_7b = bm.get("tps_7b") or product.get("tps_7b_range")
         if bm_tps_7b and tps > 0:
             bm_tps_mid = sum(bm_tps_7b) / 2 if isinstance(bm_tps_7b, list) else bm_tps_7b
             our_mm2_per_tps = area / max(tps, 0.01)
             bm_mm2_per_tps = bm_area_scaled / max(bm_tps_mid, 0.01)
             ratio_tps = our_mm2_per_tps / max(bm_mm2_per_tps, 0.01)
-            tps_compare = (f"mm²/TPS: ours={our_mm2_per_tps:.2f}, {name}={bm_mm2_per_tps:.2f} "
-                          f"(×{1/ratio_tps:.1f} better/worse)")
+            tps_compare = (
+                f"mm²/TPS: ours={our_mm2_per_tps:.2f}, {name}={bm_mm2_per_tps:.2f} (×{1 / ratio_tps:.1f} better/worse)"
+            )
         else:
             tps_compare = ""
             ratio_tps = None
-        
+
         comp = {
             "benchmark": name,
             "bm_process_nm": bm_process,
@@ -615,11 +626,11 @@ def cross_validate(best_config: Dict[str, Any], scenario_name: str) -> Dict[str,
             "tps_compare": tps_compare,
         }
         comparisons.append(comp)
-        
+
         # Generate warnings — prefer TPS-based ratio when available
         primary_ratio = ratio_tps if ratio_tps is not None else ratio_tops
         metric_name = "mm²/TPS" if ratio_tps is not None else "mm²/TOPS"
-        
+
         if primary_ratio > 2.0:
             warnings.append(
                 f"⚠ AREA ANOMALY: our {metric_name}={primary_ratio:.1f}× worse than {name}. "
@@ -627,82 +638,91 @@ def cross_validate(best_config: Dict[str, Any], scenario_name: str) -> Dict[str,
             )
         elif primary_ratio < 0.5:
             warnings.append(
-                f"⚠ SUSPICIOUSLY EFFICIENT: our {metric_name} is {1/primary_ratio:.1f}× "
+                f"⚠ SUSPICIOUSLY EFFICIENT: our {metric_name} is {1 / primary_ratio:.1f}× "
                 f"better than {name}. Verify area model isn't omitting components."
             )
-    
+
     return {
         "comparisons": comparisons,
         "warnings": warnings,
         "process_nm": process_nm,
     }
 
-def print_preflight(preflight_result: Dict[str, Any]):
+
+def print_preflight(preflight_result: dict[str, Any]):
     """Print a human-readable Phase 0 preflight report."""
     if "error" in preflight_result:
         print(f"  ✗ {preflight_result['error']}")
         return
-    
-    print(f"\n{'='*70}")
+
+    print(f"\n{'=' * 70}")
     print(f"  Phase 0 — Scenario Preflight: {preflight_result['scenario_name']}")
-    print(f"{'='*70}")
-    
-    sc = preflight_result['scenario']
+    print(f"{'=' * 70}")
+
+    sc = preflight_result["scenario"]
     print(f"  Model: {sc.get('model')} ({sc.get('model_params_gb')} GB INT4)")
-    
+
     # Bottleneck
-    bn = preflight_result['bottleneck']
-    print(f"\n  ── Bottleneck & TTFT Prediction ──")
+    bn = preflight_result["bottleneck"]
+    print("\n  ── Bottleneck & TTFT Prediction ──")
     print(f"  Seq length:    {bn['seq_len']} tokens")
-    print(f"  BW ceiling:    {bn['bw_ceiling_tps']:.0f} TPS "
-          f"(={bn['effective_bw_gbps']} GB/s ÷ {bn['model_size_gb']} GB)")
-    print(f"  Compute range: [{bn['compute_ceiling_tps_range'][0]:.0f}, "
-          f"{bn['compute_ceiling_tps_range'][-1]:.0f}] TPS (6-131 TOPS)")
+    print(
+        f"  BW ceiling:    {bn['bw_ceiling_tps']:.0f} TPS (={bn['effective_bw_gbps']} GB/s ÷ {bn['model_size_gb']} GB)"
+    )
+    print(
+        f"  Compute range: [{bn['compute_ceiling_tps_range'][0]:.0f}, "
+        f"{bn['compute_ceiling_tps_range'][-1]:.0f}] TPS (6-131 TOPS)"
+    )
     print(f"  TTFT constraint: <{bn['ttft_constraint_ms']}ms")
-    print(f"  → Min TOPS needed: ~{bn['ttft_min_tops_needed']:.1f} TOPS "
-          f"(={2*bn['params_billion']:.0f}B × {bn['seq_len']}tok × 2ops ÷ {bn['ttft_constraint_ms']}ms)")
-    for line in bn['conclusion']:
+    print(
+        f"  → Min TOPS needed: ~{bn['ttft_min_tops_needed']:.1f} TOPS "
+        f"(={2 * bn['params_billion']:.0f}B × {bn['seq_len']}tok × 2ops ÷ {bn['ttft_constraint_ms']}ms)"
+    )
+    for line in bn["conclusion"]:
         print(f"  → {line}")
-    
+
     # Components
-    warnings = preflight_result.get('component_warnings', [])
-    print(f"\n  ── Component Checklist ──")
-    comp = sc.get('components', {})
+    warnings = preflight_result.get("component_warnings", [])
+    print("\n  ── Component Checklist ──")
+    comp = sc.get("components", {})
     print(f"  Required: {comp.get('required', [])}")
     print(f"  Excluded: {comp.get('excluded', [])}")
     if warnings:
         for w in warnings:
             print(f"  ⚠ {w}")
     else:
-        print(f"  ✓ All component constraints satisfied")
-    
+        print("  ✓ All component constraints satisfied")
+
     # Recommendations
-    recs = preflight_result.get('recommendations', [])
+    recs = preflight_result.get("recommendations", [])
     if recs:
-        print(f"\n  ── Pre-sweep Recommendations ──")
+        print("\n  ── Pre-sweep Recommendations ──")
         for r in recs:
             print(f"  • {r}")
 
-def print_cross_validate(cv_result: Dict[str, Any]):
+
+def print_cross_validate(cv_result: dict[str, Any]):
     """Print human-readable cross-validation report."""
-    comparisons = cv_result.get('comparisons', [])
+    comparisons = cv_result.get("comparisons", [])
     if not comparisons:
         print("  No benchmarks to compare against.")
         return
-    
+
     print(f"\n  ── Cross-Validation (vs known products @{cv_result['process_nm']}nm) ──")
     print(f"  {'Product':<20s} {'Orig':>6s} {'Scaled':>7s} {'mm²/TOPS':>9s} {'Ours':>9s} {'Ratio':>7s}")
-    print(f"  {'-'*65}")
-    
+    print(f"  {'-' * 65}")
+
     for c in comparisons:
         orig = f"{c['bm_area_mm2']:.0f}mm²@{c['bm_process_nm']}nm"
-        print(f"  {c['benchmark']:<20s} {orig:>6s} {c['bm_area_scaled_mm2']:>6.0f}mm² "
-              f"{c['bm_mm2_per_tops']:>8.2f} {c['our_mm2_per_tops']:>8.2f} {c['ratio_tops']:>6.1f}x (TOPS)")
-        if c['tps_compare']:
+        print(
+            f"  {c['benchmark']:<20s} {orig:>6s} {c['bm_area_scaled_mm2']:>6.0f}mm² "
+            f"{c['bm_mm2_per_tops']:>8.2f} {c['our_mm2_per_tops']:>8.2f} {c['ratio_tops']:>6.1f}x (TOPS)"
+        )
+        if c["tps_compare"]:
             print(f"    {c['tps_compare']}")
-    
-    cv_warnings = cv_result.get('warnings', [])
+
+    cv_warnings = cv_result.get("warnings", [])
     if cv_warnings:
-        print(f"\n  ══ Cross-Validation Warnings ══")
+        print("\n  ══ Cross-Validation Warnings ══")
         for w in cv_warnings:
             print(f"  {w}")

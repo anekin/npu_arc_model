@@ -13,9 +13,10 @@ processed earlier.
 from __future__ import annotations
 
 import heapq
-from dataclasses import dataclass, field
+from collections.abc import Iterator
+from dataclasses import dataclass
 from enum import IntEnum
-from typing import Any, Callable, Iterator
+from typing import Any
 
 
 class EventPhase(IntEnum):

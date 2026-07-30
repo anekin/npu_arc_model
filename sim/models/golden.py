@@ -12,7 +12,6 @@ import hashlib
 import math
 import warnings
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
 
 warnings.warn(
     "models.golden is deprecated; use golden_executor for RTL sign-off",
@@ -34,9 +33,10 @@ import numpy as np
 @dataclass
 class LayerOutput:
     """一层 transformer 的输出"""
+
     layer: int
-    output_hash: str   # MD5 of flattened output
-    shape: Tuple[int, ...]
+    output_hash: str  # MD5 of flattened output
+    shape: tuple[int, ...]
     cycles_estimate: int = 0
 
 
@@ -61,10 +61,9 @@ class GoldenMXU:
         # Sign-extend: values 8-15 → negative
         low = np.where(low > 7, low - 16, low)
         high = np.where(high > 7, high - 16, high)
-        return np.stack([low, high], axis=-1).reshape(-1)[:weight_packed.size * 2]
+        return np.stack([low, high], axis=-1).reshape(-1)[: weight_packed.size * 2]
 
-    def matmul(self, activation: np.ndarray, weight_int4: np.ndarray,
-               M: int, K: int, N: int) -> np.ndarray:
+    def matmul(self, activation: np.ndarray, weight_int4: np.ndarray, M: int, K: int, N: int) -> np.ndarray:
         """Compute (M×K) × (K×N) → (M×N) in INT32.
 
         Simulates weight-stationary tiling: 128×128 tiles.
@@ -93,9 +92,7 @@ class GoldenMXU:
                 # Weight-stationary: W tile stays, A streams through
                 w_tile = W[:, n_start:n_end].astype(np.float32)
                 a_tile = A_int8[m_start:m_end, :].astype(np.float32)
-                result[m_start:m_end, n_start:n_end] = np.matmul(
-                    a_tile, w_tile
-                ).astype(np.int32)
+                result[m_start:m_end, n_start:n_end] = np.matmul(a_tile, w_tile).astype(np.int32)
         return result
 
     @staticmethod
@@ -138,9 +135,7 @@ class GoldenSFU:
         Hardware uses 4-stage piecewise linear LUT.
         """
         # tanh approximation (matches hardware LUT precision)
-        return 0.5 * x * (1.0 + np.tanh(
-            np.sqrt(2.0 / np.pi) * (x + 0.044715 * x**3)
-        ))
+        return 0.5 * x * (1.0 + np.tanh(np.sqrt(2.0 / np.pi) * (x + 0.044715 * x**3)))
 
     @staticmethod
     def silu(x: np.ndarray) -> np.ndarray:
@@ -148,9 +143,14 @@ class GoldenSFU:
         return x / (1.0 + np.exp(-x))
 
     @staticmethod
-    def rope(x_q: np.ndarray, x_k: np.ndarray, position: int,
-             num_heads: int = 32, head_dim: int = 128,
-             theta: float = 10000.0) -> Tuple[np.ndarray, np.ndarray]:
+    def rope(
+        x_q: np.ndarray,
+        x_k: np.ndarray,
+        position: int,
+        num_heads: int = 32,
+        head_dim: int = 128,
+        theta: float = 10000.0,
+    ) -> tuple[np.ndarray, np.ndarray]:
         """RoPE: Rotary Position Embedding per head.
 
         Hardware uses 12-stage CORDIC rotation.
@@ -167,10 +167,10 @@ class GoldenSFU:
             x_rot = np.zeros_like(x_reshaped)
             for h in range(n_heads):
                 for i in range(0, head_dim, 2):
-                    x0, x1 = x_reshaped[h, i], x_reshaped[h, i+1]
-                    c, s = cos[i//2], sin[i//2]
+                    x0, x1 = x_reshaped[h, i], x_reshaped[h, i + 1]
+                    c, s = cos[i // 2], sin[i // 2]
                     x_rot[h, i] = x0 * c - x1 * s
-                    x_rot[h, i+1] = x1 * c + x0 * s
+                    x_rot[h, i + 1] = x1 * c + x0 * s
             return x_rot.reshape(-1)
 
         return rotate(x_q, num_heads), rotate(x_k, 2)  # GQA: 2 KV heads
@@ -182,8 +182,14 @@ class GoldenModel:
     Runs a single transformer layer end-to-end with bit-accurate computation.
     """
 
-    def __init__(self, hidden_size: int = 2560, intermediate_size: int = 9728,
-                 num_heads: int = 32, num_kv_heads: int = 2, head_dim: int = 128):
+    def __init__(
+        self,
+        hidden_size: int = 2560,
+        intermediate_size: int = 9728,
+        num_heads: int = 32,
+        num_kv_heads: int = 2,
+        head_dim: int = 128,
+    ):
         self.hidden = hidden_size
         self.intermediate = intermediate_size
         self.num_heads = num_heads
@@ -192,9 +198,9 @@ class GoldenModel:
         self.mxu = GoldenMXU()
         self.sfu = GoldenSFU()
 
-    def run_layer(self, layer: int, hidden_states: np.ndarray,
-                  weights: Dict[str, np.ndarray],
-                  position: int = 0) -> LayerOutput:
+    def run_layer(
+        self, layer: int, hidden_states: np.ndarray, weights: dict[str, np.ndarray], position: int = 0
+    ) -> LayerOutput:
         """Run one transformer layer with functional computation.
 
         Args:
@@ -209,31 +215,32 @@ class GoldenModel:
         B, H = x.shape  # (1, 2560)
 
         # Self-Attention
-        Q = self.mxu.matmul(x, weights.get("q_proj", np.zeros(1)),
-                            B, H, self.num_heads * self.head_dim)
-        K = self.mxu.matmul(x, weights.get("k_proj", np.zeros(1)),
-                            B, H, self.num_kv_heads * self.head_dim)
-        V = self.mxu.matmul(x, weights.get("v_proj", np.zeros(1)),
-                            B, H, self.num_kv_heads * self.head_dim)
+        Q = self.mxu.matmul(x, weights.get("q_proj", np.zeros(1)), B, H, self.num_heads * self.head_dim)
+        K = self.mxu.matmul(x, weights.get("k_proj", np.zeros(1)), B, H, self.num_kv_heads * self.head_dim)
+        V = self.mxu.matmul(x, weights.get("v_proj", np.zeros(1)), B, H, self.num_kv_heads * self.head_dim)
 
         # RoPE
         Q_rope, K_rope = self.sfu.rope(
-            Q.flatten(), K.flatten(), position,
-            num_heads=self.num_heads, head_dim=self.head_dim,
+            Q.flatten(),
+            K.flatten(),
+            position,
+            num_heads=self.num_heads,
+            head_dim=self.head_dim,
         )
 
         # Attention: simplified — QK^T × V (decode: 1 token)
         # Q: (1, 4096), K: (1, 256) — GQA expand needed
         # Simplified: just compute softmax(QK^T) @ V
-        attn_scores = np.dot(Q_rope.reshape(1, -1),
-                              K_rope.reshape(-1, 1)) / math.sqrt(self.head_dim)
+        attn_scores = np.dot(Q_rope.reshape(1, -1), K_rope.reshape(-1, 1)) / math.sqrt(self.head_dim)
         attn_probs = self.sfu.softmax(attn_scores.flatten())
 
         # Output projection
         O = self.mxu.matmul(
             (attn_probs.reshape(1, -1) @ V.reshape(-1, self.num_kv_heads * self.head_dim)).reshape(1, -1),
             weights.get("o_proj", np.zeros(1)),
-            1, self.num_kv_heads * self.head_dim, H,
+            1,
+            self.num_kv_heads * self.head_dim,
+            H,
         )
 
         # Residual + LayerNorm
@@ -241,16 +248,13 @@ class GoldenModel:
         x = self.sfu.layernorm(x.flatten()).reshape(1, -1)
 
         # FFN
-        gate = self.mxu.matmul(x, weights.get("gate_proj", np.zeros(1)),
-                               1, H, self.intermediate)
+        gate = self.mxu.matmul(x, weights.get("gate_proj", np.zeros(1)), 1, H, self.intermediate)
         gate = self.sfu.silu(gate.flatten()).reshape(1, -1)
 
-        up = self.mxu.matmul(x, weights.get("up_proj", np.zeros(1)),
-                             1, H, self.intermediate)
+        up = self.mxu.matmul(x, weights.get("up_proj", np.zeros(1)), 1, H, self.intermediate)
         ffn_out = gate * up
 
-        down = self.mxu.matmul(ffn_out, weights.get("down_proj", np.zeros(1)),
-                               1, self.intermediate, H)
+        down = self.mxu.matmul(ffn_out, weights.get("down_proj", np.zeros(1)), 1, self.intermediate, H)
 
         # Residual + LayerNorm
         x = x + down
@@ -262,15 +266,14 @@ class GoldenModel:
             shape=x.shape,
         )
 
-    def run_smoke_test(self) -> List[LayerOutput]:
+    def run_smoke_test(self) -> list[LayerOutput]:
         """Quick smoke test: run 2 layers with random weights."""
         outputs = []
         x = np.random.randn(1, self.hidden).astype(np.float32) * 0.02
         for layer in range(2):
             weights = {
                 k: np.random.randint(0, 16, size=(1024,), dtype=np.uint8)
-                for k in ["q_proj", "k_proj", "v_proj", "o_proj",
-                          "gate_proj", "up_proj", "down_proj"]
+                for k in ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
             }
             out = self.run_layer(layer, x, weights)
             outputs.append(out)

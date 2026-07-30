@@ -61,9 +61,10 @@ def dequantize_int4_per_channel(packed: np.ndarray, scales: np.ndarray, K: int, 
     flat_unsigned[0::2] = packed & 0x0F
     flat_unsigned[1::2] = (packed >> 4) & 0x0F
     # Sign-extend
-    flat_signed = np.where(flat_unsigned > 7, flat_unsigned.astype(np.int16) - 16,
-                           flat_unsigned.astype(np.int16)).astype(np.int8)
-    flat_signed = flat_signed[:K * N]
+    flat_signed = np.where(
+        flat_unsigned > 7, flat_unsigned.astype(np.int16) - 16, flat_unsigned.astype(np.int16)
+    ).astype(np.int8)
+    flat_signed = flat_signed[: K * N]
 
     quantized = flat_signed.reshape(K, N)
     dequant = (quantized.astype(np.float32) * scales[np.newaxis, :]).astype(np.float32)
@@ -74,8 +75,8 @@ def dequantize_int4_per_channel(packed: np.ndarray, scales: np.ndarray, K: int, 
 # Per-block INT4 quantization (group_size along K dimension)
 # ══════════════════════════════════════════════════════════════════════
 
-def quantize_int4_per_block(W: np.ndarray, group_size: int = 128
-                            ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+
+def quantize_int4_per_block(W: np.ndarray, group_size: int = 128) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Quantize float32 weight matrix to INT4 per-block.
 
     Weights are divided into blocks of `group_size` along the K dimension.
@@ -130,9 +131,6 @@ def quantize_int4_per_block(W: np.ndarray, group_size: int = 128
     for b in range(num_blocks):
         k_start = b * group_size
         k_end = min(k_start + group_size, K)
-        dequant[k_start:k_end, :] = (
-            quantized[k_start:k_end, :].astype(np.float32)
-            * scales[b, np.newaxis, :]
-        )
+        dequant[k_start:k_end, :] = quantized[k_start:k_end, :].astype(np.float32) * scales[b, np.newaxis, :]
 
     return packed, scales, dequant

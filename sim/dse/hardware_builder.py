@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import copy
-from typing import Any, Dict
+from typing import Any
 
 _MEMORY_TYPE_LABEL = {
     "lpddr5": "LPDDR5-6400",
@@ -22,7 +22,7 @@ _MEMORY_EFFICIENCY = {
 }
 
 
-def build_hardware_config(base_config: Dict[str, Any], combo: Dict[str, Any]) -> Dict[str, Any]:
+def build_hardware_config(base_config: dict[str, Any], combo: dict[str, Any]) -> dict[str, Any]:
     """Merge axis values into the base hardware config."""
     cfg = copy.deepcopy(base_config)
     mem_type = combo["memory_type"]
@@ -34,9 +34,7 @@ def build_hardware_config(base_config: Dict[str, Any], combo: Dict[str, Any]) ->
     mac["frequency_mhz"] = combo["frequency_mhz"]
     mac["weight_precision_bits"] = combo["weight_precision_bits"]
     mac["activation_precision_bits"] = combo["activation_precision_bits"]
-    mac["dataflow"] = (
-        "output_stationary" if combo["engine"] == "os_systolic" else "weight_stationary"
-    )
+    mac["dataflow"] = "output_stationary" if combo["engine"] == "os_systolic" else "weight_stationary"
     mac["double_buffer"] = True
     mac["ops_per_mac"] = 2
 

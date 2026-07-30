@@ -1,11 +1,9 @@
 """Tests for reproducible scenario-driven DSE and replay bundles."""
 
-import shutil
-import tempfile
 from pathlib import Path
 
 import pytest
-
+from contracts.errors import ConfigError
 from contracts.identity import canonical_json_bytes
 from contracts.result import DesignSpaceResultV2
 from dse.runner import DseRunConfig, ScenarioDseRunner
@@ -154,7 +152,7 @@ def test_replay_bundle_refuses_to_overwrite_existing_directory(tmp_path: Path):
     axes = _tiny_axes_config()
     design_space = DesignSpace(scenario, axes_config=axes, mode="full")
     generation_result = design_space.generate_with_exclusions()
-    with pytest.raises(Exception):
+    with pytest.raises(ConfigError):
         write_replay_bundle(
             bundle_path,
             result_set=_result,

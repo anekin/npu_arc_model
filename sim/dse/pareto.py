@@ -19,12 +19,13 @@ Tie-breaking is deterministic by ``design_point_id``.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any
 
-from contracts.result import DesignPointResult, EngineMetrics, RunStatus, RunTrustLevel
 from contracts.errors import ConfigError
+from contracts.result import DesignPointResult, EngineMetrics, RunStatus, RunTrustLevel
 from scenarios.schema import Scenario
 
 
@@ -71,20 +72,20 @@ class ParetoPoint:
     """A design-point result decorated with gate and objective information."""
 
     result: DesignPointResult
-    gate_results: Tuple[GateResult, ...] = field(default_factory=tuple)
-    objective_values: Dict[str, float] = field(default_factory=dict)
+    gate_results: tuple[GateResult, ...] = field(default_factory=tuple)
+    objective_values: dict[str, float] = field(default_factory=dict)
 
     @property
     def passed_all_gates(self) -> bool:
         return all(g.passed for g in self.gate_results)
 
     @property
-    def gate_failure_reasons(self) -> List[str]:
+    def gate_failure_reasons(self) -> list[str]:
         return [f"{g.code.value}: {g.reason}" for g in self.gate_results if not g.passed and g.reason]
 
 
 # Default objective set used when a scenario does not declare overrides.
-DEFAULT_OBJECTIVES: Tuple[Objective, ...] = (
+DEFAULT_OBJECTIVES: tuple[Objective, ...] = (
     Objective("completed_throughput_hz", "completed_throughput_hz", ObjectiveDirection.MAXIMIZE),
     Objective("latency_p99_ms", "p99_latency_s", ObjectiveDirection.MINIMIZE),
     Objective("deadline_miss_count", "deadline_miss_count", ObjectiveDirection.MINIMIZE),
@@ -94,7 +95,7 @@ DEFAULT_OBJECTIVES: Tuple[Objective, ...] = (
 )
 
 
-def _metric_value(metrics: Optional[EngineMetrics], field: str) -> Optional[float]:
+def _metric_value(metrics: EngineMetrics | None, field: str) -> float | None:
     """Return a numeric metric value or None if missing."""
     if metrics is None:
         return None
@@ -113,7 +114,7 @@ def _metric_value(metrics: Optional[EngineMetrics], field: str) -> Optional[floa
     return None
 
 
-def objectives_from_scenario(scenario: Scenario) -> Tuple[Objective, ...]:
+def objectives_from_scenario(scenario: Scenario) -> tuple[Objective, ...]:
     """Return scenario-declared objectives, or the default set.
 
     Scenario metadata may contain an ``objectives`` list:
@@ -127,10 +128,12 @@ def objectives_from_scenario(scenario: Scenario) -> Tuple[Objective, ...]:
     raw = scenario.metadata.get("objectives") if scenario.metadata else None
     if not raw:
         return DEFAULT_OBJECTIVES
-    objectives: List[Objective] = []
+    objectives: list[Objective] = []
     for item in raw:
         if not isinstance(item, dict):
-            raise ConfigError(f"objective entry must be a dict, got {type(item).__name__}", field_path="metadata.objectives")
+            raise ConfigError(
+                f"objective entry must be a dict, got {type(item).__name__}", field_path="metadata.objectives"
+            )
         name = item.get("name") or item.get("metric_field")
         metric_field = item.get("metric_field", name)
         direction = ObjectiveDirection(item.get("direction", "maximize"))
@@ -142,7 +145,7 @@ def objectives_from_scenario(scenario: Scenario) -> Tuple[Objective, ...]:
     return tuple(objectives)
 
 
-def _scenario_deadline_ms(scenario: Scenario) -> Optional[float]:
+def _scenario_deadline_ms(scenario: Scenario) -> float | None:
     """Extract a representative deadline from the scenario (ms)."""
     if not scenario.classes:
         return None
@@ -152,7 +155,7 @@ def _scenario_deadline_ms(scenario: Scenario) -> Optional[float]:
     return None
 
 
-def _scenario_thermal_limit_w(scenario: Scenario) -> Optional[float]:
+def _scenario_thermal_limit_w(scenario: Scenario) -> float | None:
     """Extract thermal power limit from scenario metadata (W)."""
     limit = scenario.metadata.get("thermal_limit_w") if scenario.metadata else None
     if limit is None:
@@ -167,10 +170,10 @@ class MultiObjectivePareto:
 
     def __init__(
         self,
-        objectives: Optional[Sequence[Objective]] = None,
+        objectives: Sequence[Objective] | None = None,
         *,
-        deadline_ms: Optional[float] = None,
-        thermal_limit_w: Optional[float] = None,
+        deadline_ms: float | None = None,
+        thermal_limit_w: float | None = None,
         quality_gate_required: bool = False,
     ) -> None:
         self.objectives = tuple(objectives) if objectives else DEFAULT_OBJECTIVES
@@ -179,7 +182,7 @@ class MultiObjectivePareto:
         self.quality_gate_required = quality_gate_required
 
     @classmethod
-    def from_scenario(cls, scenario: Scenario) -> "MultiObjectivePareto":
+    def from_scenario(cls, scenario: Scenario) -> MultiObjectivePareto:
         """Build a Pareto filter from scenario metadata."""
         return cls(
             objectives=objectives_from_scenario(scenario),
@@ -188,23 +191,27 @@ class MultiObjectivePareto:
             quality_gate_required=bool(scenario.metadata.get("quality_gate_required")) if scenario.metadata else False,
         )
 
-    def evaluate_gates(self, result: DesignPointResult) -> Tuple[GateResult, ...]:
+    def evaluate_gates(self, result: DesignPointResult) -> tuple[GateResult, ...]:
         """Apply all hard gates to a single design-point result."""
-        gates: List[GateResult] = []
+        gates: list[GateResult] = []
         metrics = result.metrics
 
-        gates.append(GateResult(
-            code=HardGateCode.COMPLETE,
-            passed=result.status == RunStatus.complete,
-            reason="" if result.status == RunStatus.complete else f"status={result.status.value}",
-        ))
+        gates.append(
+            GateResult(
+                code=HardGateCode.COMPLETE,
+                passed=result.status == RunStatus.complete,
+                reason="" if result.status == RunStatus.complete else f"status={result.status.value}",
+            )
+        )
 
         engine = (result.engine_type or "").lower()
-        gates.append(GateResult(
-            code=HardGateCode.NO_CPU_FALLBACK,
-            passed=engine != "cpu",
-            reason="" if engine != "cpu" else "engine_type=cpu",
-        ))
+        gates.append(
+            GateResult(
+                code=HardGateCode.NO_CPU_FALLBACK,
+                passed=engine != "cpu",
+                reason="" if engine != "cpu" else "engine_type=cpu",
+            )
+        )
 
         fits = True
         reason = ""
@@ -213,18 +220,22 @@ class MultiObjectivePareto:
             if footprint is not None and not (0 <= footprint < float("inf")):
                 fits = False
                 reason = f"invalid footprint={footprint}"
-        gates.append(GateResult(
-            code=HardGateCode.CAPACITY_FIT,
-            passed=fits,
-            reason=reason,
-        ))
+        gates.append(
+            GateResult(
+                code=HardGateCode.CAPACITY_FIT,
+                passed=fits,
+                reason=reason,
+            )
+        )
 
         quality_ok = not self.quality_gate_required
-        gates.append(GateResult(
-            code=HardGateCode.QUALITY_GATE,
-            passed=quality_ok,
-            reason="" if quality_ok else "quality_gate_required=true not resolved",
-        ))
+        gates.append(
+            GateResult(
+                code=HardGateCode.QUALITY_GATE,
+                passed=quality_ok,
+                reason="" if quality_ok else "quality_gate_required=true not resolved",
+            )
+        )
 
         power_ok = True
         power_reason = ""
@@ -233,11 +244,13 @@ class MultiObjectivePareto:
             if power is not None and power > self.thermal_limit_w:
                 power_ok = False
                 power_reason = f"power={power:.2f}W > thermal_limit={self.thermal_limit_w}W"
-        gates.append(GateResult(
-            code=HardGateCode.POWER_THERMAL,
-            passed=power_ok,
-            reason=power_reason,
-        ))
+        gates.append(
+            GateResult(
+                code=HardGateCode.POWER_THERMAL,
+                passed=power_ok,
+                reason=power_reason,
+            )
+        )
 
         terminal_ok = True
         terminal_reason = ""
@@ -248,24 +261,28 @@ class MultiObjectivePareto:
             if metrics.drop_count is not None and metrics.drop_count > 0:
                 terminal_ok = False
                 terminal_reason = (terminal_reason + f" drop_count={metrics.drop_count}").strip()
-        gates.append(GateResult(
-            code=HardGateCode.TERMINAL_COMPLETION,
-            passed=terminal_ok,
-            reason=terminal_reason,
-        ))
+        gates.append(
+            GateResult(
+                code=HardGateCode.TERMINAL_COMPLETION,
+                passed=terminal_ok,
+                reason=terminal_reason,
+            )
+        )
 
         auth_ok = result.trust_level == RunTrustLevel.authoritative
-        gates.append(GateResult(
-            code=HardGateCode.AUTHORITATIVE,
-            passed=auth_ok,
-            reason="" if auth_ok else f"trust_level={result.trust_level.value}",
-        ))
+        gates.append(
+            GateResult(
+                code=HardGateCode.AUTHORITATIVE,
+                passed=auth_ok,
+                reason="" if auth_ok else f"trust_level={result.trust_level.value}",
+            )
+        )
 
         return tuple(gates)
 
-    def _objective_values(self, result: DesignPointResult) -> Dict[str, float]:
+    def _objective_values(self, result: DesignPointResult) -> dict[str, float]:
         """Extract objective values from result metrics, substituting infinities for missing maximize/minimize."""
-        values: Dict[str, float] = {}
+        values: dict[str, float] = {}
         for obj in self.objectives:
             raw = _metric_value(result.metrics, obj.metric_field)
             if raw is None:
@@ -292,9 +309,9 @@ class MultiObjectivePareto:
                     strictly_better = True
         return strictly_better
 
-    def compute_frontier(self, results: Sequence[DesignPointResult]) -> List[ParetoPoint]:
+    def compute_frontier(self, results: Sequence[DesignPointResult]) -> list[ParetoPoint]:
         """Return Pareto-optimal points that pass all hard gates, sorted by design_point_id."""
-        decorated: List[ParetoPoint] = []
+        decorated: list[ParetoPoint] = []
         for result in results:
             gates = self.evaluate_gates(result)
             point = ParetoPoint(
@@ -306,7 +323,7 @@ class MultiObjectivePareto:
                 decorated.append(point)
 
         # Pareto dominance filter
-        frontier: List[ParetoPoint] = []
+        frontier: list[ParetoPoint] = []
         for candidate in decorated:
             dominated = False
             for other in decorated:
@@ -322,9 +339,9 @@ class MultiObjectivePareto:
         frontier.sort(key=lambda p: p.result.design_point_id)
         return frontier
 
-    def gate_summary(self, results: Sequence[DesignPointResult]) -> Dict[str, Any]:
+    def gate_summary(self, results: Sequence[DesignPointResult]) -> dict[str, Any]:
         """Return counts of gate failures across all results."""
-        summary: Dict[str, Dict[str, int]] = {}
+        summary: dict[str, dict[str, int]] = {}
         for result in results:
             for gate in self.evaluate_gates(result):
                 entry = summary.setdefault(gate.code.value, {"passed": 0, "failed": 0})

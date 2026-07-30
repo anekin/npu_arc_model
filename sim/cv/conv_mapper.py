@@ -15,15 +15,16 @@ import math
 # ---------------------------------------------------------------------------
 # Constants (aligned with sim/config/npu_config.yaml)
 # ---------------------------------------------------------------------------
-BW_BYTES_PER_CYCLE = 51.2   # bytes/cycle @ 1 GHz
-DRAM_EFFICIENCY = 0.85       # effective BW fraction
+BW_BYTES_PER_CYCLE = 51.2  # bytes/cycle @ 1 GHz
+DRAM_EFFICIENCY = 0.85  # effective BW fraction
 EFF_BW = BW_BYTES_PER_CYCLE * DRAM_EFFICIENCY  # ~43.52 bytes/cycle
-BYTES_PER_ELEMENT = 4        # FP32 / int32 element size
+BYTES_PER_ELEMENT = 4  # FP32 / int32 element size
 
 
 # ---------------------------------------------------------------------------
 # Helper
 # ---------------------------------------------------------------------------
+
 
 def _compute_output_size(H: int, K: int, stride: int, pad: int) -> int:
     """Compute spatial output dimension after convolution."""
@@ -33,6 +34,7 @@ def _compute_output_size(H: int, K: int, stride: int, pad: int) -> int:
 # ---------------------------------------------------------------------------
 # Primary mapping
 # ---------------------------------------------------------------------------
+
 
 def map_conv_to_gemm(
     C_in: int,
@@ -108,6 +110,7 @@ def map_conv_to_gemm(
 # Depthwise channel-tiling analysis
 # ---------------------------------------------------------------------------
 
+
 def map_depthwise_with_tiling(
     C_in: int,
     H: int,
@@ -137,18 +140,24 @@ def map_depthwise_with_tiling(
         }
     """
     base = map_conv_to_gemm(C_in, C_in, H, W, K, stride=1, pad=0, groups=C_in)
-    M_total = base["M"]          # H_out * W_out * C_in
-    K_dim = base["K"]            # K * K
+    M_total = base["M"]  # H_out * W_out * C_in
+    K_dim = base["K"]  # K * K
     H_out = base["H_out"]
     W_out = base["W_out"]
 
-    array_H = array_W   # square systolic array (128 x 128)
+    array_H = array_W  # square systolic array (128 x 128)
 
     results = {}
 
     for N_tile in (1, 4, 8, 16):
         # --- MXU utilisation ----------------------------------------------
-        mxu_util_pct = min(N_tile / array_W, 1.0) * 100.0
+        raw_util = N_tile / array_W
+        if raw_util > 1.0:
+            raise ValueError(
+                f"depthwise tiling N_tile={N_tile} exceeds array width {array_W}; "
+                f"utilization would be {raw_util * 100.0:.1f}% > 100%"
+            )
+        mxu_util_pct = raw_util * 100.0
 
         # --- Compute cycles -----------------------------------------------
         # Total MAC operations are spread across the array.  Estimate cycles
@@ -157,9 +166,7 @@ def map_depthwise_with_tiling(
         #   ceil(K / array_H)              -- weight-tile trips
         #   ceil(N_tile / array_W)         -- output-channel tile trips
         compute_cycles = (
-            math.ceil(M_total / (array_H * array_W))
-            * math.ceil(K_dim / array_H)
-            * math.ceil(N_tile / array_W)
+            math.ceil(M_total / (array_H * array_W)) * math.ceil(K_dim / array_H) * math.ceil(N_tile / array_W)
         )
 
         # --- DMA cycles ---------------------------------------------------

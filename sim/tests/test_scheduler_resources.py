@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import pytest
-
+from contracts.errors import ConfigError
 from scheduler.resources import (
     BoundedResource,
     ByteServer,
@@ -77,7 +77,7 @@ class TestByteServer:
             ByteServer(name="mem", bandwidth_bytes_per_ps=0.0)
 
     def test_unknown_qos_mode_rejected(self) -> None:
-        with pytest.raises(Exception):
+        with pytest.raises(ConfigError):
             ByteServer(name="mem", bandwidth_bytes_per_ps=1.0, qos_mode="magic")
 
     def test_single_transfer(self) -> None:
@@ -164,9 +164,7 @@ class TestByteServerOracle:
         assert server.completion_time_ps("a") == 20_000_000
 
     def test_strict_priority_high_low(self) -> None:
-        expected = strict_priority_completion_times(
-            [("low", 100, 0), ("high", 100, 1)], 10.0
-        )
+        expected = strict_priority_completion_times([("low", 100, 0), ("high", 100, 1)], 10.0)
         server = ByteServer(
             name="mem",
             bandwidth_bytes_per_ps=self._bw(10.0),

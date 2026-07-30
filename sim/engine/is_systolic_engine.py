@@ -8,8 +8,8 @@ Input-stationary: 激活常驻 PE，权重流式穿过。
 """
 
 import math
-from typing import Any, Dict
-from engine.mac_engine import MACEngine, EngineResult
+
+from engine.mac_engine import EngineResult, MACEngine
 
 
 class InputStationaryEngine(MACEngine):
@@ -24,9 +24,7 @@ class InputStationaryEngine(MACEngine):
     def engine_type(self) -> str:
         return "input_stationary"
 
-
-    def estimate(self, M: int, K: int, N: int,
-                 weight_preloaded: bool = False) -> EngineResult:
+    def estimate(self, M: int, K: int, N: int, weight_preloaded: bool = False) -> EngineResult:
         M_tiles = math.ceil(M / self.H)
         N_tiles = math.ceil(N / self.W)
         total_tiles = M_tiles * N_tiles
@@ -41,17 +39,14 @@ class InputStationaryEngine(MACEngine):
         bottleneck = max(per_tile_compute, per_tile_dma)
         first_cold = per_tile_dma + per_tile_compute
 
-        if total_tiles > 1:
-            total = int(first_cold + (total_tiles - 1) * bottleneck)
-        else:
-            total = int(first_cold)
+        total = int(first_cold + (total_tiles - 1) * bottleneck) if total_tiles > 1 else int(first_cold)
 
         total_macs = M * K * N
         total_weight_bytes = total_tiles * (tile_weight_bytes + full_act_bytes)
         ideal = math.ceil(total_macs / self.peak_macs_per_cycle)
         util = ideal / total if total > 0 else 0.0
 
-        raw_dma = (K * N * self.w_bits // 8 + M * K * self.a_bits // 8)
+        raw_dma = K * N * self.w_bits // 8 + M * K * self.a_bits // 8
         raw_dma_cycles = math.ceil(raw_dma / self.eff_bw) if self.eff_bw > 0 else 0
 
         return EngineResult(
@@ -67,7 +62,8 @@ class InputStationaryEngine(MACEngine):
             weight_bytes=total_weight_bytes,
             bottleneck="compute" if per_tile_compute > per_tile_dma else "dma",
             details={
-                "M_tiles": M_tiles, "N_tiles": N_tiles,
+                "M_tiles": M_tiles,
+                "N_tiles": N_tiles,
                 "K_tiles": K_tiles,
                 "per_tile_compute": per_tile_compute,
                 "per_tile_dma": round(per_tile_dma, 1),
@@ -90,10 +86,7 @@ class InputStationaryEngine(MACEngine):
         bottleneck = max(per_tile_compute_pair, per_tile_dma)
         first_cold = per_tile_dma + per_tile_compute_pair
 
-        if total_tiles > 1:
-            total = int(first_cold + (total_tiles - 1) * bottleneck)
-        else:
-            total = int(first_cold)
+        total = int(first_cold + (total_tiles - 1) * bottleneck) if total_tiles > 1 else int(first_cold)
 
         total_macs = M * K * N * 2
         total_weight_bytes = total_tiles * (2 * tile_weight_bytes + full_act_bytes)
@@ -117,7 +110,8 @@ class InputStationaryEngine(MACEngine):
             weight_bytes=total_weight_bytes,
             bottleneck="compute" if per_tile_compute_pair > per_tile_dma else "dma",
             details={
-                "M_tiles": M_tiles, "N_tiles": N_tiles,
+                "M_tiles": M_tiles,
+                "N_tiles": N_tiles,
                 "K_tiles": K_tiles,
                 "per_tile_compute": per_tile_compute_pair,
                 "per_tile_dma": round(per_tile_dma, 1),

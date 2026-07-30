@@ -10,9 +10,7 @@ import json
 from copy import deepcopy
 
 import pytest
-
 from contracts.identity import canonical_json_bytes, digest_sha256, normalise_for_hashing
-
 
 # ── Base config fixture ───────────────────────────────────────────────────────
 

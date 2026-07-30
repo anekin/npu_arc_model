@@ -18,28 +18,25 @@ Rules enforced at construction:
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any, Annotated, Dict, List, Optional, Set, Tuple, Union
+from typing import Annotated, Any
 
+from contracts.errors import ConfigError
 from pydantic import (
     AfterValidator,
     BaseModel,
     ConfigDict,
     Field,
-    ValidationInfo,
     field_validator,
     model_validator,
 )
 
-from contracts.errors import ConfigError, SchemaVersionError
-
-
 # ── Shape element: int | str ─────────────────────────────────────────────────
 
-ShapeElement = Union[int, str]
+ShapeElement = int | str
 """A single dimension value: either a positive integer (fixed shape) or a
 named symbolic dimension (e.g. ``"batch"``, ``"seq_len"``)."""
 
-Shape = List[ShapeElement]
+Shape = list[ShapeElement]
 """A list of shape elements representing a full tensor shape tuple."""
 
 
@@ -80,8 +77,10 @@ class WorkloadProvenance(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    source: str = Field(..., description="Human-readable source description (e.g. 'onnx:vit-b16', 'hand-crafted:qwen2.5-3b')")
-    reference_uri: Optional[str] = Field(default=None, description="Optional URI/DOI/path to source specification")
+    source: str = Field(
+        ..., description="Human-readable source description (e.g. 'onnx:vit-b16', 'hand-crafted:qwen2.5-3b')"
+    )
+    reference_uri: str | None = Field(default=None, description="Optional URI/DOI/path to source specification")
 
 
 # ── Symbolic dimension ───────────────────────────────────────────────────────
@@ -105,6 +104,7 @@ class SymbolicDim(BaseModel):
 
 class Layout(str, Enum):
     """Tensor data layout."""
+
     ROW_MAJOR = "row_major"
     COL_MAJOR = "col_major"
     NHWC = "nhwc"
@@ -114,6 +114,7 @@ class Layout(str, Enum):
 
 class Precision(str, Enum):
     """Numeric precision."""
+
     FP32 = "fp32"
     FP16 = "fp16"
     BF16 = "bf16"
@@ -138,11 +139,13 @@ class TensorSpec(BaseModel):
     shape: ValidatedShape = Field(..., description="Tensor shape: fixed int dims or named symbolic dims")
     precision: Precision = Field(default=Precision.FP16, description="Element precision")
     layout: Layout = Field(default=Layout.ROW_MAJOR, description="Data layout in memory")
-    bytes: int = Field(default=0, description="Total tensor size in bytes (can be 0 when not yet computed from shape/precision)")
+    bytes: int = Field(
+        default=0, description="Total tensor size in bytes (can be 0 when not yet computed from shape/precision)"
+    )
 
     # Lifetime
     producer_node: str = Field(default="", description="Node that produces this tensor; 'input' for graph inputs")
-    consumed_by: List[str] = Field(default_factory=list, description="Node IDs that consume this tensor")
+    consumed_by: list[str] = Field(default_factory=list, description="Node IDs that consume this tensor")
 
     @field_validator("shape", mode="before")
     @classmethod
@@ -157,9 +160,11 @@ class TensorSpec(BaseModel):
         return v
 
     # Alias support
-    alias_of: Optional[str] = Field(default=None, description="If this tensor is an alias of another tensor, reference its tensor_id")
+    alias_of: str | None = Field(
+        default=None, description="If this tensor is an alias of another tensor, reference its tensor_id"
+    )
 
-    provenance: Optional[WorkloadProvenance] = None
+    provenance: WorkloadProvenance | None = None
 
     @field_validator("tensor_id")
     @classmethod
@@ -192,20 +197,24 @@ class NodeSpec(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     node_id: str = Field(..., description="Stable, unique node identifier (e.g. 'n_7b2c')")
-    op_type: str = Field(..., description="Operator type key (e.g. 'gemm', 'layernorm', 'softmax', 'reshape', 'reduce_mean')")
+    op_type: str = Field(
+        ..., description="Operator type key (e.g. 'gemm', 'layernorm', 'softmax', 'reshape', 'reduce_mean')"
+    )
     op_label: str = Field(default="", description="Human-readable label (e.g. 'Q_proj', 'FFN_gate')")
 
     # Data-flow edges as tensor IDs
-    inputs: List[str] = Field(default_factory=list, description="Input tensor IDs consumed by this node")
-    outputs: List[str] = Field(default_factory=list, description="Output tensor IDs produced by this node")
+    inputs: list[str] = Field(default_factory=list, description="Input tensor IDs consumed by this node")
+    outputs: list[str] = Field(default_factory=list, description="Output tensor IDs produced by this node")
 
     # Control dependencies as node IDs
-    dependencies: List[str] = Field(default_factory=list, description="Node IDs that must complete before this node starts")
+    dependencies: list[str] = Field(
+        default_factory=list, description="Node IDs that must complete before this node starts"
+    )
 
     # Attributes (op-type-specific)
-    attributes: Dict[str, Any] = Field(default_factory=dict, description="Op-type-specific key-value attributes")
+    attributes: dict[str, Any] = Field(default_factory=dict, description="Op-type-specific key-value attributes")
 
-    provenance: Optional[WorkloadProvenance] = None
+    provenance: WorkloadProvenance | None = None
 
     @field_validator("node_id")
     @classmethod
@@ -245,12 +254,14 @@ class WorkloadGraphV1(BaseModel):
     version: str = Field(default="1", description="Schema version — must be '1'")
     graph_name: str = Field(default="unnamed", description="Human-readable graph name")
 
-    nodes: List[NodeSpec] = Field(default_factory=list, description="Operation nodes in the graph")
-    tensors: List[TensorSpec] = Field(default_factory=list, description="Tensors flowing between nodes")
-    symbols: List[SymbolicDim] = Field(default_factory=list, description="Declared symbolic dimensions")
-    constraints: Dict[str, Any] = Field(default_factory=dict, description="Optional global constraints (e.g. memory budget, schedule hints)")
+    nodes: list[NodeSpec] = Field(default_factory=list, description="Operation nodes in the graph")
+    tensors: list[TensorSpec] = Field(default_factory=list, description="Tensors flowing between nodes")
+    symbols: list[SymbolicDim] = Field(default_factory=list, description="Declared symbolic dimensions")
+    constraints: dict[str, Any] = Field(
+        default_factory=dict, description="Optional global constraints (e.g. memory budget, schedule hints)"
+    )
 
-    provenance: Optional[WorkloadProvenance] = None
+    provenance: WorkloadProvenance | None = None
 
     @field_validator("version")
     @classmethod
@@ -260,7 +271,7 @@ class WorkloadGraphV1(BaseModel):
         return v
 
     @model_validator(mode="after")
-    def _validate_graph_integrity(self) -> "WorkloadGraphV1":
+    def _validate_graph_integrity(self) -> WorkloadGraphV1:
         """Run full DAG and referential integrity validation."""
         self._check_duplicate_ids()
         self._check_dag_cycles()
@@ -272,7 +283,7 @@ class WorkloadGraphV1(BaseModel):
 
     def _check_duplicate_ids(self) -> None:
         """Verify all node and tensor IDs are unique."""
-        node_ids: Set[str] = set()
+        node_ids: set[str] = set()
         for node in self.nodes:
             if node.node_id in node_ids:
                 raise ConfigError(
@@ -281,7 +292,7 @@ class WorkloadGraphV1(BaseModel):
                 )
             node_ids.add(node.node_id)
 
-        tensor_ids: Set[str] = set()
+        tensor_ids: set[str] = set()
         for tensor in self.tensors:
             if tensor.tensor_id in tensor_ids:
                 raise ConfigError(
@@ -297,12 +308,12 @@ class WorkloadGraphV1(BaseModel):
             return  # empty graph is a valid DAG
 
         # Build adjacency from explicit node dependencies
-        in_degree: Dict[str, int] = {nid: 0 for nid in node_ids}
-        adj: Dict[str, Set[str]] = {nid: set() for nid in node_ids}
+        in_degree: dict[str, int] = dict.fromkeys(node_ids, 0)
+        adj: dict[str, set[str]] = {nid: set() for nid in node_ids}
 
         # Data-flow dependencies: if node A produces tensor T and node B consumes T,
         # then A → B
-        producer_map: Dict[str, str] = {}  # tensor_id → node_id
+        producer_map: dict[str, str] = {}  # tensor_id → node_id
         for tensor in self.tensors:
             if tensor.producer_node and tensor.producer_node != "input":
                 producer_map[tensor.tensor_id] = tensor.producer_node
@@ -324,13 +335,12 @@ class WorkloadGraphV1(BaseModel):
         # Explicit node dependencies
         for node in self.nodes:
             for dep_id in node.dependencies:
-                if dep_id in node_ids and dep_id != node.node_id:
-                    if node.node_id not in adj[dep_id]:
-                        adj[dep_id].add(node.node_id)
-                        in_degree[node.node_id] += 1
+                if dep_id in node_ids and dep_id != node.node_id and node.node_id not in adj[dep_id]:
+                    adj[dep_id].add(node.node_id)
+                    in_degree[node.node_id] += 1
 
         # Kahn topological sort
-        queue: List[str] = [nid for nid, deg in in_degree.items() if deg == 0]
+        queue: list[str] = [nid for nid, deg in in_degree.items() if deg == 0]
         visited_count = 0
 
         while queue:
@@ -345,8 +355,7 @@ class WorkloadGraphV1(BaseModel):
             # Find the cycle participants
             cycle_nodes = [nid for nid, deg in in_degree.items() if deg > 0]
             raise ConfigError(
-                f"graph contains a cycle involving {len(cycle_nodes)} nodes "
-                f"(e.g. {sorted(cycle_nodes)[:5]!r})",
+                f"graph contains a cycle involving {len(cycle_nodes)} nodes (e.g. {sorted(cycle_nodes)[:5]!r})",
                 field_path="nodes",
             )
 
@@ -420,7 +429,7 @@ class WorkloadGraphV1(BaseModel):
                 return tensor
         raise KeyError(f"tensor not found: {tensor_id!r}")
 
-    def topological_order(self) -> List[str]:
+    def topological_order(self) -> list[str]:
         """Return node IDs in topological order.
 
         Returns an empty list for an empty graph. Raises ``ConfigError`` if a
@@ -432,10 +441,10 @@ class WorkloadGraphV1(BaseModel):
             return []
 
         # Build adjacency
-        in_degree: Dict[str, int] = {nid: 0 for nid in node_ids}
-        adj: Dict[str, Set[str]] = {nid: set() for nid in node_ids}
+        in_degree: dict[str, int] = dict.fromkeys(node_ids, 0)
+        adj: dict[str, set[str]] = {nid: set() for nid in node_ids}
 
-        producer_map: Dict[str, str] = {}
+        producer_map: dict[str, str] = {}
         for tensor in self.tensors:
             if tensor.producer_node and tensor.producer_node != "input":
                 producer_map[tensor.tensor_id] = tensor.producer_node
@@ -443,18 +452,21 @@ class WorkloadGraphV1(BaseModel):
         for node in self.nodes:
             for inp_id in node.inputs:
                 prod_node = producer_map.get(inp_id)
-                if prod_node and prod_node in node_ids and prod_node != node.node_id:
-                    if node.node_id not in adj[prod_node]:
-                        adj[prod_node].add(node.node_id)
-                        in_degree[node.node_id] += 1
+                if (
+                    prod_node
+                    and prod_node in node_ids
+                    and prod_node != node.node_id
+                    and node.node_id not in adj[prod_node]
+                ):
+                    adj[prod_node].add(node.node_id)
+                    in_degree[node.node_id] += 1
             for dep_id in node.dependencies:
-                if dep_id in node_ids and dep_id != node.node_id:
-                    if node.node_id not in adj[dep_id]:
-                        adj[dep_id].add(node.node_id)
-                        in_degree[node.node_id] += 1
+                if dep_id in node_ids and dep_id != node.node_id and node.node_id not in adj[dep_id]:
+                    adj[dep_id].add(node.node_id)
+                    in_degree[node.node_id] += 1
 
         queue = [nid for nid, deg in in_degree.items() if deg == 0]
-        order: List[str] = []
+        order: list[str] = []
         while queue:
             current = queue.pop(0)
             order.append(current)
@@ -476,14 +488,14 @@ class WorkloadGraphV1(BaseModel):
                     return True
         return False
 
-    def unbound_symbols(self, bindings: Optional[Dict[str, int]] = None) -> Set[str]:
+    def unbound_symbols(self, bindings: dict[str, int] | None = None) -> set[str]:
         """Return the set of symbolic dimension names referenced in shapes but not bound.
 
         Args:
             bindings: Current dimension bindings (symbol_name → concrete int).
                       If None, returns *all* symbolic names found.
         """
-        symbol_names: Set[str] = set()
+        symbol_names: set[str] = set()
         for tensor in self.tensors:
             for dim in tensor.shape:
                 if isinstance(dim, str):
@@ -494,12 +506,10 @@ class WorkloadGraphV1(BaseModel):
 
         return symbol_names - set(bindings.keys())
 
-    def node_ids(self) -> Set[str]:
+    def node_ids(self) -> set[str]:
         """Return the set of all node IDs."""
         return {n.node_id for n in self.nodes}
 
-    def tensor_ids(self) -> Set[str]:
+    def tensor_ids(self) -> set[str]:
         """Return the set of all tensor IDs."""
         return {t.tensor_id for t in self.tensors}
-
-

@@ -45,9 +45,7 @@ def _conv(
     groups: int = 1,
 ) -> dict[str, Any]:
     """Build a pointwise/standard convolution trace entry via map_conv_to_gemm."""
-    result = map_conv_to_gemm(
-        C_in, C_out, H, W, K, stride=stride, pad=pad, groups=groups
-    )
+    result = map_conv_to_gemm(C_in, C_out, H, W, K, stride=stride, pad=pad, groups=groups)
     trace_type = "pointwise_conv" if K == 1 and groups == 1 else "gemm"
     return {
         "type": trace_type,

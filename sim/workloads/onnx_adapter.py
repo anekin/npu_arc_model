@@ -17,11 +17,10 @@ estimation.
 
 from __future__ import annotations
 
+import contextlib
 from typing import Any
 
 import onnx
-from onnx import helper
-
 from contracts.errors import UnsupportedOperatorError
 from workloads.operators import DEFAULT_REGISTRY, OperatorRegistry
 from workloads.schema import (
@@ -33,7 +32,6 @@ from workloads.schema import (
     WorkloadGraphV1,
     WorkloadProvenance,
 )
-
 
 # ONNX op type -> workload op type key (must exist in the operator registry)
 ONNX_TO_WORKLOAD_OP: dict[str, str] = {
@@ -106,7 +104,7 @@ def _build_value_info_map(
     for v in graph.value_info:
         mapping[v.name] = _get_shape(v)
     for init in graph.initializer:
-        mapping[init.name] = list(int(x) for x in init.dims) if init.dims else None
+        mapping[init.name] = [int(x) for x in init.dims] if init.dims else None
     return mapping
 
 
@@ -204,14 +202,12 @@ def lower_onnx_model_to_graph(
     Raises:
         UnsupportedOperatorError: when an operator is unknown or unsupported.
     """
-    try:
+    with contextlib.suppress(Exception):
         model = onnx.shape_inference.infer_shapes(model)
-    except Exception:  # noqa: BLE001
-        pass  # Best-effort shape inference; we still have value_info/initializers.
 
     onnx_graph = model.graph
     shape_map = _build_value_info_map(onnx_graph)
-    opset = _onnx_opset_version(model)
+    _onnx_opset_version(model)
 
     provenance = WorkloadProvenance(
         source=f"onnx:{graph_name}",

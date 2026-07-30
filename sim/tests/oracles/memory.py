@@ -7,9 +7,9 @@ first-principles arithmetic.  It deliberately does NOT import the production
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
-from models.memory_hierarchy import MemoryHierarchy, MemoryTier
+from models.memory_hierarchy import MemoryHierarchy
 from workloads.schema import WorkloadGraphV1
 
 
@@ -32,10 +32,7 @@ def total_aligned_tensor_bytes(
     for tensor in graph.tensors:
         aligned = _align_up(tensor.bytes, alignment)
         # Heuristic weight classification matching the production planner.
-        is_weight = (
-            tensor.producer_node == "input"
-            or tensor.tensor_id.lower().startswith(("weight", "param"))
-        )
+        is_weight = tensor.producer_node == "input" or tensor.tensor_id.lower().startswith(("weight", "param"))
         factor = resident_models if is_weight else 1
         total += aligned * factor
     return total
@@ -45,7 +42,7 @@ def total_required_bytes(
     graph: WorkloadGraphV1,
     alignment: int,
     resident_models: int = 1,
-    queue_buffers: Dict[str, int] | None = None,
+    queue_buffers: dict[str, int] | None = None,
 ) -> int:
     """Total bytes required by tensors + queue buffers after alignment."""
     tensors_total = total_aligned_tensor_bytes(graph, alignment, resident_models)
@@ -55,12 +52,12 @@ def total_required_bytes(
     return tensors_total + queue_total
 
 
-def reserve_bytes_per_tier(hierarchy: MemoryHierarchy) -> Dict[str, int]:
+def reserve_bytes_per_tier(hierarchy: MemoryHierarchy) -> dict[str, int]:
     """Return reserved bytes for each tier."""
     return {tier.name: tier.reserve_bytes for tier in hierarchy.tiers}
 
 
-def usable_capacity_per_tier(hierarchy: MemoryHierarchy) -> Dict[str, int]:
+def usable_capacity_per_tier(hierarchy: MemoryHierarchy) -> dict[str, int]:
     """Return usable bytes (capacity - reserve) for each tier."""
     return {tier.name: tier.usable_bytes for tier in hierarchy.tiers}
 
@@ -72,8 +69,8 @@ def total_usable_bytes(hierarchy: MemoryHierarchy) -> int:
 
 def capacity_conservation_ok(
     hierarchy: MemoryHierarchy,
-    allocated_per_tier: Dict[str, int],
-) -> Tuple[bool, str]:
+    allocated_per_tier: dict[str, int],
+) -> tuple[bool, str]:
     """Return (ok, message) verifying allocated + reserved <= capacity.
 
     The oracle checks the physical invariant independently of how the
@@ -95,7 +92,7 @@ def expected_spill_bytes(
     hierarchy: MemoryHierarchy,
     *,
     resident_models: int = 1,
-    queue_buffers: Dict[str, int] | None = None,
+    queue_buffers: dict[str, int] | None = None,
 ) -> int:
     """Closed-form upper-bound spill bytes for an all-or-nothing weight policy.
 
@@ -117,7 +114,7 @@ def boundary_check(
     tensor_size_bytes: int,
     tier_capacity_bytes: int,
     alignment: int,
-) -> Tuple[str, int, int]:
+) -> tuple[str, int, int]:
     """Classify a single tensor against a single tier capacity boundary.
 
     Returns (expected_state, resident_bytes, spill_bytes).
@@ -133,15 +130,15 @@ def boundary_check(
 
 def verify_plan_conservation(
     hierarchy: MemoryHierarchy,
-    placements: List[Any],
-) -> Tuple[bool, str]:
+    placements: list[Any],
+) -> tuple[bool, str]:
     """Verify that a set of placements conserves bytes.
 
     ``placements`` must be objects with ``destination_tier``, ``full_bytes``,
     ``partial_bytes``, and ``spill_bytes`` attributes (e.g. production
     ``TensorPlacement``).
     """
-    allocated: Dict[str, int] = {tier.name: 0 for tier in hierarchy.tiers}
+    allocated: dict[str, int] = {tier.name: 0 for tier in hierarchy.tiers}
     for p in placements:
         allocated[p.destination_tier] += p.full_bytes + p.partial_bytes
     ok, msg = capacity_conservation_ok(hierarchy, allocated)
@@ -151,10 +148,8 @@ def verify_plan_conservation(
     # Byte-level conservation per placement.
     for p in placements:
         total = p.full_bytes + p.partial_bytes + p.spill_bytes
-        if hasattr(p, "effective_bytes"):
-            if total != p.effective_bytes:
-                return False, (
-                    f"placement {p.tensor_id!r} byte mismatch: "
-                    f"full+partial+spill={total} != effective={p.effective_bytes}"
-                )
+        if hasattr(p, "effective_bytes") and total != p.effective_bytes:
+            return False, (
+                f"placement {p.tensor_id!r} byte mismatch: full+partial+spill={total} != effective={p.effective_bytes}"
+            )
     return True, "byte conservation holds"

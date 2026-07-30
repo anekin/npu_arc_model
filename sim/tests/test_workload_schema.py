@@ -11,15 +11,12 @@ Covers:
 
 from __future__ import annotations
 
-import json
-
 import pytest
-
-from contracts.errors import ConfigError, SchemaVersionError
 
 # Pydantic model_validators wrap ValueError/ValueError into ValidationError,
 # so tests use ValueError (the common ancestor) or Exception for robustness.
 _WRAPPED_ERROR = Exception
+from contracts.errors import DimensionBindingError
 from workloads.dimensions import DimensionBindings
 from workloads.operators import DEFAULT_REGISTRY
 from workloads.schema import (
@@ -31,8 +28,7 @@ from workloads.schema import (
     WorkloadGraphV1,
     WorkloadProvenance,
 )
-from workloads.validate import validate_all, validate_dimensions, validate_operators
-
+from workloads.validate import validate_all, validate_dimensions
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -47,7 +43,9 @@ def _make_tensor(tid: str, shape: list, producer: str = "", consumers: list | No
     )
 
 
-def _make_node(nid: str, op: str, inputs: list | None = None, outputs: list | None = None, deps: list | None = None) -> NodeSpec:
+def _make_node(
+    nid: str, op: str, inputs: list | None = None, outputs: list | None = None, deps: list | None = None
+) -> NodeSpec:
     return NodeSpec(
         node_id=nid,
         op_type=op,
@@ -405,12 +403,14 @@ class TestVersionFail:
         """Unknown field in the root model must be rejected."""
         t_in = _make_tensor("t_in", [1, 64], producer="input")
         with pytest.raises(ValueError):
-            WorkloadGraphV1.model_validate({
-                "version": "1",
-                "nodes": [],
-                "tensors": [t_in.model_dump()],
-                "extra_unknown_field": "should_fail",
-            })
+            WorkloadGraphV1.model_validate(
+                {
+                    "version": "1",
+                    "nodes": [],
+                    "tensors": [t_in.model_dump()],
+                    "extra_unknown_field": "should_fail",
+                }
+            )
 
 
 # ── Dimension binding tests ─────────────────────────────────────────────────
@@ -430,7 +430,7 @@ class TestSymbolicDimensions:
         )
         assert g.unbound_symbols() == {"batch"}
         # Validate with no bindings should raise
-        with pytest.raises(Exception):
+        with pytest.raises(DimensionBindingError):
             validate_dimensions(g, DimensionBindings())
 
     def test_bound_symbol_passes(self):
@@ -538,7 +538,9 @@ def _make_gemm_gelu_softmax_reshape_graph():
     t_w = _make_tensor("t_w", [256, 256], producer="input", consumers=["n_gemm"])
     t_gemm_out = _make_tensor("t_gemm_out", ["batch", "seq_len", 256], producer="n_gemm", consumers=["n_gelu"])
     t_gelu_out = _make_tensor("t_gelu_out", ["batch", "seq_len", 256], producer="n_gelu", consumers=["n_softmax"])
-    t_softmax_out = _make_tensor("t_softmax_out", ["batch", "seq_len", 256], producer="n_softmax", consumers=["n_reshape"])
+    t_softmax_out = _make_tensor(
+        "t_softmax_out", ["batch", "seq_len", 256], producer="n_softmax", consumers=["n_reshape"]
+    )
     t_reshape_out = _make_tensor("t_reshape_out", ["batch", "seq_len", 256], producer="n_reshape")
 
     g = WorkloadGraphV1(

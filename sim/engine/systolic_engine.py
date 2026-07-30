@@ -1,9 +1,8 @@
 """Systolic Engine — weight-stationary systolic array (现有 MXU v2 模型)"""
 
 import math
-from typing import Any, Dict
 
-from engine.mac_engine import MACEngine, EngineResult
+from engine.mac_engine import EngineResult, MACEngine
 
 
 class SystolicEngine(MACEngine):
@@ -25,8 +24,7 @@ class SystolicEngine(MACEngine):
             last_rows = self.H
         return (M_tiles - 1) * (2 * self.H + self.W) + (self.H + self.W + last_rows)
 
-    def estimate(self, M: int, K: int, N: int,
-                 weight_preloaded: bool = False) -> EngineResult:
+    def estimate(self, M: int, K: int, N: int, weight_preloaded: bool = False) -> EngineResult:
         if M <= 0:
             raise ValueError(f"SystolicEngine.estimate requires M > 0, got {M}")
 
@@ -59,7 +57,7 @@ class SystolicEngine(MACEngine):
         compute_cycles = int(per_tile_compute * total_tiles)
         dma_cycles = total - compute_cycles
 
-        raw_dma = (K * N * self.w_bits // 8 + M * K * self.a_bits // 8)
+        raw_dma = K * N * self.w_bits // 8 + M * K * self.a_bits // 8
         raw_dma_cycles = math.ceil(raw_dma / self.eff_bw) if self.eff_bw > 0 else 0
 
         M_tiles = max(1, (M + self.H - 1) // self.H)
@@ -77,7 +75,8 @@ class SystolicEngine(MACEngine):
             weight_bytes=total_dma_bytes,
             bottleneck="compute" if per_tile_compute > per_tile_dma else "dma",
             details={
-                "K_tiles": K_tiles, "N_tiles": N_tiles,
+                "K_tiles": K_tiles,
+                "N_tiles": N_tiles,
                 "per_tile_compute": per_tile_compute,
                 "per_tile_dma": round(per_tile_dma, 1),
                 "pipeline_fill": pipeline_fill,
@@ -133,7 +132,8 @@ class SystolicEngine(MACEngine):
             weight_bytes=total_weight_bytes,
             bottleneck="compute" if dual_compute > dual_dma else "dma",
             details={
-                "K_tiles": K_tiles, "N_tiles": N_tiles,
+                "K_tiles": K_tiles,
+                "N_tiles": N_tiles,
                 "dual_dma": round(dual_dma, 1),
                 "dual_compute": dual_compute,
                 "weight_cache": True,

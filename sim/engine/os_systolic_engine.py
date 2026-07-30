@@ -9,10 +9,9 @@ Output-stationary: 每个 PE 持有一个输出元素，权重和激活流动后
 """
 
 import math
-from typing import Any, Dict
 
-from engine.mac_engine import MACEngine, EngineResult
 from engine.block_engine import BROADCAST_SYNC_CYCLES, _accumulate_cycles
+from engine.mac_engine import EngineResult, MACEngine
 
 
 class OutputStationaryEngine(MACEngine):
@@ -31,8 +30,7 @@ class OutputStationaryEngine(MACEngine):
     def engine_type(self) -> str:
         return "os_systolic"
 
-    def estimate(self, M: int, K: int, N: int,
-                 weight_preloaded: bool = False) -> EngineResult:
+    def estimate(self, M: int, K: int, N: int, weight_preloaded: bool = False) -> EngineResult:
         K_tiles = math.ceil(K / self.H)
         N_tiles = math.ceil(N / self.W)
         total_tiles = K_tiles * N_tiles
@@ -44,10 +42,7 @@ class OutputStationaryEngine(MACEngine):
 
         total_weight_bytes = K * N * self.w_bits // 8
         weight_dram_eff = self._dram_eff_for_bytes(total_weight_bytes)
-        if weight_dram_eff <= 0:
-            weight_dma_cycles = 0
-        else:
-            weight_dma_cycles = total_weight_bytes / (self.eff_bw * weight_dram_eff)
+        weight_dma_cycles = 0 if weight_dram_eff <= 0 else total_weight_bytes / (self.eff_bw * weight_dram_eff)
 
         act_bytes = M * K * self.a_bits // 8
         act_dma_cycles = act_bytes / self.eff_bw
@@ -58,9 +53,7 @@ class OutputStationaryEngine(MACEngine):
 
         accum = _accumulate_cycles(self.w_bits, self.a_bits)
         per_m_pass = self.H + BROADCAST_SYNC_CYCLES + accum
-        per_tile_compute = (M_tiles - 1) * per_m_pass + (
-            last_m_rows + BROADCAST_SYNC_CYCLES + accum
-        )
+        per_tile_compute = (M_tiles - 1) * per_m_pass + (last_m_rows + BROADCAST_SYNC_CYCLES + accum)
         total_compute_cycles = per_tile_compute * total_tiles
         k_reduction_cycles = self.H * total_tiles * M_tiles
 
@@ -71,16 +64,10 @@ class OutputStationaryEngine(MACEngine):
 
         if total_dma_cycles > total_compute_cycles:
             bottleneck = "dma"
-            bottleneck_reason = (
-                f"DMA ({raw_dma_floor} cycles) dominates "
-                f"compute ({int(total_compute_cycles)} cycles)"
-            )
+            bottleneck_reason = f"DMA ({raw_dma_floor} cycles) dominates compute ({int(total_compute_cycles)} cycles)"
         else:
             bottleneck = "compute"
-            bottleneck_reason = (
-                f"Compute ({int(total_compute_cycles)} cycles) dominates "
-                f"DMA ({raw_dma_floor} cycles)"
-            )
+            bottleneck_reason = f"Compute ({int(total_compute_cycles)} cycles) dominates DMA ({raw_dma_floor} cycles)"
 
         return EngineResult(
             compute_cycles=int(total_compute_cycles),
@@ -95,7 +82,8 @@ class OutputStationaryEngine(MACEngine):
             weight_bytes=int(total_weight_bytes),
             bottleneck=bottleneck,
             details={
-                "K_tiles": K_tiles, "N_tiles": N_tiles,
+                "K_tiles": K_tiles,
+                "N_tiles": N_tiles,
                 "M_tiles": M_tiles,
                 "per_tile_compute": per_tile_compute,
                 "broadcast_sync": BROADCAST_SYNC_CYCLES,
@@ -125,10 +113,7 @@ class OutputStationaryEngine(MACEngine):
         # Aggregated external-DRAM accounting (matching BlockEngine external DRAM)
         total_weight_bytes = 2 * K * N * self.w_bits // 8  # gate+up
         weight_dram_eff = self._dram_eff_for_bytes(total_weight_bytes)
-        if weight_dram_eff <= 0:
-            weight_dma_cycles = 0
-        else:
-            weight_dma_cycles = total_weight_bytes / (self.eff_bw * weight_dram_eff)
+        weight_dma_cycles = 0 if weight_dram_eff <= 0 else total_weight_bytes / (self.eff_bw * weight_dram_eff)
 
         act_bytes = M * K * self.a_bits // 8
         act_dma_cycles = act_bytes / self.eff_bw
@@ -136,8 +121,7 @@ class OutputStationaryEngine(MACEngine):
         raw_dma_cycles = int(total_dma_cycles)
 
         # Two accumulations per tile (gate + up), each with K-reduction depth
-        per_tile_compute = 2 * (self.H + BROADCAST_SYNC_CYCLES +
-                                _accumulate_cycles(self.w_bits, self.a_bits))
+        per_tile_compute = 2 * (self.H + BROADCAST_SYNC_CYCLES + _accumulate_cycles(self.w_bits, self.a_bits))
         total_compute_cycles = per_tile_compute * total_tiles
         k_reduction_cycles = 2 * self.H * total_tiles
 
@@ -153,16 +137,10 @@ class OutputStationaryEngine(MACEngine):
 
         if total_dma_cycles > total_compute_cycles:
             bottleneck = "dma"
-            bottleneck_reason = (
-                f"DMA ({raw_dma_cycles} cycles) dominates "
-                f"compute ({total_compute_cycles} cycles)"
-            )
+            bottleneck_reason = f"DMA ({raw_dma_cycles} cycles) dominates compute ({total_compute_cycles} cycles)"
         else:
             bottleneck = "compute"
-            bottleneck_reason = (
-                f"Compute ({total_compute_cycles} cycles) dominates "
-                f"DMA ({raw_dma_cycles} cycles)"
-            )
+            bottleneck_reason = f"Compute ({total_compute_cycles} cycles) dominates DMA ({raw_dma_cycles} cycles)"
 
         return EngineResult(
             compute_cycles=int(total_compute_cycles),
@@ -177,7 +155,8 @@ class OutputStationaryEngine(MACEngine):
             weight_bytes=int(total_weight_bytes),
             bottleneck=bottleneck,
             details={
-                "K_tiles": K_tiles, "N_tiles": N_tiles,
+                "K_tiles": K_tiles,
+                "N_tiles": N_tiles,
                 "per_tile_compute": per_tile_compute,
                 "broadcast_sync": BROADCAST_SYNC_CYCLES,
                 "k_reduction_cycles": k_reduction_cycles,

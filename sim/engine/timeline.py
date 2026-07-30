@@ -7,7 +7,6 @@ for existing callers.
 """
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List
 
 from scheduler.kernel import DiscreteEventKernel
 
@@ -15,17 +14,19 @@ from scheduler.kernel import DiscreteEventKernel
 @dataclass
 class TimelineEvent:
     """A single event on the core timeline."""
-    module: str          # 'mxu', 'sfu', 'dma', 'kv', 'riscv'
-    op: str              # specific operation description
+
+    module: str  # 'mxu', 'sfu', 'dma', 'kv', 'riscv'
+    op: str  # specific operation description
     start_cycle: int
     end_cycle: int
-    layer: int = -1      # -1 = system-level event
+    layer: int = -1  # -1 = system-level event
     overlapped: bool = False  # was this hidden behind another event?
 
 
 @dataclass
 class LayerBreakdown:
     """Per-layer cycle breakdown."""
+
     layer: int
     mxu: int = 0
     sfu: int = 0
@@ -42,6 +43,7 @@ class LayerBreakdown:
 @dataclass
 class SimulationReport:
     """Complete simulation output."""
+
     model_name: str
     num_layers: int
     # NPU config for display
@@ -53,14 +55,14 @@ class SimulationReport:
     # Prefill
     prefill_prompt_len: int = 0
     prefill_total_ms: float = 0.0
-    prefill_breakdown: Dict[str, float] = field(default_factory=dict)
+    prefill_breakdown: dict[str, float] = field(default_factory=dict)
     # Decode (per token)
     decode_per_token_us: float = 0.0
     decode_tok_per_s: float = 0.0
-    decode_breakdown: Dict[str, float] = field(default_factory=dict)
+    decode_breakdown: dict[str, float] = field(default_factory=dict)
     # Detailed
-    layer_breakdowns: List[LayerBreakdown] = field(default_factory=list)
-    events: List[TimelineEvent] = field(default_factory=list)
+    layer_breakdowns: list[LayerBreakdown] = field(default_factory=list)
+    events: list[TimelineEvent] = field(default_factory=list)
     ttft_ms: float = 0.0
     decode_total_us: float = 0.0
     module_breakdowns: dict = field(default_factory=dict)
@@ -71,11 +73,13 @@ class SimulationReport:
     def to_text(self) -> str:
         lines = []
         lines.append("=" * 60)
-        lines.append(f"  NPU System Simulation Report")
+        lines.append("  NPU System Simulation Report")
         lines.append(f"  Model: {self.model_name} | Layers: {self.num_layers}")
-        lines.append(f"  NPU: 1 core, {self.engine_type}, "
-                     f"{self.array_height}×{self.array_width}, "
-                     f"INT{self.weight_bits}, {self.freq_mhz}MHz")
+        lines.append(
+            f"  NPU: 1 core, {self.engine_type}, "
+            f"{self.array_height}×{self.array_width}, "
+            f"INT{self.weight_bits}, {self.freq_mhz}MHz"
+        )
         lines.append("=" * 60)
 
         # Prefill section
@@ -89,7 +93,7 @@ class SimulationReport:
 
         # Decode section
         if self.decode_per_token_us > 0:
-            lines.append(f"\n--- Decode (per token) ---")
+            lines.append("\n--- Decode (per token) ---")
             for mod, us in self.decode_breakdown.items():
                 pct = us / self.decode_per_token_us * 100 if self.decode_per_token_us > 0 else 0
                 lines.append(f"  {mod:20s} {us:8.1f} μs  ({pct:5.1f}%)")
@@ -98,11 +102,11 @@ class SimulationReport:
             lines.append(f"  → {self.decode_tok_per_s:,.0f} tok/s")
 
             if self.decode_tok_per_s >= 25:
-                lines.append(f"  ✅ Target 25 tok/s met!")
+                lines.append("  ✅ Target 25 tok/s met!")
             else:
                 lines.append(f"  ❌ Target 25 tok/s NOT met (gap: {25 - self.decode_tok_per_s:.0f} tok/s)")
 
-            lines.append(f"\n--- Bottleneck Analysis ---")
+            lines.append("\n--- Bottleneck Analysis ---")
             mxu_pct = self.decode_breakdown.get("MXU", 0) / self.decode_per_token_us * 100
             dma_pct = self.decode_breakdown.get("DMA (stall)", 0) / self.decode_per_token_us * 100
             if mxu_pct > 60:
@@ -129,7 +133,7 @@ class CoreTimeline:
 
     def __init__(self, core_id: int = 0, frequency_mhz: int = 1000):
         self.core_id = core_id
-        self.events: List[TimelineEvent] = []
+        self.events: list[TimelineEvent] = []
         self._kernel = DiscreteEventKernel(frequency_mhz)
         self._mxu_busy_until_ps: int = 0
 
@@ -140,8 +144,7 @@ class CoreTimeline:
         # Round-trip through ps keeps the same integer semantics as before.
         return ps * self._kernel.frequency_mhz // 1_000_000
 
-    def _append(self, module: str, op: str, start_ps: int, end_ps: int,
-                layer: int, overlapped: bool) -> TimelineEvent:
+    def _append(self, module: str, op: str, start_ps: int, end_ps: int, layer: int, overlapped: bool) -> TimelineEvent:
         ev = TimelineEvent(
             module=module,
             op=op,
@@ -221,9 +224,9 @@ class CoreTimeline:
         self._kernel.now_ps = self._cycles_to_ps(cycles)
 
 
-def breakdown_events(events: List[TimelineEvent]) -> Dict[str, float]:
+def breakdown_events(events: list[TimelineEvent]) -> dict[str, float]:
     """Aggregate events by module, counting only effective (non-overlapped) cycles."""
-    modules: Dict[str, float] = {}
+    modules: dict[str, float] = {}
     for ev in events:
         cycles = ev.end_cycle - ev.start_cycle
         if ev.module == "dma" and ev.overlapped:

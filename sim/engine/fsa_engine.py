@@ -11,8 +11,7 @@ This engine models:
 """
 
 import math
-from dataclasses import dataclass, field
-from typing import Any, Dict
+from typing import Any
 
 from engine.mac_engine import EngineResult, MACEngine
 
@@ -29,7 +28,7 @@ class FSAEngine(MACEngine):
       fsa_area_overhead_pct     : area overhead vs baseline SA (default 12%)
     """
 
-    def _parse_config(self, config: Dict[str, Any]):
+    def _parse_config(self, config: dict[str, Any]):
         super()._parse_config(config)
         mac = config.get("mac_engine", config.get("mxu", {}))
         self.softmax_overhead = int(mac.get("fsa_softmax_overhead", 5))
@@ -39,8 +38,7 @@ class FSAEngine(MACEngine):
     def engine_type(self) -> str:
         return "fsa"
 
-    def estimate(self, M: int, K: int, N: int,
-                 weight_preloaded: bool = False) -> EngineResult:
+    def estimate(self, M: int, K: int, N: int, weight_preloaded: bool = False) -> EngineResult:
         """Estimate matmul with K-dimension tiling (weight-stationary systolic).
 
         Tiling:
@@ -75,22 +73,16 @@ class FSAEngine(MACEngine):
 
         # SRAM-aware DRAM efficiency
         dram_eff = self._dram_eff_for_bytes(weight_bytes)
-        if dram_eff <= 0:
-            effective_weight_bytes = 0
-        else:
-            effective_weight_bytes = weight_bytes
+        effective_weight_bytes = 0 if dram_eff <= 0 else weight_bytes
 
         dma_total_bytes = effective_weight_bytes + act_bytes
-        dma_cycles = max(
-            dma_total_bytes / (self.eff_bw * max(dram_eff, 0.01)),
-            compute_cycles * 0.05
-        )
+        dma_cycles = max(dma_total_bytes / (self.eff_bw * max(dram_eff, 0.01)), compute_cycles * 0.05)
 
         total_cycles = max(compute_cycles, dma_cycles)
         peak = self.peak_macs_per_cycle
         utilization = mac_count / (peak * total_cycles) if total_cycles > 0 else 0
 
-        raw_dma = (K * N * self.w_bits // 8 + M * K * self.a_bits // 8)
+        raw_dma = K * N * self.w_bits // 8 + M * K * self.a_bits // 8
         raw_dma_cycles = math.ceil(raw_dma / self.bw_raw) if self.bw_raw > 0 else 0
         ideal_cycles = math.ceil(mac_count / peak) if peak > 0 else 0
 
@@ -136,8 +128,12 @@ class FSAEngine(MACEngine):
         )
 
     def estimate_attention(
-        self, seq_q: int, seq_kv: int, head_dim: int,
-        num_heads: int = 1, num_kv_heads: int = 1,
+        self,
+        seq_q: int,
+        seq_kv: int,
+        head_dim: int,
+        num_heads: int = 1,
+        num_kv_heads: int = 1,
     ) -> EngineResult:
         """Estimate full FlashAttention including inline softmax.
 
@@ -171,15 +167,14 @@ class FSAEngine(MACEngine):
         # Total MAC operations (both matmuls)
         # Phase 1: QK^T: seq_q × seq_kv × head_dim MACs per head
         # Phase 2: PV:  seq_q × head_dim × seq_kv MACs per head
-        mac_count = num_kv_heads * seq_q * seq_kv * head_dim + \
-                     num_kv_heads * seq_q * head_dim * seq_kv
+        mac_count = num_kv_heads * seq_q * seq_kv * head_dim + num_kv_heads * seq_q * head_dim * seq_kv
         op_count = mac_count * 2
 
         # DMA for K, V, Q loading
         elem_bytes = self.a_bits // 8
         dma_bytes = (
-            num_kv_heads * seq_kv * head_dim * elem_bytes * 2 +  # K + V
-            num_heads * seq_q * head_dim * elem_bytes             # Q
+            num_kv_heads * seq_kv * head_dim * elem_bytes * 2  # K + V
+            + num_heads * seq_q * head_dim * elem_bytes  # Q
         )
         dma_cycles = dma_bytes / self.eff_bw if self.eff_bw > 0 else 0
 

@@ -13,7 +13,6 @@ import math
 from pathlib import Path
 
 import yaml
-
 from contracts.errors import ConfigError
 
 
@@ -93,7 +92,7 @@ def load_config() -> dict:
     config_path = Path(__file__).with_suffix(".yaml")
 
     try:
-        with open(config_path, "r", encoding="utf-8") as f:
+        with open(config_path, encoding="utf-8") as f:
             data = yaml.safe_load(f)
     except yaml.YAMLError as exc:
         raise ConfigError(

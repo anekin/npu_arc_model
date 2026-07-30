@@ -9,9 +9,8 @@ what was dropped.
 
 from __future__ import annotations
 
-from copy import deepcopy
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 __all__ = [
     "LegacyLossReport",
@@ -90,10 +89,7 @@ def project_v2_to_legacy_llm(
     loss = LegacyLossReport()
 
     # Collect successful results
-    complete = [
-        r for r in v2_result.results
-        if r.status.value in ("complete", "partial") and r.metrics is not None
-    ]
+    complete = [r for r in v2_result.results if r.status.value in ("complete", "partial") and r.metrics is not None]
     pareto_ids = _pareto_ids_from_results(v2_result.results)
 
     # Pareto frontier — keep top results by tok/s
@@ -103,12 +99,14 @@ def project_v2_to_legacy_llm(
 
     error_details = []
     for err in v2_result.errors:
-        error_details.append({
-            "engine_type": err.details.get("engine_type", "unknown"),
-            "dims": err.details.get("dims", "?"),
-            "memory_mode": err.details.get("memory_mode", "unknown"),
-            "error": err.message or err.code,
-        })
+        error_details.append(
+            {
+                "engine_type": err.details.get("engine_type", "unknown"),
+                "dims": err.details.get("dims", "?"),
+                "memory_mode": err.details.get("memory_mode", "unknown"),
+                "error": err.message or err.code,
+            }
+        )
 
     # Build legacy dict
     legacy: dict[str, Any] = {
@@ -163,10 +161,7 @@ def project_v2_to_legacy_cv(
     """
     loss = LegacyLossReport()
 
-    complete = [
-        r for r in v2_result.results
-        if r.status.value in ("complete", "partial") and r.metrics is not None
-    ]
+    complete = [r for r in v2_result.results if r.status.value in ("complete", "partial") and r.metrics is not None]
     complete.sort(key=lambda r: r.metrics.tok_per_s, reverse=True)
     pareto_ids = _pareto_ids_from_results(v2_result.results)
 
@@ -184,12 +179,14 @@ def project_v2_to_legacy_cv(
 
     error_details = []
     for err in v2_result.errors:
-        error_details.append({
-            "engine_type": err.details.get("engine_type", "unknown"),
-            "dims": err.details.get("dims", "?"),
-            "memory_mode": err.details.get("memory_mode", "unknown"),
-            "error": err.message or err.code,
-        })
+        error_details.append(
+            {
+                "engine_type": err.details.get("engine_type", "unknown"),
+                "dims": err.details.get("dims", "?"),
+                "memory_mode": err.details.get("memory_mode", "unknown"),
+                "error": err.message or err.code,
+            }
+        )
 
     legacy: dict[str, Any] = {
         "cv_model": cv_model,
@@ -231,10 +228,7 @@ def _pareto_ids_from_results(results: list[Any]) -> set[str]:
             if (
                 other.metrics.tok_per_s >= r.metrics.tok_per_s
                 and other.metrics.area_mm2 <= r.metrics.area_mm2
-                and (
-                    other.metrics.tok_per_s > r.metrics.tok_per_s
-                    or other.metrics.area_mm2 < r.metrics.area_mm2
-                )
+                and (other.metrics.tok_per_s > r.metrics.tok_per_s or other.metrics.area_mm2 < r.metrics.area_mm2)
             ):
                 dominated = True
                 break

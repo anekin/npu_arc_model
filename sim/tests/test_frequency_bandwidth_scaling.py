@@ -14,7 +14,6 @@ import sys
 from pathlib import Path
 
 import pytest
-
 from contracts.units import (
     bandwidth_gbps_to_bytes_per_cycle,
     cycles_to_microseconds,
@@ -25,9 +24,9 @@ REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 SIM_DIR = REPO_ROOT / "sim"
 
 
-def _make_config(engine_type="block", array_h=64, array_w=64,
-                 freq_mhz=1000, bw_gbps=51.2, w_bits=4,
-                 weight_cache=False, l2_kb=2048):
+def _make_config(
+    engine_type="block", array_h=64, array_w=64, freq_mhz=1000, bw_gbps=51.2, w_bits=4, weight_cache=False, l2_kb=2048
+):
     """Build a minimal config dict for engine construction."""
     return {
         "mac_engine": {
@@ -59,11 +58,14 @@ def _make_config(engine_type="block", array_h=64, array_w=64,
 # ── Unit-level: bytes/cycle conversion ───────────────────────────
 
 
-@pytest.mark.parametrize("freq_mhz,expected_bpc", [
-    (800, 64.0),
-    (1000, 51.2),
-    (1200, 51.2 * 1000 / 1200),
-])
+@pytest.mark.parametrize(
+    "freq_mhz,expected_bpc",
+    [
+        (800, 64.0),
+        (1000, 51.2),
+        (1200, 51.2 * 1000 / 1200),
+    ],
+)
 def test_bandwidth_bytes_per_cycle_at_frequencies(freq_mhz, expected_bpc):
     """Given 51.2 GB/s bandwidth,
     When computing bytes/cycle at 800/1000/1200 MHz,
@@ -80,8 +82,7 @@ def test_compute_bound_total_cycles_independent_of_frequency(freq_mhz):
     """Given a compute-bound workload (high BW, large array),
     When the engine estimates with the same shape at different frequencies,
     Then total_cycles is frequency-independent (within rounding)."""
-    cfg = _make_config(engine_type="block", array_h=64, array_w=64,
-                       freq_mhz=freq_mhz, bw_gbps=819.2)
+    cfg = _make_config(engine_type="block", array_h=64, array_w=64, freq_mhz=freq_mhz, bw_gbps=819.2)
     engine = create_engine(cfg)
     result = engine.estimate(M=1, K=2048, N=11008)
 
@@ -99,8 +100,7 @@ def test_compute_bound_wall_time_scales_inversely_with_frequency():
     Then tok/s ratios scale as freq/1000 (0.1% tolerance)."""
     results = {}
     for freq_mhz in [800, 1000, 1200]:
-        cfg = _make_config(engine_type="block", array_h=64, array_w=64,
-                           freq_mhz=freq_mhz, bw_gbps=819.2)
+        cfg = _make_config(engine_type="block", array_h=64, array_w=64, freq_mhz=freq_mhz, bw_gbps=819.2)
         engine = create_engine(cfg)
         result = engine.estimate(M=1, K=2048, N=11008)
 
@@ -156,8 +156,7 @@ def test_memory_bound_dma_wall_time_invariant():
     M, K, N = 1, 11008, 11008  # FFN_down shape, ~58MB weights
 
     for freq_mhz in [800, 1000, 1200]:
-        cfg = _make_config(engine_type="block", array_h=64, array_w=64,
-                           freq_mhz=freq_mhz, bw_gbps=51.2)
+        cfg = _make_config(engine_type="block", array_h=64, array_w=64, freq_mhz=freq_mhz, bw_gbps=51.2)
         engine = create_engine(cfg)
         result = engine.estimate(M=M, K=K, N=N)
         dma_wall_us = cycles_to_microseconds(result.raw_dma_cycles, freq_mhz)
@@ -168,7 +167,7 @@ def test_memory_bound_dma_wall_time_invariant():
         diff = abs(dma_wall_times[freq] - ref_us) / max(ref_us, 1e-9)
         assert diff <= 0.001, (
             f"DMA wall time at {freq} MHz ({dma_wall_times[freq]:.2f} us) "
-            f"differs from 1000 MHz ({ref_us:.2f} us) by {diff*100:.3f}% (>0.1%)"
+            f"differs from 1000 MHz ({ref_us:.2f} us) by {diff * 100:.3f}% (>0.1%)"
         )
 
 
@@ -183,8 +182,7 @@ def test_memory_bound_cycle_counts_scale_with_frequency():
     M, K, N = 1, 11008, 11008
 
     for freq_mhz in [800, 1000, 1200]:
-        cfg = _make_config(engine_type="block", array_h=64, array_w=64,
-                           freq_mhz=freq_mhz, bw_gbps=51.2)
+        cfg = _make_config(engine_type="block", array_h=64, array_w=64, freq_mhz=freq_mhz, bw_gbps=51.2)
         engine = create_engine(cfg)
         result = engine.estimate(M=M, K=K, N=N)
         cycle_counts[freq_mhz] = (result.total_cycles, result.raw_dma_cycles)
@@ -215,8 +213,7 @@ def test_bandwidth_monotonic_and_saturates_at_compute_floor():
 
     results = []
     for bw_gbps, label in bw_configs:
-        cfg = _make_config(engine_type="block", array_h=64, array_w=64,
-                           freq_mhz=1000, bw_gbps=bw_gbps)
+        cfg = _make_config(engine_type="block", array_h=64, array_w=64, freq_mhz=1000, bw_gbps=bw_gbps)
         engine = create_engine(cfg)
         result = engine.estimate(M=M, K=K, N=N)
         wall_us = cycles_to_microseconds(result.total_cycles, 1000)
@@ -241,7 +238,7 @@ def test_bandwidth_monotonic_and_saturates_at_compute_floor():
     diff = abs(hbm2e_us - hbm3_us) / max(hbm2e_us, 1e-9)
     assert diff <= 0.001, (
         f"HBM2e and HBM3 wall times should be near-identical at compute floor: "
-        f"HBM2e={hbm2e_us:.2f} us, HBM3={hbm3_us:.2f} us, diff={diff*100:.3f}%"
+        f"HBM2e={hbm2e_us:.2f} us, HBM3={hbm3_us:.2f} us, diff={diff * 100:.3f}%"
     )
 
     # Also verify that total_cycles at saturation equals the compute floor
@@ -256,7 +253,7 @@ def test_bandwidth_monotonic_and_saturates_at_compute_floor():
 
 def _run_dse_quick(freq_mhz):
     """Run DSE quickly with a specific frequency override and parse JSON."""
-    from engine.registry import engine_quick_ids_list
+
     # Use the DSE module directly for speed, not subprocess
     from design_space_explorer import simulate_layer, tok_s_from_layer
 
@@ -264,20 +261,27 @@ def _run_dse_quick(freq_mhz):
     configs = []
     # Minimal config set: single engine, single shape, single BW
     for bw_gbps in [51.2, 819.2]:
-        configs.append(_make_config(
-            engine_type="block", array_h=64, array_w=64,
-            freq_mhz=freq_mhz, bw_gbps=bw_gbps,
-        ))
+        configs.append(
+            _make_config(
+                engine_type="block",
+                array_h=64,
+                array_w=64,
+                freq_mhz=freq_mhz,
+                bw_gbps=bw_gbps,
+            )
+        )
 
     results = []
     for cfg in configs:
         layer_cycles, _ = simulate_layer(cfg)
         fps = tok_s_from_layer(layer_cycles, _NUM_LAYERS, freq_mhz)
-        results.append({
-            "bw_gbps": cfg["memory"]["bandwidth_gbps"],
-            "total_cycles": layer_cycles,
-            "tok_per_s": fps,
-        })
+        results.append(
+            {
+                "bw_gbps": cfg["memory"]["bandwidth_gbps"],
+                "total_cycles": layer_cycles,
+                "tok_per_s": fps,
+            }
+        )
     return results
 
 
@@ -301,9 +305,7 @@ def test_dse_output_different_across_frequencies():
     ref_cycles = compute_1000["total_cycles"]
     for freq, result in [(800, compute_800), (1200, compute_1200)]:
         ratio = max(result["total_cycles"] / ref_cycles, ref_cycles / result["total_cycles"])
-        assert ratio <= 1.05, (
-            f"Compute-bound total_cycles ratio {freq}/1000 MHz ({ratio:.4f}) > 5% deviation"
-        )
+        assert ratio <= 1.05, f"Compute-bound total_cycles ratio {freq}/1000 MHz ({ratio:.4f}) > 5% deviation"
 
     # tok/s should differ
     assert compute_800["tok_per_s"] != compute_1000["tok_per_s"], (
@@ -316,12 +318,12 @@ def test_dse_output_different_across_frequencies():
     # tok/s ratio should be proportional to frequency (0.5% tolerance for rounding)
     ratio_800_1000 = compute_800["tok_per_s"] / compute_1000["tok_per_s"]
     assert ratio_800_1000 == pytest.approx(800.0 / 1000.0, rel=0.005), (
-        f"tok/s ratio 800/1000 MHz: expected {800/1000:.4f}, got {ratio_800_1000:.4f}"
+        f"tok/s ratio 800/1000 MHz: expected {800 / 1000:.4f}, got {ratio_800_1000:.4f}"
     )
 
     ratio_1200_1000 = compute_1200["tok_per_s"] / compute_1000["tok_per_s"]
     assert ratio_1200_1000 == pytest.approx(1200.0 / 1000.0, rel=0.005), (
-        f"tok/s ratio 1200/1000 MHz: expected {1200/1000:.4f}, got {ratio_1200_1000:.4f}"
+        f"tok/s ratio 1200/1000 MHz: expected {1200 / 1000:.4f}, got {ratio_1200_1000:.4f}"
     )
 
 
@@ -332,11 +334,9 @@ def _run_npu_sim(*extra_args):
     """Run sim/npu_sim.py with PYTHONPATH=sim."""
     cmd = [sys.executable, str(SIM_DIR / "npu_sim.py"), *extra_args]
     import os
+
     env = {**os.environ, "PYTHONPATH": str(SIM_DIR)}
-    return subprocess.run(
-        cmd, capture_output=True, text=True, cwd=str(REPO_ROOT),
-        env=env, timeout=60
-    )
+    return subprocess.run(cmd, capture_output=True, text=True, cwd=str(REPO_ROOT), env=env, timeout=60)
 
 
 @pytest.mark.cli
@@ -361,24 +361,20 @@ def test_cli_freq_override_produces_different_output():
     tok_1000 = outputs[1000]["decode"]["tok_per_s"]
     tok_1200 = outputs[1200]["decode"]["tok_per_s"]
 
-    assert tok_800 != tok_1000, (
-        f"CLI --freq 800 and 1000 produce identical tok/s={tok_800} (freq not propagating)"
-    )
-    assert tok_1000 != tok_1200, (
-        f"CLI --freq 1000 and 1200 produce identical tok/s={tok_1000} (freq not propagating)"
-    )
+    assert tok_800 != tok_1000, f"CLI --freq 800 and 1000 produce identical tok/s={tok_800} (freq not propagating)"
+    assert tok_1000 != tok_1200, f"CLI --freq 1000 and 1200 produce identical tok/s={tok_1000} (freq not propagating)"
 
     # tok/s should approximately scale with frequency (compute-bound with block engine).
     # Non-compute components (SFU, KV, DRAM refresh) have different frequency dependencies.
     # Allow 15% tolerance.
     ratio_800_1000 = tok_800 / tok_1000
     assert ratio_800_1000 == pytest.approx(800.0 / 1000.0, rel=0.15), (
-        f"CLI tok/s ratio 800/1000 MHz: expected ~{800/1000:.3f}, got {ratio_800_1000:.4f}"
+        f"CLI tok/s ratio 800/1000 MHz: expected ~{800 / 1000:.3f}, got {ratio_800_1000:.4f}"
     )
 
     ratio_1200_1000 = tok_1200 / tok_1000
     assert ratio_1200_1000 == pytest.approx(1200.0 / 1000.0, rel=0.15), (
-        f"CLI tok/s ratio 1200/1000 MHz: expected ~{1200/1000:.3f}, got {ratio_1200_1000:.4f}"
+        f"CLI tok/s ratio 1200/1000 MHz: expected ~{1200 / 1000:.3f}, got {ratio_1200_1000:.4f}"
     )
 
 

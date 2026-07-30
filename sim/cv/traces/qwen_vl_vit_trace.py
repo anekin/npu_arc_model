@@ -33,14 +33,19 @@ _PATCH_EMBED_K = _PATCH_SIZE * _PATCH_SIZE * _IN_CHANNELS  # 588
 
 
 def _gemm(name: str, M: int, K: int, N: int) -> dict[str, Any]:
-    return {"type": "gemm", "name": name, "M": M, "K": K, "N": N,
-            "im2col_overhead_cycles": 0, "sfu_cycles": 0}
+    return {"type": "gemm", "name": name, "M": M, "K": K, "N": N, "im2col_overhead_cycles": 0, "sfu_cycles": 0}
 
 
 def _sfu(name: str, element_count: int, op_type: str = "sfu") -> dict[str, Any]:
-    return {"type": op_type, "name": name, "M": 0, "K": 0, "N": 0,
-            "im2col_overhead_cycles": 0,
-            "sfu_cycles": math.ceil(element_count / _SFU_WIDTH)}
+    return {
+        "type": op_type,
+        "name": name,
+        "M": 0,
+        "K": 0,
+        "N": 0,
+        "im2col_overhead_cycles": 0,
+        "sfu_cycles": math.ceil(element_count / _SFU_WIDTH),
+    }
 
 
 def _single_crop_trace() -> list[dict[str, Any]]:
@@ -65,8 +70,7 @@ def _single_crop_trace() -> list[dict[str, Any]]:
         trace.append(_gemm(f"{prefix}_v_proj", _SEQ_LEN, _HIDDEN, _HIDDEN))
 
         # Softmax over attention scores (heads × seq × seq)
-        trace.append(_sfu(f"{prefix}_attn_softmax",
-                         _NUM_HEADS * _SEQ_LEN * _SEQ_LEN, "softmax"))
+        trace.append(_sfu(f"{prefix}_attn_softmax", _NUM_HEADS * _SEQ_LEN * _SEQ_LEN, "softmax"))
 
         # Output projection
         trace.append(_gemm(f"{prefix}_o_proj", _SEQ_LEN, _HIDDEN, _HIDDEN))
@@ -112,10 +116,7 @@ def generate_qwen_vl_vit_trace(num_crops: int = 1) -> list[dict[str, Any]]:
     # Validation
     total_macs = sum(e["M"] * e["K"] * e["N"] for e in trace)
     per_crop_macs = total_macs / num_crops
-    expected_per_crop = 300_000_000_000  # ~300 GFLOPs per crop
-    assert per_crop_macs > 250_000_000_000, (
-        f"Qwen-VL ViT per-crop MACs {per_crop_macs:,} below expected 250G"
-    )
+    assert per_crop_macs > 250_000_000_000, f"Qwen-VL ViT per-crop MACs {per_crop_macs:,} below expected 250G"
 
     return trace
 
@@ -138,4 +139,4 @@ if __name__ == "__main__":
         gemm_entries = [e for e in t if e["type"] == "gemm"]
         print(f"Qwen2.5-VL ViT ({nc} crop(s)): {len(t)} entries")
         print(f"  GEMM: {len(gemm_entries)}, SFU: {len(t) - len(gemm_entries)}")
-        print(f"  MACs: {total_macs:,} ({total_macs/1e9:.1f} G)")
+        print(f"  MACs: {total_macs:,} ({total_macs / 1e9:.1f} G)")
