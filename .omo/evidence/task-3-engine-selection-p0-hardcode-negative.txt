@@ -1,0 +1,10 @@
+Negative path: CalibrationRef schema defaults preserved for backward compatibility.
+
+When a production caller omits CalibrationRef fields, the schema still defaults to:
+  process_node_nm = 12.0
+  node_scale      = 2.7
+  dram_efficiency = 0.85
+
+This keeps existing serialized results and callers that do not yet pass node
+information valid, but new production callers (runner.py, result_standalone_from_ppa)
+now explicitly compute and pass the values derived from the config's area_model.

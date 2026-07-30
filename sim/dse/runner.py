@@ -35,6 +35,7 @@ from dse.manifest import CoverageManifest
 from dse.models import DesignPoint
 from dse.pareto import MultiObjectivePareto, ParetoPoint
 from dse.space import DesignSpace, GenerationResult
+from engine.ppa_model import AreaModel, _node_scale_factor
 from scenario_runner import run_scenario
 from scenarios.compiler import compile_scenario
 from scenarios.schema import (
@@ -316,6 +317,9 @@ class ScenarioDseRunner:
         else:
             point_trust = RunTrustLevel.authoritative
 
+        area_model = AreaModel(point.hardware_config)
+        node_scale = _node_scale_factor(area_model.process_node_nm)
+
         result = DesignPointResult(
             design_point_id=point.design_point_id,
             status=RunStatus.complete,
@@ -323,8 +327,8 @@ class ScenarioDseRunner:
             scenario_ref=point.scenario_ref,
             workload_ref=point.workload_ref or "",
             calibration=CalibrationRef(
-                process_node_nm=12.0,
-                node_scale=2.70,
+                process_node_nm=area_model.process_node_nm,
+                node_scale=node_scale,
                 dram_efficiency=point.hardware_config.get("memory", {}).get("dram_efficiency", 0.85),
                 pe_area_ratio_block_systolic=2.0,
                 trust_level=point_trust,

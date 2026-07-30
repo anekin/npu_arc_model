@@ -248,9 +248,13 @@ def result_standalone_from_ppa(
     Uses ``contracts.identity`` to derive a stable ID from *config*.
     """
     from contracts.identity import digest_sha256
+    from engine.ppa_model import AreaModel, _node_scale_factor
 
     dp_id = digest_sha256(config)
     hw_digest = digest_sha256(config)
+
+    area_model = AreaModel(config)
+    node_scale = _node_scale_factor(area_model.process_node_nm)
 
     metrics = EngineMetrics(
         tok_per_s=ppa.tok_s,
@@ -269,5 +273,12 @@ def result_standalone_from_ppa(
         config_label=ppa.config_label,
         engine_type=config.get("mac_engine", {}).get("type", "unknown"),
         trust_level=trust_level,
+        calibration=CalibrationRef(
+            process_node_nm=area_model.process_node_nm,
+            node_scale=node_scale,
+            dram_efficiency=config.get("memory", {}).get("dram_efficiency", 0.85),
+            pe_area_ratio_block_systolic=2.0,
+            trust_level=trust_level,
+        ),
         metrics=metrics,
     )

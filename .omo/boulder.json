@@ -163,7 +163,7 @@
       "plan_name": "engine-selection-p0-improvements",
       "status": "active",
       "started_at": "2026-07-30T08:47:58.390Z",
-      "updated_at": "2026-07-30T09:08:29.501Z",
+      "updated_at": "2026-07-30T09:29:20.720Z",
       "session_ids": [
         "opencode:ses_053ba6068ffeyiIpkBUK0ulwPN"
       ],
@@ -175,15 +175,15 @@
         "todo:1": {
           "task_key": "todo:1",
           "task_label": "1",
-          "task_title": "Modify `sim/engine/ppa_model.py` `AreaModel.__init__` to:",
-          "session_id": "opencode:ses_04dc092efffe3W6N3ZucASoUTs",
+          "task_title": "In `sim/engine/ppa_model.py` line 158 and line 318: replace hardcoded `process_node_nm=12.0` in `MemoryTopology(...)` with `process_node_nm=self.process_node_nm`.",
+          "session_id": "opencode:ses_04db4f799ffe4lURT358280i8F",
           "agent": "Sisyphus-Junior",
           "category": "unspecified-low",
           "started_at": "2026-07-30T08:55:40.985Z",
-          "ended_at": "2026-07-30T09:08:29.501Z",
-          "elapsed_ms": 768516,
+          "ended_at": "2026-07-30T09:29:20.720Z",
+          "elapsed_ms": 2019735,
           "status": "completed",
-          "updated_at": "2026-07-30T09:08:29.501Z"
+          "updated_at": "2026-07-30T09:29:20.720Z"
         }
       }
     }
@@ -191,7 +191,7 @@
   "active_plan": "/home/prj/zhengs/caduceuscore/npu_arc_model/.omo/plans/engine-selection-p0-improvements.md",
   "started_at": "2026-07-30T08:47:58.390Z",
   "status": "active",
-  "updated_at": "2026-07-30T09:08:29.501Z",
+  "updated_at": "2026-07-30T09:29:20.720Z",
   "session_ids": [
     "opencode:ses_053ba6068ffeyiIpkBUK0ulwPN"
   ],
@@ -203,15 +203,15 @@
     "todo:1": {
       "task_key": "todo:1",
       "task_label": "1",
-      "task_title": "Modify `sim/engine/ppa_model.py` `AreaModel.__init__` to:",
-      "session_id": "opencode:ses_04dc092efffe3W6N3ZucASoUTs",
+      "task_title": "In `sim/engine/ppa_model.py` line 158 and line 318: replace hardcoded `process_node_nm=12.0` in `MemoryTopology(...)` with `process_node_nm=self.process_node_nm`.",
+      "session_id": "opencode:ses_04db4f799ffe4lURT358280i8F",
       "agent": "Sisyphus-Junior",
       "category": "unspecified-low",
       "started_at": "2026-07-30T08:55:40.985Z",
-      "ended_at": "2026-07-30T09:08:29.501Z",
-      "elapsed_ms": 768516,
+      "ended_at": "2026-07-30T09:29:20.720Z",
+      "elapsed_ms": 2019735,
       "status": "completed",
-      "updated_at": "2026-07-30T09:08:29.501Z"
+      "updated_at": "2026-07-30T09:29:20.720Z"
     }
   },
   "agent": "atlas"

@@ -1,0 +1,42 @@
+{
+  "task": "Todo 3 — Fix hardcoded 12nm in MemoryTopology and CalibrationRef",
+  "timestamp": "2026-07-30",
+  "memory_topology_process_node": {
+    "7.0nm": 7.0,
+    "12.0nm": 12.0,
+    "22.0nm": 22.0,
+    "28.0nm": 28.0
+  },
+  "calibration_ref_node_scale": {
+    "7.0nm": {
+      "process_node_nm": 7.0,
+      "node_scale": 1.0
+    },
+    "12.0nm": {
+      "process_node_nm": 12.0,
+      "node_scale": 2.7
+    },
+    "22.0nm": {
+      "process_node_nm": 22.0,
+      "node_scale": 9.877551
+    },
+    "28.0nm": {
+      "process_node_nm": 28.0,
+      "node_scale": 16.0
+    }
+  },
+  "verification": {
+    "pytest": {
+      "returncode": 0,
+      "summary": "......                                                                   [100%]"
+    },
+    "ruff": {
+      "returncode": 0,
+      "summary": "All checks passed!"
+    },
+    "basedpyright": {
+      "returncode": 0,
+      "summary": "0 errors, 0 warnings, 0 notes"
+    }
+  }
+}

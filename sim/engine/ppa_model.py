@@ -155,7 +155,7 @@ class AreaModel:
 
         topology = MemoryTopology(
             tier=mem_type,  # type: ignore[arg-type]
-            process_node_nm=12.0,
+            process_node_nm=self.process_node_nm,
             include_phy=include_phy,
             include_tsv=include_tsv,
             include_package=True,
@@ -315,7 +315,7 @@ class PowerModel:
 
         topology = MemoryTopology(
             tier=mem_type,  # type: ignore[arg-type]
-            process_node_nm=12.0,
+            process_node_nm=area_model.process_node_nm,
             include_phy=include_phy,
             include_tsv=include_tsv,
             include_package=True,

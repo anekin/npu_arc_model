@@ -59,3 +59,43 @@
 - The exact "<5% total area difference" target is configuration-dependent. For smaller logic footprints (e.g., block 64×128), the SRAM refactor impact on total area will be proportionally larger.
 - Should we expose `l1_overhead` / `l2_overhead` in `sim/config/design_space.yaml` for sensitivity sweeps?
 - When interpolated nodes (e.g., 16nm) are added, `AreaModel` will need a fallback strategy or a broader bitcell table.
+
+# Todo 3 — Fix hardcoded 12nm in MemoryTopology and CalibrationRef
+
+**Date:** 2026-07-30
+
+## What was done
+
+- Modified `sim/engine/ppa_model.py`:
+  - `AreaModel._memory_area_estimate()` now passes `process_node_nm=self.process_node_nm` to `MemoryTopology`.
+  - `PowerModel._memory_power_estimate()` now passes `process_node_nm=area_model.process_node_nm` to `MemoryTopology`.
+- Modified `sim/dse/runner.py`:
+  - Imported `AreaModel` and `_node_scale_factor` from `engine.ppa_model`.
+  - `evaluate_point()` now derives `CalibrationRef.process_node_nm` from `AreaModel(point.hardware_config).process_node_nm` and `node_scale` from `_node_scale_factor()`.
+- Modified `sim/contracts/result.py`:
+  - Kept `CalibrationRef` Pydantic defaults (`process_node_nm=12.0`, `node_scale=2.70`) unchanged for backward compatibility.
+  - Updated `result_standalone_from_ppa()` to explicitly compute and pass `CalibrationRef` values from config.
+- Modified tests:
+  - `sim/tests/test_memory_ppa.py`: `_request()` accepts `process_node_nm`; added `test_topology_process_node_parameterized` for 7/12/22/28nm; parametrized monotonic and validation tests across nodes; kept oracle test anchored at 12nm.
+  - `sim/tests/test_memory_backend.py`: `_onchip_request()` accepts `process_node_nm`; added `test_topology_process_node_parameterized`; parametrized response and PHY-rejection tests across nodes.
+
+## Verification
+
+- `uv run pytest sim/tests/test_memory_ppa.py sim/tests/test_memory_backend.py sim/tests/test_result_schema.py -q` — passed.
+- `uv run ruff check sim/engine/ppa_model.py sim/dse/runner.py sim/contracts/result.py sim/tests/test_memory_ppa.py sim/tests/test_memory_backend.py` — All checks passed.
+- `uv run basedpyright sim/engine/ppa_model.py sim/dse/runner.py sim/contracts/result.py sim/tests/test_memory_ppa.py sim/tests/test_memory_backend.py` — 0 errors, 0 warnings, 0 notes.
+- Happy-path evidence: `.omo/evidence/task-3-engine-selection-p0-hardcode.json`.
+- Negative-path evidence: `.omo/evidence/task-3-engine-selection-p0-hardcode-negative.txt`.
+
+## Key findings
+
+1. **MemoryTopology now propagates the configured node** — for 7/12/22/28nm inputs, `topology.process_node_nm` equals the input value.
+2. **CalibrationRef.node_scale is now dynamic** — 7nm=1.0, 12nm=2.70 (density ratio), 22nm≈9.88, 28nm=16.0 (geometric `(node/7)²`).
+3. **Backward compatibility preserved** — `CalibrationRef` schema defaults remain 12.0/2.70, so existing callers and serialized results remain valid.
+4. **Backend scaling is still pending** — `Parametric3DMemoryBackend.estimate()` does not yet scale area/power by `topology.process_node_nm`; the oracle already does. This is out of scope for Todo 3 and is a prerequisite for true cross-node memory PPA.
+5. **Tests now cover four nodes structurally** — node-agnostic assertions (monotonicity, validation, field propagation) run across 7/12/22/28nm; exact-oracle tests remain anchored at 12nm until backend scaling lands.
+
+## Open questions
+
+- Should `Parametric3DMemoryBackend` scale macro parameters by `topology.process_node_nm` in the next todo, or should scaling happen at the `AreaModel` layer?
+- Do we need a calibration gate that asserts `CalibrationRef.node_scale` matches `_node_scale_factor(process_node_nm)` for every result?

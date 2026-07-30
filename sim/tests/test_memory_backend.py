@@ -28,11 +28,12 @@ def _onchip_request(
     bandwidth_gbps: float = 500.0,
     read_bytes: int = 1_000_000,
     write_bytes: int = 500_000,
+    process_node_nm: float = 12.0,
 ) -> MemoryRequest:
     return MemoryRequest(
         topology=MemoryTopology(
             tier="on_chip_3d_dram",
-            process_node_nm=12.0,
+            process_node_nm=process_node_nm,
             include_phy=False,
             include_tsv=True,
             include_package=True,
@@ -46,6 +47,13 @@ def _onchip_request(
             active_time_seconds=1e-6,
         ),
     )
+
+
+@pytest.mark.parametrize("process_node_nm", [7.0, 12.0, 22.0, 28.0])
+def test_topology_process_node_parameterized(process_node_nm):
+    """MemoryTopology carries the requested process node for all supported nodes."""
+    request = _onchip_request(process_node_nm=process_node_nm)
+    assert request.topology.process_node_nm == process_node_nm
 
 
 class FakeMemoryBackend(MemoryBackend):
@@ -89,9 +97,10 @@ def test_backend_is_abstract_instance(backend):
 
 
 @pytest.mark.parametrize("backend", [Parametric3DMemoryBackend(), FakeMemoryBackend()])
-def test_backend_estimate_returns_response(backend):
-    """Every backend returns a ``MemoryResponse`` for a valid request."""
-    request = _onchip_request()
+@pytest.mark.parametrize("process_node_nm", [7.0, 12.0, 22.0, 28.0])
+def test_backend_estimate_returns_response(backend, process_node_nm):
+    """Every backend returns a ``MemoryResponse`` for a valid request across nodes."""
+    request = _onchip_request(process_node_nm=process_node_nm)
     response = backend.estimate(request)
     assert isinstance(response, MemoryResponse)
     assert response.total_area_mm2 >= 0
@@ -190,10 +199,11 @@ def test_component_manifest_validation(required, excluded, expect_ok):
             validate_component_manifest(topology, required=required, excluded=excluded)
 
 
-def test_onchip_topology_rejects_external_phy():
-    """On-chip 3D DRAM must not include an external PHY."""
+@pytest.mark.parametrize("process_node_nm", [7.0, 12.0, 22.0, 28.0])
+def test_onchip_topology_rejects_external_phy(process_node_nm):
+    """On-chip 3D DRAM must not include an external PHY across nodes."""
     backend = Parametric3DMemoryBackend()
-    request = _onchip_request().model_copy(
+    request = _onchip_request(process_node_nm=process_node_nm).model_copy(
         update={
             "topology": MemoryTopology(
                 tier="on_chip_3d_dram",

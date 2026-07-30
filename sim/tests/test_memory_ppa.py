@@ -32,6 +32,7 @@ def _request(
     write_bytes: int = 500_000,
     include_phy: bool | None = None,
     include_tsv: bool | None = None,
+    process_node_nm: float = 12.0,
 ) -> MemoryRequest:
     if tier == "on_chip_3d_dram":
         include_phy = False if include_phy is None else include_phy
@@ -46,7 +47,7 @@ def _request(
     return MemoryRequest(
         topology=MemoryTopology(
             tier=tier,
-            process_node_nm=12.0,
+            process_node_nm=process_node_nm,
             include_phy=include_phy,
             include_tsv=include_tsv,
             include_package=True,
@@ -60,6 +61,13 @@ def _request(
             active_time_seconds=1e-6,
         ),
     )
+
+
+@pytest.mark.parametrize("process_node_nm", [7.0, 12.0, 22.0, 28.0])
+def test_topology_process_node_parameterized(process_node_nm):
+    """MemoryTopology carries the requested process node for all supported nodes."""
+    request = _request(process_node_nm=process_node_nm)
+    assert request.topology.process_node_nm == process_node_nm
 
 
 @pytest.mark.parametrize("capacity_gb", [0.1, 5.0, 16.0])
@@ -81,11 +89,12 @@ def test_capacity_bandwidth_matrix_distinct_ppa(capacity_gb, bandwidth_gbps):
 
 
 @pytest.mark.parametrize("capacity_gb", [0.1, 1.0, 5.0, 16.0])
-def test_capacity_monotonic_area_and_leakage(capacity_gb):
-    """Capacity↑ → memory die area and leakage non-decreasing."""
+@pytest.mark.parametrize("process_node_nm", [7.0, 12.0, 22.0, 28.0])
+def test_capacity_monotonic_area_and_leakage(capacity_gb, process_node_nm):
+    """Capacity↑ → memory die area and leakage non-decreasing across nodes."""
     backend = Parametric3DMemoryBackend()
-    base = backend.estimate(_request(capacity_gb=0.1))
-    current = backend.estimate(_request(capacity_gb=capacity_gb))
+    base = backend.estimate(_request(capacity_gb=0.1, process_node_nm=process_node_nm))
+    current = backend.estimate(_request(capacity_gb=capacity_gb, process_node_nm=process_node_nm))
 
     assert current.memory_die_area_mm2 >= base.memory_die_area_mm2
     assert current.static_power_w >= base.static_power_w
@@ -118,9 +127,16 @@ def test_access_bytes_monotonic_energy(read_bytes, write_bytes):
 @pytest.mark.parametrize("bandwidth_gbps", [100.0, 500.0, 1000.0])
 @pytest.mark.parametrize("read_bytes", [1_000_000, 10_000_000])
 def test_oracle_reproduces_production_ppa(capacity_gb, bandwidth_gbps, read_bytes):
-    """Oracle recomputes production backend numbers for 3D DRAM without calling it."""
+    """Oracle recomputes production backend numbers for 3D DRAM at 12nm."""
     backend = Parametric3DMemoryBackend()
-    response = backend.estimate(_request(capacity_gb=capacity_gb, bandwidth_gbps=bandwidth_gbps, read_bytes=read_bytes))
+    response = backend.estimate(
+        _request(
+            capacity_gb=capacity_gb,
+            bandwidth_gbps=bandwidth_gbps,
+            read_bytes=read_bytes,
+            process_node_nm=12.0,
+        )
+    )
     oracle = memory_ppa_oracle(
         tier="on_chip_3d_dram",
         capacity_gb=capacity_gb,
@@ -128,6 +144,7 @@ def test_oracle_reproduces_production_ppa(capacity_gb, bandwidth_gbps, read_byte
         read_bytes=read_bytes,
         write_bytes=500_000,
         active_time_seconds=1e-6,
+        process_node_nm=12.0,
     )
 
     assert response.memory_die_area_mm2 == pytest.approx(oracle["memory_die_area_mm2"], rel=1e-9)
@@ -164,10 +181,16 @@ def test_tier_ppa_component_breakdown(tier):
         )
 
 
-def test_invalid_onchip_with_phy_rejects():
-    """Illegal PHY/TSV combo for on-chip 3D DRAM fails."""
+@pytest.mark.parametrize("process_node_nm", [7.0, 12.0, 22.0, 28.0])
+def test_invalid_onchip_with_phy_rejects(process_node_nm):
+    """Illegal PHY/TSV combo for on-chip 3D DRAM fails across nodes."""
     backend = Parametric3DMemoryBackend()
-    request = _request(tier="on_chip_3d_dram", include_phy=True, include_tsv=False)
+    request = _request(
+        tier="on_chip_3d_dram",
+        include_phy=True,
+        include_tsv=False,
+        process_node_nm=process_node_nm,
+    )
     with pytest.raises(ConfigError):
         backend.estimate(request)
 

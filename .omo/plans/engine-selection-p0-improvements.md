@@ -213,7 +213,7 @@ Note: C3 (Todos 10-12) functionally benefits from C2 (Todos 6-9), but can execut
 
   **Commit**: YES | `refactor(ppa): separate SRAM bitcell from logic node-scale in AreaModel` | `sim/engine/ppa_model.py`
 
-- [ ] 3. 修复 MemoryTopology 和 CalibrationRef 中的硬编码 12nm
+- [x] 3. 修复 MemoryTopology 和 CalibrationRef 中的硬编码 12nm
 
   **What to do**:
   1. `ppa_model.py:147` 和 L295：`process_node_nm=12.0` → 改为 `process_node_nm=self.node`（保存配置读取的 node 值）。
