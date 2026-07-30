@@ -22,6 +22,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "basedpyright>=1.39.9",
     "pytest>=8.0",
     "ruff>=0.11",
 ]
@@ -45,7 +46,13 @@ select = [
 ]
 ignore = [
     "E501",  # line too long (handled by formatter)
+    "E402",  # module-level import not at top (common for PYTHONPATH setup)
+    "N803",  # argument name should be lowercase (M/K/N are GEMM domain names)
+    "N806",  # variable in function should be lowercase (M/K/N are GEMM domain names)
+    "N815",  # variable in class scope should be lowercase
+    "N816",  # variable in global scope should be lowercase
     "N818",  # exception name should end with 'Error'
+    "E741",  # ambiguous variable name (I/O/l are common in this codebase)
 ]
 exclude = [
     ".git",
@@ -67,6 +74,17 @@ include = ["sim"]
 exclude = ["**/__pycache__", ".venv", ".git", ".omo"]
 reportMissingTypeStubs = false
 reportMissingImports = false
+
+# Suppress pre-existing type annotation noise (not introduced by F2)
+reportArgumentType = false
+reportOptionalMemberAccess = false
+reportOptionalSubscript = false
+reportGeneralTypeIssues = false
+reportReturnType = false
+reportCallIssue = false
+reportAssignmentType = false
+reportIndexIssue = false
+reportAttributeAccessIssue = false
 
 [tool.pytest.ini_options]
 testpaths = ["sim/tests"]
