@@ -643,6 +643,104 @@ The empty frontier was caused by the AUTHORITATIVE hard gate in `sim/dse/pareto.
   by SRAM (~3.4×). For SRAM-light engines with larger PE arrays, the ratio should approach
   16×. This should be verified with a wider coverage sweep.
 
+# Investigation — Why block beats FSA at low BW (lpddr5_3b, 51.2 GB/s)
+
+**Date:** 2026-07-30
+
+## What was done
+
+- Verified raw DSE data in `.omo/evidence/dse-lpddr5_3b-ci.json` and the ranking matrix `.omo/evidence/task-12-engine-selection-p0-ranking-matrix.json`.
+- Reproduced the ranking numbers with the current evaluation code (`sim/design_space_explorer.py:evaluate_config`).
+- Traced `BlockEngine.estimate()` and `FSAEngine.estimate()` for the same qwen2.5-3b decode trace.
+- Audited how `ci_all_axes` generates design points and how `AreaModel` / `PowerModel` allocate SRAM.
+- Ran controlled counter-factuals: same 128×128 array, same 2048 KB L2, same 51.2 GB/s LPDDR5, varying only engine type and weight precision.
+
+## Raw data verification
+
+| Scenario | Bandwidth | Engine | tok/s | config_label | design_point_id |
+|---|---:|---|---:|---|---|
+| lpddr5_3b | 51.2 GB/s | **block** | **36.6** | `bloc 128×128 INT2 1000MHz  ` | `f553d9bd…` |
+| lpddr5_3b | 51.2 GB/s | fsa | 20.5 | `fsa 128×128 INT4 1000MHz  ` | `bbb2a1e0…` |
+| lpddr5x_7b | 68.0 GB/s | block | 39.5 | `bloc 128×128 INT2 1000MHz  ` | `053e803d…` |
+| lpddr5x_7b | 68.0 GB/s | fsa | 23.1 | `fsa 128×128 INT4 1000MHz  ` | `dd4c461d…` |
+
+Source files:
+- `.omo/evidence/dse-lpddr5_3b-ci.json` line 2434 → block INT2 @ 36.6 tok/s.
+- `.omo/evidence/dse-lpddr5_3b-ci.json` line 917 → fsa INT4 @ 20.5 tok/s.
+- `.omo/evidence/task-12-engine-selection-p0-ranking-matrix.json` confirms the same labels and IDs.
+
+## Config-label audit across all 5 scenarios
+
+| Scenario | block best label | fsa best label |
+|---|---|---|
+| lpddr5_3b | `bloc 128×128 INT2 1000MHz  ` | `fsa 128×128 INT4 1000MHz  ` |
+| lpddr5x_7b | `bloc 128×128 INT2 1000MHz  ` | `fsa 128×128 INT4 1000MHz  ` |
+| hbm2e_7b | `bloc 128×384 INT4 1000MHz  ` | `fsa 128×128 INT4 1000MHz  ` |
+| onchip_7b | `bloc 128×384 INT4 1000MHz  ` | `fsa 128×128 INT4 1000MHz  ` |
+| onchip_7b_chat | `bloc 128×384 INT4 1000MHz  ` | `fsa 128×128 INT4 1000MHz  ` |
+
+**Finding:** block is evaluated at INT2 in the two low-bandwidth scenarios; FSA is **never** evaluated at INT2. Grep across all `dse-*-ci.json` files shows only `fsa 128×128 INT4 …` labels and zero `fsa … INT2` entries.
+
+## Why FSA never gets INT2 in `ci_all_axes`
+
+`sim/dse/space.py::_ci_all_axes_combinations()` varies **one axis at a time** while keeping all others at the defaults declared in `sim/config/dse_axes.yaml`. The default engine is `block` and the default weight precision is `4`. Consequently:
+- Varying `weight_precision_bits` → engine stays `block`, so block gets INT2/INT4/INT8.
+- Varying `engine` → weight precision stays `4`, so FSA only gets INT4.
+
+This is not an engine-specific optimization; it is a coverage artifact of the `ci_all_axes` generator.
+
+## Engine trace for the same configuration
+
+Controlled reproduction (128×128, 1000 MHz, 2048 KB L2, 51.2 GB/s LPDDR5, no weight cache, qwen2.5-3b decode, 28 layers):
+
+| Engine | INT2 tok/s | INT4 tok/s | Area (mm²) |
+|---|---:|---:|---:|
+| block | **36.6** | 20.8 | 99.0 |
+| os_systolic | **50.4** | 31.8 | 99.0 |
+| gmma | **38.9** | 20.8 | 102.0 |
+| systolic | 22.0 | 22.0 | 97.0 |
+| fsa | **22.0** | 20.5 | 97.2 |
+
+Per-layer cycle breakdown (representative layers, M=1):
+
+- **block INT4**: DMA-bound. Weight bytes are large → total cycles are dominated by DRAM transfer.
+- **block INT2**: Halving weight bytes drops DMA below compute → becomes compute-bound at ~36.6 tok/s.
+- **FSA INT4 / INT2**: Compute-bound due to systolic fill/drain overhead (`pipe_depth = H + M + W`). Reducing weight precision only helps DMA, not compute, so INT2 gives only ~7% speed-up (20.5 → 22.0).
+
+## Area-efficiency / SRAM allocation audit
+
+- `AreaModel` PE baseline @7nm: block = 4.0 mm² (2× systolic), FSA = 2.2 mm² (1.1× systolic).
+- Total area at 128×128: block = 99.0 mm², FSA = 97.2 mm² — the PE-area saving is almost invisible because DRAM PHY, PCIe, SRAM, and other components dominate.
+- SRAM is **not** reallocated from PE-area savings. `sim/engine/mac_engine.py:163` reads `sram.l2_shared_kb` directly from the config; `AreaModel` computes SRAM area from that capacity but does **not** increase it for smaller-PE engines. FSA does not get extra SRAM.
+- The `sram_l2_kb` axis is shared across all engines; both block and FSA best configs use 2048 KB in this data set.
+
+## Classification
+
+The observed gap (block 36.6 vs FSA 20.5) is a combination of:
+
+1. **Unfair comparison (precision mismatch)** — block is allowed INT2 while FSA is not. At equal INT4 they are essentially tied (20.8 vs 20.5).
+2. **Genuine compute-model difference** — even at equal INT2, block (36.6) beats FSA (22.0) because block has no systolic fill/drain overhead and becomes compute-bound once INT2 relieves the DRAM bottleneck.
+3. **DSE coverage artifact** — if **all** engines were allowed INT2, the low-BW winner would actually be `os_systolic` (50.4 tok/s), not block.
+
+It is **not** a bug in FSA's physics estimator, nor is it caused by SRAM being allocated proportionally to area.
+
+## Impact on the plan hypothesis
+
+The plan (line 716–718) expected “FSA wins at low BW, block wins at high BW”. The data do **not** support this:
+
+- At equal precision, `os_systolic` wins at 51.2 GB/s (31.8 tok/s INT4, 50.4 tok/s INT2).
+- block only “wins” in the ranking because it is the only engine evaluated at INT2 in the low-BW scenarios.
+- FSA never wins at low BW under any equal-precision comparison.
+
+**Recommendation:** revise the hypothesis to “low-BW leadership is precision-dependent; with the project's baseline INT4 quantization, os_systolic is already competitive, and block/GMMA benefit disproportionately from INT2 because they are DMA-bound.”
+
+## Proposed fixes
+
+1. **Fair cross-engine ranking:** when ranking engines, hold `weight_precision_bits` constant (e.g., the project baseline INT4). Do not let one engine sweep INT2 while others are fixed at INT4.
+2. **Fix `ci_all_axes` coverage:** when the `weight_precision_bits` axis is swept, also sweep it for every engine, or add a dedicated “engine × precision” coverage mode so no engine gets a hidden precision advantage.
+3. **Area → SRAM reallocation (if desired):** implement an area-budget rule that converts PE-area savings into additional L2 SRAM for smaller-PE engines under a fixed total-area cap, then re-run. Currently FSA's area efficiency is not exercised.
+4. **Re-run ranking matrix** after the precision fix and update `.omo/evidence/task-12-engine-selection-p0-ranking-matrix.*`.
+
 # F1 — Fix verify_evidence_ledger.py false positive in _extract_test_counts()
 
 **Date:** 2026-07-30
@@ -924,3 +1022,335 @@ The script's `_extract_test_counts()` function uses regex `(\d+)\s+failed` to co
 ## Verdict
 
 **FIXED** — F2 now passes all 5 checks with exit 0.
+
+# Task — Per-node frequency binding + Frequency-aware cross-node comparison
+
+**Date:** 2026-07-30
+
+## What was done
+
+- Added per-node frequency constraints to `sim/config/dse_axes.yaml`:
+  - Expanded `frequency_mhz` axis from `[800, 1000, 1200]` to `[200, 400, 600, 800, 1000, 1200, 1600, 2000]`.
+  - Added 4 frequency-bound constraints mapping `process_node` → allowed frequencies.
+  - Added 4 corresponding reason codes with human-readable descriptions.
+- Created `.omo/evidence/investigate-fsa-cross-node-freq.py` — runs `block` and `fsa` engines across all per-node frequency ranges and picks the best tok/s per (node, engine).
+- Verified constraints work: 28nm never gets ≥800 MHz; 7nm never gets ≤600 MHz.
+- Generated evidence files:
+  - `.omo/evidence/investigate-fsa-cross-node-freq.json`
+  - `.omo/evidence/investigate-fsa-cross-node-freq.md`
+
+## Per-Node Frequency Ranges
+
+| Node | Allowed Frequencies (MHz) | Block Best | FSA Best |
+|:---:|:---|:---:|:---:|
+| 28nm | 200, 400, 600 | 600 | 600 |
+| 22nm | 400, 600, 800 | 600 | 800 |
+| 12nm | 800, 1000, 1200 | 800 | 1200 |
+| 7nm  | 800, 1000, 1200, 1600, 2000 | 800 | 1200 |
+
+## Frequency-Aware Results
+
+| Node | Engine | Freq (MHz) | tok/s | area_mm² | power_w |
+|:---:|:---:|:---:|:---:|:---:|:---:|
+| 7nm  | block | 800  | **20.8** | 99.0  | 9.0  |
+| 7nm  | fsa   | 1200 | **20.8** | 97.2  | 9.0  |
+| 12nm | block | 800  | **20.8** | 119.1 | 13.0 |
+| 12nm | fsa   | 1200 | **20.8** | 114.3 | 13.0 |
+| 22nm | block | 600  | **20.8** | 195.4 | 23.4 |
+| 22nm | fsa   | 800  | **18.3** | 177.6 | 21.7 |
+| 28nm | block | 600  | **20.8** | 261.4 | 33.7 |
+| 28nm | fsa   | 600  | **14.3** | 232.6 | 25.0 |
+
+## Key Findings
+
+1. **tok/s now varies across nodes for compute-bound engines.** FSA throughput drops from 20.8 tok/s (7nm @ 1200 MHz) to 14.3 tok/s (28nm @ 600 MHz) — a **1.45× variation**. This contrasts with the previous fixed-1000MHz investigation where tok/s was identical (20.5–20.8) across all nodes.
+
+2. **Block engine is BW-bound at 51.2 GB/s — tok/s ceiling is independent of frequency.** Even at 600 MHz, block's DMA cycles decrease proportionally (bw_raw = GB/s ÷ freq goes UP as freq drops), keeping the time-per-token roughly constant. The 51.2 GB/s external bandwidth is the dominant bottleneck; varying frequency from 600→2000 MHz has negligible effect on block tok/s. This is a physical reality: you cannot out-clock a memory bottleneck.
+
+3. **FSA is compute-bound (systolic fill/drain overhead), so frequency directly impacts throughput.** FSA's per-tile compute is ~800× block's, making it compute-limited rather than DMA-limited. At 28nm's max 600 MHz, FSA drops to 14.3 tok/s — **a 31% gap vs block's 20.8 tok/s**. At 7nm's 1200 MHz, FSA catches up to block's BW ceiling.
+
+4. **Area scales monotonically with node** — from 99.0 mm² (7nm) to 261.4 mm² (28nm) for block, consistent with bitcell + logic scaling. FSA's area advantage grows at older nodes (1.9% smaller at 7nm → 12.4% smaller at 28nm) because FSA's logic-light PE amplifies the logic-area scaling differential.
+
+5. **Power scales with area × frequency.** At 28nm (600 MHz), block draws 33.7 W; at 7nm (800 MHz), 9.0 W. The 28nm node is 3.7× more power-hungry despite running at lower frequency.
+
+6. **Frequency constraint enforcement verified.** The DesignSpace generator correctly excludes 28nm+800MHz (18 exclusions across full mode), 7nm+200MHz (3 exclusions), etc. The default (7nm, 1000 MHz) combo is preserved (1000 MHz included in 7nm's allowed set).
+
+## Design Implications
+
+- **At 51.2 GB/s, block is the safer engine choice across ALL nodes** — it delivers the BW ceiling (20.8 tok/s) at every frequency, while FSA only reaches it at 7nm/12nm with ≥1200 MHz.
+- **At older nodes (22/28nm), block has a decisive throughput advantage** (1.14–1.45×) over FSA because FSA cannot reach the frequencies needed to overcome its systolic overhead.
+- **Frequency is NOT a free lunch for BW-bound engines.** Doubling frequency from 800→1600 MHz at 7nm gives block ZERO additional tok/s (BW ceiling unchanged). Higher frequency only increases power. This is a critical architectural insight: for the LPDDR5-51.2 GB/s scenario, pumping frequency past ~600 MHz is wasteful — the bottleneck is external, not internal.
+- **The cross-node ranking must be interpreted with bandwidth context.** The previous conclusion "block wins at all nodes" was correct but for the wrong reason (fixed 1000MHz made tok/s identical). Now we see that block genuinely wins at 22/28nm even with per-node frequency, because the BW ceiling protects it. At 7nm+, FSA's higher achievable frequency closes the gap but never exceeds block.
+
+## Open Questions
+
+- Would FSA beat block at higher bandwidths (e.g., HBM2e 410 GB/s) where the frequency ceiling matters more? The current investigation is bandwidth-limited at 51.2 GB/s.
+- Should the DSE default frequency_mhz be changed from 1000 to 800 to avoid the implicit preference for 7nm?
+- At what bandwidth does block transition from BW-bound to compute-bound, making frequency scaling visible?
+
+
+# Todo — Investigate FSA cross-node area-efficiency advantage
+
+**Date:** 2026-07-30
+
+## What was done
+
+- Created `.omo/evidence/investigate-fsa-cross-node.py` to run a targeted,
+  single-config cross-node comparison for `block` and `fsa` engines.
+- Fixed configuration (identical for both engines at every node):
+  - Array: 128 × 128
+  - Frequency: 1000 MHz
+  - Weight precision: INT4
+  - L2 SRAM: 2048 KB
+  - External memory: LPDDR5 51.2 GB/s (`lpddr5_3b` scenario)
+  - Nodes: 7 / 12 / 22 / 28 nm
+- Used the actual `AreaModel` / `PowerModel` and the same throughput path as
+  the cross-node DSE (`design_space_explorer.evaluate_config`).
+- Captured raw evidence to `.omo/evidence/investigate-fsa-cross-node.json`.
+
+## Results
+
+| Node | Engine | tok/s | area_mm² | power_w | compute_cycles | dma_cycles | utilization |
+|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| 7nm  | block | 20.8 | 99.0 | 9.5 | 680,064 | 1,416,720 | 0.002 |
+| 7nm  | fsa   | 20.5 | 97.2 | 8.6 | 1,324,064 | 1,416,940 | 0.002 |
+| 12nm | block | 20.8 | 119.1 | 14.4 | 680,064 | 1,416,720 | 0.002 |
+| 12nm | fsa   | 20.5 | 114.3 | 12.0 | 1,324,064 | 1,416,940 | 0.002 |
+| 22nm | block | 20.8 | 195.4 | 34.3 | 680,064 | 1,416,720 | 0.002 |
+| 22nm | fsa   | 20.5 | 177.6 | 25.4 | 1,324,064 | 1,416,940 | 0.002 |
+| 28nm | block | 20.8 | 261.4 | 51.3 | 680,064 | 1,416,720 | 0.002 |
+| 28nm | fsa   | 20.5 | 232.6 | 36.9 | 1,324,064 | 1,416,940 | 0.002 |
+
+### Area and throughput ratios (block / FSA)
+
+| Node | block area / FSA area | block tok/s / FSA tok/s |
+|:---:|:---:|:---:|
+| 7nm  | 1.019 | 1.015 |
+| 12nm | 1.042 | 1.015 |
+| 22nm | 1.100 | 1.015 |
+| 28nm | 1.124 | 1.015 |
+
+## Analysis
+
+1. **FSA's area advantage does grow at older nodes.**
+   - At 7nm the block engine is only ~1.9% larger than FSA.
+   - At 28nm the gap widens to ~12.4%.
+   - This amplification is driven by logic-area scaling: the block engine's
+     larger PE and broadcast/interconnect footprint scales roughly with
+     `(node/7)²`, while FSA stays close to the systolic baseline. SRAM
+     (sub-quadratic bitcell scaling) is identical for both engines, so the
+     relative difference is dominated by the logic gap.
+
+2. **Throughput is essentially identical across nodes for a fixed config.**
+   - Performance is BW-bound (DMA cycles dominate compute cycles), and
+     bandwidth/frequency are held constant, so tok/s does not change with node.
+   - The block engine is slightly faster than FSA (1.5% at all nodes) because
+     FSA pays a small inline-softmax overhead in the general matmul path even
+     when the workload is not attention-heavy.
+
+3. **FSA does not beat block in tok/s at any node under this configuration.**
+   - Block's broadcast dataflow has lower compute-cycle overhead for these
+     GEMM shapes; FSA's advantage (inline softmax) is not exercised by the
+     decode projection-heavy trace.
+   - FSA does deliver a modest area and power savings that increases at older
+     nodes, but it trades a small amount of throughput for that savings.
+
+## Conclusion
+
+- **Cross-node advantage exists for area, not throughput.** FSA's area
+  efficiency is amplified at older nodes because it is logic-light, but the
+  block engine remains the throughput winner for the `lpddr5_3b` workload
+  across all four nodes.
+- **Decision implication:** If the product target is an older node (22/28nm)
+  and area/power are tighter constraints than the last 1.5% of tok/s, FSA
+  becomes more competitive. If throughput is the priority, block still wins.
+
+# WMMA tok/s investigation
+
+**Date:** 2026-07-30
+
+## 1. Actual tok/s value
+
+The DSE ranking matrix reports `tok/s = 0.1` for WMMA in every scenario. The
+reported value is the result of `tok_s_from_layer()` rounding to one decimal
+place. The **unrounded value for the 7nm `wmma 128×128 INT4 1000MHz` point in
+`lpddr5_3b` is ~0.066 tok/s**:
+
+```
+layer_cycles = 543,397,561 cycles/layer
+num_layers   = 28
+tok/s        = 1e9 / (543,397,561 × 28) = 0.0657 tok/s
+```
+
+So the displayed `0.1` is a rounding artifact; the real throughput is an order
+of magnitude lower than the next engine (`tensor_core` at 9.9 tok/s).
+
+## 2. Config inspected
+
+From `.omo/evidence/dse-lpddr5_3b-ci.json`, the WMMA design point is:
+
+```json
+{
+  "config_label": "wmma 128×128 INT4 1000MHz  ",
+  "engine_type": "wmma",
+  "calibration": {
+    "process_node_nm": 7.0,
+    "node_scale": 1.0,
+    "dram_efficiency": 0.85
+  },
+  "metrics": {
+    "tok_per_s": 0.1,
+    "area_mm2": 101.0,
+    "power_w": 10.5,
+    "completed_throughput_hz": 0.0,
+    "utilization": 0.0,
+    "avg_latency_s": 0.0,
+    "p99_latency_s": 0.0,
+    "energy_joules": 2520000.0
+  }
+}
+```
+
+The config is exactly the nominal `ci-all-axes` point: 128×128 array, INT4
+weights, 8-bit activations, 1000 MHz, 51.2 GB/s LPDDR5 with 0.85 efficiency.
+There is **no precision/dimension/bandwidth misconfiguration**.
+
+## 3. Engine trace analysis
+
+The Qwen2.5-3B decode trace used by the DSE has 7 GEMMs (M=1):
+
+| # | op | M | K | N |
+|---|---:|---:|---:|---:|
+| 0 | Q_proj | 1 | 2048 | 2048 |
+| 1 | K_proj | 1 | 2048 | 2048 |
+| 2 | V_proj | 1 | 2048 | 2048 |
+| 3 | O_proj | 1 | 2048 | 2048 |
+| 4 | FFN_gate | 1 | 2048 | 11008 |
+| 5 | FFN_up | 1 | 2048 | 11008 |
+| 6 | FFN_down | 1 | 11008 | 2048 |
+
+WMMA `estimate()` breaks each tile into 16×16×16 fragments. For the 128×128
+array there are 64 fragments per tile. The per-fragment cost is hard-coded as:
+
+```python
+_per_fragment_compute() =
+    WARP_FRAGMENT_SERIALIZATION_CYCLES (1600)
+  + WARP_SYNC_CYCLES                  (32)
+  + FRAG_MAC_CYCLES                   (16)
+  = 1648 cycles/fragment
+```
+
+For `Q_proj`:
+
+- `frag_M_total=1`, `frag_K_total=128`, `frag_N_total=128`
+- `total_fragments = 16,384`
+- `fragments_per_tile = 64`
+- `per_tile_compute = 64 × 1648 = 105,472 cycles`
+- `total_tiles = 256`
+- `total_cycles = 27,001,663` (compute = 27,000,832, DMA = 831)
+- `ideal_compute_cycles = 128`
+- `utilization = 128 / 27,001,663 ≈ 4.7×10⁻⁶`
+
+For `FFN_gate`/`FFN_up`/`FFN_down` the same pattern repeats at larger
+`total_tiles` and produces ~145,130,303 cycles each.
+
+## 4. Cycle-breakdown comparison with block / os_systolic
+
+Same 128×128 INT4 1000MHz LPDDR5 config, summed across the full 7-op layer:
+
+| Engine | layer compute | layer DMA | layer total | tok/s (28 layers) | bottleneck |
+|---|---:|---:|---:|---:|:---|
+| wmma | 543,391,744 | 5,817 | 543,397,561 | **0.066** | compute |
+| block | 680,064 | 1,416,720 | 1,416,720 | 20.8 | dma |
+| os_systolic | 25,760 | 25,760 | 824,775 | 31.8 | dma |
+
+WMMA is **~383× slower than block** and **~659× slower than os_systolic** at
+the layer level. The DMA component in WMMA is only 5,817 cycles — less than
+0.001% of the total — so this is **not a bandwidth/DMA problem**.
+
+Per-tile compute contrast for `Q_proj`:
+
+| Engine | per-tile compute | per-tile DMA | total tiles |
+|---|---:|---:|---:|
+| wmma | 105,472 | 831 | 256 |
+| block | 132 | 59,057 | 256 |
+| os_systolic | 5 | 41,000 | 256 |
+
+WMMA's per-tile compute is **~800× block** and **~20,000× os_systolic**.
+
+## 5. Why the value is constant across bandwidths
+
+The WMMA compute model is almost entirely determined by the number of
+16×16×16 fragments, which depends on `K` and `N`, not on external bandwidth.
+Doubling the memory bandwidth only changes the ~5,817-cycle DMA component;
+the ~543M-cycle compute component stays fixed. Hence tok/s stays at the
+rounded `0.1` value for 51.2 GB/s, 68 GB/s, 410 GB/s, and 500 GB/s.
+
+## 6. Why WMMA appears on the Pareto frontier
+
+WMMA has the worst throughput but appears `on_pareto = Yes` because the
+scenario-driven Pareto filter treats the missing temporal metrics as optimal:
+
+- `completed_throughput_hz = 0.0`
+- `p99_latency_s = 0.0`
+- `deadline_miss_count = 0`
+- `drop_count = 0`
+
+The hard gates do not exclude a point with zero completed work, so WMMA is
+non-dominated on the latency objective (0 s is "better" than any positive
+latency). This is a **downstream Pareto/scenario artifact**, not a cause of
+the low throughput.
+
+## 7. Bug or expected behavior?
+
+**Expected under the current model, not a code bug.**
+
+- The `WARP_FRAGMENT_SERIALIZATION_CYCLES = 1600` constant is intentionally
+  applied per 16×16 fragment to model a single-die NPU without a GPU-style
+  warp scheduler.
+- The behavior is explicitly locked by `sim/tests/test_engines.py::test_wmma_decode`,
+  which asserts WMMA is >10× slower than every other engine and has tok/s < 10
+  for a single `FFN_down` decode GEMM.
+- The cycle count matches the earlier postfix report
+  (`reports/dse-engine-model-bugs-postfix-2026-07-27.md`, WMMA 6.9 tok/s for a
+  single FFN_down op ≈ 145M cycles).
+
+The displayed `0.1` is rounding; the model deliberately makes WMMA unusable
+for M=1 decode under the assumed serialization cost.
+
+## 8. Proposed fix (if desired)
+
+If WMMA is meant to be a realistic candidate rather than a deliberately
+pessimistic baseline, the model should treat the 64 available 16×16 warp slots
+as spatially parallel (like `TensorCoreEngine` does with `num_tcs` and waves),
+not as fully serialized. Concretely:
+
+1. Re-calibrate `WARP_FRAGMENT_SERIALIZATION_CYCLES` or replace the per-fragment
+   serialization with a per-wave cost: `ceil(total_fragments / num_warps)`.
+2. This would reduce per-tile compute by roughly `num_warps` (64× for 128×128),
+   bringing WMMA into the same throughput neighborhood as TensorCore rather
+   than three orders of magnitude slower.
+
+Because the instruction set says **"Do NOT change calibration constants"**, no
+source change was applied. The recommendation is to treat WMMA's `0.1` tok/s as
+a **modeling signal** (the engine is not competitive under the current
+serialization assumption) rather than a bug to be patched.
+
+## Evidence commands
+
+```bash
+# Direct engine evaluation for WMMA / block / os_systolic
+PYTHONPATH=sim:. python3 -c "
+from sim.design_space_explorer import simulate_layer
+import yaml
+base = yaml.safe_load(open('sim/config/design_space.yaml'))
+for et in ['wmma','block','os_systolic']:
+    base['mac_engine']['type'] = et
+    c, _ = simulate_layer(base)
+    print(f'{et:12s} layer_cycles={c}')
+"
+
+# Targeted WMMA tests
+uv run pytest sim/tests/test_engines.py -k wmma -v
+uv run pytest sim/tests/test_engine_physical_invariants.py -k wmma -v
+```

@@ -32,8 +32,8 @@ axes:
     provenance: design_space/sweep
 
   frequency_mhz:
-    description: Core clock frequency
-    values: [800, 1000, 1200]
+    description: Core clock frequency (per-node plausible ranges)
+    values: [200, 400, 600, 800, 1000, 1200, 1600, 2000]
     provenance: design_space/sweep
 
   weight_precision_bits:
@@ -259,6 +259,34 @@ constraints:
         array_width: [384]
     reason: area_exceeds_200mm2
 
+  - name: node_28_frequency_bound
+    when:
+      process_node: [28]
+    require:
+      frequency_mhz: [200, 400, 600]
+    reason: node_28_frequency_bound
+
+  - name: node_22_frequency_bound
+    when:
+      process_node: [22]
+    require:
+      frequency_mhz: [400, 600, 800]
+    reason: node_22_frequency_bound
+
+  - name: node_12_frequency_bound
+    when:
+      process_node: [12]
+    require:
+      frequency_mhz: [800, 1000, 1200]
+    reason: node_12_frequency_bound
+
+  - name: node_7_frequency_bound
+    when:
+      process_node: [7]
+    require:
+      frequency_mhz: [800, 1000, 1200, 1600, 2000]
+    reason: node_7_frequency_bound
+
 reason_codes:
   lpddr5_no_onchip: LPDDR5 is external DRAM; on-chip 3D DRAM must be disabled
   lpddr5x_no_onchip: LPDDR5X is external DRAM; on-chip 3D DRAM must be disabled
@@ -269,3 +297,7 @@ reason_codes:
   area_exceeds_200mm2: Array dimensions exceed area budget for this engine class
   area_exceeds_80mm2: Systolic array dimensions exceed conservative area budget at high frequency
   old_node_sram_l2_limit: SRAM L2 capacity limited to 4096 KB on 28nm and 22nm process nodes
+  node_28_frequency_bound: 28nm process node plausible frequency range 200–600 MHz (low-leakage, mature node)
+  node_22_frequency_bound: 22nm process node plausible frequency range 400–800 MHz
+  node_12_frequency_bound: 12nm (TSMC 12FFC) process node plausible frequency range 800–1200 MHz
+  node_7_frequency_bound: 7nm process node plausible frequency range 800–2000 MHz (high-performance, advanced node)
