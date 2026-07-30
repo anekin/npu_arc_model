@@ -1,0 +1,36 @@
+{
+  "task": "Todo 1 — Build SRAM bitcell area lookup and data provenance",
+  "timestamp": "2026-07-30",
+  "files_created": [
+    "sim/contracts/bitcell.py",
+    "sim/tests/test_bitcell_table.py",
+    "scripts/p0_c1_sram_calibration_gate.py"
+  ],
+  "files_modified": [
+    "references/area_sources.md"
+  ],
+  "verification": {
+    "pytest": { "exit_code": 0, "tests_passed": 28 },
+    "ruff": { "exit_code": 0, "status": "All checks passed" },
+    "basedpyright": { "exit_code": 0, "errors": 0, "warnings": 0 },
+    "calibration_gate": { "exit_code": 0, "verdict": "PASS" }
+  },
+  "bitcell_entries": {
+    "7nm":  { "area_um2_per_bit": 0.027, "provenance": "TSMC N7 HD bitcell — VLSI 2017 / IEDM 2017" },
+    "12nm": { "area_um2_per_bit": 0.074, "provenance": "TSMC 12FFC HD bitcell — product brief 2020" },
+    "22nm": { "area_um2_per_bit": 0.092, "provenance": "TSMC 22nm ULL HD bitcell — product brief 2023" },
+    "28nm": { "area_um2_per_bit": 0.127, "provenance": "TSMC 28nm HPM HD bitcell — foundry data sheet" }
+  },
+  "sram_area_mm2_test_vector": {
+    "description": "4 KiB @7nm, overhead=1.5",
+    "formula": "4096 * 8 * 0.027 * (1 + 1.5) / 1e6",
+    "result": 0.00110592
+  },
+  "calibration_gate": {
+    "path": ".omo/evidence/p0-c1-calibration-gate.json",
+    "external_refs_checked": ["TPUv1 (28nm, 28 MiB)", "RK1828 (22nm, 8 MiB)"],
+    "external_tolerance": "±30%",
+    "verdict": "PASS",
+    "note": "Old model divergence >30% expected — geometrically scaled l1_per_kb overestimates SRAM area"
+  }
+}

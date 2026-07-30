@@ -1,0 +1,52 @@
+{
+  "gate": "sram-calibration-gate-p0-c1",
+  "bitcell_nodes": [
+    7.0,
+    12.0,
+    22.0,
+    28.0
+  ],
+  "external_tolerance": 0.3,
+  "old_model_warn_threshold": 0.3,
+  "results": [
+    {
+      "chip": "TPUv1",
+      "node_nm": 28.0,
+      "sram_mib": 28.0,
+      "area_mm2_ref": 74.6,
+      "area_mm2_bitcell": 74.575,
+      "ratio": 0.9997,
+      "source": "TPUv1 ISCA 2017 die-shot analysis \u2014 28 MiB UB @ 28nm",
+      "status": "PASS"
+    },
+    {
+      "chip": "RK1828",
+      "node_nm": 22.0,
+      "sram_mib": 8.0,
+      "area_mm2_ref": 19.0,
+      "area_mm2_bitcell": 15.435,
+      "ratio": 0.8124,
+      "source": "RK1828 product brief / die analysis \u2014 ~8 MiB on-chip SRAM @ 22nm",
+      "status": "PASS"
+    },
+    {
+      "node_nm": 28.0,
+      "sram_mib": 28.0,
+      "area_mm2_bitcell": 74.575,
+      "area_mm2_old_model": 917.504,
+      "ratio_bitcell_over_old": 0.0813,
+      "status": "WARN",
+      "reason": "Bitcell area is 91.9% smaller than old model"
+    },
+    {
+      "node_nm": 22.0,
+      "sram_mib": 8.0,
+      "area_mm2_bitcell": 15.435,
+      "area_mm2_old_model": 161.834,
+      "ratio_bitcell_over_old": 0.0954,
+      "status": "WARN",
+      "reason": "Bitcell area is 90.5% smaller than old model"
+    }
+  ],
+  "verdict": "PASS"
+}

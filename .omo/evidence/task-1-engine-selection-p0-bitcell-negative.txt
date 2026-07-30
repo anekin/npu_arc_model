@@ -1,0 +1,36 @@
+Negative test results for BitcellTable
+========================================
+
+Test: BitcellTable.area_um2_per_bit(5.0)
+Expected: ConfigError("Unknown process node 5.0nm")
+Result: PASS — ConfigError raised with message matching "Unknown process node"
+
+Test: sram_area_mm2(1024, 5.0)
+Expected: ConfigError
+Result: PASS — ConfigError raised
+
+Test: sram_area_mm2(1024, 7.0, overhead=-0.1)
+Expected: ConfigError("overhead ... out of range")
+Result: PASS — ConfigError raised with message matching "overhead"
+
+Test: sram_area_mm2(1024, 7.0, overhead=5.1)
+Expected: ConfigError
+Result: PASS — ConfigError raised
+
+Test: sram_area_mm2(1024, 7.0, overhead="1.5")
+Expected: ConfigError
+Result: PASS — ConfigError raised (non-numeric overhead)
+
+Test: sram_area_mm2(0, 7.0)
+Expected: ValueError("size_bytes must be positive")
+Result: PASS — ValueError raised
+
+Test: sram_area_mm2(-1024, 7.0)
+Expected: ValueError
+Result: PASS — ValueError raised
+
+Test: Unknown node 3.0, 14.0, 45.0
+Expected: ConfigError for each
+Result: PASS — all raise ConfigError
+
+Summary: 8 negative tests, 8 passed, 0 failed

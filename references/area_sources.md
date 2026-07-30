@@ -74,8 +74,8 @@ TPUv1 只提供 **systolic** 基准。其他 engine 类型的 PE 面积通过**�
 
 | 组件 | 7nm 值 | 来源 |
 |------|:---:|------|
-| SRAM L1 | 0.002 mm²/KB | TSMC 7nm SRAM macro 公开数据（HD bitcell: 0.027µm²/bit），含外围电路 1.5× overhead |
-| SRAM L2 | 0.0015 mm²/KB | 同上，HPC bitcell |
+| SRAM L1 | 0.002 mm²/KB | TSMC 7nm SRAM macro 公开数据（HD bitcell: 0.027µm²/bit），含外围电路 1.5× overhead。**2026-07 P0 改进：使用 `contracts/bitcell.py` `BitcellTable` + `sram_area_mm2()` 替代固定常量，支持按节点查表 + 可配 overhead。`l1_per_kb` / `l2_per_kb` 保留向后兼容。** |
+| SRAM L2 | 0.0015 mm²/KB | 同上，HPC bitcell，overhead 1.3×。**同上，新代码建议使用 `sram_area_mm2(overhead=1.3)`** |
 | DRAM PHY (DDR4/LPDDR5 64-bit) | 5.0 mm² | Cadence/SNPS DDR PHY IP 公开数据，12nm 折算 |
 | PCIe Gen4 ×4 | 2.0 mm² | SNPS PCIe PHY IP 公开数据 |
 | RISC-V 微控制器 | 1.0 mm² | 业界 RV32IMC 微控制器典型值 |
@@ -134,6 +134,9 @@ TSV（Through-Silicon Via）物理尺寸：~5µm 直径 + ~10µm keep-out zone �
 2. **SRAM 面积按 KB 线性叠加**，实际宏观 SRAM 效率随总容量增大而提高。
 3. **工艺缩放平方律 `(node/7)²`** 在 12nm → 3nm 区间合理，对更老工艺（28nm, 65nm）是近似。
 4. **Block/WMMA/GMMA 的相对比值**基于架构推理而非 die-shot 反推，量级可信但精确比无硬数据。
+5. **Bitcell 查表仅限 TSMC 节点** — `BitcellTable` 仅收录已发布 TSMC HD bitcell 数据（7nm, 12FFC, 22nm, 28nm）。三星/Intel 节点不在表中；未来如需跨厂查表需扩展 `source_uri` + `provenance` 元数据。处于两个已知节点之间的工艺（如 16nm）暂不支持插值。
+6. **Peripheral overhead 为线性近似** — 实际 SRAM macro 效率随容量增大而 sub-linear（banking / 地址解码分摊），当前固定 overhead 参数（L1=1.5×, L2=1.3×）在中大容量（≥1 MiB）下偏保守。未来可引入容量依赖的 overhead 函数。
+7. **Bitcell 数据为 HD（高密度）变体** — TSMC 同时提供 HP（高性能, bitcell 更大）和 UHD（超高密度, bitcell 更小）变体，当前表仅收录 HD。若设计中 SRAM 频率是关键约束，应改用 HP bitcell 面积。
 
 ---
 
