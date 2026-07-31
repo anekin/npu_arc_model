@@ -171,13 +171,15 @@ class TestProcessNodeGenerationCi:
         assert nodes == [7, 12, 22, 28], f"Expected [7, 12, 22, 28], got {nodes}"
 
     def test_ci_all_axes_count_with_node(self, minimal_scenario, fix_axes_with_node):
-        """ci_all_axes generates process_node + sram_l2_kb sweeps."""
+        """ci_all_axes generates process_node + sram_l2_kb sweeps + engine×node cross-product."""
         space = DesignSpace(minimal_scenario, axes_config=fix_axes_with_node, mode="ci_all_axes")
         points = space.generate()
-        # With all other axes fixed, ci_all_axes creates combos by varying each
-        # axis against defaults: 4 process_node variants + 5 sram variants,
-        # minus 1 duplicate (defaults combo), giving 8 distinct points.
-        assert len(points) == 8, f"Expected 8 ci_all_axes points, got {len(points)}"
+        # With all other axes fixed and engine=["block"] in this fixture,
+        # ci_all_axes creates:
+        #   4 process_node variants + 5 sram variants - 1 duplicate = 8 base points
+        #   + 7 non-block engines × 3 non-default nodes = 21 cross-product points
+        #   = 29 total.
+        assert len(points) == 29, f"Expected 29 ci_all_axes points, got {len(points)}"
 
 
 # ── hardware_builder process_node propagation tests ───────────────────────────

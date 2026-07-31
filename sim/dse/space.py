@@ -184,6 +184,38 @@ class DesignSpace:
                     if exclusion is not None:
                         exclusions.append(exclusion)
 
+        # Engine × process_node cross-product for non-default nodes.
+        # The engine axis iteration above covers all 8 engines at the
+        # default node (7nm).  For non-default nodes (28/22/12nm) the
+        # process_node axis above produces ONE combo per value (default
+        # engine=block).  This block adds the remaining 7 engines × 3
+        # nodes = 21 cross-product combos so ci-all-axes generates all
+        # 8 engines at every process node.
+        default_process_node = self.defaults.get("process_node")
+        default_engine = self.defaults.get("engine")
+        has_process_node = "process_node" in self.axes
+        has_engine = "engine" in self.axes
+        if has_process_node and has_engine and default_process_node is not None and default_engine is not None:
+            from engine.registry import engine_full_ids  # noqa: PLC0415
+
+            all_engines = engine_full_ids()
+            for node_val in self.axes["process_node"].values:
+                if node_val == default_process_node:
+                    continue  # engine-axis loop already covers default node
+                for engine_val in all_engines:
+                    if engine_val == default_engine:
+                        continue  # process_node-axis loop already covers block at this node
+                    combo = dict(self.defaults)
+                    combo["process_node"] = node_val
+                    combo["engine"] = engine_val
+                    combo, changes = self._repair(combo)
+                    if self._is_valid(combo):
+                        add(combo)
+                    else:
+                        _, exclusion = self._check(combo)
+                        if exclusion is not None:
+                            exclusions.append(exclusion)
+
         return list(seen.values()), exclusions
 
     def _repair(self, combo: dict[str, Any]) -> tuple[dict[str, Any], list[tuple[str, Any, Any, Constraint]]]:
