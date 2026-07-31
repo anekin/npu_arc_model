@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "active_work_id": "engine-selection-p0-improvements-2eb84688",
+  "active_work_id": "wmma-gmma-pe-recalibration-a21bd484",
   "works": {
     "dse-engine-model-bug-fix-f2613fba": {
       "work_id": "dse-engine-model-bug-fix-f2613fba",
@@ -213,60 +213,219 @@
       },
       "ended_at": "2026-07-30T14:01:27.269Z",
       "elapsed_ms": 18808879
+    },
+    "wmma-gmma-pe-recalibration-a21bd484": {
+      "work_id": "wmma-gmma-pe-recalibration-a21bd484",
+      "active_plan": "/home/prj/zhengs/caduceuscore/npu_arc_model/.omo/plans/wmma-gmma-pe-recalibration.md",
+      "plan_name": "wmma-gmma-pe-recalibration",
+      "status": "active",
+      "started_at": "2026-07-31T02:06:18.662Z",
+      "updated_at": "2026-07-31T04:04:03.533Z",
+      "session_ids": [
+        "opencode:ses_053ba6068ffeyiIpkBUK0ulwPN"
+      ],
+      "session_origins": {
+        "opencode:ses_053ba6068ffeyiIpkBUK0ulwPN": "direct"
+      },
+      "agent": "atlas",
+      "task_sessions": {
+        "todo:1": {
+          "task_key": "todo:1",
+          "task_label": "1",
+          "task_title": "将 WARP_FRAGMENT_SERIALIZATION_CYCLES 改为 YAML 可配置参数",
+          "session_id": "opencode:ses_04a0ff2eaffeJDvOZrxi5XIGx3",
+          "agent": "Sisyphus-Junior",
+          "category": "quick",
+          "updated_at": "2026-07-31T02:57:53.976Z",
+          "started_at": "2026-07-31T02:14:35.418Z",
+          "status": "completed",
+          "ended_at": "2026-07-31T02:57:53.976Z",
+          "elapsed_ms": 2598558
+        },
+        "todo:2": {
+          "task_key": "todo:2",
+          "task_label": "2",
+          "task_title": "标定 WMMA 片段序列化到物理合理范围",
+          "session_id": "opencode:ses_049e3053fffeCU3o0UmcUgb63z",
+          "agent": "Sisyphus-Junior",
+          "category": "quick",
+          "updated_at": "2026-07-31T03:24:51.060Z",
+          "started_at": "2026-07-31T03:24:12.380Z",
+          "status": "completed",
+          "ended_at": "2026-07-31T03:24:51.060Z",
+          "elapsed_ms": 38680
+        },
+        "todo:4": {
+          "task_key": "todo:4",
+          "task_label": "4",
+          "task_title": "添加 WMMA/GMMA 周期模型物理不变量测试",
+          "session_id": "opencode:ses_049cb0d2bffe3B8tf1ibtK3hDT",
+          "agent": "Sisyphus-Junior",
+          "category": "quick",
+          "updated_at": "2026-07-31T03:33:11.333Z",
+          "started_at": "2026-07-31T03:32:37.103Z",
+          "status": "completed",
+          "ended_at": "2026-07-31T03:33:11.333Z",
+          "elapsed_ms": 34230
+        },
+        "todo:5": {
+          "task_key": "todo:5",
+          "task_label": "5",
+          "task_title": "从 H100 SM die 引用标定 WMMA PE 面积",
+          "session_id": "opencode:ses_049c34f3fffeuPsDQKhKj5rcHf",
+          "agent": "Sisyphus-Junior",
+          "category": "quick",
+          "updated_at": "2026-07-31T03:43:29.589Z",
+          "started_at": "2026-07-31T03:38:41.888Z",
+          "status": "completed",
+          "ended_at": "2026-07-31T03:43:29.589Z",
+          "elapsed_ms": 287701
+        },
+        "todo:7": {
+          "task_key": "todo:7",
+          "task_label": "7",
+          "task_title": "添加 WMMA/GMMA 每节点面积回归测试",
+          "session_id": "opencode:ses_049b8ddd3ffexLfVCkrY4z9RRD",
+          "agent": "Sisyphus-Junior",
+          "category": "quick",
+          "updated_at": "2026-07-31T03:50:57.408Z",
+          "started_at": "2026-07-31T03:50:44.650Z",
+          "status": "completed",
+          "ended_at": "2026-07-31T03:50:57.408Z",
+          "elapsed_ms": 12758
+        },
+        "todo:8": {
+          "task_key": "todo:8",
+          "task_label": "8",
+          "task_title": "更新校准参数注册表",
+          "session_id": "opencode:ses_049b35d4effe5MaZO1nN38uFmt",
+          "agent": "Sisyphus-Junior",
+          "category": "quick",
+          "updated_at": "2026-07-31T03:56:46.682Z",
+          "started_at": "2026-07-31T03:56:46.680Z",
+          "status": "completed",
+          "ended_at": "2026-07-31T03:56:46.682Z",
+          "elapsed_ms": 2
+        },
+        "todo:9": {
+          "task_key": "todo:9",
+          "task_label": "9",
+          "task_title": "评估 decision-grade 影响 + 更新文档",
+          "session_id": "opencode:ses_049ae215fffePbENXB4eAtBjfs",
+          "agent": "Sisyphus-Junior",
+          "category": "quick",
+          "updated_at": "2026-07-31T04:04:03.533Z",
+          "started_at": "2026-07-31T04:03:42.525Z",
+          "status": "completed",
+          "ended_at": "2026-07-31T04:04:03.533Z",
+          "elapsed_ms": 21008
+        }
+      }
     }
   },
-  "active_plan": "/home/prj/zhengs/caduceuscore/npu_arc_model/.omo/plans/engine-selection-p0-improvements.md",
-  "started_at": "2026-07-30T08:47:58.390Z",
-  "status": "completed",
-  "updated_at": "2026-07-30T14:01:27.269Z",
+  "active_plan": "/home/prj/zhengs/caduceuscore/npu_arc_model/.omo/plans/wmma-gmma-pe-recalibration.md",
+  "started_at": "2026-07-31T02:06:18.662Z",
+  "status": "active",
+  "updated_at": "2026-07-31T04:04:03.533Z",
   "session_ids": [
     "opencode:ses_053ba6068ffeyiIpkBUK0ulwPN"
   ],
   "session_origins": {
     "opencode:ses_053ba6068ffeyiIpkBUK0ulwPN": "direct"
   },
-  "plan_name": "engine-selection-p0-improvements",
+  "plan_name": "wmma-gmma-pe-recalibration",
   "task_sessions": {
     "todo:1": {
       "task_key": "todo:1",
       "task_label": "1",
-      "task_title": "Update `docs/model-trust-and-release.md`:",
-      "session_id": "opencode:ses_04cbb8b4fffeXvUCKUPJrL9Vh8",
-      "agent": "Sisyphus-Junior",
-      "category": "writing",
-      "started_at": "2026-07-30T08:55:40.985Z",
-      "ended_at": "2026-07-30T13:45:45.649Z",
-      "elapsed_ms": 17404664,
-      "status": "completed",
-      "updated_at": "2026-07-30T13:45:45.649Z"
-    },
-    "todo:14": {
-      "task_key": "todo:14",
-      "task_label": "14",
-      "task_title": "运行跨节点 DSE 并生成引擎排名矩阵",
-      "session_id": "opencode:ses_04cddcc74ffeOSUeBRx742edeQ",
-      "agent": "Sisyphus-Junior",
-      "updated_at": "2026-07-30T13:42:27.581Z",
-      "started_at": "2026-07-30T13:41:03.265Z",
-      "status": "completed",
-      "ended_at": "2026-07-30T13:42:27.581Z",
-      "elapsed_ms": 84316
-    },
-    "final-wave:f1": {
-      "task_key": "final-wave:f1",
-      "task_label": "F1",
-      "task_title": "Plan compliance audit",
-      "session_id": "opencode:ses_04cb031b2ffe7brUMRYQ5txNKJ",
+      "task_title": "将 WARP_FRAGMENT_SERIALIZATION_CYCLES 改为 YAML 可配置参数",
+      "session_id": "opencode:ses_04a0ff2eaffeJDvOZrxi5XIGx3",
       "agent": "Sisyphus-Junior",
       "category": "quick",
-      "started_at": "2026-07-30T13:50:19.890Z",
+      "updated_at": "2026-07-31T02:57:53.976Z",
+      "started_at": "2026-07-31T02:14:35.418Z",
       "status": "completed",
-      "updated_at": "2026-07-30T13:59:18.527Z",
-      "ended_at": "2026-07-30T13:59:18.527Z",
-      "elapsed_ms": 538637
+      "ended_at": "2026-07-31T02:57:53.976Z",
+      "elapsed_ms": 2598558
+    },
+    "todo:2": {
+      "task_key": "todo:2",
+      "task_label": "2",
+      "task_title": "标定 WMMA 片段序列化到物理合理范围",
+      "session_id": "opencode:ses_049e3053fffeCU3o0UmcUgb63z",
+      "agent": "Sisyphus-Junior",
+      "category": "quick",
+      "updated_at": "2026-07-31T03:24:51.060Z",
+      "started_at": "2026-07-31T03:24:12.380Z",
+      "status": "completed",
+      "ended_at": "2026-07-31T03:24:51.060Z",
+      "elapsed_ms": 38680
+    },
+    "todo:4": {
+      "task_key": "todo:4",
+      "task_label": "4",
+      "task_title": "添加 WMMA/GMMA 周期模型物理不变量测试",
+      "session_id": "opencode:ses_049cb0d2bffe3B8tf1ibtK3hDT",
+      "agent": "Sisyphus-Junior",
+      "category": "quick",
+      "updated_at": "2026-07-31T03:33:11.333Z",
+      "started_at": "2026-07-31T03:32:37.103Z",
+      "status": "completed",
+      "ended_at": "2026-07-31T03:33:11.333Z",
+      "elapsed_ms": 34230
+    },
+    "todo:5": {
+      "task_key": "todo:5",
+      "task_label": "5",
+      "task_title": "从 H100 SM die 引用标定 WMMA PE 面积",
+      "session_id": "opencode:ses_049c34f3fffeuPsDQKhKj5rcHf",
+      "agent": "Sisyphus-Junior",
+      "category": "quick",
+      "updated_at": "2026-07-31T03:43:29.589Z",
+      "started_at": "2026-07-31T03:38:41.888Z",
+      "status": "completed",
+      "ended_at": "2026-07-31T03:43:29.589Z",
+      "elapsed_ms": 287701
+    },
+    "todo:7": {
+      "task_key": "todo:7",
+      "task_label": "7",
+      "task_title": "添加 WMMA/GMMA 每节点面积回归测试",
+      "session_id": "opencode:ses_049b8ddd3ffexLfVCkrY4z9RRD",
+      "agent": "Sisyphus-Junior",
+      "category": "quick",
+      "updated_at": "2026-07-31T03:50:57.408Z",
+      "started_at": "2026-07-31T03:50:44.650Z",
+      "status": "completed",
+      "ended_at": "2026-07-31T03:50:57.408Z",
+      "elapsed_ms": 12758
+    },
+    "todo:8": {
+      "task_key": "todo:8",
+      "task_label": "8",
+      "task_title": "更新校准参数注册表",
+      "session_id": "opencode:ses_049b35d4effe5MaZO1nN38uFmt",
+      "agent": "Sisyphus-Junior",
+      "category": "quick",
+      "updated_at": "2026-07-31T03:56:46.682Z",
+      "started_at": "2026-07-31T03:56:46.680Z",
+      "status": "completed",
+      "ended_at": "2026-07-31T03:56:46.682Z",
+      "elapsed_ms": 2
+    },
+    "todo:9": {
+      "task_key": "todo:9",
+      "task_label": "9",
+      "task_title": "评估 decision-grade 影响 + 更新文档",
+      "session_id": "opencode:ses_049ae215fffePbENXB4eAtBjfs",
+      "agent": "Sisyphus-Junior",
+      "category": "quick",
+      "updated_at": "2026-07-31T04:04:03.533Z",
+      "started_at": "2026-07-31T04:03:42.525Z",
+      "status": "completed",
+      "ended_at": "2026-07-31T04:04:03.533Z",
+      "elapsed_ms": 21008
     }
   },
-  "agent": "atlas",
-  "ended_at": "2026-07-30T14:01:27.269Z",
-  "elapsed_ms": 18808879
+  "agent": "atlas"
 }
