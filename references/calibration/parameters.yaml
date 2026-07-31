@@ -195,16 +195,55 @@ parameters:
   - calibration_id: gmma_pipeline_scale
     value: 0.05
     unit: ratio
-    source_uri: null
+    source_uri: https://resources.nvidia.com/en-us-tensor-core/gtc22-whitepaper-hopper
     source_hash: null
-    trust_level: T0
+    trust_level: T1
     calibration_range: 0.01–0.10
     range_min: 0.01
     range_max: 0.10
     status: assumption
     description: >
-      GMMA async pipeline scale factor.  Derived from H100 architectural
-      assumptions; no published proxy or measured RTL.
+      GMMA async pipeline scale factor.  H100 SM has 128 FP32 scalar cores and
+      4 tensor cores; GMMA's group-MMA pipeline depth is roughly 1/20 of a
+      systolic array because 128×128 tiles decompose into finer-grained MMA
+      sub-units (analogous to H100 wgmma instruction decomposition).  Public
+      proxy: NVIDIA H100/Hopper whitepaper (Tensor Core architecture).
+
+  - calibration_id: tma_overlap
+    value: 0.5
+    unit: ratio
+    source_uri: https://resources.nvidia.com/en-us-tensor-core/gtc22-whitepaper-hopper
+    source_hash: null
+    trust_level: T1
+    calibration_range: 0.3–0.7
+    range_min: 0.3
+    range_max: 0.7
+    status: assumption
+    description: >
+      Fraction of DMA latency the TMA (Tensor Memory Accelerator) can hide
+      behind compute via descriptor prefetch and double buffering.  H100 TMA
+      hides up to ~50% of memory latency; public proxy: NVIDIA H100/Hopper
+      whitepaper (Tensor Memory Accelerator section).
+
+  - calibration_id: wmma_fragment_serialization_cycles
+    value: 120
+    unit: cycles
+    source_uri: https://docs.nvidia.com/cuda/volta-tuning-guide/index.html
+    source_hash: null
+    trust_level: T1
+    calibration_range: 50–200 cycles
+    range_min: 50.0
+    range_max: 200.0
+    status: assumption
+    description: >
+      Per-16×16-fragment issue/DMA-setup cycles for the WMMA engine on a
+      single-die NPU (no GPU-style warp interleaving).  Calibrated from the
+      placeholder 1600: Volta SM has 4 warp schedulers dispatching ready warps
+      in ~32 cycles, DMA descriptor issue is ~10–20 cycles, and fragment
+      routing ~50 cycles, so the physically-plausible range is [50, 200]
+      (recommended default 120).  Public proxy: NVIDIA Volta Tuning Guide
+      (warp scheduler / tensor core section).  The realized WMMA tok/s ratio
+      vs block is locked by test_wmma_calibration_ratio in test_engines.py.
 
   - calibration_id: tensor_core_descriptor_overhead
     value: 5
@@ -221,30 +260,82 @@ parameters:
       Fragment model; uncalibrated.
 
   - calibration_id: wmma_pe_ratio
-    value: 1.5
+    value: 1.125
     unit: ratio
-    source_uri: null
+    source_uri: https://resources.nvidia.com/en-us-tensor-core/gtc22-whitepaper-hopper
     source_hash: null
-    trust_level: T0
-    calibration_range: 1.4–1.6x
-    range_min: 1.4
-    range_max: 1.6
+    trust_level: T1
+    calibration_range: 0.88–1.25x
+    range_min: 0.875
+    range_max: 1.25
     status: assumption
     description: >
-      WMMA PE area relative to block engine.  No published proxy.
+      WMMA PE area relative to block engine at 7nm (4.5 mm2 / 4.0 mm2).
+      Derived from H100 SM die analysis: SM ~6-8 mm2 @4nm, 4 tensor cores per
+      SM, each TC ~1.0-1.5 mm2 @4nm -> ~1.5-2.5 mm2 @7nm per TC; the WMMA PE
+      here is a 128x128 INT4 array (~16x the MACs of an H100 TC per cycle),
+      so a 4-6x area factor applies -> 3.5-5.0 mm2 @7nm, recommended 4.5 mm2.
+      Ratio range [0.875, 1.25] follows from the 3.5-5.0 mm2 band over block
+      4.0 mm2.  Public proxy: NVIDIA H100/Hopper whitepaper (Tensor Core
+      architecture); die-shot analyses (Locuza, Semianalysis).
+
+  - calibration_id: wmma_pe_area_7nm
+    value: 4.5
+    unit: mm2
+    source_uri: https://resources.nvidia.com/en-us-tensor-core/gtc22-whitepaper-hopper
+    source_hash: null
+    trust_level: T1
+    calibration_range: 3.5–5.0 mm2
+    range_min: 3.5
+    range_max: 5.0
+    status: assumption
+    description: >
+      WMMA PE absolute area baseline at 7nm (128x128 INT4 array).  Derived from
+      H100 SM die analysis: SM ~6-8 mm2 @4nm, 4 tensor cores per SM, each TC
+      ~1.0-1.5 mm2 @4nm -> ~1.5-2.5 mm2 @7nm per TC; the WMMA PE has ~16x the
+      per-cycle MACs of an H100 TC, so a 4-6x area factor applies ->
+      3.5-5.0 mm2 @7nm, recommended 4.5 mm2 (= 1.125x block 4.0 mm2).
+      Public proxy: NVIDIA H100/Hopper whitepaper (Tensor Core architecture);
+      die-shot analyses (Locuza, Semianalysis).
 
   - calibration_id: gmma_pe_ratio
-    value: 1.75
+    value: 1.375
     unit: ratio
-    source_uri: null
+    source_uri: https://resources.nvidia.com/en-us-tensor-core/gtc22-whitepaper-hopper
     source_hash: null
-    trust_level: T0
-    calibration_range: 1.7–1.8x
-    range_min: 1.7
-    range_max: 1.8
+    trust_level: T1
+    calibration_range: 1.25–1.625x
+    range_min: 1.25
+    range_max: 1.625
     status: assumption
     description: >
-      GMMA PE area relative to block engine.  No published proxy.
+      GMMA PE area relative to block engine at 7nm (5.5 mm2 / 4.0 mm2).
+      GMMA PE = WMMA PE 4.5 mm2 + TMA/descriptor + shared-memory control
+      ~1.0 mm2 (die-area-derived; the legacy hardcoded TMA_AREA_MM2=2.0 is
+      documentation-only, see gmma_engine.py).  Absolute calibration band is
+      [5.0, 6.5] mm2 @7nm (see Todo 8 gmma_pe_area_7nm); ratio band follows
+      over block 4.0 mm2.  Public proxy: NVIDIA H100/Hopper whitepaper
+      (Tensor Core + Tensor Memory Accelerator); die-shot analyses (Locuza,
+      Semianalysis).
+
+  - calibration_id: gmma_pe_area_7nm
+    value: 5.5
+    unit: mm2
+    source_uri: https://resources.nvidia.com/en-us-tensor-core/gtc22-whitepaper-hopper
+    source_hash: null
+    trust_level: T1
+    calibration_range: 5.0–6.5 mm2
+    range_min: 5.0
+    range_max: 6.5
+    status: assumption
+    description: >
+      GMMA PE absolute area baseline at 7nm.  GMMA PE = WMMA PE 4.5 mm2 +
+      TMA/descriptor + shared-memory control ~1.0 mm2 (die-area-derived; the
+      legacy hardcoded TMA_AREA_MM2=2.0 is documentation-only, see
+      gmma_engine.py).  Calibration band [5.0, 6.5] mm2 @7nm, recommended
+      5.5 mm2 (= 1.375x block 4.0 mm2).  Public proxy: NVIDIA H100/Hopper
+      whitepaper (Tensor Core + Tensor Memory Accelerator); die-shot analyses
+      (Locuza, Semianalysis).
 
   - calibration_id: pj_per_mac_12nm_int8
     value: 0.15

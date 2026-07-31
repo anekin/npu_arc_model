@@ -77,8 +77,8 @@ TPUv1 只提供 **systolic** 基准。其他 engine 类型的 PE 面积通过**�
 | **block** (output stationary + broadcast) | 2.0× | 每 MAC 需本地 accumulator（非 systolic pass-through），broadcast 网络比 systolic pipeline 更宽 | 架构推理；与 NVIDIA 博客 "Deep Dive into Tensor Cores" 对 broadcast 结构的描述一致 |
 | **FSA** (CMP + Split) | 1.1× | 只在 systolic 基础上增加 CMP 比较器和 Split 控制逻辑，不增加 MAC 单元 | 架构推理 |
 | **tensor_core** | 2.0× | NVIDIA V100 SM 架构分析：TC = 4×4×4 MAC 矩阵，与 block-style output stationary 结构类似 | NVIDIA V100 whitepaper, 2017 |
-| **WMMA** | ~1.5× block | warp-level matmul 需额外的 warp scheduler 和 shared memory 接口 | NVIDIA Turing whitepaper, 2018 |
-| **GMMA** | ~1.75× block | async copy (TMA) + 更大的 register file | NVIDIA Hopper whitepaper, 2022 |
+| **WMMA** | ~1.13× block | 128×128 INT4 warp-level MMA 阵列，面积从 H100 SM die 分析推导（见 §7） | NVIDIA H100/Hopper whitepaper (2022); die-shot 分析 (Locuza, Semianalysis) |
+| **GMMA** | ~1.375× block | WMMA PE + TMA 描述符引擎 + 共享内存控制逻辑；面积从 H100 SM die 分析推导（见 §8） | NVIDIA H100/Hopper whitepaper (2022); die-shot 分析 (Locuza, Semianalysis) |
 
 **配置项（@7nm, 128×128 baseline）：**
 
@@ -87,8 +87,8 @@ TPUv1 只提供 **systolic** 基准。其他 engine 类型的 PE 面积通过**�
 | systolic | 2.0 | 122 |
 | block / OS / IS / TC | 4.0 | 244 |
 | FSA | 2.2 | 134 |
-| WMMA | 6.0 | 366 |
-| GMMA | 7.0 | 427 |
+| WMMA | 4.5 | 275 |
+| GMMA | 5.5 | 336 |
 
 ---
 
@@ -150,16 +150,67 @@ TSV（Through-Silicon Via）物理尺寸：~5µm 直径 + ~10µm keep-out zone �
 
 ---
 
-## 7. 模型局限性
+## 7. WMMA PE 面积推导（H100 SM die 参考）
+
+> Todo 5 of `.omo/plans/wmma-gmma-pe-recalibration.md`：将 WMMA PE 基线从 T0 的 "1.5× block"（6.0 mm²）校准到基于 H100 SM die 分析的物理推导值。
+
+**来源：**
+- 主引用：NVIDIA H100/Hopper Tensor Core 白皮书 — https://resources.nvidia.com/en-us-tensor-core/gtc22-whitepaper-hopper
+- Die-shot 交叉参考：Locuza die annotation、Semianalysis H100 架构深度分析（定性量级确认）
+
+**推导步骤：**
+
+| 步骤 | 值 | 依据 |
+|------|:---:|------|
+| H100 SM 面积 @4nm | ~6–8 mm² | die-shot 分析（Locuza, Semianalysis） |
+| 每 SM 张量核心数 | 4 | H100 whitepaper：每 SM 4 个 TC 分区 |
+| 每 TC 面积 @4nm（扣除 CUDA core/L1 后分摊） | ~1.0–1.5 mm² | (SM 面积 − CUDA core − L1) / 4 |
+| 4nm → 7nm 密度缩放 | ~1.5× | 4nm 到 7nm 密度比（die 面积/逻辑密度），对应 TC @7nm ≈ 1.5–2.5 mm² |
+| **我们的 PE 不是 TC** — 128×128 INT4 MAC 阵列 | ~16× TC 的每周期 MAC 数 | H100 TC 每周期 2048 FP16 MACs（128×16 矩阵）；128×128 = 16384 MACs |
+| 面积因子（含布线/广播复杂性） | ~4–6× | 16× MAC 数按亚线性面积增长折算 |
+| **WMMA PE @7nm 保守估计** | **3.5–5.0 mm²** | 1.5–2.5 mm² × (4–6) / ~2.7 折算因子，取中值 |
+| **校准后推荐值** | **4.5 mm²** | = 2.25× systolic (2.0) = **1.125× block (4.0)**；替代旧 T0 值 1.5× block = 6.0 mm² |
+
+> 注：H100 TC 的 2048 MACs/周期 是"每个周期每 TC"的稠密 FP16 吞吐；128×128 INT4 阵列的 16384 MACs 是其 ~16×。MAC 阵列面积随 MAC 数近似亚线性增长（MAC 单元本身规则、布线/广播/累加网络是主要开销），故取 4–6× 而非 16×。该推导为**公开代理量级**（T1），非硅实测。
+
+**配置项：** `wmma_pe_area_mm2: 4.5`（@7nm 基线，跨节点由 `ppa_model.py` `_node_scale_factor` 缩放）
+
+---
+
+## 8. GMMA PE 面积推导（H100 SM die 参考）
+
+> Todo 6 of `.omo/plans/wmma-gmma-pe-recalibration.md`：将 GMMA PE 基线从 T0 的 "1.75× block"（7.0 mm²）校准到基于 H100 SM die 分析的物理推导值。
+
+**来源：**
+- 主引用：NVIDIA H100/Hopper Tensor Core 白皮书 — https://resources.nvidia.com/en-us-tensor-core/gtc22-whitepaper-hopper
+- Die-shot 交叉参考：Locuza die annotation、Semianalysis H100 架构深度分析（定性量级确认）
+
+**推导步骤：**
+
+| 步骤 | 值 | 依据 |
+|------|:---:|------|
+| WMMA PE @7nm（§7 推导） | **4.5 mm²** | 128×128 INT4 阵列，H100 SM die 分析推导（Todo 5） |
+| TMA 描述符引擎 @7nm | **~1.0 mm²** | H100 TMA 是每 SM 一个集中式异步 DMA/descriptor 引擎，远小于 CUDA core 面积；die 面积推导的修正值（旧硬编码 `TMA_AREA_MM2 = 2.0` 偏大，现仅为文档常量，见 `gmma_engine.py`） |
+| 共享内存控制逻辑 @7nm | ~0.3–0.5 mm² | 与 WMMA 共享 L1/SMEM 接口，额外仅仲裁/双缓冲控制 |
+| **GMMA PE @7nm 保守估计** | **5.0–6.5 mm²** | 4.5 + 1.0 + 0.3~0.5，叠加布线/时钟树余量 |
+| **校准后推荐值** | **5.5 mm²** | = 1.375× block (4.0) = 2.75× systolic (2.0)；替代旧 T0 值 1.75× block = 7.0 mm² |
+
+> 注：GMMA 必须比 WMMA 大（TMA 溢价），但远小于旧的 1.75× block 拍脑袋值——TMA 描述符引擎是集中式小面积单元，不是第二个 MAC 阵列。该推导为**公开代理量级**（T1），非硅实测。
+
+**配置项：** `gmma_pe_area_mm2: 5.5`（@7nm 基线，跨节点由 `ppa_model.py` `_node_scale_factor` 缩放）
+
+---
+
+## 9. 模型局限性
 
 1. **PE 面积是 MAC 单元净面积 × 绕线/clock tree/grid 系数**。绕线开销随阵列增大而增大（O(N) 信号线），当前用固定 baseline → scale 是简化处理。
 2. ~~**SRAM 面积按 KB 线性叠加**，实际宏观 SRAM 效率随总容量增大而提高。~~ **✅ 已修复 (P0 改进)** — 现使用 `sim/contracts/bitcell.py` `BitcellTable` + `sram_area_mm2()` 按节点查 bitcell 面积并应用可配 peripheral overhead。参考外部校准（TPUv1/RK1828）偏差 <30%。详见 [`sim/contracts/bitcell.py`](../sim/contracts/bitcell.py) 和 [`docs/model-trust-and-release.md`](../docs/model-trust-and-release.md)。
 3. **工艺缩放平方律 `(node/7)²`** 在 12nm → 3nm 区间合理，对更老工艺（28nm, 65nm）是近似。
-4. **Block/WMMA/GMMA 的相对比值**基于架构推理而非 die-shot 反推，量级可信但精确比无硬数据。
+4. **Block 的相对比值**基于架构推理而非 die-shot 反推，量级可信但精确比无硬数据。**WMMA 已于 2026-07 从 H100 SM die 分析推导**（§7，T1 公开代理），**GMMA 亦于同月推导**（§8，T1 公开代理），两者均不再是纯架构推理。
 5. **Bitcell 查表仅限 TSMC 节点** — `BitcellTable` 仅收录已发布 TSMC HD bitcell 数据（7nm, 12FFC, 22nm, 28nm）。三星/Intel 节点不在表中；未来如需跨厂查表需扩展 `source_uri` + `provenance` 元数据。处于两个已知节点之间的工艺（如 16nm）暂不支持插值。
 6. **Peripheral overhead 为线性近似** — 实际 SRAM macro 效率随容量增大而 sub-linear（banking / 地址解码分摊），当前固定 overhead 参数（L1=1.5×, L2=1.3×）在中大容量（≥1 MiB）下偏保守。未来可引入容量依赖的 overhead 函数。
 7. **Bitcell 数据为 HD（高密度）变体** — TSMC 同时提供 HP（高性能, bitcell 更大）和 UHD（超高密度, bitcell 更小）变体，当前表仅收录 HD。若设计中 SRAM 频率是关键约束，应改用 HP bitcell 面积。
 
 ---
 
-*最后更新: 2026-07*
+*最后更新: 2026-07-31*

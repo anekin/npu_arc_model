@@ -51,6 +51,10 @@ class GMMAEngine(MACEngine):
     # to reflect the much shorter effective pipeline in a group-MMA unit.
     GMMA_PIPELINE_SCALE = 0.05
 
+    # Documentation-only legacy constant (not consumed by AreaModel, which reads
+    # gmma_pe_area_mm2 from YAML).  H100 SM die analysis derives ~1.0 mm2 @7nm
+    # for the TMA descriptor engine; see references/area_sources.md §8.  The
+    # old 2.0 mm2 value is kept as a placeholder for this class doc.
     TMA_AREA_MM2 = 2.0
     SHMEM_KB = 4096  # 4MB shared memory for weights
 
