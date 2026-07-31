@@ -1,0 +1,165 @@
+unformatted: File would be reformatted
+   --> .omo/evidence/investigate-fsa-cross-node-freq.py:1:1
+    |
+226 |     md_lines.append("**Fixed config**: 128×128 array, INT4, 2048 KB L2, no weight cache\n")
+    -     md_lines.append("**Method**: each node evaluated at all physically-plausible frequencies;\n"
+    -                      "best tok/s per engine per node reported.\n")
+227 +     md_lines.append(
+228 +         "**Method**: each node evaluated at all physically-plausible frequencies;\n"
+229 +         "best tok/s per engine per node reported.\n"
+230 +     )
+231 |
+--------------------------------------------------------------------------------
+242 |     md_lines.append("## Per-Node Results (best frequency)\n")
+    -     md_lines.append("| Node | Engine | Freq (MHz) | tok/s | area_mm² | power_w | "
+    -                      "tok/W | compute_c | dma_c | util |")
+243 +     md_lines.append("| Node | Engine | Freq (MHz) | tok/s | area_mm² | power_w | tok/W | compute_c | dma_c | util |")
+244 |     md_lines.append("|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|")
+--------------------------------------------------------------------------------
+265 |     md_lines.append("## Key Observations\n")
+    -     md_lines.append("1. **tok/s now varies with node** — higher frequency at 7nm (2000 MHz) "
+    -                      "produces higher throughput; lower frequency at 28nm (600 MHz) reduces it.\n")
+    -     md_lines.append("2. **Area scales with node** — from 99 mm² (7nm) to 261 mm² (28nm) "
+    -                      "for block engine, consistent with bitcell + logic scaling.\n")
+    -     md_lines.append("3. **Power scales with area × frequency** — faster node + higher clock "
+    -                      "= more dynamic power.\n")
+    -     md_lines.append("4. **FSA throughput advantage over block is negligible** — "
+    -                      "the bandwidth-bottleneck (51.2 GB/s) dominates; even at 2000 MHz "
+    -                      "block's area advantage persists.\n")
+266 +     md_lines.append(
+267 +         "1. **tok/s now varies with node** — higher frequency at 7nm (2000 MHz) "
+268 +         "produces higher throughput; lower frequency at 28nm (600 MHz) reduces it.\n"
+269 +     )
+270 +     md_lines.append(
+271 +         "2. **Area scales with node** — from 99 mm² (7nm) to 261 mm² (28nm) "
+272 +         "for block engine, consistent with bitcell + logic scaling.\n"
+273 +     )
+274 +     md_lines.append("3. **Power scales with area × frequency** — faster node + higher clock = more dynamic power.\n")
+275 +     md_lines.append(
+276 +         "4. **FSA throughput advantage over block is negligible** — "
+277 +         "the bandwidth-bottleneck (51.2 GB/s) dominates; even at 2000 MHz "
+278 +         "block's area advantage persists.\n"
+279 +     )
+280 |
+--------------------------------------------------------------------------------
+284 |     print("\n=== Frequency-Aware FSA vs Block Cross-Node Comparison ===\n")
+    -     print(f"{'Node':>6s} | {'Engine':>8s} | {'Freq':>5s} | {'tok/s':>7s} | "
+    -           f"{'area_mm2':>9s} | {'power_w':>8s} | {'compute_c':>10s} | {'dma_c':>10s} | {'util':>6s}")
+285 +     print(
+286 +         f"{'Node':>6s} | {'Engine':>8s} | {'Freq':>5s} | {'tok/s':>7s} | "
+287 +         f"{'area_mm2':>9s} | {'power_w':>8s} | {'compute_c':>10s} | {'dma_c':>10s} | {'util':>6s}"
+288 +     )
+289 |     print("-" * 85)
+--------------------------------------------------------------------------------
+298 |     print("\n=== Ratios (block / FSA) ===\n")
+    -     print(f"{'Node':>6s} | {'Block Freq':>11s} | {'FSA Freq':>9s} | "
+    -           f"{'Area Ratio':>11s} | {'tok/s Ratio':>11s}")
+299 +     print(f"{'Node':>6s} | {'Block Freq':>11s} | {'FSA Freq':>9s} | {'Area Ratio':>11s} | {'tok/s Ratio':>11s}")
+300 |     print("-" * 60)
+    |
+
+unformatted: File would be reformatted
+   --> .omo/evidence/investigate-fsa-cross-node.py:1:1
+    |
+196 |         print(
+    -             f"{r['node_nm']:>6.0f} | {r['area_ratio_block_over_fsa']:>11.3f} | "
+    -             f"{r['tok_ratio_block_over_fsa']:>10.3f}"
+197 +             f"{r['node_nm']:>6.0f} | {r['area_ratio_block_over_fsa']:>11.3f} | {r['tok_ratio_block_over_fsa']:>10.3f}"
+198 |         )
+    |
+
+unformatted: File would be reformatted
+  --> sim/engine/wmma_engine.py:1:1
+   |
+65 |         super()._parse_config(config)
+   -         ser = config.get("wmma", {}).get(
+   -             "fragment_serialization_cycles", self.WARP_FRAGMENT_SERIALIZATION_CYCLES
+   -         )
+66 +         ser = config.get("wmma", {}).get("fragment_serialization_cycles", self.WARP_FRAGMENT_SERIALIZATION_CYCLES)
+67 |         try:
+68 |             ser = int(ser)
+69 |         except (TypeError, ValueError) as exc:
+   -             raise ValueError(
+   -                 f"wmma.fragment_serialization_cycles must be an integer, got {ser!r}"
+   -             ) from exc
+70 +             raise ValueError(f"wmma.fragment_serialization_cycles must be an integer, got {ser!r}") from exc
+71 |         if ser < 0:
+   -             raise ValueError(
+   -                 f"wmma.fragment_serialization_cycles must be non-negative, got {ser}"
+   -             )
+72 +             raise ValueError(f"wmma.fragment_serialization_cycles must be non-negative, got {ser}")
+73 |         self.fragment_serialization_cycles = ser
+   |
+
+3 files would be reformatted, 309 files already formatted
+All checks passed!
+/home/prj/zhengs/caduceuscore/npu_arc_model/sim/cv/traces/sd_unet_trace.py
+  /home/prj/zhengs/caduceuscore/npu_arc_model/sim/cv/traces/sd_unet_trace.py:96:5 - warning: Expression value is unused (reportUnusedExpression)
+  /home/prj/zhengs/caduceuscore/npu_arc_model/sim/cv/traces/sd_unet_trace.py:113:5 - warning: Expression value is unused (reportUnusedExpression)
+/home/prj/zhengs/caduceuscore/npu_arc_model/sim/models/sfu.py
+  /home/prj/zhengs/caduceuscore/npu_arc_model/sim/models/sfu.py:92:9 - warning: Expression value is unused (reportUnusedExpression)
+/home/prj/zhengs/caduceuscore/npu_arc_model/sim/sw_overhead_eval.py
+  /home/prj/zhengs/caduceuscore/npu_arc_model/sim/sw_overhead_eval.py:55:5 - warning: Expression value is unused (reportUnusedExpression)
+0 errors, 4 warnings, 0 notes
+........................................................................ [  9%]
+........................................................................ [ 18%]
+........................................................................ [ 27%]
+........................................................................ [ 36%]
+........................................................................ [ 45%]
+........................................................................ [ 54%]
+........................................................................ [ 63%]
+........................................................................ [ 72%]
+........................................................................ [ 81%]
+........................................................................ [ 91%]
+.......................................................................  [100%]
+=============================== warnings summary ===============================
+sim/tests/test_engine_physical_invariants.py: 32 warnings
+  /home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engine_physical_invariants.py:165: DeprecationWarning: EngineResult.ops is deprecated; use mac_count instead
+    assert result.ops == expected_macs, f"{engine_type}: ops={result.ops}, expected mac_count={expected_macs}"
+
+sim/tests/test_engine_physical_invariants.py: 16 warnings
+  /home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engine_physical_invariants.py:180: DeprecationWarning: EngineResult.ops is deprecated; use mac_count instead
+    assert result.ops >= expected_macs, f"{engine_type} cache-pair: ops={result.ops}, expected ≥ {expected_macs}"
+
+sim/tests/test_engine_physical_invariants.py::TestBasicInvariants::test_small_square_gemm[systolic]
+sim/tests/test_engine_physical_invariants.py::TestBasicInvariants::test_small_square_gemm[block]
+sim/tests/test_engine_physical_invariants.py::TestBasicInvariants::test_small_square_gemm[os_systolic]
+sim/tests/test_engine_physical_invariants.py::TestBasicInvariants::test_small_square_gemm[input_stationary]
+sim/tests/test_engine_physical_invariants.py::TestBasicInvariants::test_small_square_gemm[tensor_core]
+sim/tests/test_engine_physical_invariants.py::TestBasicInvariants::test_small_square_gemm[wmma]
+sim/tests/test_engine_physical_invariants.py::TestBasicInvariants::test_small_square_gemm[gmma]
+sim/tests/test_engine_physical_invariants.py::TestBasicInvariants::test_small_square_gemm[fsa]
+  /home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engine_physical_invariants.py:489: DeprecationWarning: EngineResult.ops is deprecated; use mac_count instead
+    assert result.ops == 64 * 64 * 64
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+
+========================================================================
+F2 RE-RUN SUMMARY (2026-07-31, post Plan B code-quality fix pass)
+========================================================================
+uv run ruff format --check .   -> exit 1  (3 remaining files are OUT OF
+                                           PLAN B SCOPE, see below)
+uv run ruff check .            -> exit 0  (all checks passed)
+uv run basedpyright            -> exit 0  (0 errors, 4 warnings pre-existing)
+uv run pytest (3 modules)      -> exit 0  (all passed)
+
+Plan B scope files now clean (ruff format --check + ruff check both pass):
+  - sim/tests/test_dse_cross_node_coverage.py   (I001 import order fixed,
+                                                 reformatted)
+  - .omo/evidence/build_ranking_matrix.py       (C401 -> set comprehension,
+                                                 SIM401 -> dict.get, F541 ->
+                                                 removed inner f prefix)
+  - .omo/evidence/investigate-all-engines-cross-node-freq.py (reformatted)
+  - sim/dse/space.py                            (already clean)
+
+Remaining `ruff format --check .` failures are all OUTSIDE Plan B scope
+and were NOT modified per plan boundary (Plan B "Must NOT have" + this fix
+pass's instructions):
+  - .omo/evidence/investigate-fsa-cross-node-freq.py  (pre-existing, kept as
+                                                       historical evidence per
+                                                       Plan B Todo 5)
+  - .omo/evidence/investigate-fsa-cross-node.py       (pre-existing)
+  - sim/engine/wmma_engine.py                         (Plan A output)
+
+These three files require their owning plans (Plan A / P0) to run
+`uv run ruff format <file>` to reach repo-wide exit 0.
