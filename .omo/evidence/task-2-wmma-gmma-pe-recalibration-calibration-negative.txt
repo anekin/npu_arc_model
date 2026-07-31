@@ -1,0 +1,2 @@
+WMMA tok/s @serialization=1: 231.73 (total_cycles=4315344)
+calibrated(120) tok/s: 67.59; serialization=1 ratio vs calibrated: 3.4x (unrealistic, >1.0x block -> FAIL scenario)

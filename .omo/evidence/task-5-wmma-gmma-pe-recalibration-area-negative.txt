@@ -1,0 +1,2 @@
+injected 7nm baselines: systolic=2.0, wmma=1.5
+PASS: inverted ordering correctly rejected -> WMMA PE 1.5 must exceed systolic PE 2.0

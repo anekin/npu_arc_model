@@ -1,0 +1,2 @@
+injected 7nm baselines: wmma=4.5, gmma=4.0
+PASS: GMMA<WMMA ordering correctly rejected -> GMMA PE 4.0 must exceed WMMA PE 4.5 (TMA premium)

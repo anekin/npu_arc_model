@@ -98,9 +98,29 @@
           "test_counts": {},
           "exit_code": 0,
           "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-1-wmma-gmma-pe-recalibration-config-negative.txt",
+          "digest": "c03ccca60791294849052c043a6a71cae82a95f431143310362f659e66e6c50f",
+          "size_bytes": 30,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-1-wmma-gmma-pe-recalibration-config.json",
+          "digest": "b8adcaf5e29483aef7bbe8783f9c8dbf64367bfea2e8869319a586275923b2cd",
+          "size_bytes": 1857,
+          "is_json": false,
+          "test_counts": {
+            "passed": 100
+          },
+          "exit_code": 0,
+          "expected_red": false
         }
       ],
-      "evidence_count": 9
+      "evidence_count": 11
     },
     {
       "id": "2",
@@ -157,9 +177,29 @@
           },
           "exit_code": 0,
           "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-2-wmma-gmma-pe-recalibration-calibration-negative.txt",
+          "digest": "3c46b99bbc17a3814ac77ef90b96a11dd0504862cb96e2bf10642ff9018f9eb9",
+          "size_bytes": 175,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-2-wmma-gmma-pe-recalibration-calibration.json",
+          "digest": "f8d1841a1d366cf1fe22dc4afb9f816ce24054895478686d465db8cd16c872f8",
+          "size_bytes": 113,
+          "is_json": false,
+          "test_counts": {
+            "passed": 1
+          },
+          "exit_code": 0,
+          "expected_red": false
         }
       ],
-      "evidence_count": 5
+      "evidence_count": 7
     },
     {
       "id": "3",
@@ -228,9 +268,29 @@
           "test_counts": {},
           "exit_code": 0,
           "expected_red": true
+        },
+        {
+          "path": ".omo/evidence/task-3-wmma-gmma-pe-recalibration-gmma-ref-negative.txt",
+          "digest": "b71c2ed5bad948bcdb36d3f660ad90bf33b02b068f5ff578905c16f5373b50b1",
+          "size_bytes": 118,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-3-wmma-gmma-pe-recalibration-gmma-ref.json",
+          "digest": "f8d1841a1d366cf1fe22dc4afb9f816ce24054895478686d465db8cd16c872f8",
+          "size_bytes": 113,
+          "is_json": false,
+          "test_counts": {
+            "passed": 1
+          },
+          "exit_code": 0,
+          "expected_red": false
         }
       ],
-      "evidence_count": 7
+      "evidence_count": 9
     },
     {
       "id": "4",
@@ -436,9 +496,27 @@
           },
           "exit_code": 1,
           "expected_red": true
+        },
+        {
+          "path": ".omo/evidence/task-5-wmma-gmma-pe-recalibration-area-negative.txt",
+          "digest": "5b8a31dd668a89c561dcda06bea6eb55046cd01702e616956f2ddc4501b8a0c3",
+          "size_bytes": 133,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-5-wmma-gmma-pe-recalibration-area.json",
+          "digest": "8340136bc7e3bc824d9ef94487e92f8a01f5b58dbc9bfc0a1f48c9b529861252",
+          "size_bytes": 734,
+          "is_json": true,
+          "exit_code": 0,
+          "test_counts": null,
+          "expected_red": false
         }
       ],
-      "evidence_count": 10
+      "evidence_count": 12
     },
     {
       "id": "6",
@@ -525,9 +603,27 @@
           "test_counts": {},
           "exit_code": 0,
           "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-6-wmma-gmma-pe-recalibration-gmma-area-negative.txt",
+          "digest": "a9284dc06612f6c258ba4b0e4a9838d3a1bb7d68c38caf636e093c49a451cf3b",
+          "size_bytes": 140,
+          "is_json": false,
+          "test_counts": {},
+          "exit_code": 0,
+          "expected_red": false
+        },
+        {
+          "path": ".omo/evidence/task-6-wmma-gmma-pe-recalibration-gmma-area.json",
+          "digest": "dfe9e1e4c4d519d77363184ab59466be6403062285b4a8cda1909a83013dc879",
+          "size_bytes": 735,
+          "is_json": true,
+          "exit_code": 0,
+          "test_counts": null,
+          "expected_red": false
         }
       ],
-      "evidence_count": 8
+      "evidence_count": 10
     },
     {
       "id": "7",

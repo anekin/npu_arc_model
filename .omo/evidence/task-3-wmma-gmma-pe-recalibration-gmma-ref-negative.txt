@@ -1,0 +1,1 @@
+PASS: out-of-range pipeline_scale correctly rejected -> gmma.pipeline_scale=0.5 outside calibrated range [0.01, 0.10]

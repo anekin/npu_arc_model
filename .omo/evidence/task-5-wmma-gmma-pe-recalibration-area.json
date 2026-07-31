@@ -1,0 +1,20 @@
+{
+  "task": "todo-5",
+  "plan": ".omo/plans/wmma-gmma-pe-recalibration.md",
+  "scope": "WMMA PE area calibration from H100 SM die reference (6.0 -> 4.5 mm2 @7nm)",
+  "design_space_wmma_pe_area_mm2": 4.5,
+  "area_sources_section": "## 7. WMMA PE 面积推导（H100 SM die 参考）",
+  "source_uri_present": true,
+  "wmma_pe_ratio_registry": {
+    "value": 1.125,
+    "trust_level": "T1",
+    "source_uri": "https://resources.nvidia.com/en-us-tensor-core/gtc22-whitepaper-hopper"
+  },
+  "areamodel_7nm_mm2": {
+    "wmma": 4.5,
+    "systolic": 2.0,
+    "block": 4.0
+  },
+  "wmma_gt_systolic": true,
+  "calibration_check": "PASS: WMMA PE = 4.5 mm2 @7nm (2.25x systolic 2.0, 1.125x block 4.0) within H100 die-derived range [3.5, 5.0]"
+}
