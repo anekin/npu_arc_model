@@ -547,8 +547,7 @@ class TestWmmaGmmaCycleCalibration:
         result = engine.estimate(self.M_DECODE, self.K_DECODE, self.N_DECODE)
         tok_s = DEFAULT_FREQ_MHZ * 1e6 / result.total_cycles
         assert 1.0 <= tok_s <= 100.0, (
-            f"WMMA tok/s={tok_s:.2f} outside physical band [1, 100] @LPDDR5 "
-            f"(total_cycles={result.total_cycles})"
+            f"WMMA tok/s={tok_s:.2f} outside physical band [1, 100] @LPDDR5 (total_cycles={result.total_cycles})"
         )
 
     def test_gmma_pipeline_scale_effect(self) -> None:
@@ -570,8 +569,7 @@ class TestWmmaGmmaCycleCalibration:
             result = engine.estimate(M, K, N)
             totals[scale] = result.total_cycles
         assert totals[0.01] < totals[0.10], (
-            f"pipeline_scale=0.01 → {totals[0.01]}c not faster than "
-            f"pipeline_scale=0.10 → {totals[0.10]}c"
+            f"pipeline_scale=0.01 → {totals[0.01]}c not faster than pipeline_scale=0.10 → {totals[0.10]}c"
         )
 
     def test_gmma_tma_overlap_effect(self) -> None:
@@ -594,10 +592,8 @@ class TestWmmaGmmaCycleCalibration:
 
         for idx in range(1, len(totals)):
             assert totals[idx] <= totals[idx - 1], (
-                f"TMA_OVERLAP increase raised total_cycles: "
-                f"{totals[idx - 1]} → {totals[idx]}"
+                f"TMA_OVERLAP increase raised total_cycles: {totals[idx - 1]} → {totals[idx]}"
             )
             assert exposed[idx] <= exposed[idx - 1], (
-                f"TMA_OVERLAP increase raised exposed DMA: "
-                f"{exposed[idx - 1]} → {exposed[idx]}"
+                f"TMA_OVERLAP increase raised exposed DMA: {exposed[idx - 1]} → {exposed[idx]}"
             )

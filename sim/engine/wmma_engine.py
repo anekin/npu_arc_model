@@ -63,19 +63,13 @@ class WMMAEngine(MACEngine):
     def _parse_config(self, config: dict[str, Any]) -> None:
         """Parse common config plus the WMMA fragment serialization parameter."""
         super()._parse_config(config)
-        ser = config.get("wmma", {}).get(
-            "fragment_serialization_cycles", self.WARP_FRAGMENT_SERIALIZATION_CYCLES
-        )
+        ser = config.get("wmma", {}).get("fragment_serialization_cycles", self.WARP_FRAGMENT_SERIALIZATION_CYCLES)
         try:
             ser = int(ser)
         except (TypeError, ValueError) as exc:
-            raise ValueError(
-                f"wmma.fragment_serialization_cycles must be an integer, got {ser!r}"
-            ) from exc
+            raise ValueError(f"wmma.fragment_serialization_cycles must be an integer, got {ser!r}") from exc
         if ser < 0:
-            raise ValueError(
-                f"wmma.fragment_serialization_cycles must be non-negative, got {ser}"
-            )
+            raise ValueError(f"wmma.fragment_serialization_cycles must be non-negative, got {ser}")
         self.fragment_serialization_cycles = ser
 
     def _per_fragment_compute(self, ops_multiplier: int = 1) -> int:

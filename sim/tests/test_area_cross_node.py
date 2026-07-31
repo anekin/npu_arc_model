@@ -218,18 +218,14 @@ class TestWmmaGmmaPeArea:
 
     def test_wmma_area_per_node(self) -> None:
         """WMMA PE area decreases monotonically: 28nm > 22nm > 12nm > 7nm."""
-        areas: dict[float, float] = {
-            node: AreaModel(_pe_area_config(node)).wmma_pe_baseline for node in NODES_NM
-        }
+        areas: dict[float, float] = {node: AreaModel(_pe_area_config(node)).wmma_pe_baseline for node in NODES_NM}
         assert areas[28.0] > areas[22.0] > areas[12.0] > areas[7.0], (
             f"wmma: PE area not monotonic across nodes: {areas}"
         )
 
     def test_gmma_area_per_node(self) -> None:
         """GMMA PE area decreases monotonically: 28nm > 22nm > 12nm > 7nm."""
-        areas: dict[float, float] = {
-            node: AreaModel(_pe_area_config(node)).gmma_pe_baseline for node in NODES_NM
-        }
+        areas: dict[float, float] = {node: AreaModel(_pe_area_config(node)).gmma_pe_baseline for node in NODES_NM}
         assert areas[28.0] > areas[22.0] > areas[12.0] > areas[7.0], (
             f"gmma: PE area not monotonic across nodes: {areas}"
         )
