@@ -4,6 +4,7 @@
 Regenerates the design spaces to map design_point_ids to axis values
 (process_node, engine, etc.), then merges with result metrics.
 """
+
 from __future__ import annotations
 
 import json
@@ -70,7 +71,7 @@ def main() -> int:
 
     # Count engine coverage per (scenario, node)
     engines_per_node: dict[tuple[str, int], set[str]] = defaultdict(set)
-    for (sc, node, eng) in best:
+    for sc, node, eng in best:
         engines_per_node[(sc, node)].add(eng)
 
     # Check for empty nodes (all engines filtered)
@@ -122,8 +123,10 @@ def main() -> int:
     # Write Markdown
     md_lines: list[str] = []
     md_lines.append("# 8-Engine x 4-Node Ranking Matrix\n")
-    md_lines.append("**Scenarios**: `lpddr5_3b` (LPDDR5 51.2 GB/s, Qwen2.5-3B INT4) "
-                     "and `onchip_7b` (On-chip 3D DRAM 500 GB/s, Qwen2.5-7B INT4)\n")
+    md_lines.append(
+        "**Scenarios**: `lpddr5_3b` (LPDDR5 51.2 GB/s, Qwen2.5-3B INT4) "
+        "and `onchip_7b` (On-chip 3D DRAM 500 GB/s, Qwen2.5-7B INT4)\n"
+    )
     md_lines.append("**Mode**: `ci-all-axes` (engine x process_node cross-product)\n")
     md_lines.append(f"**Engines**: {', '.join(all_engines)}\n")
     md_lines.append("**Cells**: tok/s (primary) | area_mm² (secondary)\n")
@@ -155,23 +158,29 @@ def main() -> int:
         max_tok = max(lpddr5_block_toks)
         min_tok = min(t for t in lpddr5_block_toks if t > 0)
         variation_pct = (max_tok - min_tok) / max_tok * 100 if max_tok > 0 else 0
-        md_lines.append(f"1. **Block BW-bound tendency**: lpddr5_3b block tok/s range "
-                         f"{min_tok:.1f}–{max_tok:.1f} ({variation_pct:.0f}% variation across nodes) "
-                         f"— {'consistent with BW-bound behavior' if variation_pct < 5 else f'variation exceeds expected 5% BW-bound threshold'}\n")
+        md_lines.append(
+            f"1. **Block BW-bound tendency**: lpddr5_3b block tok/s range "
+            f"{min_tok:.1f}–{max_tok:.1f} ({variation_pct:.0f}% variation across nodes) "
+            f"— {'consistent with BW-bound behavior' if variation_pct < 5 else f'variation exceeds expected 5% BW-bound threshold'}\n"
+        )
 
     # FSA compute-bound observation
     fsa_28 = best.get(("lpddr5_3b", 28, "fsa"), {}).get("tok_per_s", 0)
     fsa_7 = best.get(("lpddr5_3b", 7, "fsa"), {}).get("tok_per_s", 0)
     if fsa_7 > 0:
-        md_lines.append(f"2. **FSA compute-bound**: tok/s drops from {fsa_7:.1f} (7nm) "
-                         f"to {fsa_28:.1f} (28nm) — frequency-bound at older nodes\n")
+        md_lines.append(
+            f"2. **FSA compute-bound**: tok/s drops from {fsa_7:.1f} (7nm) "
+            f"to {fsa_28:.1f} (28nm) — frequency-bound at older nodes\n"
+        )
 
     # GMMA/block on onchip high BW
     gmma_onchip = best.get(("onchip_7b", 7, "gmma"), {}).get("tok_per_s", 0)
     block_onchip = best.get(("onchip_7b", 7, "block"), {}).get("tok_per_s", 0)
     if gmma_onchip > 0:
-        md_lines.append(f"3. **GMMA high-BW advantage**: onchip_7b GMMA={gmma_onchip:.1f} tok/s "
-                         f"vs block={block_onchip:.1f} tok/s at 7nm — GMMA+Hopper async DMA excels at high BW\n")
+        md_lines.append(
+            f"3. **GMMA high-BW advantage**: onchip_7b GMMA={gmma_onchip:.1f} tok/s "
+            f"vs block={block_onchip:.1f} tok/s at 7nm — GMMA+Hopper async DMA excels at high BW\n"
+        )
 
     md_lines.append("")
     md_lines.append("## Engine Coverage per Node\n")

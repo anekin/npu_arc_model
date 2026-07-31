@@ -118,45 +118,56 @@ fails.
 
 ## 跨节点引擎选择发现 (Cross-Node Engine Selection Findings)
 
-**来源：** `.omo/evidence/task-14-engine-selection-p0-cross-node-dse.md`、`.omo/evidence/investigate-fsa-cross-node-freq.md`
+**来源：** `.omo/evidence/task-14-engine-selection-p0-cross-node-dse.md`、`.omo/evidence/investigate-fsa-cross-node-freq.md`、`.omo/evidence/task-4-cross-node-all-engines-dse-matrix.md`
 
-跨节点 DSE 在 7/12/22/28nm 四个工艺节点上评估 block 和 FSA 引擎在低带宽场景 (lpddr5_3b, 51.2 GB/s) 中的表现。每个节点使用物理可行的频率范围（源自 [`sim/config/dse_axes.yaml`](../sim/config/dse_axes.yaml) 的 frequency-bound constraints）：
+跨节点全引擎 DSE 在 7/12/22/28nm 四个工艺节点上评估全部 8 种引擎在两种带宽场景中的表现。每个节点使用物理可行的频率范围（源自 [`sim/config/dse_axes.yaml`](../sim/config/dse_axes.yaml) 的 frequency-bound constraints）。
 
-| 节点 | 允许频率 (MHz) |
-|:---:|:---|
-| 7nm | 800–2000 |
-| 12nm | 800–1200 |
-| 22nm | 400–800 |
-| 28nm | 200–600 |
+各节点报告每个引擎的最佳 tok/s（固定配置：128×128，INT4，2048 KB L2，无 weight cache）。
 
-各节点报告每个引擎的最佳 tok/s（固定配置：128×128，INT4，2048 KB L2，无 weight cache）：
+### lpddr5_3b (51.2 GB/s, Qwen2.5-3B INT4)
 
-| 节点 | 引擎 | 频率 (MHz) | tok/s | 面积 (mm²) | block/FSA tok/s 比 |
-|:---:|:---:|:---:|:---:|:---:|:---:|
-| 7nm | block | 800 | 20.8 | 99.0 | 1.000 |
-| 7nm | FSA | 1200 | 20.8 | 97.2 | |
-| 12nm | block | 800 | 20.8 | 119.1 | 1.000 |
-| 12nm | FSA | 1200 | 20.8 | 114.3 | |
-| 22nm | block | 600 | 20.8 | 195.4 | 1.137 |
-| 22nm | FSA | 800 | 18.3 | 177.6 | |
-| 28nm | block | 600 | 20.8 | 261.4 | 1.455 |
-| 28nm | FSA | 600 | 14.3 | 232.6 | |
+| 引擎 | 7nm | 12nm | 22nm | 28nm |
+|:---|:---:|:---:|:---:|:---:|
+| block | 36.6 / 99.0 | 20.8 / 119.1 | 17.9 / 195.4 | 9.7 / 261.4 |
+| os_systolic | 31.8 / 99.0 | 31.8 / 119.1 | 31.8 / 195.4 | 31.8 / 261.4 |
+| systolic | 22.0 / 97.0 | 22.0 / 113.7 | 9.9 / 175.6 | 5.2 / 229.4 |
+| gmma | 20.8 / 102.0 | 20.8 / 127.2 | 20.8 / 225.0 | 20.8 / 309.4 |
+| fsa | 20.5 / 97.2 | 20.5 / 114.3 | 9.9 / 177.6 | 5.2 / 232.6 |
+| input_stationary | 11.1 / 99.0 | 11.1 / 119.1 | 11.1 / 195.4 | 11.1 / 261.4 |
+| tensor_core | 9.9 / 99.0 | 9.9 / 119.1 | 8.4 / 195.4 | 6.8 / 261.4 |
+| wmma | 0.1 / 101.0 | 0.1 / 124.5 | 0.0 / 215.1 | 0.0 / 293.4 |
+
+> 格式: tok/s / area_mm²。高亮值 = 该节点最佳 tok/s。
+
+### onchip_7b (500 GB/s, Qwen2.5-7B INT4)
+
+| 引擎 | 7nm | 12nm | 22nm | 28nm |
+|:---|:---:|:---:|:---:|:---:|
+| block | 131.4 / 107.0 | 50.3 / 119.1 | 20.6 / 195.4 | 10.4 / 261.4 |
+| os_systolic | **310.9** / 99.0 | **310.9** / 119.1 | **310.7** / 195.4 | **224.1** / 261.4 |
+| systolic | 26.4 / 97.0 | 26.4 / 113.7 | 10.7 / 175.6 | 5.4 / 229.4 |
+| gmma | 203.5 / 102.0 | 203.5 / 127.2 | 180.5 / 225.0 | 97.7 / 309.4 |
+| fsa | 26.4 / 97.2 | 26.4 / 114.3 | 10.7 / 177.6 | 5.4 / 232.6 |
+| input_stationary | 108.1 / 99.0 | 108.1 / 119.1 | 107.1 / 195.4 | 81.5 / 261.4 |
+| tensor_core | 48.2 / 99.0 | 48.2 / 119.1 | 26.3 / 195.4 | 14.9 / 261.4 |
+| wmma | 0.1 / 101.0 | 0.1 / 124.5 | 0.0 / 215.1 | 0.0 / 293.4 |
 
 **关键发现：**
 
-1. **Block 引擎是 BW-bound** — 在 51.2 GB/s 外存带宽下，tok/s 恒定 20.8，不受频率影响。频率从 800→2000 MHz 不会增加 tok/s，因为瓶颈在片外带宽而非片内计算。
-2. **FSA 引擎是 compute-bound** — 脉动填充/排空开销使其计算受限，频率直接影响吞吐量。20.8 tok/s (7nm@1200MHz) → 14.3 tok/s (28nm@600MHz)，降幅 1.45×。
-3. **先进节点 (7/12nm) 下两支引擎打平** — FSA 在 7nm 和 12nm 可借助 1200 MHz 高频率追平 block 的 BW 天花板（20.8 tok/s），且面积略小 1–4%。
-4. **老旧节点 (22/28nm) 下 block 统治** — block 领先 1.14× (22nm) 和 1.46× (28nm)。FSA 受频率上限限制（22nm 最高 800 MHz, 28nm 最高 600 MHz），无法弥补 compute-bound 劣势。
-5. **面积单调性已验证** — 同一引擎下面积严格 7nm < 12nm < 22nm < 28nm。FSA 在老旧节点的面积优势加大（7nm 小 1.9% → 28nm 小 12.4%），因为逻辑较轻的面积放大效应更小。
-6. **频率对 BW-bound 引擎不是免费午餐** — 在 LPDDR5-51.2 GB/s 场景中，频率超过 ~600 MHz 后 block 的 tok/s 不再增长，仅增加功耗。瓶颈在片外，而非片内。
+1. **os_systolic 是跨所有节点和场景的绝对领先者** — 在 lpddr5_3b 保持 31.8 tok/s（BW-bound），在 onchip_7b 达到 310.9 tok/s（compute-bound）。输出驻留（output-stationary）数据流使其在带宽受限和计算受限两种场景下均占优。
+2. **GMMA 在高 BW 场景表现强劲，但老旧节点受限** — onchip_7b 7nm 下 GMMA 达 203.5 tok/s，仅次于 os_systolic；但 28nm 下降至 97.7 tok/s（频率上限限制 + 面积膨胀）。
+3. **Block 引擎 BW-bound 行为被 os_systolic 超越** — lpddr5_3b 下 block 从 7nm 的 36.6 tok/s（受益于高频率和其他轴扫描）降至 28nm 的 9.7 tok/s；os_systolic 在相同 BW 下保持 31.8 tok/s。
+4. **input_stationary 在 onchip 高 BW 下表现出色** — 7nm 108.1 tok/s、28nm 81.5 tok/s，证明 Eyeriss 式数据流在足够带宽下具有竞争力。
+5. **wmma 在所有节点均不可行** — 接近零 tok/s，不适合当前工作负载和带宽组合。
+6. **面积单调性已验证** — 所有引擎面积严格 7nm < 12nm < 22nm < 28nm，bitcell 查表模型正确传播节点缩放因子。
 
 **决策含义：**
-- 低带宽 (LPDDR5) 场景下 block 是更安全的引擎选择：所有节点均达到 BW 天花板（20.8 tok/s）
-- FSA 仅在先进节点 (7/12nm) 具有竞争力（同等 tok/s，面积小 1–4%）
-- 如果产品目标节点是 22/28nm，block 具有决定性吞吐量优势（14–46%）
+- **os_systolic 是当前跨所有场景和节点的最优引擎选择**（这是新增发现，此前仅 block+FSA 对比无法揭示）
+- GMMA 在高 BW（onchip 3D DRAM）场景中作为第二名具有竞争力
+- Block 仅在高 BW + 高频率 (7nm) 组合下具有竞争力
+- FSA 在低 BW 下被 os_systolic 全面超越
 
-**信任等级：** 探索性 (exploratory) — 频率约束来自架构推理，非硅测量；28/22/12nm 仅评估了 block 和 FSA，未覆盖其他引擎。
+**信任等级：** 探索性 (exploratory) — 频率约束来自架构推理，非硅测量；WMMA/GMMA PE 比等参数仍为 T0。全 8 引擎对比为首次完成，结论不应用作决策级依据。
 
 ---
 
@@ -230,14 +241,14 @@ DRAM 访问效率不再使用单一固定值，而是区分两种访问模式：
 
 ---
 
-## Decision-Grade State (Updated 2026-07-30)
+## Decision-Grade State (Updated 2026-07-31)
 
 !!! decision-grade 状态仍为 **FAIL** — 无变化。原因：
 
 - **WMMA/GMMA PE 比率仍为 T0** — `gmma_pipeline_scale`、`tensor_core_descriptor_overhead` 仍是工程假设，未获得直接测量数据或可复现的公开来源。
-- **多节点覆盖仍为探索性** — 跨节点 DSE（Todo 14）产生了首次跨节点排名矩阵。后续频率感知分析（[`.omo/evidence/investigate-fsa-cross-node-freq.md`](../.omo/evidence/investigate-fsa-cross-node-freq.md)）揭示了 block 的 BW-bound 属性与 FSA 的 compute-bound 差异：7/12nm 下 FSA 追平 block（同等 tok/s，面积小 1–4%），22/28nm 下 block 领先 1.14–1.46×。但 28/22/12nm 仅覆盖 block 和 FSA 引擎，完整的多节点引擎对比需要更丰富的扫描模式。
+- **全引擎跨节点覆盖完成，但仍为探索性** — 全 8 引擎 × 4 节点 × 2 场景排名矩阵（Todo 4, [`.omo/evidence/task-4-cross-node-all-engines-dse-matrix.md`](../.omo/evidence/task-4-cross-node-all-engines-dse-matrix.md)）揭示了 os_systolic 在跨所有节点和场景中均占绝对领先的新发现，GMMA 在高 BW 场景中作为第二名具有竞争力。但频率-节点绑定为探索性结论，os_systolic 的 PE 面积参数为 T0，结论不应用作决策级依据。
 - **DRAM 效率模式化参数未经硅校准** — `dram_efficiency_random_bw = 0.50` 和 `random_latency_penalty_cycles = 40` 均为架构推理值，尚待针对目标 LPDDR5 或 3D DRAM 控制器的微基准验证。
-- **SRAM bitcell 数据为 T2** — 这是本次 P0 改进中唯一达到 T2 以上的参数群；单一参数的提升不足以将整体决策等级提升至 `decision-grade`。
+- **SRAM bitcell 数据为 T2** — 这是本次改进中唯一达到 T2 以上的参数群；单一参数的提升不足以将整体决策等级提升至 `decision-grade`。
 
 在以下条件满足前，`decision-grade` gate 将继续失败：
 

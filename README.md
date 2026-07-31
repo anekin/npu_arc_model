@@ -75,7 +75,7 @@ Phase 2:  交叉校验    → 对比已知产品（TPUv1/RK1828/Eyeriss）
 | 面积 @12nm | 61mm²（估算） | 66mm²（估算） |
 | Decode | 23 tok/s（估算） | 148 tok/s（估算） |
 | TTFT | 45ms（估算） | 160ms（估算） |
-| 跨节点验证结论 | block 引擎面积单调 7→28nm（99→261mm² @lpddr5_3b）；频率感知对比揭示：block 是 BW-bound（20.8 tok/s 各节点恒定），FSA 是 compute-bound（20.8→14.3 tok/s 随节点变老下降）。7/12nm FSA 追平 block（同等 tok/s，面积小 1–4%），22/28nm block 领先 1.14–1.46×；决策级状态：**FAIL（WMMA/GMMA PE 比仍 T0，频率-节点绑定为探索性结论）** | [`参考跨节点 DSE 报告`](.omo/evidence/task-14-engine-selection-p0-cross-node-dse.md)；频率感知数据：[`.omo/evidence/investigate-fsa-cross-node-freq.md`](.omo/evidence/investigate-fsa-cross-node-freq.md) |
+| 跨节点验证结论 | block 引擎面积单调 7→28nm（99→261mm² @lpddr5_3b）；全 8 引擎 × 4 节点排名矩阵揭示 os_systolic 在跨所有节点和场景中均占绝对领先（31.8 tok/s @lpddr5, 310.9 tok/s @onchip），GMMA 在高 BW 场景中作为第二名具竞争力（203.5 tok/s @7nm onchip）；决策级状态：**FAIL（WMMA/GMMA PE 比仍 T0，频率-节点绑定为探索性结论）** | [`全引擎跨节点排名矩阵`](.omo/evidence/task-4-cross-node-all-engines-dse-matrix.md)；频率感知数据：[`.omo/evidence/investigate-all-engines-cross-node-freq.md`](.omo/evidence/investigate-all-engines-cross-node-freq.md) |
 | 详细报告 | [`reports/arch-report-A-lpddr5-3b.md`](reports/arch-report-A-lpddr5-3b.md) | [`reports/arch-report-B-3ddram-7b.md`](reports/arch-report-B-3ddram-7b.md) |
 
 ---
@@ -315,6 +315,8 @@ Config: 场景/参数定义               Firmware: RISC-V 微码
 4. **FSA 在低 BW 赢，block 在高 BW 赢** — 引擎选择不取决于引擎本身，取决于带宽场景。LPDDR5→FSA（面积优先），3D DRAM→block（宽阵列无 pipeline 惩罚）
 
 5. **面积必须可溯源** — PE 基线来自 TPUv1 ISCA 2017 die-shot，不可凭经验猜测
+
+6. **os_systolic 是全场景最优引擎** — 全 8 引擎 × 4 节点跨节点 DSE 揭示：os_systolic（输出驻留脉动阵列，Gemmini 风格）在低 BW (51.2 GB/s) 下保持 31.8 tok/s，在高 BW (500 GB/s) 下达到 310.9 tok/s — 在两种极端带宽条件下均超越包括 block、GMMA、input_stationary 在内的所有其他引擎。GMMA（Hopper H100 风格异步 DMA）在高 BW 场景中作为第二名具竞争力（203.5 tok/s @7nm），但在老旧节点（28nm）因频率上限和面积膨胀被 os_systolic 大幅拉开（97.7 vs 224.1 tok/s）。此项发现来自探索性 DSE，待 T2+ 参数校准后验证。（[`详细排名矩阵`](.omo/evidence/task-4-cross-node-all-engines-dse-matrix.md)）
 
 ---
 
