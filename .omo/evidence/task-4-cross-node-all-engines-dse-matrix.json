@@ -1,0 +1,297 @@
+{
+  "description": "8-engine x 4-node ranking matrix for lpddr5_3b and onchip_7b",
+  "scenarios": [
+    "lpddr5_3b",
+    "onchip_7b"
+  ],
+  "nodes": [
+    7,
+    12,
+    22,
+    28
+  ],
+  "engines": [
+    "block",
+    "fsa",
+    "gmma",
+    "input_stationary",
+    "os_systolic",
+    "systolic",
+    "tensor_core",
+    "wmma"
+  ],
+  "matrix": {
+    "block": {
+      "lpddr5_3b_7nm": {
+        "tok_per_s": 36.6,
+        "area_mm2": 99.0
+      },
+      "onchip_7b_7nm": {
+        "tok_per_s": 131.4,
+        "area_mm2": 107.0
+      },
+      "lpddr5_3b_12nm": {
+        "tok_per_s": 20.8,
+        "area_mm2": 119.1
+      },
+      "onchip_7b_12nm": {
+        "tok_per_s": 50.3,
+        "area_mm2": 119.1
+      },
+      "lpddr5_3b_22nm": {
+        "tok_per_s": 17.9,
+        "area_mm2": 195.4
+      },
+      "onchip_7b_22nm": {
+        "tok_per_s": 20.6,
+        "area_mm2": 195.4
+      },
+      "lpddr5_3b_28nm": {
+        "tok_per_s": 9.7,
+        "area_mm2": 261.4
+      },
+      "onchip_7b_28nm": {
+        "tok_per_s": 10.4,
+        "area_mm2": 261.4
+      }
+    },
+    "fsa": {
+      "lpddr5_3b_7nm": {
+        "tok_per_s": 20.5,
+        "area_mm2": 97.2
+      },
+      "onchip_7b_7nm": {
+        "tok_per_s": 26.4,
+        "area_mm2": 97.2
+      },
+      "lpddr5_3b_12nm": {
+        "tok_per_s": 20.5,
+        "area_mm2": 114.3
+      },
+      "onchip_7b_12nm": {
+        "tok_per_s": 26.4,
+        "area_mm2": 114.3
+      },
+      "lpddr5_3b_22nm": {
+        "tok_per_s": 9.9,
+        "area_mm2": 177.6
+      },
+      "onchip_7b_22nm": {
+        "tok_per_s": 10.7,
+        "area_mm2": 177.6
+      },
+      "lpddr5_3b_28nm": {
+        "tok_per_s": 5.2,
+        "area_mm2": 232.6
+      },
+      "onchip_7b_28nm": {
+        "tok_per_s": 5.4,
+        "area_mm2": 232.6
+      }
+    },
+    "gmma": {
+      "lpddr5_3b_7nm": {
+        "tok_per_s": 20.8,
+        "area_mm2": 102.0
+      },
+      "onchip_7b_7nm": {
+        "tok_per_s": 203.5,
+        "area_mm2": 102.0
+      },
+      "lpddr5_3b_12nm": {
+        "tok_per_s": 20.8,
+        "area_mm2": 127.2
+      },
+      "onchip_7b_12nm": {
+        "tok_per_s": 203.5,
+        "area_mm2": 127.2
+      },
+      "lpddr5_3b_22nm": {
+        "tok_per_s": 20.8,
+        "area_mm2": 225.0
+      },
+      "onchip_7b_22nm": {
+        "tok_per_s": 180.5,
+        "area_mm2": 225.0
+      },
+      "lpddr5_3b_28nm": {
+        "tok_per_s": 20.8,
+        "area_mm2": 309.4
+      },
+      "onchip_7b_28nm": {
+        "tok_per_s": 97.7,
+        "area_mm2": 309.4
+      }
+    },
+    "input_stationary": {
+      "lpddr5_3b_7nm": {
+        "tok_per_s": 11.1,
+        "area_mm2": 99.0
+      },
+      "onchip_7b_7nm": {
+        "tok_per_s": 108.1,
+        "area_mm2": 99.0
+      },
+      "lpddr5_3b_12nm": {
+        "tok_per_s": 11.1,
+        "area_mm2": 119.1
+      },
+      "onchip_7b_12nm": {
+        "tok_per_s": 108.1,
+        "area_mm2": 119.1
+      },
+      "lpddr5_3b_22nm": {
+        "tok_per_s": 11.1,
+        "area_mm2": 195.4
+      },
+      "onchip_7b_22nm": {
+        "tok_per_s": 107.1,
+        "area_mm2": 195.4
+      },
+      "lpddr5_3b_28nm": {
+        "tok_per_s": 11.1,
+        "area_mm2": 261.4
+      },
+      "onchip_7b_28nm": {
+        "tok_per_s": 81.5,
+        "area_mm2": 261.4
+      }
+    },
+    "os_systolic": {
+      "lpddr5_3b_7nm": {
+        "tok_per_s": 31.8,
+        "area_mm2": 99.0
+      },
+      "onchip_7b_7nm": {
+        "tok_per_s": 310.9,
+        "area_mm2": 99.0
+      },
+      "lpddr5_3b_12nm": {
+        "tok_per_s": 31.8,
+        "area_mm2": 119.1
+      },
+      "onchip_7b_12nm": {
+        "tok_per_s": 310.9,
+        "area_mm2": 119.1
+      },
+      "lpddr5_3b_22nm": {
+        "tok_per_s": 31.8,
+        "area_mm2": 195.4
+      },
+      "onchip_7b_22nm": {
+        "tok_per_s": 310.7,
+        "area_mm2": 195.4
+      },
+      "lpddr5_3b_28nm": {
+        "tok_per_s": 31.8,
+        "area_mm2": 261.4
+      },
+      "onchip_7b_28nm": {
+        "tok_per_s": 224.1,
+        "area_mm2": 261.4
+      }
+    },
+    "systolic": {
+      "lpddr5_3b_7nm": {
+        "tok_per_s": 22.0,
+        "area_mm2": 97.0
+      },
+      "onchip_7b_7nm": {
+        "tok_per_s": 26.4,
+        "area_mm2": 97.0
+      },
+      "lpddr5_3b_12nm": {
+        "tok_per_s": 22.0,
+        "area_mm2": 113.7
+      },
+      "onchip_7b_12nm": {
+        "tok_per_s": 26.4,
+        "area_mm2": 113.7
+      },
+      "lpddr5_3b_22nm": {
+        "tok_per_s": 9.9,
+        "area_mm2": 175.6
+      },
+      "onchip_7b_22nm": {
+        "tok_per_s": 10.7,
+        "area_mm2": 175.6
+      },
+      "lpddr5_3b_28nm": {
+        "tok_per_s": 5.2,
+        "area_mm2": 229.4
+      },
+      "onchip_7b_28nm": {
+        "tok_per_s": 5.4,
+        "area_mm2": 229.4
+      }
+    },
+    "tensor_core": {
+      "lpddr5_3b_7nm": {
+        "tok_per_s": 9.9,
+        "area_mm2": 99.0
+      },
+      "onchip_7b_7nm": {
+        "tok_per_s": 48.2,
+        "area_mm2": 99.0
+      },
+      "lpddr5_3b_12nm": {
+        "tok_per_s": 9.9,
+        "area_mm2": 119.1
+      },
+      "onchip_7b_12nm": {
+        "tok_per_s": 48.2,
+        "area_mm2": 119.1
+      },
+      "lpddr5_3b_22nm": {
+        "tok_per_s": 8.4,
+        "area_mm2": 195.4
+      },
+      "onchip_7b_22nm": {
+        "tok_per_s": 26.3,
+        "area_mm2": 195.4
+      },
+      "lpddr5_3b_28nm": {
+        "tok_per_s": 6.8,
+        "area_mm2": 261.4
+      },
+      "onchip_7b_28nm": {
+        "tok_per_s": 14.9,
+        "area_mm2": 261.4
+      }
+    },
+    "wmma": {
+      "lpddr5_3b_7nm": {
+        "tok_per_s": 0.1,
+        "area_mm2": 101.0
+      },
+      "onchip_7b_7nm": {
+        "tok_per_s": 0.1,
+        "area_mm2": 101.0
+      },
+      "lpddr5_3b_12nm": {
+        "tok_per_s": 0.1,
+        "area_mm2": 124.5
+      },
+      "onchip_7b_12nm": {
+        "tok_per_s": 0.1,
+        "area_mm2": 124.5
+      },
+      "lpddr5_3b_22nm": {
+        "tok_per_s": 0.0,
+        "area_mm2": 215.1
+      },
+      "onchip_7b_22nm": {
+        "tok_per_s": 0.0,
+        "area_mm2": 215.1
+      },
+      "lpddr5_3b_28nm": {
+        "tok_per_s": 0.0,
+        "area_mm2": 293.4
+      },
+      "onchip_7b_28nm": {
+        "tok_per_s": 0.0,
+        "area_mm2": 293.4
+      }
+    }
+  }
+}
