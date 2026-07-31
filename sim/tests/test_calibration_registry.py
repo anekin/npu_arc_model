@@ -41,9 +41,13 @@ EXPECTED_IDS = {
     "fsa_pe_area_12nm",
     "block_systolic_pe_ratio",
     "gmma_pipeline_scale",
+    "tma_overlap",
+    "wmma_fragment_serialization_cycles",
     "tensor_core_descriptor_overhead",
     "wmma_pe_ratio",
+    "wmma_pe_area_7nm",
     "gmma_pe_ratio",
+    "gmma_pe_area_7nm",
     "pj_per_mac_12nm_int8",
     "tsv_overhead_pct",
     "dram_phy_area_12nm",
@@ -66,7 +70,8 @@ def test_valid_lookup_by_id_reports_trust_level():
     assert systolic.source_uri is not None
 
     gmma_scale = registry.get("gmma_pipeline_scale")
-    assert gmma_scale.trust_level == TrustLevel.T0
+    assert gmma_scale.trust_level == TrustLevel.T1
+    assert gmma_scale.source_uri is not None
 
     block_ratio = registry.get("block_systolic_pe_ratio")
     assert block_ratio.trust_level == TrustLevel.T1
