@@ -86,20 +86,20 @@ gmma:
   pipeline_scale: 0.05
 
 wmma:
-  fragment_serialization_cycles: 1600   # per-16×16-fragment issue/DMA setup cycles (Todo 1: YAML-configurable; Todo 2 recalibrates)
+  fragment_serialization_cycles: 120    # per-16×16-fragment issue/DMA setup cycles — calibrated default (Todo 2), range [50, 200] per Volta warp-scheduler analysis
 
 # ── 面积模型参数 ──
 area_model:
   process_node: 7         # nm (default, override per scenario)
   # PE 面积基线 @7nm (128×128 array)，数据来源见 ~/npu/references/area_sources.md
-  # TPUv1 反推 systolic ~1.24mm²→取2.0 (含绕线/tree); block=2×; FSA=1.1×; WMMA~1.5×; GMMA~1.75×
+  # TPUv1 反推 systolic ~1.24mm²→取2.0 (含绕线/tree); block=2×; FSA=1.1×; WMMA~1.13× (H100 SM die 推导); GMMA~1.375× (H100 SM die 推导, Todo 6)
   systolic_pe_area_mm2: 2.0
   block_pe_area_mm2: 4.0        # 2× systolic (local acc + broadcast OC)
   os_pe_area_mm2: 4.0           # output stationary ≈ block
   is_pe_area_mm2: 4.0           # input stationary ≈ block
   tc_pe_area_mm2: 4.0           # tensor core ≈ block
-  wmma_pe_area_mm2: 6.0         # warp-level WMMA
-  gmma_pe_area_mm2: 7.0         # async TMA GMMA
+  wmma_pe_area_mm2: 4.5         # warp-level WMMA — H100 SM die-derived baseline (Todo 5), 1.125× block; see references/area_sources.md §8
+  gmma_pe_area_mm2: 5.5         # async TMA GMMA — H100 SM die 推导 (WMMA 4.5 + TMA ~1.0), Todo 6
   fsa_pe_area_mm2: 2.2          # CMP + Split overhead over systolic
   sfu_area_mm2: 1.5
   l1_sram_per_kb_mm2: 0.002

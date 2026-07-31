@@ -81,7 +81,7 @@ gmma:
   pipeline_scale: 0.05
 
 wmma:
-  fragment_serialization_cycles: 1600   # per-16×16-fragment issue/DMA setup cycles (Todo 1: YAML-configurable; Todo 2 recalibrates)
+  fragment_serialization_cycles: 120    # per-16×16-fragment issue/DMA setup cycles — calibrated default (Todo 2), range [50, 200] per Volta warp-scheduler analysis
 
 memory:
   type: LPDDR5-6400
