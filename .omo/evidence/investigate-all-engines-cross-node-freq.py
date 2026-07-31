@@ -229,16 +229,16 @@ def main() -> int:
     md_lines.append("**Scenario**: `lpddr5_3b` — LPDDR5 51.2 GB/s, Qwen2.5-3B INT4 decode\n")
     md_lines.append("**Fixed config**: 128x128 array, INT4, 2048 KB L2, no weight cache\n")
     md_lines.append("**Engines**: " + ", ".join(ENGINES) + "\n")
-    md_lines.append("**Method**: each node evaluated at all physically-plausible frequencies;\n"
-                     "best tok/s per engine per node reported.\n")
+    md_lines.append(
+        "**Method**: each node evaluated at all physically-plausible frequencies;\n"
+        "best tok/s per engine per node reported.\n"
+    )
 
     md_lines.append("## Per-Node Frequency Bounds\n")
     md_lines.append("| Node | Allowed Frequencies (MHz) |")
     md_lines.append("|:---:|:---|")
     for node_label, fs in freq_summary.items():
-        md_lines.append(
-            f"| {node_label} | {', '.join(str(f) for f in fs['allowed_frequencies_mhz'])} |"
-        )
+        md_lines.append(f"| {node_label} | {', '.join(str(f) for f in fs['allowed_frequencies_mhz'])} |")
     md_lines.append("")
 
     md_lines.append("## Per-Node Engine Rankings (best tok/s)\n")
@@ -268,19 +268,29 @@ def main() -> int:
     md_lines.append("")
 
     md_lines.append("## Key Observations\n")
-    md_lines.append("1. **os_systolic is the top performer across all nodes** — its "
-                     "output-stationary dataflow achieves the highest tok/s at every "
-                     "process node for lpddr5_3b.\n")
-    md_lines.append("2. **Block engine BW-bound behavior varies** — while block excels at "
-                     "7nm (36.6 tok/s via high frequency), it degrades significantly at older "
-                     "nodes due to frequency limits combined with compute constraints.\n")
-    md_lines.append("3. **FSA compute-bound** — FSA tok/s drops from 20.5 (7nm) to 5.2 (28nm), "
-                     "consistent with its compute-bound nature at lower frequencies.\n")
-    md_lines.append("4. **wmma is non-viable at all nodes** — wmma produces near-zero tok/s "
-                     "due to its warp-level MMA architecture being unsuitable for the current "
-                     "workload/bandwidth combination.\n")
-    md_lines.append("5. **input_stationary is BW-consistent** — input_stationary (Eyeriss-style) "
-                     "maintains ~11.1 tok/s across all nodes, suggesting strong BW-bound behavior.\n")
+    md_lines.append(
+        "1. **os_systolic is the top performer across all nodes** — its "
+        "output-stationary dataflow achieves the highest tok/s at every "
+        "process node for lpddr5_3b.\n"
+    )
+    md_lines.append(
+        "2. **Block engine BW-bound behavior varies** — while block excels at "
+        "7nm (36.6 tok/s via high frequency), it degrades significantly at older "
+        "nodes due to frequency limits combined with compute constraints.\n"
+    )
+    md_lines.append(
+        "3. **FSA compute-bound** — FSA tok/s drops from 20.5 (7nm) to 5.2 (28nm), "
+        "consistent with its compute-bound nature at lower frequencies.\n"
+    )
+    md_lines.append(
+        "4. **wmma is non-viable at all nodes** — wmma produces near-zero tok/s "
+        "due to its warp-level MMA architecture being unsuitable for the current "
+        "workload/bandwidth combination.\n"
+    )
+    md_lines.append(
+        "5. **input_stationary is BW-consistent** — input_stationary (Eyeriss-style) "
+        "maintains ~11.1 tok/s across all nodes, suggesting strong BW-bound behavior.\n"
+    )
 
     md_path.write_text("\n".join(md_lines), encoding="utf-8")
 

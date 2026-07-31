@@ -11,8 +11,8 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
-from engine.registry import engine_full_ids
 from dse.space import DesignSpace
+from engine.registry import engine_full_ids
 from scenarios.schema import ArrivalPattern, Scenario, WorkloadClass
 
 
@@ -33,11 +33,7 @@ def minimal_scenario() -> Scenario:
 
 
 def _engines_at_node(points: list, node_val: int) -> set:
-    return {
-        p.axis_values["engine"]
-        for p in points
-        if p.axis_values.get("process_node") == node_val
-    }
+    return {p.axis_values["engine"] for p in points if p.axis_values.get("process_node") == node_val}
 
 
 class TestCrossNodeCoverage:
@@ -110,10 +106,7 @@ class TestCrossNodeCoverage:
                 cross_keys.add((node, eng, freq, sram))
 
         # Count combos where engine is NOT block and node is NOT 7nm
-        non_default_cross_count = sum(
-            1 for (node, eng, _freq, _sram) in cross_keys
-            if node != 7 and eng != "block"
-        )
+        non_default_cross_count = sum(1 for (node, eng, _freq, _sram) in cross_keys if node != 7 and eng != "block")
         assert non_default_cross_count == 21, (
             f"Expected 21 non-default engine×node combos, got {non_default_cross_count}"
         )
@@ -228,6 +221,4 @@ class TestCrossNodeNegative:
         for p in points:
             if p.axis_values.get("process_node") == 28:
                 freq = p.axis_values.get("frequency_mhz")
-                assert freq is not None and 200 <= freq <= 600, (
-                    f"28nm freq {freq} outside 200-600 MHz bound"
-                )
+                assert freq is not None and 200 <= freq <= 600, f"28nm freq {freq} outside 200-600 MHz bound"

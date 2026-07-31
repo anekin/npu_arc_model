@@ -90,7 +90,7 @@ def main() -> int:
         return 1
 
     # Build the matrix
-    all_engines = sorted(set(k[2] for k in best))
+    all_engines = sorted({k[2] for k in best})
     matrix: dict[str, dict[str, dict[str, float | None]]] = {}  # engine -> node_label -> {tok, area}
 
     for engine in all_engines:
@@ -99,10 +99,7 @@ def main() -> int:
             for sc in SCENARIOS:
                 col = f"{sc}_{node}nm"
                 key = (sc, node, engine)
-                if key in best:
-                    matrix[engine][col] = best[key]
-                else:
-                    matrix[engine][col] = None
+                matrix[engine][col] = best.get(key)
 
     # Write JSON
     output_data = {
@@ -161,7 +158,7 @@ def main() -> int:
         md_lines.append(
             f"1. **Block BW-bound tendency**: lpddr5_3b block tok/s range "
             f"{min_tok:.1f}–{max_tok:.1f} ({variation_pct:.0f}% variation across nodes) "
-            f"— {'consistent with BW-bound behavior' if variation_pct < 5 else f'variation exceeds expected 5% BW-bound threshold'}\n"
+            f"— {'consistent with BW-bound behavior' if variation_pct < 5 else 'variation exceeds expected 5% BW-bound threshold'}\n"
         )
 
     # FSA compute-bound observation
