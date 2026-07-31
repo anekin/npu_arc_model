@@ -6,6 +6,7 @@ import subprocess
 from pathlib import Path
 
 import pytest
+from calibration.registry import CalibrationRegistry
 from engine.mac_engine import create_engine
 from model_specs import get_spec
 from models.mxu import MXUModel
@@ -96,10 +97,14 @@ def test_wmma_decode():
     Reference: Qwen2.5-3B FFN_down (M=1, K=11008, N=2048) on 128x128 INT4
     51.2GB/s.  WMMA 16x16 fragments with single-die NPU serialization
     produce ~88k fragments, each paying warp-sync + issue overhead.
+    Uses the calibrated ``fragment_serialization_cycles=120`` default
+    (Todo 2; was 1600), which recovers usable per-GEMM tok/s.
     """
     M, K, N = 1, 11008, 2048
 
-    wmma = create_engine(_engine_config("wmma"))
+    cfg = _engine_config("wmma")
+    cfg["wmma"] = {"fragment_serialization_cycles": 120}
+    wmma = create_engine(cfg)
     r_wmma = wmma.estimate(M, K, N)
 
     other_types = ["systolic", "block", "tensor_core", "gmma", "os_systolic", "input_stationary"]
@@ -111,10 +116,64 @@ def test_wmma_decode():
         )
 
     wmma_tok_s = _tok_s(r_wmma)
-    assert wmma_tok_s < 10, f"WMMA tok/s={wmma_tok_s:.2f} should be < 10 for FFN_down"
+    assert wmma_tok_s > 5, f"WMMA tok/s={wmma_tok_s:.2f} should exceed 5 for FFN_down"
 
     assert r_wmma.details["total_fragments"] == 88064
     assert r_wmma.details["fragments_per_tile"] == 16  # (64/16)^2 = 16 on 64×64
+
+
+def test_wmma_calibration_ratio():
+    """WMMA calibration lock: realized WMMA/block tok/s at the calibrated default.
+
+    Plan Todo 2 recalibrated ``wmma.fragment_serialization_cycles`` from the
+    placeholder 1600 to 120 (YAML defaults in npu_config.yaml and
+    design_space.yaml; registry entry ``wmma_fragment_serialization_cycles``
+    at trust_level=T1, calibration_range=[50, 200], source = NVIDIA Volta
+    Tuning Guide).
+
+    NOTE on the plan's original [0.50, 0.80] target band: that band is NOT
+    reachable in the frozen WMMA cycle model.  Every 16×16 fragment pays
+    ``serialization + WARP_SYNC(32) + FRAG_MAC(16)`` = 168 cycles, and this
+    FFN_down GEMM has 88,064 fragments → ≈14.79M cycles vs block ≈394K →
+    ratio ≈ 0.027.  Even ``serialization=0`` caps the ratio at ≈0.093 because
+    WARP_SYNC + FRAG_MAC alone (48 cycles × 88,064 fragments) already exceed
+    block's DMA-bound cost.  Reaching [0.50, 0.80] requires warp-level
+    parallelism in the engine model, which is out of scope for this todo
+    (engine formulas are frozen).  The band below locks the *realized*
+    calibrated behavior: serialization=120 must sit inside the [50, 200]
+    calibration range's ratio footprint and be ≥ 5× faster than the
+    uncalibrated 1600 placeholder.
+    """
+    M, K, N = 1, 11008, 2048
+
+    cfg_cal = _engine_config("wmma")
+    cfg_cal["wmma"] = {"fragment_serialization_cycles": 120}
+    cfg_old = _engine_config("wmma")
+    cfg_old["wmma"] = {"fragment_serialization_cycles": 1600}
+
+    r_wmma_cal = create_engine(cfg_cal).estimate(M, K, N)
+    r_wmma_old = create_engine(cfg_old).estimate(M, K, N)
+    r_block = create_engine(_engine_config("block")).estimate(M, K, N)
+
+    # wmma/block tok/s ratio == block/wmma total_cycles (same f_mhz both sides).
+    ratio = r_block.total_cycles / r_wmma_cal.total_cycles
+    assert 0.015 <= ratio <= 0.05, (
+        f"WMMA/block tok/s ratio {ratio:.4f} outside realized calibration band "
+        f"[0.015, 0.05] for serialization=120 "
+        f"(block={r_block.total_cycles}c, wmma={r_wmma_cal.total_cycles}c)"
+    )
+
+    # Calibrated default must be materially faster than the 1600 placeholder.
+    speedup = r_wmma_old.total_cycles / r_wmma_cal.total_cycles
+    assert speedup >= 5, f"serialization=120 only {speedup:.1f}× faster than 1600; calibration did not take effect"
+
+    # Registry cross-check: entry exists at T1 with provenance and default in range.
+    registry = CalibrationRegistry.from_yaml()
+    entry = registry.lookup("wmma_fragment_serialization_cycles")
+    assert entry is not None, "wmma_fragment_serialization_cycles missing from parameters.yaml"
+    assert entry.trust_level.value == "T1", "wmma_fragment_serialization_cycles must be trust_level=T1"
+    assert entry.source_uri, "wmma_fragment_serialization_cycles must have a non-empty source_uri"
+    assert entry.is_in_range(120), f"default 120 outside {entry.calibration_range}"
 
 
 def test_tensor_core_decode():
@@ -339,6 +398,36 @@ def test_gmma_tma_overlap():
         f"HBM2e tok/s ({hbm2e_tok_s:.0f}) not significantly higher than "
         f"LPDDR5 ({lpddr5_tok_s:.0f}); TMA overlap did not scale with BW"
     )
+
+
+def test_gmma_calibration_bounds():
+    """GMMA calibration lock: pipeline_scale and TMA_OVERLAP stay in range.
+
+    Both parameters are registered in references/calibration/parameters.yaml
+    at trust_level=T1 with NVIDIA H100/Hopper whitepaper source URIs.  The
+    engine constants must stay inside the published calibration ranges, and
+    the registry entries must keep their upgraded provenance.
+    """
+    M, K, N = 1, 11008, 2048
+
+    gmma = create_engine(_engine_config("gmma"))
+    r = gmma.estimate(M, K, N)
+
+    assert 0.01 <= gmma.pipeline_scale <= 0.10, (
+        f"gmma.pipeline_scale={gmma.pipeline_scale} outside calibrated range [0.01, 0.10]"
+    )
+    assert 0.3 <= gmma.TMA_OVERLAP <= 0.7, f"GMMA TMA_OVERLAP={gmma.TMA_OVERLAP} outside calibrated range [0.3, 0.7]"
+
+    assert r.details["pipeline_scale"] == pytest.approx(gmma.pipeline_scale)
+    assert r.details["tma_overlap"] == pytest.approx(gmma.TMA_OVERLAP)
+
+    registry = CalibrationRegistry.from_yaml()
+    for cid, default in (("gmma_pipeline_scale", gmma.pipeline_scale), ("tma_overlap", gmma.TMA_OVERLAP)):
+        entry = registry.lookup(cid)
+        assert entry is not None, f"calibration_id {cid!r} missing from parameters.yaml"
+        assert entry.trust_level.value == "T1", f"{cid} must be trust_level=T1"
+        assert entry.source_uri, f"{cid} must have a non-empty source_uri"
+        assert entry.is_in_range(default), f"{cid} default {default} outside {entry.calibration_range}"
 
 
 def test_systolic_npu_sim_baseline():
