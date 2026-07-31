@@ -1,0 +1,9 @@
+Negative-path verification for Todo 9 (decision-grade docs):
+- Stale 'WMMA/GMMA PE 比仍 T0' clause must NOT appear in README/docs:
+  PASS: no stale clause found (exit 1)
+- Stale 'WMMA/GMMA PE 比率仍为 T0' must NOT appear in model-trust:
+  PASS: no stale clause found (exit 1)
+- decision-grade must REMAIN FAIL (not PASS):
+  PASS: FAIL still present in README decision-grade statement
+- WMMA 6.9 tok/s without calibration context must NOT appear in guide:
+  PASS: all 6.9 references carry calibration context (exit 1)

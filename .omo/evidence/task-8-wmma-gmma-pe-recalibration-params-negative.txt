@@ -1,0 +1,7 @@
+Negative-path verification for Todo 8 (calibration parameter registry):
+- Missing registry entry is rejected by the exact-ID-set test (test_valid_registry_has_all_parameters).
+- Out-of-calibration-range actual value is flagged by TrustGate as out_of_calibration_range.
+
+$ PYTHONPATH=sim uv run python -c "..."
+WMMA ids T1 gate: ok=True max_trust=T1 violations=[]
+NEGATIVE: serialization=9999 correctly flagged out_of_calibration_range

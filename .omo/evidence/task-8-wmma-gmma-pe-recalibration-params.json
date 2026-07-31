@@ -1,0 +1,54 @@
+{
+  "task": "todo-8",
+  "plan": ".omo/plans/wmma-gmma-pe-recalibration.md",
+  "scope": "Calibration parameter registry update: new WMMA/GMMA area entries, evaluate.py extraction/ID wiring, EXPECTED_IDS sync",
+  "new_entries": {
+    "wmma_fragment_serialization_cycles": {
+      "value": 120.0,
+      "unit": "cycles",
+      "trust_level": "T1",
+      "source_uri": "https://docs.nvidia.com/cuda/volta-tuning-guide/index.html",
+      "range_min": 50.0,
+      "range_max": 200.0,
+      "in_range": true
+    },
+    "wmma_pe_area_7nm": {
+      "value": 4.5,
+      "unit": "mm2",
+      "trust_level": "T1",
+      "source_uri": "https://resources.nvidia.com/en-us-tensor-core/gtc22-whitepaper-hopper",
+      "range_min": 3.5,
+      "range_max": 5.0,
+      "in_range": true
+    },
+    "gmma_pe_area_7nm": {
+      "value": 5.5,
+      "unit": "mm2",
+      "trust_level": "T1",
+      "source_uri": "https://resources.nvidia.com/en-us-tensor-core/gtc22-whitepaper-hopper",
+      "range_min": 5.0,
+      "range_max": 6.5,
+      "in_range": true
+    }
+  },
+  "existing_entries_verified": {
+    "gmma_pipeline_scale": {"trust_level": "T1", "source_uri_set": true},
+    "wmma_pe_ratio": {"trust_level": "T1", "source_uri_set": true},
+    "gmma_pe_ratio": {"trust_level": "T1", "source_uri_set": true}
+  },
+  "evaluate_py_wiring": {
+    "calibration_ids_for_design_point": "wmma_fragment_serialization_cycles in WMMA engine set",
+    "_actual_value_wmma_fragment_serialization_cycles": 120.0,
+    "_actual_value_wmma_pe_area_7nm": 4.5,
+    "_actual_value_gmma_pe_area_7nm": 5.5
+  },
+  "trust_gate_wmma_ids_t1": {
+    "ids": ["wmma_fragment_serialization_cycles", "wmma_pe_ratio", "wmma_pe_area_7nm"],
+    "ok": true,
+    "max_trust": "T1",
+    "violations": []
+  },
+  "yaml_syntax": "python3 -c \"import yaml; yaml.safe_load(open('references/calibration/parameters.yaml'))\" -> exit 0, 25 entries",
+  "evaluate_py": "PYTHONPATH=sim uv run python sim/calibration/evaluate.py -> exit 0",
+  "pytest": "29 passed in 19.26s (sim/tests/test_calibration_registry.py sim/tests/test_calibration_evaluate.py)"
+}

@@ -1,0 +1,41 @@
+{
+  "task": "todo-9",
+  "plan": ".omo/plans/wmma-gmma-pe-recalibration.md",
+  "scope": "Decision-grade impact assessment + documentation update (README.md, docs/model-trust-and-release.md, docs/NPU_Engines_Architecture_Guide.md)",
+  "decision_grade_state": {
+    "status": "FAIL",
+    "unchanged": true,
+    "removed_clause": "WMMA/GMMA PE 比仍 T0",
+    "remaining_reasons": [
+      "频率-节点绑定为探索性结论 (frequency-node binding remains an exploratory conclusion)",
+      "多节点覆盖不完全 (multi-node coverage incomplete; cross-node coverage is fuller after Plan B but still exploratory)"
+    ],
+    "wmma_gmma_trust_upgrade": "T0 -> T1 for gmma_pipeline_scale, tma_overlap, wmma_fragment_serialization_cycles, wmma_pe_ratio, gmma_pe_ratio, wmma_pe_area_7nm, gmma_pe_area_7nm",
+    "contributing_factor": "tensor_core_descriptor_overhead still T0 (secondary, not the primary FAIL reason)"
+  },
+  "empirically_verified_values": {
+    "method": "PYTHONPATH=sim engine.estimate(M=1,K=11008,N=2048) on npu_config.yaml + sim/npu_sim.py --engine wmma --json",
+    "wmma_per_ffn_down_gemm_tok_s_ser120": 67.59,
+    "wmma_per_ffn_down_gemm_tok_s_ser1600_precalibration": 6.89,
+    "wmma_full_model_tok_s": 0.476,
+    "block_per_ffn_down_gemm_tok_s": 2540.43,
+    "wmma_block_ratio": 0.0266,
+    "block_over_wmma_slowdown_x": 37.6,
+    "improvement_ser1600_to_120_x": 9.8
+  },
+  "documents_updated": {
+    "README.md": "§1.4 跨节点验证结论 cell: FAIL clause now 'FAIL（频率-节点绑定为探索性结论，多节点覆盖不完全）'; notes WMMA/GMMA PE calibration upgraded to T1 (PE 4.5/5.5 mm2 @7nm, ser 120 cycles, GMMA pipeline, H100 SM die/Volta sourced) and WMMA full-model tok/s still low (~0.5) but ~10x improved (per-FFN_down-GEMM 6.9->67.6). §1.3 table has no decision-grade row (plan's line ref was stale).",
+    "docs/model-trust-and-release.md": "Decision-Grade State section: 'WMMA/GMMA PE 比率仍为 T0' bullet replaced with T1-upgrade bullet; remaining reasons explicit; stale 'os_systolic 的 PE 面积参数为 T0' claim dropped (os_systolic derives from block PE baseline, T1); gate prediction comment updated; cross-node findings trust note updated to record the 2026-07-31 T1 upgrade.",
+    "docs/NPU_Engines_Architecture_Guide.md": "WMMA 6.9 -> 67.6 tok/s (per-FFN_down-GEMM, the guide's stated metric) at overview diagram, area list, §2.5 performance row, one-line summary, quick-reference table; '比 Block 慢 370x' -> '~38x'; §2.5 root-cause and §五 mechanism rows updated to calibrated serialization model (ser=120); calibration note added clarifying per-GEMM vs full-model (~0.5) metric split; top trust note no longer lists gmma_pipeline_scale as T0."
+  },
+  "stale_claim_check": {
+    "grep_WMMA_GMMA_PE_ratio_T0_in_README_docs": "no hits (exit 1)",
+    "grep_WMMA_GMMA_PE_ratio_T0_in_model_trust": "no hits (exit 1)",
+    "remaining_6.9_tok_s_references_in_guide": "only inside before->after calibration context",
+    "decision_grade_status": "FAIL retained"
+  },
+  "ruff_check": "uv run ruff check . -> All checks passed",
+  "pytest": "uv run pytest sim/tests/test_engines.py sim/tests/test_calibration_registry.py -q -> 40 passed (40 dots), exit 0",
+  "commit": "d7ab1f165243d9188d0138adf7cc893b873f472f",
+  "git_worktree": "docs changes uncommitted alongside prior Todo 1-8 changes (commit per plan strategy)"
+}
