@@ -220,7 +220,7 @@
       "plan_name": "wmma-gmma-pe-recalibration",
       "status": "active",
       "started_at": "2026-07-31T02:06:18.662Z",
-      "updated_at": "2026-07-31T04:04:03.533Z",
+      "updated_at": "2026-07-31T04:10:57.892Z",
       "session_ids": [
         "opencode:ses_053ba6068ffeyiIpkBUK0ulwPN"
       ],
@@ -319,6 +319,17 @@
           "status": "completed",
           "ended_at": "2026-07-31T04:04:03.533Z",
           "elapsed_ms": 21008
+        },
+        "final-wave:f1": {
+          "task_key": "final-wave:f1",
+          "task_label": "F1",
+          "task_title": "Plan compliance audit",
+          "session_id": "opencode:ses_049a72ec0ffeMLtXtp9RCOSADw",
+          "agent": "Sisyphus-Junior",
+          "category": "quick",
+          "updated_at": "2026-07-31T04:10:57.895Z",
+          "started_at": "2026-07-31T04:10:57.895Z",
+          "status": "running"
         }
       }
     }
@@ -326,7 +337,7 @@
   "active_plan": "/home/prj/zhengs/caduceuscore/npu_arc_model/.omo/plans/wmma-gmma-pe-recalibration.md",
   "started_at": "2026-07-31T02:06:18.662Z",
   "status": "active",
-  "updated_at": "2026-07-31T04:04:03.533Z",
+  "updated_at": "2026-07-31T04:10:57.892Z",
   "session_ids": [
     "opencode:ses_053ba6068ffeyiIpkBUK0ulwPN"
   ],
@@ -425,6 +436,17 @@
       "status": "completed",
       "ended_at": "2026-07-31T04:04:03.533Z",
       "elapsed_ms": 21008
+    },
+    "final-wave:f1": {
+      "task_key": "final-wave:f1",
+      "task_label": "F1",
+      "task_title": "Plan compliance audit",
+      "session_id": "opencode:ses_049a72ec0ffeMLtXtp9RCOSADw",
+      "agent": "Sisyphus-Junior",
+      "category": "quick",
+      "updated_at": "2026-07-31T04:10:57.895Z",
+      "started_at": "2026-07-31T04:10:57.895Z",
+      "status": "running"
     }
   },
   "agent": "atlas"
