@@ -5,7 +5,7 @@
 > 性能数据 commit: `02683a9f49bc2df299d31f4af8c1446d99101fce`。
 > 本文基于修正后的 Arc Model DSE v2；引擎模型修复后所有 63 个回归测试通过。
 >
-> ⚠️ **信任声明**: 本指南中的数值与"推荐"结论均为当前模型校准下的估算。部分关键参数（`gmma_pipeline_scale`、`tensor_core_descriptor_overhead`、`block_sparsity_penalty` 等）仍为 T0/T1，尚未达到 `decision-grade` 发布标准。详见 [`docs/model-trust-and-release.md`](docs/model-trust-and-release.md)。
+> ⚠️ **信任声明**: 本指南中的数值与"推荐"结论均为当前模型校准下的估算。部分关键参数（`tensor_core_descriptor_overhead`、`block_sparsity_penalty` 等）仍为 T0/T1（WMMA/GMMA 周期与 PE 参数已于 2026-07-31 校准升级 T1），尚未达到 `decision-grade` 发布标准。详见 [`docs/model-trust-and-release.md`](docs/model-trust-and-release.md)。
 
 ---
 
@@ -14,7 +14,7 @@
 ```
                      DMA 碎片 ←──────────────────────────→ 面积
 
-  WMMA (6.9)     TensorCore (2,490)    GMMA (2,540)     Block (2,540) ✅
+  WMMA (67.6)    TensorCore (2,490)    GMMA (2,540)     Block (2,540) ✅
   16×16           64×16×16             64×64+TMA        64×64 广播
        │                │                   │                │
        ▼                ▼                   ▼                ▼
@@ -28,7 +28,7 @@
   │  30mm² ── GMMA 64×64+TMA               (2,540 tok/s)               │
   │  52mm² ── Tensor Core 64×16×16         (2,490 tok/s)               │
   │  ~30mm² ── FSA 64×64                   (1,408 tok/s)               │
-  │  57mm² ── WMMA 16×16                   (6.9 tok/s)  ← ☠️          │
+  │  57mm² ── WMMA 16×16                   (67.6 tok/s) ← ☠️          │
   │                                                                     │
   │  * DRAM-bound 三引擎（Block/OS-Systolic/GMMA）性能一致              │
   │  ═══════ DRAM 51.2 GB/s × 85%效率 = 43.5 GB/s 天花板 ═══════       │
@@ -177,18 +177,20 @@
      每个 warp 从寄存器文件读数据（超低延迟）
      但 M=1 时绝大部分寄存器空间闲置
 
-     16×16 tile × 10c DMA startup × 100K+ invocations
-     = 百万级 cycles 纯等待
+     16×16 fragment × 120c serialization (校准后) × 8.8万 fragments
+     = 千万级 cycles 纯等待
 ```
 
 | 特性 | 值 |
 |------|-----|
-| 性能 @ 50GB/s | **6.9 tok/s** — 比 Block 慢 370× |
-| 根因 | DMA 启动开销爆炸（每次启动 10 cycles × 10 万次 = 100 万 cycles 纯等）|
+| 性能 @ 50GB/s | **67.6 tok/s**（per-FFN_down-GEMM）— 比 Block 慢 ~38×；全模型 ~0.5 tok/s |
+| 根因 | Fragment 序列化开销（每 16×16 fragment 120c serialization + 32c warp sync + 16c MAC × 88,064 fragments ≈ 1,480 万 cycles 纯等；校准前占位 1600c 为 400× 悬崖）|
 | GPU 怎么解决的 | **数千个 warp 同时跑** — 一个 warp 等 DMA 时，scheduler 切到另一个 warp |
 | 单 die NPU 为何不行 | 只有 1 个指令流 — 等 DMA 时 CPU 完全 idle |
 
-**一句话：WMMA 是 GPU 专属架构。单 die NPU 上不能用（6.9 tok/s，比 Block 低 370×）——这是本报告最重要的发现之一。**
+**一句话：WMMA 是 GPU 专属架构。单 die NPU 上不能用（67.6 tok/s per-FFN_down-GEMM，比 Block 低 ~38×；全模型仅 ~0.5 tok/s）——这是本报告最重要的发现之一。**
+
+> **校准说明（2026-07-31）**：WMMA 周期模型 `fragment_serialization_cycles` 从占位 1600 校准至 120（NVIDIA Volta Tuning Guide，trust T1），per-FFN_down-GEMM tok/s 从 6.9 提升至 67.6（~10×）；全模型 tok/s 仍低（~0.5）。上方数值均为 **per-FFN_down-GEMM（M=1, K=11008, N=2048）** 口径，全模型口径见本文信任声明与 [`references/calibration/parameters.yaml`](../references/calibration/parameters.yaml)。
 
 ---
 
@@ -266,7 +268,7 @@
 | 备选 — TMA 测试 | GMMA | 64×64 | LPDDR5-6400 64b | 2,540 | 30.2 mm² |
 | 面积最小（性能不足） | Systolic | 64×64 | LPDDR5-6400 64b | 946 | 22.2 mm² |
 | TensorCore（含 descriptor 开销） | TensorCore | 64×64 | LPDDR5-6400 64b | 2,490 | 52 mm² |
-| **绝对不要用** | WMMA | 16×16 | 任意 | 6.9 | 57mm² |
+| **绝对不要用** | WMMA | 16×16 | 任意 | 67.6 | 57mm² |
 
 ---
 
@@ -304,11 +306,11 @@
 
   NPU 上的 WMMA:
   ┌────┐
-  │唯一│  DMA wait → DMA wait → DMA wait → compute → DMA wait → ...
-  │指令│  10c        10c        10c        1c         10c
+  │唯一│  serialization → compute → serialization → compute → ...
+  │指令│  120c           48c       120c           48c
   │流  │
   └────┘
-  10 cycles 等 × 10万次 = 100万 cycles = 1ms 纯浪费
+  120 cycles 等 × 8.8万次 ≈ 1,060 万 cycles ≈ 10.6ms 纯等待（校准前 1600c 更极端）
 ```
 
 ---

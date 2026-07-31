@@ -167,7 +167,7 @@ fails.
 - Block 仅在高 BW + 高频率 (7nm) 组合下具有竞争力
 - FSA 在低 BW 下被 os_systolic 全面超越
 
-**信任等级：** 探索性 (exploratory) — 频率约束来自架构推理，非硅测量；WMMA/GMMA PE 比等参数仍为 T0。全 8 引擎对比为首次完成，结论不应用作决策级依据。
+**信任等级：** 探索性 (exploratory) — 频率约束来自架构推理，非硅测量；WMMA/GMMA PE 比与周期参数在 2026-07-31 校准后已升级 T1（H100 SM die 面积分析 + Volta Tuning Guide，见 `references/calibration/parameters.yaml`），但本节的跨节点数值表基于校准前的 WMMA 周期模型（ser=1600）。全 8 引擎对比为首次完成，结论不应用作决策级依据。
 
 ---
 
@@ -245,8 +245,8 @@ DRAM 访问效率不再使用单一固定值，而是区分两种访问模式：
 
 !!! decision-grade 状态仍为 **FAIL** — 无变化。原因：
 
-- **WMMA/GMMA PE 比率仍为 T0** — `gmma_pipeline_scale`、`tensor_core_descriptor_overhead` 仍是工程假设，未获得直接测量数据或可复现的公开来源。
-- **全引擎跨节点覆盖完成，但仍为探索性** — 全 8 引擎 × 4 节点 × 2 场景排名矩阵（Todo 4, [`.omo/evidence/task-4-cross-node-all-engines-dse-matrix.md`](../.omo/evidence/task-4-cross-node-all-engines-dse-matrix.md)）揭示了 os_systolic 在跨所有节点和场景中均占绝对领先的新发现，GMMA 在高 BW 场景中作为第二名具有竞争力。但频率-节点绑定为探索性结论，os_systolic 的 PE 面积参数为 T0，结论不应用作决策级依据。
+- **WMMA/GMMA PE 比率与周期参数已升级 T1（不再是 FAIL 的原因）** — 2026-07-31 校准将 `gmma_pipeline_scale`、`tma_overlap`、`wmma_fragment_serialization_cycles`、`wmma_pe_ratio`、`gmma_pe_ratio`（及 `wmma_pe_area_7nm`/`gmma_pe_area_7nm`）全部从 T0 升级为 T1，来源为 NVIDIA H100/Hopper 白皮书、Volta Tuning Guide 与 H100 SM die-shot 分析。但 `tensor_core_descriptor_overhead` 仍是 T0（无公开来源的工程假设），因此 T0 参数并未全部消除。
+- **全引擎跨节点覆盖完成，但仍为探索性 — 多节点覆盖不完全** — 全 8 引擎 × 4 节点 × 2 场景排名矩阵（Todo 4, [`.omo/evidence/task-4-cross-node-all-engines-dse-matrix.md`](../.omo/evidence/task-4-cross-node-all-engines-dse-matrix.md)）揭示了 os_systolic 在跨所有节点和场景中均占绝对领先的新发现，GMMA 在高 BW 场景中作为第二名具有竞争力。但频率-节点绑定为探索性结论（频率约束来自架构推理，非硅测量），跨节点覆盖虽已扩展至全引擎但仍不完全（3D DRAM 等轴未进入搜索空间），结论不应用作决策级依据。
 - **DRAM 效率模式化参数未经硅校准** — `dram_efficiency_random_bw = 0.50` 和 `random_latency_penalty_cycles = 40` 均为架构推理值，尚待针对目标 LPDDR5 或 3D DRAM 控制器的微基准验证。
 - **SRAM bitcell 数据为 T2** — 这是本次改进中唯一达到 T2 以上的参数群；单一参数的提升不足以将整体决策等级提升至 `decision-grade`。
 
@@ -254,5 +254,5 @@ DRAM 访问效率不再使用单一固定值，而是区分两种访问模式：
 
 ```bash
 uv run python scripts/release_gate.py --profile decision-grade
-# Expected: FAIL — T0/T1 parameters remain (2026-07-30)
+# Expected: FAIL — T0/T1 parameters remain (2026-07-31; WMMA/GMMA 已升级 T1，但 tensor_core_descriptor_overhead 仍为 T0)
 ```

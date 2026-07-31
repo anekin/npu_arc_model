@@ -75,7 +75,7 @@ Phase 2:  交叉校验    → 对比已知产品（TPUv1/RK1828/Eyeriss）
 | 面积 @12nm | 61mm²（估算） | 66mm²（估算） |
 | Decode | 23 tok/s（估算） | 148 tok/s（估算） |
 | TTFT | 45ms（估算） | 160ms（估算） |
-| 跨节点验证结论 | block 引擎面积单调 7→28nm（99→261mm² @lpddr5_3b）；全 8 引擎 × 4 节点排名矩阵揭示 os_systolic 在跨所有节点和场景中均占绝对领先（31.8 tok/s @lpddr5, 310.9 tok/s @onchip），GMMA 在高 BW 场景中作为第二名具竞争力（203.5 tok/s @7nm onchip）；决策级状态：**FAIL（WMMA/GMMA PE 比仍 T0，频率-节点绑定为探索性结论）** | [`全引擎跨节点排名矩阵`](.omo/evidence/task-4-cross-node-all-engines-dse-matrix.md)；频率感知数据：[`.omo/evidence/investigate-all-engines-cross-node-freq.md`](.omo/evidence/investigate-all-engines-cross-node-freq.md) |
+| 跨节点验证结论 | block 引擎面积单调 7→28nm（99→261mm² @lpddr5_3b）；全 8 引擎 × 4 节点排名矩阵揭示 os_systolic 在跨所有节点和场景中均占绝对领先（31.8 tok/s @lpddr5, 310.9 tok/s @onchip），GMMA 在高 BW 场景中作为第二名具竞争力（203.5 tok/s @7nm onchip）；WMMA/GMMA PE 校准已升级 T1（PE 面积 4.5/5.5 mm² @7nm、WMMA 片段序列化 120 cycles、GMMA pipeline，源自 H100 SM die/Volta 架构分析），WMMA 全模型 tok/s 仍低（~0.5 tok/s）但较校准前提升 ~10×（per-FFN_down-GEMM 6.9→67.6 tok/s）；决策级状态：**FAIL（频率-节点绑定为探索性结论，多节点覆盖不完全）** | [`全引擎跨节点排名矩阵`](.omo/evidence/task-4-cross-node-all-engines-dse-matrix.md)；频率感知数据：[`.omo/evidence/investigate-all-engines-cross-node-freq.md`](.omo/evidence/investigate-all-engines-cross-node-freq.md) |
 | 详细报告 | [`reports/arch-report-A-lpddr5-3b.md`](reports/arch-report-A-lpddr5-3b.md) | [`reports/arch-report-B-3ddram-7b.md`](reports/arch-report-B-3ddram-7b.md) |
 
 ---
