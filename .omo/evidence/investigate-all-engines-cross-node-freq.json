@@ -1,0 +1,815 @@
+{
+  "schema_version": "3",
+  "description": "Frequency-aware all-8-engine cross-node comparison (lpddr5_3b, INT4)",
+  "engines": [
+    "systolic",
+    "os_systolic",
+    "block",
+    "tensor_core",
+    "wmma",
+    "gmma",
+    "input_stationary",
+    "fsa"
+  ],
+  "fixed_config": {
+    "array_height": 128,
+    "array_width": 128,
+    "weight_precision_bits": 4,
+    "activation_precision_bits": 8,
+    "l2_shared_kb": 2048,
+    "memory_type": "LPDDR5-6400",
+    "bandwidth_gbps": 51.2,
+    "weight_cache": false
+  },
+  "per_node_frequencies": {
+    "28nm": {
+      "allowed_frequencies_mhz": [
+        200,
+        400,
+        600
+      ],
+      "systolic_best_freq_mhz": 600,
+      "os_systolic_best_freq_mhz": 200,
+      "block_best_freq_mhz": 600,
+      "tensor_core_best_freq_mhz": 600,
+      "wmma_best_freq_mhz": 200,
+      "gmma_best_freq_mhz": 200,
+      "input_stationary_best_freq_mhz": 200,
+      "fsa_best_freq_mhz": 600
+    },
+    "22nm": {
+      "allowed_frequencies_mhz": [
+        400,
+        600,
+        800
+      ],
+      "systolic_best_freq_mhz": 800,
+      "os_systolic_best_freq_mhz": 400,
+      "block_best_freq_mhz": 600,
+      "tensor_core_best_freq_mhz": 800,
+      "wmma_best_freq_mhz": 800,
+      "gmma_best_freq_mhz": 400,
+      "input_stationary_best_freq_mhz": 400,
+      "fsa_best_freq_mhz": 800
+    },
+    "12nm": {
+      "allowed_frequencies_mhz": [
+        800,
+        1000,
+        1200
+      ],
+      "systolic_best_freq_mhz": 1200,
+      "os_systolic_best_freq_mhz": 800,
+      "block_best_freq_mhz": 800,
+      "tensor_core_best_freq_mhz": 1200,
+      "wmma_best_freq_mhz": 800,
+      "gmma_best_freq_mhz": 800,
+      "input_stationary_best_freq_mhz": 800,
+      "fsa_best_freq_mhz": 1200
+    },
+    "7nm": {
+      "allowed_frequencies_mhz": [
+        800,
+        1000,
+        1200,
+        1600,
+        2000
+      ],
+      "systolic_best_freq_mhz": 1600,
+      "os_systolic_best_freq_mhz": 800,
+      "block_best_freq_mhz": 800,
+      "tensor_core_best_freq_mhz": 2000,
+      "wmma_best_freq_mhz": 800,
+      "gmma_best_freq_mhz": 800,
+      "input_stationary_best_freq_mhz": 800,
+      "fsa_best_freq_mhz": 1200
+    }
+  },
+  "raw_results_count": 112,
+  "results": [
+    {
+      "node_nm": 7.0,
+      "engine_type": "block",
+      "frequency_mhz": 800,
+      "tok_per_s": 20.8,
+      "area_mm2": 99.0,
+      "power_w": 9.0,
+      "efficiency_tok_per_watt": 2.3111111111111113,
+      "efficiency_tok_per_mm2": 0.21010101010101012,
+      "layer_compute_cycles": 680064,
+      "layer_dma_cycles": 1133373,
+      "layer_total_cycles": 1133373,
+      "layer_utilization": 0.0022728616263136673
+    },
+    {
+      "node_nm": 7.0,
+      "engine_type": "fsa",
+      "frequency_mhz": 1200,
+      "tok_per_s": 20.8,
+      "area_mm2": 97.2,
+      "power_w": 9.0,
+      "efficiency_tok_per_watt": 2.3111111111111113,
+      "efficiency_tok_per_mm2": 0.2139917695473251,
+      "layer_compute_cycles": 1324064,
+      "layer_dma_cycles": 1700331,
+      "layer_total_cycles": 1700331,
+      "layer_utilization": 0.0015149991384030522
+    },
+    {
+      "node_nm": 7.0,
+      "engine_type": "gmma",
+      "frequency_mhz": 800,
+      "tok_per_s": 20.8,
+      "area_mm2": 102.0,
+      "power_w": 10.2,
+      "efficiency_tok_per_watt": 2.03921568627451,
+      "efficiency_tok_per_mm2": 0.20392156862745098,
+      "layer_compute_cycles": 66976,
+      "layer_dma_cycles": 1133380,
+      "layer_total_cycles": 1133380,
+      "layer_utilization": 0.0022728475886287037
+    },
+    {
+      "node_nm": 7.0,
+      "engine_type": "input_stationary",
+      "frequency_mhz": 800,
+      "tok_per_s": 11.1,
+      "area_mm2": 99.0,
+      "power_w": 9.0,
+      "efficiency_tok_per_watt": 1.2333333333333334,
+      "efficiency_tok_per_mm2": 0.11212121212121212,
+      "layer_compute_cycles": 69664,
+      "layer_dma_cycles": 2259798,
+      "layer_total_cycles": 2329462,
+      "layer_utilization": 0.0011058347378064119
+    },
+    {
+      "node_nm": 7.0,
+      "engine_type": "os_systolic",
+      "frequency_mhz": 800,
+      "tok_per_s": 31.8,
+      "area_mm2": 99.0,
+      "power_w": 9.0,
+      "efficiency_tok_per_watt": 3.533333333333333,
+      "efficiency_tok_per_mm2": 0.3212121212121212,
+      "layer_compute_cycles": 25760,
+      "layer_dma_cycles": 25760,
+      "layer_total_cycles": 659820,
+      "layer_utilization": 0.003904095056227456
+    },
+    {
+      "node_nm": 7.0,
+      "engine_type": "systolic",
+      "frequency_mhz": 1600,
+      "tok_per_s": 27.8,
+      "area_mm2": 97.0,
+      "power_w": 9.6,
+      "efficiency_tok_per_watt": 2.8958333333333335,
+      "efficiency_tok_per_mm2": 0.2865979381443299,
+      "layer_compute_cycles": 1324064,
+      "layer_dma_cycles": 253637,
+      "layer_total_cycles": 1577701,
+      "layer_utilization": 0.0016327555094406354
+    },
+    {
+      "node_nm": 7.0,
+      "engine_type": "tensor_core",
+      "frequency_mhz": 2000,
+      "tok_per_s": 10.5,
+      "area_mm2": 99.0,
+      "power_w": 12.3,
+      "efficiency_tok_per_watt": 0.8536585365853658,
+      "efficiency_tok_per_mm2": 0.10606060606060606,
+      "layer_compute_cycles": 108192,
+      "layer_dma_cycles": 6123282,
+      "layer_total_cycles": 6231474,
+      "layer_utilization": 0.0004133853402902748
+    },
+    {
+      "node_nm": 7.0,
+      "engine_type": "wmma",
+      "frequency_mhz": 800,
+      "tok_per_s": 0.1,
+      "area_mm2": 101.0,
+      "power_w": 9.8,
+      "efficiency_tok_per_watt": 0.01020408163265306,
+      "efficiency_tok_per_mm2": 0.0009900990099009901,
+      "layer_compute_cycles": 543391744,
+      "layer_dma_cycles": 5544,
+      "layer_total_cycles": 543397288,
+      "layer_utilization": 4.740546294371642e-06
+    },
+    {
+      "node_nm": 12.0,
+      "engine_type": "block",
+      "frequency_mhz": 800,
+      "tok_per_s": 20.8,
+      "area_mm2": 119.1,
+      "power_w": 13.0,
+      "efficiency_tok_per_watt": 1.6,
+      "efficiency_tok_per_mm2": 0.1746431570109152,
+      "layer_compute_cycles": 680064,
+      "layer_dma_cycles": 1133373,
+      "layer_total_cycles": 1133373,
+      "layer_utilization": 0.0022728616263136673
+    },
+    {
+      "node_nm": 12.0,
+      "engine_type": "fsa",
+      "frequency_mhz": 1200,
+      "tok_per_s": 20.8,
+      "area_mm2": 114.3,
+      "power_w": 13.0,
+      "efficiency_tok_per_watt": 1.6,
+      "efficiency_tok_per_mm2": 0.18197725284339458,
+      "layer_compute_cycles": 1324064,
+      "layer_dma_cycles": 1700331,
+      "layer_total_cycles": 1700331,
+      "layer_utilization": 0.0015149991384030522
+    },
+    {
+      "node_nm": 12.0,
+      "engine_type": "gmma",
+      "frequency_mhz": 800,
+      "tok_per_s": 20.8,
+      "area_mm2": 127.2,
+      "power_w": 16.2,
+      "efficiency_tok_per_watt": 1.2839506172839508,
+      "efficiency_tok_per_mm2": 0.16352201257861634,
+      "layer_compute_cycles": 66976,
+      "layer_dma_cycles": 1133380,
+      "layer_total_cycles": 1133380,
+      "layer_utilization": 0.0022728475886287037
+    },
+    {
+      "node_nm": 12.0,
+      "engine_type": "input_stationary",
+      "frequency_mhz": 800,
+      "tok_per_s": 11.1,
+      "area_mm2": 119.1,
+      "power_w": 13.0,
+      "efficiency_tok_per_watt": 0.8538461538461538,
+      "efficiency_tok_per_mm2": 0.09319899244332494,
+      "layer_compute_cycles": 69664,
+      "layer_dma_cycles": 2259798,
+      "layer_total_cycles": 2329462,
+      "layer_utilization": 0.0011058347378064119
+    },
+    {
+      "node_nm": 12.0,
+      "engine_type": "os_systolic",
+      "frequency_mhz": 800,
+      "tok_per_s": 31.8,
+      "area_mm2": 119.1,
+      "power_w": 13.0,
+      "efficiency_tok_per_watt": 2.4461538461538463,
+      "efficiency_tok_per_mm2": 0.2670025188916877,
+      "layer_compute_cycles": 25760,
+      "layer_dma_cycles": 25760,
+      "layer_total_cycles": 659820,
+      "layer_utilization": 0.003904095056227456
+    },
+    {
+      "node_nm": 12.0,
+      "engine_type": "systolic",
+      "frequency_mhz": 1200,
+      "tok_per_s": 25.5,
+      "area_mm2": 113.7,
+      "power_w": 12.7,
+      "efficiency_tok_per_watt": 2.0078740157480315,
+      "efficiency_tok_per_mm2": 0.22427440633245382,
+      "layer_compute_cycles": 1324064,
+      "layer_dma_cycles": 1603,
+      "layer_total_cycles": 1325667,
+      "layer_utilization": 0.0019431727575627967
+    },
+    {
+      "node_nm": 12.0,
+      "engine_type": "tensor_core",
+      "frequency_mhz": 1200,
+      "tok_per_s": 10.1,
+      "area_mm2": 119.1,
+      "power_w": 15.9,
+      "efficiency_tok_per_watt": 0.6352201257861635,
+      "efficiency_tok_per_mm2": 0.08480268681780016,
+      "layer_compute_cycles": 108192,
+      "layer_dma_cycles": 3795790,
+      "layer_total_cycles": 3903982,
+      "layer_utilization": 0.0006598391078647391
+    },
+    {
+      "node_nm": 12.0,
+      "engine_type": "wmma",
+      "frequency_mhz": 800,
+      "tok_per_s": 0.1,
+      "area_mm2": 124.5,
+      "power_w": 15.1,
+      "efficiency_tok_per_watt": 0.006622516556291392,
+      "efficiency_tok_per_mm2": 0.0008032128514056225,
+      "layer_compute_cycles": 543391744,
+      "layer_dma_cycles": 5544,
+      "layer_total_cycles": 543397288,
+      "layer_utilization": 4.740546294371642e-06
+    },
+    {
+      "node_nm": 22.0,
+      "engine_type": "block",
+      "frequency_mhz": 600,
+      "tok_per_s": 20.8,
+      "area_mm2": 195.4,
+      "power_w": 23.4,
+      "efficiency_tok_per_watt": 0.888888888888889,
+      "efficiency_tok_per_mm2": 0.10644831115660185,
+      "layer_compute_cycles": 680064,
+      "layer_dma_cycles": 850030,
+      "layer_total_cycles": 850030,
+      "layer_utilization": 0.0030304812771313953
+    },
+    {
+      "node_nm": 22.0,
+      "engine_type": "fsa",
+      "frequency_mhz": 800,
+      "tok_per_s": 18.3,
+      "area_mm2": 177.6,
+      "power_w": 21.7,
+      "efficiency_tok_per_watt": 0.8433179723502304,
+      "efficiency_tok_per_mm2": 0.10304054054054054,
+      "layer_compute_cycles": 1324064,
+      "layer_dma_cycles": 1133552,
+      "layer_total_cycles": 1324064,
+      "layer_utilization": 0.0019455252918287938
+    },
+    {
+      "node_nm": 22.0,
+      "engine_type": "gmma",
+      "frequency_mhz": 400,
+      "tok_per_s": 20.8,
+      "area_mm2": 225.0,
+      "power_w": 23.9,
+      "efficiency_tok_per_watt": 0.8702928870292888,
+      "efficiency_tok_per_mm2": 0.09244444444444445,
+      "layer_compute_cycles": 66976,
+      "layer_dma_cycles": 566690,
+      "layer_total_cycles": 566690,
+      "layer_utilization": 0.004545695177257407
+    },
+    {
+      "node_nm": 22.0,
+      "engine_type": "input_stationary",
+      "frequency_mhz": 400,
+      "tok_per_s": 11.1,
+      "area_mm2": 195.4,
+      "power_w": 18.0,
+      "efficiency_tok_per_watt": 0.6166666666666667,
+      "efficiency_tok_per_mm2": 0.05680655066530194,
+      "layer_compute_cycles": 69664,
+      "layer_dma_cycles": 1096052,
+      "layer_total_cycles": 1165716,
+      "layer_utilization": 0.0022098006718617572
+    },
+    {
+      "node_nm": 22.0,
+      "engine_type": "os_systolic",
+      "frequency_mhz": 400,
+      "tok_per_s": 31.8,
+      "area_mm2": 195.4,
+      "power_w": 18.0,
+      "efficiency_tok_per_watt": 1.7666666666666666,
+      "efficiency_tok_per_mm2": 0.16274309109518936,
+      "layer_compute_cycles": 25760,
+      "layer_dma_cycles": 25760,
+      "layer_total_cycles": 329910,
+      "layer_utilization": 0.007808190112454912
+    },
+    {
+      "node_nm": 22.0,
+      "engine_type": "systolic",
+      "frequency_mhz": 800,
+      "tok_per_s": 18.3,
+      "area_mm2": 175.6,
+      "power_w": 20.9,
+      "efficiency_tok_per_watt": 0.875598086124402,
+      "efficiency_tok_per_mm2": 0.10421412300683372,
+      "layer_compute_cycles": 1324064,
+      "layer_dma_cycles": 1064,
+      "layer_total_cycles": 1325128,
+      "layer_utilization": 0.0019439631492203016
+    },
+    {
+      "node_nm": 22.0,
+      "engine_type": "tensor_core",
+      "frequency_mhz": 800,
+      "tok_per_s": 9.6,
+      "area_mm2": 195.4,
+      "power_w": 28.8,
+      "efficiency_tok_per_watt": 0.3333333333333333,
+      "efficiency_tok_per_mm2": 0.04912998976458546,
+      "layer_compute_cycles": 108192,
+      "layer_dma_cycles": 2632044,
+      "layer_total_cycles": 2740236,
+      "layer_utilization": 0.0009400650162978663
+    },
+    {
+      "node_nm": 22.0,
+      "engine_type": "wmma",
+      "frequency_mhz": 800,
+      "tok_per_s": 0.1,
+      "area_mm2": 215.1,
+      "power_w": 36.7,
+      "efficiency_tok_per_watt": 0.0027247956403269754,
+      "efficiency_tok_per_mm2": 0.0004649000464900047,
+      "layer_compute_cycles": 543391744,
+      "layer_dma_cycles": 5544,
+      "layer_total_cycles": 543397288,
+      "layer_utilization": 4.740546294371642e-06
+    },
+    {
+      "node_nm": 28.0,
+      "engine_type": "block",
+      "frequency_mhz": 600,
+      "tok_per_s": 20.8,
+      "area_mm2": 261.4,
+      "power_w": 33.7,
+      "efficiency_tok_per_watt": 0.6172106824925816,
+      "efficiency_tok_per_mm2": 0.0795715378729916,
+      "layer_compute_cycles": 680064,
+      "layer_dma_cycles": 850030,
+      "layer_total_cycles": 850030,
+      "layer_utilization": 0.0030304812771313953
+    },
+    {
+      "node_nm": 28.0,
+      "engine_type": "fsa",
+      "frequency_mhz": 600,
+      "tok_per_s": 14.3,
+      "area_mm2": 232.6,
+      "power_w": 25.0,
+      "efficiency_tok_per_watt": 0.5720000000000001,
+      "efficiency_tok_per_mm2": 0.06147893379191746,
+      "layer_compute_cycles": 1324064,
+      "layer_dma_cycles": 850163,
+      "layer_total_cycles": 1324064,
+      "layer_utilization": 0.0019455252918287938
+    },
+    {
+      "node_nm": 28.0,
+      "engine_type": "gmma",
+      "frequency_mhz": 200,
+      "tok_per_s": 20.8,
+      "area_mm2": 309.4,
+      "power_w": 20.9,
+      "efficiency_tok_per_watt": 0.9952153110047848,
+      "efficiency_tok_per_mm2": 0.06722689075630253,
+      "layer_compute_cycles": 66976,
+      "layer_dma_cycles": 283347,
+      "layer_total_cycles": 283347,
+      "layer_utilization": 0.009091326183089991
+    },
+    {
+      "node_nm": 28.0,
+      "engine_type": "input_stationary",
+      "frequency_mhz": 200,
+      "tok_per_s": 11.1,
+      "area_mm2": 261.4,
+      "power_w": 16.1,
+      "efficiency_tok_per_watt": 0.6894409937888198,
+      "efficiency_tok_per_mm2": 0.04246365723029839,
+      "layer_compute_cycles": 69664,
+      "layer_dma_cycles": 514179,
+      "layer_total_cycles": 583843,
+      "layer_utilization": 0.004412145045842804
+    },
+    {
+      "node_nm": 28.0,
+      "engine_type": "os_systolic",
+      "frequency_mhz": 200,
+      "tok_per_s": 31.8,
+      "area_mm2": 261.4,
+      "power_w": 16.1,
+      "efficiency_tok_per_watt": 1.9751552795031055,
+      "efficiency_tok_per_mm2": 0.12165263963274676,
+      "layer_compute_cycles": 25760,
+      "layer_dma_cycles": 25760,
+      "layer_total_cycles": 164955,
+      "layer_utilization": 0.015616380224909824
+    },
+    {
+      "node_nm": 28.0,
+      "engine_type": "systolic",
+      "frequency_mhz": 600,
+      "tok_per_s": 14.3,
+      "area_mm2": 229.4,
+      "power_w": 24.1,
+      "efficiency_tok_per_watt": 0.5933609958506224,
+      "efficiency_tok_per_mm2": 0.06233653007846556,
+      "layer_compute_cycles": 1324064,
+      "layer_dma_cycles": 798,
+      "layer_total_cycles": 1324862,
+      "layer_utilization": 0.0019443534496423024
+    },
+    {
+      "node_nm": 28.0,
+      "engine_type": "tensor_core",
+      "frequency_mhz": 600,
+      "tok_per_s": 9.2,
+      "area_mm2": 261.4,
+      "power_w": 33.7,
+      "efficiency_tok_per_watt": 0.2729970326409495,
+      "efficiency_tok_per_mm2": 0.03519510328997705,
+      "layer_compute_cycles": 108192,
+      "layer_dma_cycles": 2050171,
+      "layer_total_cycles": 2158363,
+      "layer_utilization": 0.0011934971086883903
+    },
+    {
+      "node_nm": 28.0,
+      "engine_type": "wmma",
+      "frequency_mhz": 200,
+      "tok_per_s": 0.0,
+      "area_mm2": 293.4,
+      "power_w": 19.3,
+      "efficiency_tok_per_watt": 0.0,
+      "efficiency_tok_per_mm2": 0.0,
+      "layer_compute_cycles": 543391744,
+      "layer_dma_cycles": 4746,
+      "layer_total_cycles": 543396490,
+      "layer_utilization": 4.740553256058022e-06
+    }
+  ],
+  "rankings": {
+    "28": [
+      {
+        "rank": 1,
+        "engine_type": "os_systolic",
+        "tok_per_s": 31.8,
+        "area_mm2": 261.4,
+        "frequency_mhz": 200
+      },
+      {
+        "rank": 2,
+        "engine_type": "block",
+        "tok_per_s": 20.8,
+        "area_mm2": 261.4,
+        "frequency_mhz": 600
+      },
+      {
+        "rank": 3,
+        "engine_type": "gmma",
+        "tok_per_s": 20.8,
+        "area_mm2": 309.4,
+        "frequency_mhz": 200
+      },
+      {
+        "rank": 4,
+        "engine_type": "fsa",
+        "tok_per_s": 14.3,
+        "area_mm2": 232.6,
+        "frequency_mhz": 600
+      },
+      {
+        "rank": 5,
+        "engine_type": "systolic",
+        "tok_per_s": 14.3,
+        "area_mm2": 229.4,
+        "frequency_mhz": 600
+      },
+      {
+        "rank": 6,
+        "engine_type": "input_stationary",
+        "tok_per_s": 11.1,
+        "area_mm2": 261.4,
+        "frequency_mhz": 200
+      },
+      {
+        "rank": 7,
+        "engine_type": "tensor_core",
+        "tok_per_s": 9.2,
+        "area_mm2": 261.4,
+        "frequency_mhz": 600
+      },
+      {
+        "rank": 8,
+        "engine_type": "wmma",
+        "tok_per_s": 0.0,
+        "area_mm2": 293.4,
+        "frequency_mhz": 200
+      }
+    ],
+    "22": [
+      {
+        "rank": 1,
+        "engine_type": "os_systolic",
+        "tok_per_s": 31.8,
+        "area_mm2": 195.4,
+        "frequency_mhz": 400
+      },
+      {
+        "rank": 2,
+        "engine_type": "block",
+        "tok_per_s": 20.8,
+        "area_mm2": 195.4,
+        "frequency_mhz": 600
+      },
+      {
+        "rank": 3,
+        "engine_type": "gmma",
+        "tok_per_s": 20.8,
+        "area_mm2": 225.0,
+        "frequency_mhz": 400
+      },
+      {
+        "rank": 4,
+        "engine_type": "fsa",
+        "tok_per_s": 18.3,
+        "area_mm2": 177.6,
+        "frequency_mhz": 800
+      },
+      {
+        "rank": 5,
+        "engine_type": "systolic",
+        "tok_per_s": 18.3,
+        "area_mm2": 175.6,
+        "frequency_mhz": 800
+      },
+      {
+        "rank": 6,
+        "engine_type": "input_stationary",
+        "tok_per_s": 11.1,
+        "area_mm2": 195.4,
+        "frequency_mhz": 400
+      },
+      {
+        "rank": 7,
+        "engine_type": "tensor_core",
+        "tok_per_s": 9.6,
+        "area_mm2": 195.4,
+        "frequency_mhz": 800
+      },
+      {
+        "rank": 8,
+        "engine_type": "wmma",
+        "tok_per_s": 0.1,
+        "area_mm2": 215.1,
+        "frequency_mhz": 800
+      }
+    ],
+    "12": [
+      {
+        "rank": 1,
+        "engine_type": "os_systolic",
+        "tok_per_s": 31.8,
+        "area_mm2": 119.1,
+        "frequency_mhz": 800
+      },
+      {
+        "rank": 2,
+        "engine_type": "systolic",
+        "tok_per_s": 25.5,
+        "area_mm2": 113.7,
+        "frequency_mhz": 1200
+      },
+      {
+        "rank": 3,
+        "engine_type": "block",
+        "tok_per_s": 20.8,
+        "area_mm2": 119.1,
+        "frequency_mhz": 800
+      },
+      {
+        "rank": 4,
+        "engine_type": "fsa",
+        "tok_per_s": 20.8,
+        "area_mm2": 114.3,
+        "frequency_mhz": 1200
+      },
+      {
+        "rank": 5,
+        "engine_type": "gmma",
+        "tok_per_s": 20.8,
+        "area_mm2": 127.2,
+        "frequency_mhz": 800
+      },
+      {
+        "rank": 6,
+        "engine_type": "input_stationary",
+        "tok_per_s": 11.1,
+        "area_mm2": 119.1,
+        "frequency_mhz": 800
+      },
+      {
+        "rank": 7,
+        "engine_type": "tensor_core",
+        "tok_per_s": 10.1,
+        "area_mm2": 119.1,
+        "frequency_mhz": 1200
+      },
+      {
+        "rank": 8,
+        "engine_type": "wmma",
+        "tok_per_s": 0.1,
+        "area_mm2": 124.5,
+        "frequency_mhz": 800
+      }
+    ],
+    "7": [
+      {
+        "rank": 1,
+        "engine_type": "os_systolic",
+        "tok_per_s": 31.8,
+        "area_mm2": 99.0,
+        "frequency_mhz": 800
+      },
+      {
+        "rank": 2,
+        "engine_type": "systolic",
+        "tok_per_s": 27.8,
+        "area_mm2": 97.0,
+        "frequency_mhz": 1600
+      },
+      {
+        "rank": 3,
+        "engine_type": "block",
+        "tok_per_s": 20.8,
+        "area_mm2": 99.0,
+        "frequency_mhz": 800
+      },
+      {
+        "rank": 4,
+        "engine_type": "fsa",
+        "tok_per_s": 20.8,
+        "area_mm2": 97.2,
+        "frequency_mhz": 1200
+      },
+      {
+        "rank": 5,
+        "engine_type": "gmma",
+        "tok_per_s": 20.8,
+        "area_mm2": 102.0,
+        "frequency_mhz": 800
+      },
+      {
+        "rank": 6,
+        "engine_type": "input_stationary",
+        "tok_per_s": 11.1,
+        "area_mm2": 99.0,
+        "frequency_mhz": 800
+      },
+      {
+        "rank": 7,
+        "engine_type": "tensor_core",
+        "tok_per_s": 10.5,
+        "area_mm2": 99.0,
+        "frequency_mhz": 2000
+      },
+      {
+        "rank": 8,
+        "engine_type": "wmma",
+        "tok_per_s": 0.1,
+        "area_mm2": 101.0,
+        "frequency_mhz": 800
+      }
+    ]
+  },
+  "summary": [
+    {
+      "node_nm": 28.0,
+      "best_engine": "os_systolic",
+      "best_tok_per_s": 31.8,
+      "top3_engines": [
+        "os_systolic",
+        "block",
+        "gmma"
+      ]
+    },
+    {
+      "node_nm": 22.0,
+      "best_engine": "os_systolic",
+      "best_tok_per_s": 31.8,
+      "top3_engines": [
+        "os_systolic",
+        "block",
+        "gmma"
+      ]
+    },
+    {
+      "node_nm": 12.0,
+      "best_engine": "os_systolic",
+      "best_tok_per_s": 31.8,
+      "top3_engines": [
+        "os_systolic",
+        "systolic",
+        "block"
+      ]
+    },
+    {
+      "node_nm": 7.0,
+      "best_engine": "os_systolic",
+      "best_tok_per_s": 31.8,
+      "top3_engines": [
+        "os_systolic",
+        "systolic",
+        "block"
+      ]
+    }
+  ]
+}
