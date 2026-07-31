@@ -1,0 +1,21 @@
+........................................................................ [ 72%]
+............................                                             [100%]
+=============================== warnings summary ===============================
+sim/tests/test_engine_physical_invariants.py::TestMacOpCount::test_mac_count_correct[1-110-72-wmma]
+sim/tests/test_engine_physical_invariants.py::TestMacOpCount::test_mac_count_correct[3-110-72-wmma]
+sim/tests/test_engine_physical_invariants.py::TestMacOpCount::test_mac_count_correct[64-64-64-wmma]
+sim/tests/test_engine_physical_invariants.py::TestMacOpCount::test_mac_count_correct[256-110-72-wmma]
+  /home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engine_physical_invariants.py:165: DeprecationWarning: EngineResult.ops is deprecated; use mac_count instead
+    assert result.ops == expected_macs, f"{engine_type}: ops={result.ops}, expected mac_count={expected_macs}"
+
+sim/tests/test_engine_physical_invariants.py::TestMacOpCount::test_weight_cache_pair_mac_count[1-110-72-wmma]
+sim/tests/test_engine_physical_invariants.py::TestMacOpCount::test_weight_cache_pair_mac_count[3-110-72-wmma]
+  /home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engine_physical_invariants.py:180: DeprecationWarning: EngineResult.ops is deprecated; use mac_count instead
+    assert result.ops >= expected_macs, f"{engine_type} cache-pair: ops={result.ops}, expected ≥ {expected_macs}"
+
+sim/tests/test_engine_physical_invariants.py::TestBasicInvariants::test_small_square_gemm[wmma]
+  /home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engine_physical_invariants.py:489: DeprecationWarning: EngineResult.ops is deprecated; use mac_count instead
+    assert result.ops == 64 * 64 * 64
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+100 passed, 673 deselected, 7 warnings in 0.45s
