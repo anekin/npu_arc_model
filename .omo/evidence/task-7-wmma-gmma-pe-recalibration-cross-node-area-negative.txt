@@ -1,0 +1,2 @@
+injected 7nm baselines: block=4.0, wmma=5.5, gmma=4.5
+PASS: inverted ordering correctly rejected -> 7nm: block 4.0, wmma 5.5, gmma 4.5 out of order

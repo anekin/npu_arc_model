@@ -1,0 +1,36 @@
+{
+  "task": "todo-7",
+  "plan": ".omo/plans/wmma-gmma-pe-recalibration.md",
+  "scope": "WMMA/GMMA per-node PE area regression tests in sim/tests/test_area_cross_node.py",
+  "calibrated_baselines_mm2_at_7nm": {
+    "systolic": 2.0,
+    "block": 4.0,
+    "wmma": 4.5,
+    "gmma": 5.5
+  },
+  "wmma_pe_area_mm2_per_node": {
+    "7.0": 4.5,
+    "12.0": 12.15,
+    "22.0": 44.44897959183673,
+    "28.0": 72.0
+  },
+  "gmma_pe_area_mm2_per_node": {
+    "7.0": 5.5,
+    "12.0": 14.850000000000001,
+    "22.0": 54.326530612244895,
+    "28.0": 88.0
+  },
+  "block_pe_area_mm2_per_node": {
+    "7.0": 4.0,
+    "12.0": 10.8,
+    "22.0": 39.51020408163265,
+    "28.0": 64.0
+  },
+  "wmma_monotonic_28_gt_22_gt_12_gt_7": true,
+  "gmma_monotonic_28_gt_22_gt_12_gt_7": true,
+  "gmma_gt_wmma_all_nodes": true,
+  "block_lt_wmma_lt_gmma_all_nodes": true,
+  "test_file_pytest": "38 passed in 0.21s",
+  "wmma_gmma_test_pytest": "10 passed, 28 deselected in 0.19s",
+  "physical_invariants_pytest": "773 passed in 0.96s"
+}
