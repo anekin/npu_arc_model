@@ -12,6 +12,7 @@
 """
 
 import math
+from typing import Any
 
 from engine.mac_engine import EngineResult, MACEngine
 from models.memory_backend import AccessType
@@ -32,6 +33,12 @@ class WMMAEngine(MACEngine):
     #  - frag_serialization: single-die NPU has no GPU-style warp scheduler;
     #    each 16×16 fragment is dispatched serially and pays full issue/DMA
     #    setup overhead.  This dominates large GEMMs.
+    #
+    # DEPRECATED (hardcoded architectural assumptions): these constants are
+    # NOT YAML-configurable and keep their measured defaults until the
+    # global cycle-model calibration (plan Todo 2).  Only
+    # WARP_FRAGMENT_SERIALIZATION_CYCLES was promoted to the configurable
+    # parameter ``wmma.fragment_serialization_cycles`` (see _parse_config).
     WARP_SYNC_CYCLES = 32
     FRAG_MAC_CYCLES = 16
     WARP_FRAGMENT_SERIALIZATION_CYCLES = 1600
@@ -39,6 +46,9 @@ class WMMAEngine(MACEngine):
     # Base DMA startup per fragment.  Real fragmented 16×16 loads hit DRAM
     # with terrible burst efficiency; the serialization constant above
     # captures most of that penalty.
+    #
+    # DEPRECATED (hardcoded architectural assumption): not YAML-configurable;
+    # see the comment above.  Kept as the per-fragment DMA startup floor.
     DMA_STARTUP_CYCLES = 10
 
     @property
@@ -50,8 +60,26 @@ class WMMAEngine(MACEngine):
         """Number of independent 16×16 blocks that fit in the array."""
         return (self.H // self.FRAG_M) * (self.W // self.FRAG_N)
 
+    def _parse_config(self, config: dict[str, Any]) -> None:
+        """Parse common config plus the WMMA fragment serialization parameter."""
+        super()._parse_config(config)
+        ser = config.get("wmma", {}).get(
+            "fragment_serialization_cycles", self.WARP_FRAGMENT_SERIALIZATION_CYCLES
+        )
+        try:
+            ser = int(ser)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(
+                f"wmma.fragment_serialization_cycles must be an integer, got {ser!r}"
+            ) from exc
+        if ser < 0:
+            raise ValueError(
+                f"wmma.fragment_serialization_cycles must be non-negative, got {ser}"
+            )
+        self.fragment_serialization_cycles = ser
+
     def _per_fragment_compute(self, ops_multiplier: int = 1) -> int:
-        base = self.WARP_FRAGMENT_SERIALIZATION_CYCLES + self.WARP_SYNC_CYCLES + self.FRAG_MAC_CYCLES
+        base = self.fragment_serialization_cycles + self.WARP_SYNC_CYCLES + self.FRAG_MAC_CYCLES
         return base * ops_multiplier
 
     def _fragment_counts(self, M: int, K: int, N: int) -> dict[str, int]:

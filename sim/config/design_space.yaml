@@ -85,6 +85,9 @@ interconnect:
 gmma:
   pipeline_scale: 0.05
 
+wmma:
+  fragment_serialization_cycles: 1600   # per-16×16-fragment issue/DMA setup cycles (Todo 1: YAML-configurable; Todo 2 recalibrates)
+
 # ── 面积模型参数 ──
 area_model:
   process_node: 7         # nm (default, override per scenario)
