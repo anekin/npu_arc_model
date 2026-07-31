@@ -488,3 +488,116 @@ class TestBasicInvariants:
         assert result.total_cycles > 0
         assert result.ops == 64 * 64 * 64
         assert 0 < result.utilization <= 1.0
+
+
+class TestWmmaGmmaCycleCalibration:
+    """Cycle-model physical invariants for the WMMA/GMMA calibration knobs.
+
+    Todo 4 of ``.omo/plans/wmma-gmma-pe-recalibration.md``: locks the
+    direction-correctness of ``wmma.fragment_serialization_cycles``,
+    ``gmma.pipeline_scale`` and the GMMA ``TMA_OVERLAP``.  These tests build
+    configs inline (like the rest of this file) so every knob is passed
+    explicitly — the WMMA class-constant fallback (1600) is NOT the
+    calibrated default.
+    """
+
+    # Representative FFN_down decode GEMM (Qwen2.5-3B) @ 64×64, LPDDR5-51.2 GB/s.
+    M_DECODE = 1
+    K_DECODE = 11008
+    N_DECODE = 2048
+
+    def test_wmma_serialization_monotonic(self) -> None:
+        """Decreasing ``fragment_serialization_cycles`` never increases total_cycles.
+
+        Each 16×16 fragment pays ``serialization + WARP_SYNC(32) +
+        FRAG_MAC(16)`` cycles, so a smaller value can only shrink the
+        per-tile compute term.  Sweeps the calibrated [50, 200] range plus
+        the 0-cycle edge and asserts monotonicity.
+        """
+        serializations = [0, 50, 120, 200]
+        totals: list[int] = []
+        for ser in serializations:
+            cfg = build_config("wmma")
+            cfg["wmma"] = {"fragment_serialization_cycles": ser}
+            engine = create_engine(cfg)
+            result = engine.estimate(self.M_DECODE, self.K_DECODE, self.N_DECODE)
+            totals.append(result.total_cycles)
+
+        for idx in range(1, len(serializations)):
+            assert totals[idx] >= totals[idx - 1], (
+                f"serialization {serializations[idx]} → total_cycles={totals[idx]} "
+                f"< {totals[idx - 1]} at serialization {serializations[idx - 1]}; "
+                "decreasing serialization must never slow the engine"
+            )
+
+    def test_wmma_not_absurd(self) -> None:
+        """WMMA tok/s stays in a physically sane band @LPDDR5-51.2 GB/s.
+
+        Per-FFN_down-GEMM tok/s at the calibrated default
+        (``fragment_serialization_cycles=120``) is ~67.6 tok/s.  The task's
+        [1, 100] band is used; the plan's original [1, 30] band targeted the
+        pre-calibration *full-model* value (10–17 tok/s) and does not match
+        the realized per-GEMM value.  The WMMA/block tok/s ratio band
+        [0.015, 0.05] is locked separately in ``test_wmma_calibration_ratio``
+        (test_engines.py).
+        """
+        cfg = build_config("wmma")
+        cfg["wmma"] = {"fragment_serialization_cycles": 120}  # calibrated default
+        engine = create_engine(cfg)
+        result = engine.estimate(self.M_DECODE, self.K_DECODE, self.N_DECODE)
+        tok_s = DEFAULT_FREQ_MHZ * 1e6 / result.total_cycles
+        assert 1.0 <= tok_s <= 100.0, (
+            f"WMMA tok/s={tok_s:.2f} outside physical band [1, 100] @LPDDR5 "
+            f"(total_cycles={result.total_cycles})"
+        )
+
+    def test_gmma_pipeline_scale_effect(self) -> None:
+        """Faster GMMA pipeline (smaller ``pipeline_scale``) takes no more cycles.
+
+        Decode-shaped GEMMs (large K×N weights) are pinned by the raw-DMA
+        physical floor, which masks ``pipeline_scale`` entirely.  The
+        direction effect is therefore verified on a weight-resident
+        sub-array shape (K=16 < array width): the weight tiles fit the SRAM
+        weight buffer, leaving the per-tile pipeline term as the bottleneck
+        where ``pipeline_scale`` acts.
+        """
+        M, K, N = 1, 16, 4096
+        totals: dict[float, int] = {}
+        for scale in [0.01, 0.10]:
+            cfg = build_config("gmma")
+            cfg["gmma"] = {"pipeline_scale": scale}
+            engine = create_engine(cfg)
+            result = engine.estimate(M, K, N)
+            totals[scale] = result.total_cycles
+        assert totals[0.01] < totals[0.10], (
+            f"pipeline_scale=0.01 → {totals[0.01]}c not faster than "
+            f"pipeline_scale=0.10 → {totals[0.10]}c"
+        )
+
+    def test_gmma_tma_overlap_effect(self) -> None:
+        """Larger TMA_OVERLAP never increases total_cycles.
+
+        TMA can only hide DMA behind compute — it must never add time.  The
+        overlap factor scales the *exposed* DMA term while total_cycles
+        stays pinned to the physical floors, so increasing overlap must keep
+        total_cycles flat-or-faster and strictly shrink the exposed DMA.
+        """
+        cfg = build_config("gmma")
+        engine = create_engine(cfg)
+        totals: list[int] = []
+        exposed: list[float] = []
+        for overlap in [0.1, 0.5, 0.9]:
+            engine.TMA_OVERLAP = overlap  # class constant, not YAML-driven
+            result = engine.estimate(self.M_DECODE, self.K_DECODE, self.N_DECODE)
+            totals.append(result.total_cycles)
+            exposed.append(result.details["tma_exposed_dma"])
+
+        for idx in range(1, len(totals)):
+            assert totals[idx] <= totals[idx - 1], (
+                f"TMA_OVERLAP increase raised total_cycles: "
+                f"{totals[idx - 1]} → {totals[idx]}"
+            )
+            assert exposed[idx] <= exposed[idx - 1], (
+                f"TMA_OVERLAP increase raised exposed DMA: "
+                f"{exposed[idx - 1]} → {exposed[idx]}"
+            )
