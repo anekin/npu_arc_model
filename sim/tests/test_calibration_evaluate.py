@@ -143,18 +143,18 @@ def test_trust_gate_t2_required_with_t0_fails():
     """Decision-grade (T2+) fails when a T0 parameter is present."""
     registry = CalibrationRegistry.from_yaml()
     gate = TrustGate(registry)
-    ids = {"gmma_pipeline_scale", "block_systolic_pe_ratio"}
+    ids = {"tensor_core_descriptor_overhead", "block_systolic_pe_ratio"}
     ok, max_trust, violations = gate.check(ids, require_trust=TrustLevel.T2)
     assert not ok
     assert max_trust == TrustLevel.T0
-    assert any(v["calibration_id"] == "gmma_pipeline_scale" for v in violations)
+    assert any(v["calibration_id"] == "tensor_core_descriptor_overhead" for v in violations)
 
 
 def test_trust_gate_exploratory_allows_t0():
     """Exploratory mode (default T0 requirement) succeeds with T0 parameters."""
     registry = CalibrationRegistry.from_yaml()
     gate = TrustGate(registry)
-    ids = {"gmma_pipeline_scale", "block_systolic_pe_ratio"}
+    ids = {"tensor_core_descriptor_overhead", "block_systolic_pe_ratio"}
     ok, max_trust, violations = gate.check(ids)
     assert ok
     assert max_trust == TrustLevel.T0

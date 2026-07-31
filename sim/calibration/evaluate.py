@@ -80,6 +80,7 @@ def calibration_ids_for_design_point(hw_config: dict[str, Any]) -> set[str]:
         ids.add(f"fsa_pe_area_{node_suffix}nm")
     if engine_type == "wmma":
         ids.add("wmma_pe_ratio")
+        ids.add("wmma_fragment_serialization_cycles")
     if engine_type == "gmma":
         ids.add("gmma_pe_ratio")
         ids.add("gmma_pipeline_scale")
@@ -132,12 +133,21 @@ def _actual_value(calibration_id: str, hw_config: dict[str, Any]) -> float | Non
             return None
         return wmma / block
 
+    if calibration_id == "wmma_pe_area_7nm":
+        return float(area_model.get("wmma_pe_area_mm2", 4.5))
+
+    if calibration_id == "wmma_fragment_serialization_cycles":
+        return float(hw_config.get("wmma", {}).get("fragment_serialization_cycles", 120))
+
     if calibration_id == "gmma_pe_ratio":
         block = float(area_model.get("block_pe_area_mm2", 4.0))
         gmma = float(area_model.get("gmma_pe_area_mm2", 7.0))
         if block <= 0:
             return None
         return gmma / block
+
+    if calibration_id == "gmma_pe_area_7nm":
+        return float(area_model.get("gmma_pe_area_mm2", 5.5))
 
     if calibration_id == "gmma_pipeline_scale":
         return float(hw_config.get("gmma", {}).get("pipeline_scale", 0.05))
