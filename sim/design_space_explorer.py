@@ -7,6 +7,7 @@
   python3 design_space_explorer.py --output results/pareto.json
 """
 
+import argparse
 import copy
 import json
 import sys
@@ -976,8 +977,6 @@ def _positive_int(value: str) -> int:
 
 
 def main():
-    import argparse
-
     parser = argparse.ArgumentParser()
     parser.add_argument("--quick", action="store_true")
     parser.add_argument("--allow-partial", action="store_true", help="Keep valid results when some configurations fail")

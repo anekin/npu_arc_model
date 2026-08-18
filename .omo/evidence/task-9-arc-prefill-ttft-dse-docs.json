@@ -1,0 +1,23 @@
+{
+  "task": "T9",
+  "plan": "arc-prefill-ttft-dse",
+  "status": "pass",
+  "summary": "Documentation sync and deliverable: arc_vs_func.md, README capability matrix, gate-1b targets",
+  "commands": [
+    "uv run ruff check .",
+    "grep -c 'TTFT.*未实现\\|prefill.*未实现' docs/arc_vs_func.md"
+  ],
+  "checks": {
+    "ruff_check_passed": true,
+    "stale_unimplemented_count": 0,
+    "arc_vs_func_updated": true,
+    "readme_capability_matrix_added": true,
+    "gate_1b_targets_deliverable": ".omo/evidence/gate-1b-dse-ttft-targets.md"
+  },
+  "files_modified": [
+    "docs/arc_vs_func.md",
+    "README.md",
+    ".omo/evidence/gate-1b-dse-ttft-targets.md",
+    ".omo/evidence/task-9-arc-prefill-ttft-dse-docs.json"
+  ]
+}

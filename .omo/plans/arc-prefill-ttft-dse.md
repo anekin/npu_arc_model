@@ -416,7 +416,7 @@ Critical path: `0 → 1 → 2 → 3 → 4 → 5 → 6 → (7∥8) → 9 → F1-F
 
   **Commit**: YES | `evidence(dse): M=2000 prefill TTFT gate-1b target extraction` | `.omo/evidence/task-8-arc-prefill-ttft-dse-*.json/.txt`
 
-- [ ] 9. 文档同步 + §7 回流产物（NFR-3, AC-3/4/5）
+- [x] 9. 文档同步 + §7 回流产物（NFR-3, AC-3/4/5）
 
   **What to do**:
    1. `docs/arc_vs_func.md` L141-143：stale 行（"prefill latency ❌ 未实现 / TTFT ❌ 未实现 / Arc 只算 decode M=1"）改为已实现描述 + 证据路径引用（`simulate_prefill`、`--batch-m`、`.omo/evidence/task-7/8-*`）。L156-157 roadmap：勾除 `simulate_prefill` 条目并标注完成日期/证据。

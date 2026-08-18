@@ -300,6 +300,18 @@ Config: 场景/参数定义               Firmware: RISC-V 微码
 
 两仓库**独立演进**，共享 Golden Executor 的量化验证标准。Arc Model 的 DSE 结论通过报告形式输入 CaduceusCore 的产品决策。
 
+### DSE 能力矩阵
+
+| 能力 | 状态 | 说明 |
+|:---|:---|:---|
+| decode tok/s | ✅ | M=1 语义，不受 `--batch-m` 影响 |
+| prefill TTFT | ✅ | `--batch-m >=1`，结果含 `ttft_ms`；证据见 `.omo/evidence/task-7/8-arc-prefill-ttft-dse-*` |
+| CV FPS | ✅ | `--cv-model` 路径输出 FPS（TTFT 字段为 0.0） |
+| replay/seed 可复现 | ✅ | `--replay` 与 `--seed` 支持 |
+| v2 schema | ✅ | `--result-schema v2` 输出结构化结果 |
+| legacy 投影 | ✅ | v1/legacy 模式兼容历史消费端 |
+| 证据入库 | ✅ | M=128/M=2000 Gate 1b 目标已入库 |
+
 ---
 
 ## 七、关键洞见（探索性结论）

@@ -138,9 +138,9 @@ Arc Model                         Func Model
 | 指标 | Arc Model（公式） | Func Model（模拟） | 差异来源 |
 |------|:---:|:---:|------|
 | decode tok/s | 35.1 | ~28-30 | 固件开销 + DMA 调度 + MMIO |
-| prefill latency | ❌ 未实现 | ~300ms | Arc 不做 prefill |
-| TTFT | ❌ 未实现 | ~320ms | 含固件启动 + 第一个 token |
-| MXU util | 0.26% | ~22%(prefill)/~0.2%(decode) | Arc 只算 decode M=1 |
+| prefill latency | ✅ 已实现 (`simulate_prefill`) | ~300ms | Arc 做全模型 prefill |
+| TTFT | ✅ 已实现 (`--batch-m`) | ~320ms | 证据见 `.omo/evidence/task-7/8-arc-prefill-ttft-dse-*` |
+| MXU util | 0.26% | ~22%(prefill)/~0.2%(decode) | Arc 支持 decode M=1 与可变 prefill M |
 
 **结论**：Arc Model 的快是以忽略实现细节为代价的。Func Model 的性能数据在通过 RTL/硅后验证前，同样是估算而非最终交付数字。
 
@@ -153,7 +153,7 @@ Arc Model                         Func Model
 1. 给 `GoldenMXU`、`GoldenDMA`、`GoldenSFU` 等模块加 `cycle_count` 属性
 2. 每个操作完成后累加 cycle（不改行为逻辑）
 3. 在 `FuncModel` 顶层加 `reset_cycles()` / `get_performance_report()`
-4. 增加 `simulate_prefill()` 和 benchmark 入口
+4. ~~增加 `simulate_prefill()` 和 benchmark 入口~~ ✅ 已完成于 Arc Model (`sim/design_space_explorer.py`)
 5. 输出 TTFT、TPS、cycle breakdown
 
 详见 Model Zoo 实施路线图 Phase 1.7。
