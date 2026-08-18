@@ -397,4 +397,72 @@ parameters:
       JSSC 2023.  Current 0.5 W/mm2 is above the published range, so all
       points using it are exploratory until the model is recalibrated.
 
+  - calibration_id: max_freq_28nm
+    value: 600
+    unit: MHz
+    source_uri: https://doi.org/10.1145/3079856.3080246
+    source_hash: null
+    trust_level: T1
+    calibration_range: 200–600 MHz
+    range_min: 200.0
+    range_max: 600.0
+    status: assumption
+    description: >
+      Maximum plausible frequency for the 28nm process node (200–600 MHz).
+      Upper anchor: Google TPUv1 MXU clock 700 MHz @28nm (ISCA 2017,
+      documented in references/area_sources.md §1); low-leakage mature-node
+      products (e.g. RK356x ~500–800 MHz) support the band.  Range aligns
+      with node_28_frequency_bound in sim/config/dse_axes.yaml.
+
+  - calibration_id: max_freq_22nm
+    value: 800
+    unit: MHz
+    source_uri: references/area_sources.md
+    source_hash: null
+    trust_level: T1
+    calibration_range: 400–800 MHz
+    range_min: 400.0
+    range_max: 800.0
+    status: assumption
+    description: >
+      Maximum plausible frequency for the 22nm process node (400–800 MHz).
+      Product reference: RK1828 22nm clock (see references/area_sources.md
+      §5, 22nm block engine product specification / industry analysis).  The
+      upper bound reflects the mature-node frequency ceiling.  Range aligns
+      with node_22_frequency_bound in sim/config/dse_axes.yaml.
+
+  - calibration_id: max_freq_12nm
+    value: 1200
+    unit: MHz
+    source_uri: https://www.mediatek.com/products/smartphones
+    source_hash: null
+    trust_level: T1
+    calibration_range: 800–1200 MHz
+    range_min: 800.0
+    range_max: 1200.0
+    status: assumption
+    description: >
+      Maximum plausible frequency for the 12nm node (TSMC 12FFC, 800–1200
+      MHz).  Product reference: MediaTek Helio G90/G90T (TSMC 12nm, 2×
+      Cortex-A76 up to 2.05 GHz) demonstrates 12nm can sustain ~2 GHz, so
+      the conservative 1.2 GHz ceiling is well inside the feasible band.
+      Range aligns with node_12_frequency_bound in sim/config/dse_axes.yaml.
+
+  - calibration_id: max_freq_7nm
+    value: 2000
+    unit: MHz
+    source_uri: https://www.nvidia.com/en-us/data-center/a100/
+    source_hash: null
+    trust_level: T1
+    calibration_range: 800–2000 MHz
+    range_min: 800.0
+    range_max: 2000.0
+    status: assumption
+    description: >
+      Maximum plausible frequency for the 7nm node (TSMC N7, 800–2000 MHz).
+      Product references: NVIDIA A100 (~1.41 GHz @TSMC 7nm), Apple A13
+      Bionic (~2.65 GHz @TSMC 7nm).  The 2.0 GHz ceiling is a conservative
+      design limit for a high-performance advanced node.  Range aligns with
+      node_7_frequency_bound in sim/config/dse_axes.yaml.
+
 schema_version: "1"

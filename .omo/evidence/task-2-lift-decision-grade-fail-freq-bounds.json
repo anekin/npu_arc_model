@@ -1,0 +1,48 @@
+{
+  "verdict": "PASS",
+  "message": "frequency bounds aligned",
+  "max_freq_28nm": {
+    "value": 600,
+    "range_min": 200.0,
+    "range_max": 600.0,
+    "dse_axis_bound": [
+      200,
+      600
+    ],
+    "trust_level": "T1",
+    "source_uri": "https://doi.org/10.1145/3079856.3080246"
+  },
+  "max_freq_22nm": {
+    "value": 800,
+    "range_min": 400.0,
+    "range_max": 800.0,
+    "dse_axis_bound": [
+      400,
+      800
+    ],
+    "trust_level": "T1",
+    "source_uri": "references/area_sources.md"
+  },
+  "max_freq_12nm": {
+    "value": 1200,
+    "range_min": 800.0,
+    "range_max": 1200.0,
+    "dse_axis_bound": [
+      800,
+      1200
+    ],
+    "trust_level": "T1",
+    "source_uri": "https://www.mediatek.com/products/smartphones"
+  },
+  "max_freq_7nm": {
+    "value": 2000,
+    "range_min": 800.0,
+    "range_max": 2000.0,
+    "dse_axis_bound": [
+      800,
+      2000
+    ],
+    "trust_level": "T1",
+    "source_uri": "https://www.nvidia.com/en-us/data-center/a100/"
+  }
+}
