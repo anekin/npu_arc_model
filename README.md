@@ -64,7 +64,7 @@ Phase 2:  交叉校验    → 对比已知产品（TPUv1/RK1828/Eyeriss）
 
 ### 1.4 双场景技术路线（探索性估算）
 
-> 以下数值为 Arc Model 在**当前校准假设**下的估算，包含 T0/T1 参数；在 `decision-grade` 证据补齐前，不应用作产品承诺。
+> 以下数值为 Arc Model 在**当前校准假设**下的估算，包含 T1 参数（全部真实 T0 参数已消除）；在 `decision-grade` 证据补齐前（需全部排名参数达到 T3+），不应用作产品承诺。
 
 | | Scenario A (低成本) | Scenario B (高性能) |
 |:---|:---|:---|
@@ -75,7 +75,7 @@ Phase 2:  交叉校验    → 对比已知产品（TPUv1/RK1828/Eyeriss）
 | 面积 @12nm | 61mm²（估算） | 66mm²（估算） |
 | Decode | 23 tok/s（估算） | 148 tok/s（估算） |
 | TTFT | 45ms（估算） | 160ms（估算） |
-| 跨节点验证结论 | block 引擎面积单调 7→28nm（99→261mm² @lpddr5_3b）；全 8 引擎 × 4 节点排名矩阵揭示 os_systolic 在跨所有节点和场景中均占绝对领先（31.8 tok/s @lpddr5, 310.9 tok/s @onchip），GMMA 在高 BW 场景中作为第二名具竞争力（203.5 tok/s @7nm onchip）；WMMA/GMMA PE 校准已升级 T1（PE 面积 4.5/5.5 mm² @7nm、WMMA 片段序列化 120 cycles、GMMA pipeline，源自 H100 SM die/Volta 架构分析），WMMA 全模型 tok/s 仍低（~0.5 tok/s）但较校准前提升 ~10×（per-FFN_down-GEMM 6.9→67.6 tok/s）；决策级状态：**FAIL（频率-节点绑定为探索性结论，多节点覆盖不完全）** | [`全引擎跨节点排名矩阵`](.omo/evidence/task-4-cross-node-all-engines-dse-matrix.md)；频率感知数据：[`.omo/evidence/investigate-all-engines-cross-node-freq.md`](.omo/evidence/investigate-all-engines-cross-node-freq.md) |
+| 跨节点验证结论 | block 引擎面积单调 7→28nm（99→261mm² @lpddr5_3b）；全 8 引擎 × 4 节点排名矩阵揭示 os_systolic 在跨所有节点和场景中均占绝对领先（31.8 tok/s @lpddr5, 310.9 tok/s @onchip），GMMA 在高 BW 场景中作为第二名具竞争力（203.5 tok/s @7nm onchip）；WMMA/GMMA PE 校准已升级 T1（PE 面积 4.5/5.5 mm² @7nm、WMMA 片段序列化 120 cycles、GMMA pipeline，源自 H100 SM die/Volta 架构分析），WMMA 全模型 tok/s 仍低（~0.5 tok/s）但较校准前提升 ~10×（per-FFN_down-GEMM 6.9→67.6 tok/s）；决策级状态：**已升级，未就绪**。最后一个真实 T0 参数 `tensor_core_descriptor_overhead` 已升级 T1（源引 ARM PL330 DMA PrimeCell 公开手册 DDID0424）；4 个频率-节点条目（`max_freq_{7,12,22,28}nm`）已按 T1 加入，基于公开产品参考与 TSMC 节点特性，跨节点覆盖由探索性升级为 T1，频率-节点绑定不再为探索性结论；3 个 DRAM 效率条目（`dram_efficiency`/`dram_efficiency_random_bw`/`random_latency_penalty_cycles`）已按 T1 加入，基于 JEDEC LPDDR5 时序与公开 DRAM 局部性参考。决策级仍未达成：需全部排名参数达到 T3+ 权威证据，故不标注为就绪。 | [`全引擎跨节点排名矩阵`](.omo/evidence/task-4-cross-node-all-engines-dse-matrix.md)；频率感知数据：[`.omo/evidence/investigate-all-engines-cross-node-freq.md`](.omo/evidence/investigate-all-engines-cross-node-freq.md) |
 | 详细报告 | [`reports/arch-report-A-lpddr5-3b.md`](reports/arch-report-A-lpddr5-3b.md) | [`reports/arch-report-B-3ddram-7b.md`](reports/arch-report-B-3ddram-7b.md) |
 
 ---
@@ -383,7 +383,7 @@ uv run python sim/npu_sim.py --json | python3 -c "import sys,json; print(json.lo
 | **config digest** | `d3ad177cd825b7ef6342bc0f53402e61e5d4438267ae4112d7e6aca041a08217` (`sim/config/npu_config.yaml`) |
 | **process_node** | 12nm (TSMC 12FFC) |
 | **node_scale** | 2.70× = TSMC 12FFC 密度比（非几何 (12/7)²）— **已修正**，详见 [`sim/contracts/bitcell.py`](sim/contracts/bitcell.py) `_node_scale_factor(12)` → 2.70 |
-| **dram_efficiency** | 0.85 — conservative baseline；README 中 75% 声称已被证伪（待 Todo 6 统一清理） |
+| **dram_efficiency** | 0.85 — conservative sequential-decode baseline (matches `references/calibration/parameters.yaml` and `sim/config/npu_config.yaml`) |
 | **Python** | >=3.10,<3.13 (via `pyproject.toml`) |
 | **复现命令** | `uv sync --frozen && uv run pytest -q` |
 
