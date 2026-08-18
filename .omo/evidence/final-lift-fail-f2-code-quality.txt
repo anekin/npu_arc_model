@@ -1,0 +1,15 @@
+=== ruff format --check . (whole repo, after pyproject [tool.ruff.format] exclude += .omo/**) ===
+227 files already formatted
+format_exit=0
+
+=== ruff check . (whole repo) ===
+All checks passed!
+check_exit=0
+
+=== pytest: calibration_registry + calibration_evaluate + engine_result_contract + engines ===
+......................................................................   [100%]
+70 passed
+pytest_exit=0
+
+=== evaluate.py (PYTHONPATH=sim) ===
+eval_exit=0

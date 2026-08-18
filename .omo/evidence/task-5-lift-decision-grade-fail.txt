@@ -1,0 +1,98 @@
+Task 5: update docs/model-trust-and-release.md + scripts/release_gate.py for
+zero real T0 calibration entries, new T1 freq/DRAM entries, decision-grade = T3+.
+
+Date: 2026-07-31
+
+====================================================================
+1. Files modified
+====================================================================
+- docs/model-trust-and-release.md:
+    line 28  : "all ranking parameters T2+ and in range" -> "T3+"
+    line 30  : "Contains T0/T1 parameters" -> "Contains T1 parameters"
+    line 51  : "Every Pareto-driving parameter must be T2+." -> "T3+."
+    lines 58-64: paragraph now states registry has no real T0 entries (32 params,
+                all >= T1) and lists remaining T1 drivers: gmma_pipeline_scale,
+                max_freq_7nm/12nm/22nm/28nm, dram_efficiency,
+                dram_efficiency_random_bw, random_latency_penalty_cycles;
+                decision-grade still expected to fail until T3 evidence.
+    line 67  : "# Expected to fail until T3+ evidence is available for
+                remaining T1 parameters."
+    lines 246-259 (Decision-Grade State): honest FAIL headline; records
+                tensor_core_descriptor_overhead T0->T1 (source ARM PL330 DMA
+                PrimeCell DDID0424); 4 max_freq_*nm entries T1 (public product
+                refs + TSMC node chars, cross-node coverage now T1 not
+                "exploratory", still not T3 silicon-measured); 3 DRAM entries
+                T1 (JEDEC LPDDR5 JESD209-5B + Mutlu PIM primer); SRAM bitcell
+                T2 note kept; bash comment updated to current state.
+- scripts/release_gate.py:
+    lines 7-8: decision-grade docstring "T2+" -> "T3+" and "T0/T1" -> "T1".
+
+====================================================================
+2. grep: stale "T2+" / "T0/T1" references
+====================================================================
+$ grep -n "T2+" docs/model-trust-and-release.md scripts/release_gate.py
+(no matches — exit 1)
+
+$ grep -n "T0/T1" docs/model-trust-and-release.md scripts/release_gate.py
+docs/model-trust-and-release.md:37:- Allows T0/T1 parameters.
+scripts/release_gate.py:5:  - experimental: allows T0/T1 parameters, requires complete coverage,
+
+Both remaining hits are experimental-profile CAPABILITY statements (the
+profile permits T0/T1 parameters if present), not claims about registry
+contents. Out of scope for this todo; registry itself has zero T0
+(grep -i "T0" references/calibration/parameters.yaml -> no matches, Todo 1).
+
+$ grep -n "仍是 T0\|仍为 T0\|无变化\|T0 参数并未" docs/model-trust-and-release.md
+(no matches — exit 1; stale T0 claims removed from Decision-Grade State)
+
+====================================================================
+3. release_gate.py --profile decision-grade (expect non-zero)
+====================================================================
+$ uv run python scripts/release_gate.py --profile decision-grade
+ERROR: dirty worktree; decision-grade artifacts cannot be generated
+DECISION_GRADE_EXIT=1
+
+Note: gate short-circuits on the dirty-worktree guard because the current
+tree carries uncommitted Todos 1-5 changes. The substantive T3+ blocker was
+verified separately by running the exact DSE subprocess the gate invokes
+with --trust-mode decision-grade:
+
+$ uv run python sim/design_space_explorer.py --scenario lpddr5_3b \
+    --space ci-all-axes --seed 17 --result-schema v2 \
+    --trust-mode decision-grade --output /tmp/dg_trust_check.json
+EXIT=0
+trust_level: exploratory
+points: 87
+non_authoritative points: 87
+Counter({'exploratory': 87})
+
+=> all 87 design points are exploratory (T1 gate trust), never authoritative;
+   release_gate.py:137-138 ("decision-grade requires authoritative trust
+   level") fails the gate. T3+ requirement per sim/dse/runner.py:319-326.
+
+====================================================================
+4. release_gate.py --profile experimental (expect exit 0)
+====================================================================
+$ uv run python scripts/release_gate.py --profile experimental
+{
+  "profile": "experimental",
+  "scenario": "lpddr5_3b",
+  "space": "ci-all-axes",
+  "verdict": "PASS",
+  "legacy_failures": [],
+  "workload_failures": [],
+  "errors": 0,
+  "replay_digest_match": true,
+  "experimental_gate": "pass",
+  "artifacts_dir": ".../artifacts/releases/59362ebb3bc5c04d",
+  "run_id": "59362ebb3bc5c04d"
+}
+coverage: evaluated=87 failed=0 successful=87 missing_axes={}
+EXPERIMENTAL_EXIT=0
+
+====================================================================
+5. Conclusion
+====================================================================
+decision-grade: FAIL (exit 1) — requires all ranking parameters T3+
+authoritative; remaining T1 parameters keep all points exploratory. Honest,
+not expected to pass. experimental: PASS (exit 0).

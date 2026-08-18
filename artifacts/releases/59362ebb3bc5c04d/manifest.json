@@ -1,0 +1,8 @@
+{
+  "schema_version": "1",
+  "run_id": "59362ebb3bc5c04d",
+  "profile": "experimental",
+  "scenario": "lpddr5_3b",
+  "git_commit": "f58a96651d37a61ec604bb1036835e150962779a",
+  "bundle_digest": "d8962ed2be3888ad54dae6cdc3569eb0b895f64c223926b2036abeb3dd703df0"
+}

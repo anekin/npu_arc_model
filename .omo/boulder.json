@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "active_work_id": "wmma-gmma-pe-recalibration-a21bd484",
+  "active_work_id": "arc-prefill-ttft-dse-24caeab2",
   "works": {
     "dse-engine-model-bug-fix-f2613fba": {
       "work_id": "dse-engine-model-bug-fix-f2613fba",
@@ -336,126 +336,79 @@
       },
       "ended_at": "2026-07-31T04:30:50.710Z",
       "elapsed_ms": 8672048
+    },
+    "arc-prefill-ttft-dse-24caeab2": {
+      "work_id": "arc-prefill-ttft-dse-24caeab2",
+      "active_plan": "/home/prj/zhengs/caduceuscore/npu_arc_model/.omo/plans/arc-prefill-ttft-dse.md",
+      "plan_name": "arc-prefill-ttft-dse",
+      "status": "active",
+      "started_at": "2026-08-18T13:15:19.617Z",
+      "updated_at": "2026-08-18T14:26:44.251Z",
+      "session_ids": [
+        "opencode:ses_053ba6068ffeyiIpkBUK0ulwPN"
+      ],
+      "session_origins": {
+        "opencode:ses_053ba6068ffeyiIpkBUK0ulwPN": "direct"
+      },
+      "agent": "atlas",
+      "task_sessions": {
+        "todo:0": {
+          "task_key": "todo:0",
+          "task_label": "0",
+          "task_title": "提交 lift-decision-grade-fail 遗留改动 + 需求文档入库",
+          "session_id": "opencode:ses_feacfabd2ffegk4jvcI71xejOX",
+          "agent": "Sisyphus-Junior",
+          "started_at": "2026-08-18T13:47:26.071Z",
+          "status": "running",
+          "updated_at": "2026-08-18T14:26:44.254Z"
+        },
+        "todo:1": {
+          "task_key": "todo:1",
+          "task_label": "1",
+          "task_title": "FR-7 基线锁定：默认运行输出 golden baseline + 回归测试",
+          "session_id": "opencode:ses_fead18f75ffedOmbxk1lgPvkaw",
+          "agent": "Sisyphus-Junior",
+          "category": "quick",
+          "started_at": "2026-08-18T13:59:39.176Z",
+          "status": "running",
+          "updated_at": "2026-08-18T14:03:01.103Z"
+        }
+      }
     }
   },
-  "active_plan": "/home/prj/zhengs/caduceuscore/npu_arc_model/.omo/plans/wmma-gmma-pe-recalibration.md",
-  "started_at": "2026-07-31T02:06:18.662Z",
-  "status": "completed",
-  "updated_at": "2026-07-31T04:30:50.710Z",
+  "active_plan": "/home/prj/zhengs/caduceuscore/npu_arc_model/.omo/plans/arc-prefill-ttft-dse.md",
+  "started_at": "2026-08-18T13:15:19.617Z",
+  "status": "active",
+  "updated_at": "2026-08-18T14:26:44.251Z",
   "session_ids": [
     "opencode:ses_053ba6068ffeyiIpkBUK0ulwPN"
   ],
   "session_origins": {
     "opencode:ses_053ba6068ffeyiIpkBUK0ulwPN": "direct"
   },
-  "plan_name": "wmma-gmma-pe-recalibration",
+  "plan_name": "arc-prefill-ttft-dse",
   "task_sessions": {
+    "todo:0": {
+      "task_key": "todo:0",
+      "task_label": "0",
+      "task_title": "提交 lift-decision-grade-fail 遗留改动 + 需求文档入库",
+      "session_id": "opencode:ses_feacfabd2ffegk4jvcI71xejOX",
+      "agent": "Sisyphus-Junior",
+      "started_at": "2026-08-18T13:47:26.071Z",
+      "status": "running",
+      "updated_at": "2026-08-18T14:26:44.254Z"
+    },
     "todo:1": {
       "task_key": "todo:1",
       "task_label": "1",
-      "task_title": "`uv run ruff format --check . > .omo/evidence/final-wmma-gmma-f2-code-quality.txt 2>&1`",
-      "session_id": "opencode:ses_049a05a61ffeDdCtMCr1m1FmjN",
-      "agent": "Sisyphus-Junior",
-      "category": "unspecified-high",
-      "started_at": "2026-07-31T02:14:35.418Z",
-      "ended_at": "2026-07-31T04:13:59.169Z",
-      "elapsed_ms": 7163751,
-      "status": "completed",
-      "updated_at": "2026-07-31T04:13:59.169Z"
-    },
-    "todo:2": {
-      "task_key": "todo:2",
-      "task_label": "2",
-      "task_title": "标定 WMMA 片段序列化到物理合理范围",
-      "session_id": "opencode:ses_049e3053fffeCU3o0UmcUgb63z",
+      "task_title": "FR-7 基线锁定：默认运行输出 golden baseline + 回归测试",
+      "session_id": "opencode:ses_fead18f75ffedOmbxk1lgPvkaw",
       "agent": "Sisyphus-Junior",
       "category": "quick",
-      "updated_at": "2026-07-31T03:24:51.060Z",
-      "started_at": "2026-07-31T03:24:12.380Z",
-      "status": "completed",
-      "ended_at": "2026-07-31T03:24:51.060Z",
-      "elapsed_ms": 38680
-    },
-    "todo:4": {
-      "task_key": "todo:4",
-      "task_label": "4",
-      "task_title": "添加 WMMA/GMMA 周期模型物理不变量测试",
-      "session_id": "opencode:ses_049cb0d2bffe3B8tf1ibtK3hDT",
-      "agent": "Sisyphus-Junior",
-      "category": "quick",
-      "updated_at": "2026-07-31T03:33:11.333Z",
-      "started_at": "2026-07-31T03:32:37.103Z",
-      "status": "completed",
-      "ended_at": "2026-07-31T03:33:11.333Z",
-      "elapsed_ms": 34230
-    },
-    "todo:5": {
-      "task_key": "todo:5",
-      "task_label": "5",
-      "task_title": "从 H100 SM die 引用标定 WMMA PE 面积",
-      "session_id": "opencode:ses_049c34f3fffeuPsDQKhKj5rcHf",
-      "agent": "Sisyphus-Junior",
-      "category": "quick",
-      "updated_at": "2026-07-31T03:43:29.589Z",
-      "started_at": "2026-07-31T03:38:41.888Z",
-      "status": "completed",
-      "ended_at": "2026-07-31T03:43:29.589Z",
-      "elapsed_ms": 287701
-    },
-    "todo:7": {
-      "task_key": "todo:7",
-      "task_label": "7",
-      "task_title": "添加 WMMA/GMMA 每节点面积回归测试",
-      "session_id": "opencode:ses_049b8ddd3ffexLfVCkrY4z9RRD",
-      "agent": "Sisyphus-Junior",
-      "category": "quick",
-      "updated_at": "2026-07-31T03:50:57.408Z",
-      "started_at": "2026-07-31T03:50:44.650Z",
-      "status": "completed",
-      "ended_at": "2026-07-31T03:50:57.408Z",
-      "elapsed_ms": 12758
-    },
-    "todo:8": {
-      "task_key": "todo:8",
-      "task_label": "8",
-      "task_title": "更新校准参数注册表",
-      "session_id": "opencode:ses_049b35d4effe5MaZO1nN38uFmt",
-      "agent": "Sisyphus-Junior",
-      "category": "quick",
-      "updated_at": "2026-07-31T03:56:46.682Z",
-      "started_at": "2026-07-31T03:56:46.680Z",
-      "status": "completed",
-      "ended_at": "2026-07-31T03:56:46.682Z",
-      "elapsed_ms": 2
-    },
-    "todo:9": {
-      "task_key": "todo:9",
-      "task_label": "9",
-      "task_title": "评估 decision-grade 影响 + 更新文档",
-      "session_id": "opencode:ses_049ae215fffePbENXB4eAtBjfs",
-      "agent": "Sisyphus-Junior",
-      "category": "quick",
-      "updated_at": "2026-07-31T04:04:03.533Z",
-      "started_at": "2026-07-31T04:03:42.525Z",
-      "status": "completed",
-      "ended_at": "2026-07-31T04:04:03.533Z",
-      "elapsed_ms": 21008
-    },
-    "final-wave:f1": {
-      "task_key": "final-wave:f1",
-      "task_label": "F1",
-      "task_title": "Plan compliance audit",
-      "session_id": "opencode:ses_04998e76effesfIg0JBOeU4qRB",
-      "agent": "Sisyphus-Junior",
-      "category": "quick",
-      "started_at": "2026-07-31T04:10:57.895Z",
-      "status": "completed",
-      "updated_at": "2026-07-31T04:28:25.493Z",
-      "ended_at": "2026-07-31T04:28:25.493Z",
-      "elapsed_ms": 1047598
+      "started_at": "2026-08-18T13:59:39.176Z",
+      "status": "running",
+      "updated_at": "2026-08-18T14:03:01.103Z"
     }
   },
-  "agent": "atlas",
-  "ended_at": "2026-07-31T04:30:50.710Z",
-  "elapsed_ms": 8672048
+  "agent": "atlas"
 }

@@ -1,0 +1,44 @@
+Task 7: update trust disclaimer in docs/NPU_Engines_Architecture_Guide.md
+Date: 2026-07-31
+
+## Negative grep (must return no matches; exit code 1 expected)
+
+$ grep -n "T0/T1\|tensor_core_descriptor_overhead.*T0\|仍是 T0\|block_sparsity_penalty" docs/NPU_Engines_Architecture_Guide.md
+(no output) -> exit 1
+
+Stale claims removed from the disclaimer:
+- No "T0/T1" phrasing describing current calibration parameters
+- No "tensor_core_descriptor_overhead ... T0" (it is now stated as upgraded to T1)
+- No "仍是 T0"
+- No "block_sparsity_penalty" (it is not a registered calibration parameter in
+  references/calibration/parameters.yaml)
+
+## Positive grep (updated disclaimer visible)
+
+$ grep -n "T1\|T3+\|decision-grade\|max_freq\|dram_efficiency" docs/NPU_Engines_Architecture_Guide.md
+8:> ⚠️ **信任声明**: 本指南中的数值与"推荐"结论均为当前模型校准下的估算。`references/calibration/parameters.yaml` 中全部 32 个校准参数均已达到至少 T1 等级（真实 T0 参数已全部消除）：最后一个真实 T0 参数 `tensor_core_descriptor_overhead` 已升级为 T1（源引 ARM PL330 DMA PrimeCell 公开手册 DDID0424）；频率-节点绑定（`max_freq_{7,12,22,28}nm`）与 DRAM 效率（`dram_efficiency`、`dram_efficiency_random_bw`、`random_latency_penalty_cycles`）也已注册为 T1 条目并附公开来源。本指南尚未达到 `decision-grade` 发布标准：该标准要求全部排名参数具备 T3+ 权威证据。详见 [`docs/model-trust-and-release.md`](docs/model-trust-and-release.md)。
+133:**一句话：** ✅ **当前模型下的首选引擎（探索性）。** ... 该结论依赖当前 T1 带宽/面积假设，未达 `decision-grade`。   [pre-existing, unchanged]
+193:> **校准说明（2026-07-31）**：WMMA 周期模型 `fragment_serialization_cycles` ... trust T1 ...   [pre-existing, unchanged]
+
+Lines 133 and 193 are pre-existing legitimate T1 references, not part of the disclaimer.
+
+## New trust disclaimer text (line 8, full)
+
+> ⚠️ **信任声明**: 本指南中的数值与"推荐"结论均为当前模型校准下的估算。`references/calibration/parameters.yaml` 中全部 32 个校准参数均已达到至少 T1 等级（真实 T0 参数已全部消除）：最后一个真实 T0 参数 `tensor_core_descriptor_overhead` 已升级为 T1（源引 ARM PL330 DMA PrimeCell 公开手册 DDID0424）；频率-节点绑定（`max_freq_{7,12,22,28}nm`）与 DRAM 效率（`dram_efficiency`、`dram_efficiency_random_bw`、`random_latency_penalty_cycles`）也已注册为 T1 条目并附公开来源。本指南尚未达到 `decision-grade` 发布标准：该标准要求全部排名参数具备 T3+ 权威证据。详见 [`docs/model-trust-and-release.md`](docs/model-trust-and-release.md)。
+
+## Registry facts cross-checked
+
+$ python3 -c "import yaml; d=yaml.safe_load(open('references/calibration/parameters.yaml')); ids=d['parameters']; print(len(ids), sum(1 for e in ids if e.get('trust_level')=='T0'))"
+32 0
+- 32 registered parameters, zero T0 trust-level entries.
+- tensor_core_descriptor_overhead present as T1 (source: ARM PL330 DMA PrimeCell DDID0424).
+- max_freq_7nm present; max_freq_{12,22,28}nm present.
+- dram_efficiency / dram_efficiency_random_bw / random_latency_penalty_cycles present as T1.
+- block_sparsity_penalty NOT present in parameters.yaml.
+
+## Scope notes
+- Only line 8 of docs/NPU_Engines_Architecture_Guide.md was modified.
+- No changes to README.md, docs/model-trust-and-release.md, scripts/release_gate.py,
+  references/calibration/parameters.yaml, or code.
+- decision-grade is explicitly NOT claimed: disclaimer states it requires T3+ authoritative
+  evidence for all ranking parameters and the guide has not reached it.

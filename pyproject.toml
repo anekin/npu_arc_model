@@ -68,6 +68,7 @@ known-first-party = ["sim"]
 quote-style = "double"
 indent-style = "space"
 exclude = [
+    ".omo/**",
     "reports/dse-engine-model-bugs-2026-07-27.md",
     "reports/dse-engine-model-bugs-postfix-2026-07-27.md",
 ]
