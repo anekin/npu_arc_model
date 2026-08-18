@@ -1,0 +1,11 @@
+# T3 Negative/mutation evidence
+
+## Mutation 1: remove "* num_layers" from ttft_ms_from_prefill
+Expected: test_ttft_ms_formula fails (36 layers becomes 1 layer).
+broken_no_layers(1_000_000, 36, 1000) = 1.0 (expected 36.0)
+MUTATION-1 WOULD FAIL test_ttft_ms_formula: OK
+
+## Mutation 2: replace units call with bare formula
+broken_bare_formula result = 36.0
+cycles_to_microseconds calls = []
+MUTATION-2 WOULD FAIL test_ttft_uses_units: OK

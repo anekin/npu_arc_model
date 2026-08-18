@@ -3,13 +3,11 @@
 import math
 from pathlib import Path
 
+import design_space_explorer as dse
 import pytest
 import yaml
-
-import design_space_explorer as dse
 from dse.legacy_adapter import evaluate_config, generate_configs
 from engine.ppa_model import AreaModel, PowerModel
-
 
 SIM_DIR = Path(__file__).resolve().parents[1]
 

@@ -11,11 +11,9 @@ import math
 from pathlib import Path
 
 import pytest
-
 import yaml
 from dse.legacy_adapter import evaluate_config, generate_configs
 from engine.ppa_model import AreaModel, PowerModel
-
 
 SIM_DIR = Path(__file__).resolve().parents[1]
 GOLDEN_PATH = SIM_DIR / "tests" / "golden" / "dse_default_quick_baseline.json"

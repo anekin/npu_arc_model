@@ -174,6 +174,27 @@ def simulate_layer(
     return total, weight_bytes
 
 
+def simulate_prefill(
+    config: dict[str, Any],
+    batch_m: int,
+    model_alias: str = _DEFAULT_LLM_SPEC,
+) -> int:
+    """Per-layer prefill cycles for a batch of M tokens.
+
+    KV prefill write-back cost = 0 (known simplification, see requirement §9).
+    """
+    spec = get_spec(model_alias)
+    trace = generate_trace_from_spec(model_alias, batch_m)
+    return _simulate_ops(config, trace, batch_m, spec.kv_heads, spec.head_dim)[0]
+
+
+def ttft_ms_from_prefill(prefill_cycles: int, num_layers: int, freq_mhz: float) -> float:
+    """Convert per-layer prefill cycles to end-to-end TTFT in milliseconds."""
+    from contracts.units import cycles_to_microseconds
+
+    return round(cycles_to_microseconds(prefill_cycles * num_layers, freq_mhz) / 1000.0, 2)
+
+
 def tok_s_from_layer(layer_cycles: int, num_layers: int, f_mhz: float) -> float:
     """Convert per-layer cycle count to tokens/second using actual frequency."""
     from contracts.units import cycles_to_microseconds as _c2us
