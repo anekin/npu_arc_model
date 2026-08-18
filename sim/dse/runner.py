@@ -217,7 +217,6 @@ class ScenarioDseRunner:
             # Ensure legacy globals point at a consistent proxy trace so PPA is
             # deterministic and independent of whatever earlier CLI set them to.
             dse_module._CV_MODEL = ""
-            dse_module._LLM_TRACE = dse_module.generate_trace_from_spec("qwen2.5-3b", batch_m=1)
             dse_module._NUM_LAYERS = 28
 
             ppa = dse_module.evaluate_config(point.hardware_config, area_model, power_model)

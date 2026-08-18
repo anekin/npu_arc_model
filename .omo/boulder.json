@@ -343,7 +343,7 @@
       "plan_name": "arc-prefill-ttft-dse",
       "status": "active",
       "started_at": "2026-08-18T13:15:19.617Z",
-      "updated_at": "2026-08-18T14:53:07.627Z",
+      "updated_at": "2026-08-18T15:06:45.256Z",
       "session_ids": [
         "opencode:ses_053ba6068ffeyiIpkBUK0ulwPN"
       ],
@@ -372,8 +372,10 @@
           "agent": "Sisyphus-Junior",
           "category": "quick",
           "started_at": "2026-08-18T13:59:39.176Z",
-          "status": "running",
-          "updated_at": "2026-08-18T14:03:01.103Z"
+          "status": "completed",
+          "updated_at": "2026-08-18T15:06:45.256Z",
+          "ended_at": "2026-08-18T15:06:45.256Z",
+          "elapsed_ms": 4026080
         }
       }
     }
@@ -381,7 +383,7 @@
   "active_plan": "/home/prj/zhengs/caduceuscore/npu_arc_model/.omo/plans/arc-prefill-ttft-dse.md",
   "started_at": "2026-08-18T13:15:19.617Z",
   "status": "active",
-  "updated_at": "2026-08-18T14:53:07.627Z",
+  "updated_at": "2026-08-18T15:06:45.256Z",
   "session_ids": [
     "opencode:ses_053ba6068ffeyiIpkBUK0ulwPN"
   ],
@@ -410,8 +412,10 @@
       "agent": "Sisyphus-Junior",
       "category": "quick",
       "started_at": "2026-08-18T13:59:39.176Z",
-      "status": "running",
-      "updated_at": "2026-08-18T14:03:01.103Z"
+      "status": "completed",
+      "updated_at": "2026-08-18T15:06:45.256Z",
+      "ended_at": "2026-08-18T15:06:45.256Z",
+      "elapsed_ms": 4026080
     }
   },
   "agent": "atlas"

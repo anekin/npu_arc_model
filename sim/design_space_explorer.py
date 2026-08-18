@@ -28,21 +28,16 @@ _CV_TRACE: list[Any] = []
 _CV_ONNX_PATH: str = ""
 
 _NUM_LAYERS: int = 28
-_LLM_TRACE: list[tuple] = []
+_DEFAULT_LLM_SPEC: str = "qwen2.5-3b"
 _SEQ_KV: int = 2048  # KV cache sequence length for decode
-_KV_HEADS: int = 2  # num_kv_heads from model spec
-_HEAD_DIM: int = 128  # head_dim from model spec
 
 
 def generate_trace_from_spec(alias: str, batch_m: int = 1) -> list[tuple]:
-    global _KV_HEADS, _HEAD_DIM
     spec = get_spec(alias)
     H = spec.hidden
     I = spec.intermediate
     qkv = spec.qkv_dim
     kv = spec.kv_heads * spec.head_dim
-    _KV_HEADS = spec.kv_heads
-    _HEAD_DIM = spec.head_dim
     trace = []
     m_attn = batch_m  # attention projections batch all tokens
     m_ffn = batch_m if batch_m > 1 else 1  # prefill: batch tokens; decode: single token
@@ -56,15 +51,18 @@ def generate_trace_from_spec(alias: str, batch_m: int = 1) -> list[tuple]:
     return trace
 
 
-_LLM_TRACE = generate_trace_from_spec("qwen2.5-3b", batch_m=1)
-
 SFU_CYCLES_PER_LAYER = {
     "attn": 33,  # softmax + layernorm + rope (simplified)
     "ffn": 8,  # gelu + layernorm
 }
 
 
-def _compute_kv_cycles(config: dict[str, Any], batch_m: int = 1) -> int:
+def _compute_kv_cycles(
+    config: dict[str, Any],
+    batch_m: int = 1,
+    kv_heads: int = 0,
+    head_dim: int = 0,
+) -> int:
     """Dynamic KV cache DRAM read cycles per layer.
 
     - For decode (batch_m=1): K,V read from memory
@@ -75,7 +73,7 @@ def _compute_kv_cycles(config: dict[str, Any], batch_m: int = 1) -> int:
         return 0  # Prefill: KV is being written, not a read bottleneck
 
     # K + V: 2 × seq_kv × kv_heads × head_dim × 1 byte (INT8)
-    kv_bytes = 2 * _SEQ_KV * _KV_HEADS * _HEAD_DIM * 1
+    kv_bytes = 2 * _SEQ_KV * kv_heads * head_dim * 1
 
     onchip = config.get("on_chip_memory", {})
     onchip_bw = float(onchip.get("bandwidth_gbps", 0))
@@ -108,13 +106,14 @@ def _compute_kv_cycles(config: dict[str, Any], batch_m: int = 1) -> int:
     return int(kv_bytes / (eff_bw * kv_dram_eff))
 
 
-def simulate_layer(config: dict[str, Any], batch_m: int = None) -> tuple:
-    """Simulate one transformer layer. Returns (total_cycles, weight_bytes).
-
-    batch_m=1 for decode, >1 for prefill. If None, inferred from trace.
-    """
-    if batch_m is None:
-        batch_m = _LLM_TRACE[0][0] if _LLM_TRACE else 1
+def _simulate_ops(
+    config: dict[str, Any],
+    ops: list[tuple],
+    batch_m: int,
+    kv_heads: int,
+    head_dim: int,
+) -> tuple[int, int]:
+    """Run the core GEMM/SFU loop for one layer. Returns (compute_cycles, weight_bytes)."""
     engine = create_engine(config)
     opts = config.get("optimizations", {})
     weight_cache = opts.get("weight_cache", False)
@@ -122,7 +121,6 @@ def simulate_layer(config: dict[str, Any], batch_m: int = None) -> tuple:
     total = 0
     weight_bytes = 0
     i = 0
-    ops = _LLM_TRACE
 
     while i < len(ops):
         M, K, N, _, name = ops[i]
@@ -144,9 +142,34 @@ def simulate_layer(config: dict[str, Any], batch_m: int = None) -> tuple:
         elif name == "FFN_down":
             total += SFU_CYCLES_PER_LAYER["ffn"]
 
+    return total, weight_bytes
+
+
+def simulate_layer(
+    config: dict[str, Any],
+    batch_m: int | None = None,
+    kv_heads: int | None = None,
+    head_dim: int | None = None,
+) -> tuple[int, int]:
+    """Simulate one transformer layer. Returns (total_cycles, weight_bytes).
+
+    batch_m=1 for decode, >1 for prefill. Defaults come from _DEFAULT_LLM_SPEC.
+    """
+    if batch_m is None:
+        batch_m = 1
+
+    spec = get_spec(_DEFAULT_LLM_SPEC)
+    if kv_heads is None:
+        kv_heads = spec.kv_heads
+    if head_dim is None:
+        head_dim = spec.head_dim
+
+    trace = generate_trace_from_spec(_DEFAULT_LLM_SPEC, batch_m)
+    compute_cycles, weight_bytes = _simulate_ops(config, trace, batch_m, kv_heads, head_dim)
+
     # KV cache: dynamic read cost based on SRAM + bandwidth
-    kv_cycles = _compute_kv_cycles(config, batch_m)
-    total += kv_cycles
+    kv_cycles = _compute_kv_cycles(config, batch_m, kv_heads, head_dim)
+    total = compute_cycles + kv_cycles
 
     return total, weight_bytes
 
@@ -977,7 +1000,7 @@ def main():
     model_spec = args.model_spec if args.model_spec is not None else "qwen2.5-3b"
     batch_m = args.batch_m if args.batch_m is not None else 1
 
-    global _CV_MODEL, _CV_TRACE, _CV_ONNX_PATH, _LLM_TRACE, _NUM_LAYERS
+    global _CV_MODEL, _CV_TRACE, _CV_ONNX_PATH, _NUM_LAYERS
     _CV_MODEL = args.cv_model or ""
     if _CV_MODEL:
         if args.cv_model == "mobilenetv3-small":
@@ -1002,7 +1025,6 @@ def main():
 
             _CV_TRACE = generate_resnet50_trace()
     else:
-        _LLM_TRACE = generate_trace_from_spec(model_spec, batch_m)
         _NUM_LAYERS = get_spec(model_spec).layers
 
     with open(SIM_DIR / "config" / "design_space.yaml") as f:
