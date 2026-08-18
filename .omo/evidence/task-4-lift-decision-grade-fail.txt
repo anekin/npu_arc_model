@@ -1,0 +1,27 @@
+Task 4: wire 7 new calibration IDs into sim/calibration/evaluate.py + EXPECTED_IDS
+==================================================================================
+
+Command:
+  uv run pytest sim/tests/test_calibration_registry.py sim/tests/test_calibration_evaluate.py
+  PYTHONPATH=sim uv run python sim/calibration/evaluate.py
+
+Test output:
+  ..............................                                           [100%]
+  30 passed in 20.51s
+
+Smoke run:
+  PYTHONPATH=sim uv run python sim/calibration/evaluate.py  -> exit 0
+
+Functional spot-checks (python -c):
+  - calibration_ids_for_design_point() includes max_freq_{7,12,22,28}nm
+    matching area_model.process_node_nm for every node.
+  - _actual_value('max_freq_<node>nm') returns mac_engine.frequency_mhz
+    (fallback mxu/area_model) when configured, else the node maximum
+    (7nm=2000, 12nm=1200, 22nm=800, 28nm=600 = registry range_max).
+  - External DRAM config (LPDDR5, on_chip capacity 0) includes
+    dram_efficiency / dram_efficiency_random_bw / random_latency_penalty_cycles
+    and _actual_value() returns 0.85 / 0.50 / 40.
+  - HBM3 and on-chip 3D DRAM configs do NOT include the 3 DRAM IDs.
+  - EXPECTED_IDS now contains all 7 new IDs (registry completeness test passes).
+
+Exit code: 0

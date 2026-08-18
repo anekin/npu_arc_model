@@ -73,6 +73,7 @@ def calibration_ids_for_design_point(hw_config: dict[str, Any]) -> set[str]:
     process_node = float(area_model.get("process_node_nm", area_model.get("process_node", 7.0)))
     node_suffix = _node_id_suffix(process_node)
     ids.add(f"systolic_pe_area_{node_suffix}nm")
+    ids.add(f"max_freq_{node_suffix}nm")
     if engine_type in {"block", "os_systolic", "input_stationary", "tensor_core", "wmma", "gmma", "fsa"}:
         ids.add(f"block_pe_area_{node_suffix}nm")
         ids.add("block_systolic_pe_ratio")
@@ -96,8 +97,24 @@ def calibration_ids_for_design_point(hw_config: dict[str, Any]) -> set[str]:
     # External DRAM PHY is only relevant for external memory tiers.
     if not (float(onchip.get("capacity_gb", 0)) > 0):
         ids.add("dram_phy_area_12nm")
+    # DRAM efficiency / random-bw / latency-penalty parameters apply only to
+    # external DRAM tiers (LPDDR5 etc.), not on-chip 3D DRAM or HBM.
+    if not uses_tsv:
+        ids.add("dram_efficiency")
+        ids.add("dram_efficiency_random_bw")
+        ids.add("random_latency_penalty_cycles")
 
     return ids
+
+
+def _node_max_freq_mhz(process_node_nm: float) -> float:
+    """Maximum feasible frequency for a process node (equals range_max)."""
+    return {
+        7.0: 2000.0,
+        12.0: 1200.0,
+        22.0: 800.0,
+        28.0: 600.0,
+    }.get(process_node_nm, 2000.0)
 
 
 def _actual_value(calibration_id: str, hw_config: dict[str, Any]) -> float | None:
@@ -106,6 +123,14 @@ def _actual_value(calibration_id: str, hw_config: dict[str, Any]) -> float | Non
 
     if calibration_id == "systolic_pe_area_7nm":
         return float(area_model.get("systolic_pe_area_mm2", 2.0))
+
+    if calibration_id.startswith("max_freq_") and calibration_id.endswith("nm"):
+        node = float(calibration_id[len("max_freq_") : -len("nm")])
+        for section in ("mac_engine", "area_model", "mxu"):
+            freq = hw_config.get(section, {}).get("frequency_mhz")
+            if freq is not None:
+                return float(freq)
+        return _node_max_freq_mhz(node)
 
     if calibration_id.startswith("systolic_pe_area_") and calibration_id.endswith("nm"):
         model = AreaModel(hw_config)
@@ -162,6 +187,16 @@ def _actual_value(calibration_id: str, hw_config: dict[str, Any]) -> float | Non
         node = float(area_model.get("process_node_nm", area_model.get("process_node", 7.0)))
         baseline = float(area_model.get("dram_phy_area_mm2", 5.0))
         return baseline * _node_scale_factor(node)
+
+    memory = hw_config.get("memory", {})
+    if calibration_id == "dram_efficiency":
+        return float(memory.get("dram_efficiency", memory.get("efficiency", 0.85)))
+
+    if calibration_id == "dram_efficiency_random_bw":
+        return float(memory.get("dram_efficiency_random_bw", memory.get("efficiency_random_bw", 0.50)))
+
+    if calibration_id == "random_latency_penalty_cycles":
+        return float(memory.get("random_latency_penalty_cycles", 40))
 
     if calibration_id == "power_density_12nm":
         # Logic power density is the primary ranking driver.

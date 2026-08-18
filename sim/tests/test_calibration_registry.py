@@ -51,7 +51,14 @@ EXPECTED_IDS = {
     "pj_per_mac_12nm_int8",
     "tsv_overhead_pct",
     "dram_phy_area_12nm",
+    "dram_efficiency",
+    "dram_efficiency_random_bw",
+    "random_latency_penalty_cycles",
     "power_density_12nm",
+    "max_freq_28nm",
+    "max_freq_22nm",
+    "max_freq_12nm",
+    "max_freq_7nm",
 }
 
 
