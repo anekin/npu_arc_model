@@ -399,7 +399,7 @@ Critical path: `0 → 1 → 2 → 3 → 4 → 5 → 6 → (7∥8) → 9 → F1-F
 
   **Commit**: YES | `evidence(dse): M=128 prefill TTFT gate-1b target extraction` | `.omo/evidence/task-7-arc-prefill-ttft-dse-*.json/.txt`
 
-- [ ] 8. M=2000 证据 + Gate 1b 目标抽取（同 T7，规模 M=2000）
+- [x] 8. M=2000 证据 + Gate 1b 目标抽取（同 T7，规模 M=2000）
 
   **What to do**:
    同 T7，参数替换：`--batch-m 2000`；Func Model 实测 **63,924.19 ms**；参考值 wc=T ≈ **50,172 ms**（比值 ≈1.27）、wc=F ≈ 100,897 ms（比值 ≈0.63）。产物 `.omo/evidence/task-8-arc-prefill-ttft-dse-m2000.json` / `-extract.txt`。

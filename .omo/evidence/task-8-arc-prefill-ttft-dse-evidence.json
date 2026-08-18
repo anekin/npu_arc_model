@@ -1,0 +1,23 @@
+{
+  "task": "T8",
+  "plan": "arc-prefill-ttft-dse",
+  "status": "pass",
+  "summary": "M=2000 DSE evidence and Gate 1b ratio extraction for Block 64x64",
+  "commands": [
+    "uv run python sim/design_space_explorer.py --quick --batch-m 2000 --result-schema v2 --output /home/prj/zhengs/caduceuscore/npu_arc_model/.omo/evidence/task-8-arc-prefill-ttft-dse-m2000.json"
+  ],
+  "checks": {
+    "cli_exit_code": 0,
+    "errors": 0,
+    "block_64x64_wc_true_ttft_ms": 50171.91,
+    "block_64x64_wc_false_ttft_ms": 100896.77,
+    "func_model_reference_ms": 63924.19,
+    "gate_1b_ratio_wc_true": 1.274,
+    "gate_1b_ratio_pass": true,
+    "evidence_sha256": "a5540350d4443a3688eed226b58496b0bdfec3c2d86f8c54673a6269543aa858"
+  },
+  "files_modified": [
+    ".omo/evidence/task-8-arc-prefill-ttft-dse-m2000.json",
+    ".omo/evidence/task-8-arc-prefill-ttft-dse-m2000-extract.txt"
+  ]
+}
