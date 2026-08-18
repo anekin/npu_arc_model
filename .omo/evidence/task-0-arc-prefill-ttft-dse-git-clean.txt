@@ -1,0 +1,32 @@
+# T0 Evidence: lift-decision-grade-fail leftover commit + requirement doc
+
+## Git status after commits
+?? .omo/evidence/task-0-arc-prefill-ttft-dse-git-clean.txt
+?? .omo/evidence/task-0-arc-prefill-ttft-dse-pytest-excluded.log
+?? .omo/evidence/task-0-arc-prefill-ttft-dse-pytest-legacy-excl.log
+?? .omo/evidence/task-0-arc-prefill-ttft-dse-pytest.log
+?? .omo/notepads/arc-prefill-ttft-dse/
+?? .omo/plans/arc-prefill-ttft-dse.md
+
+## Git log -8
+f312e84 docs(arc): add Func Model gate-1b prefill/TTFT requirement report
+9c4a3fa chore(omo): archive lift-decision-grade-fail plan artifacts, boulder state, and tooling config
+7ff9dee docs(arch): update trust disclaimer after calibration upgrade
+84085ff docs(readme): remove FAIL clause after calibration upgrade; note remaining limits
+efa4321 docs(trust): update decision-grade state after T0 elimination and calibration upgrade
+51af40c feat(calibration): wire frequency-bound and DRAM-efficiency params into trust gate
+0e5c9a3 calibrate(dram): register DRAM efficiency params with JEDEC LPDDR5 timing sources
+862b09e calibrate(freq): add per-node frequency bound calibration entries with product references
+
+## Pytest excluding pre-existing hanging scenario test
+sim/tests/test_engine_physical_invariants.py::TestBasicInvariants::test_small_square_gemm[fsa]
+  /home/prj/zhengs/caduceuscore/npu_arc_model/sim/tests/test_engine_physical_invariants.py:489: DeprecationWarning: EngineResult.ops is deprecated; use mac_count instead
+    assert result.ops == 64 * 64 * 64
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+
+## test_dse_legacy_compat.py excluding scenario hang
+.....                                                                    [100%]
+
+## Note
+Full uv run pytest -q hangs on test_scenario_cli_produces_v2_schema (scenario CLI with embodied_compact_vla); this is pre-existing and unrelated to T0 commits. All other tests pass.
