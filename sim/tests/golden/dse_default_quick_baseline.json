@@ -7,7 +7,7 @@
     "freq_mhz": 1000,
     "weight_cache": false,
     "dram_label": "LPDDR5-64b",
-    "tok_s": 22.0,
+    "tok_s": 17.1,
     "area_mm2": 97.0,
     "power_w": 8.5
   },
@@ -19,7 +19,7 @@
     "freq_mhz": 1000,
     "weight_cache": true,
     "dram_label": "LPDDR5-64b",
-    "tok_s": 24.7,
+    "tok_s": 19.2,
     "area_mm2": 97.0,
     "power_w": 8.5
   },
@@ -31,7 +31,7 @@
     "freq_mhz": 1000,
     "weight_cache": false,
     "dram_label": "LPDDR5-128b",
-    "tok_s": 24.2,
+    "tok_s": 18.9,
     "area_mm2": 97.0,
     "power_w": 8.5
   },
@@ -43,7 +43,7 @@
     "freq_mhz": 1000,
     "weight_cache": true,
     "dram_label": "LPDDR5-128b",
-    "tok_s": 31.6,
+    "tok_s": 24.6,
     "area_mm2": 97.0,
     "power_w": 8.5
   },
@@ -55,7 +55,7 @@
     "freq_mhz": 1000,
     "weight_cache": false,
     "dram_label": "LPDDR5-64b",
-    "tok_s": 27.7,
+    "tok_s": 21.5,
     "area_mm2": 99.0,
     "power_w": 9.5
   },
@@ -67,7 +67,7 @@
     "freq_mhz": 1000,
     "weight_cache": true,
     "dram_label": "LPDDR5-64b",
-    "tok_s": 27.5,
+    "tok_s": 21.4,
     "area_mm2": 99.0,
     "power_w": 9.5
   },
@@ -79,7 +79,7 @@
     "freq_mhz": 1000,
     "weight_cache": false,
     "dram_label": "LPDDR5-128b",
-    "tok_s": 31.3,
+    "tok_s": 24.3,
     "area_mm2": 99.0,
     "power_w": 9.5
   },
@@ -91,7 +91,7 @@
     "freq_mhz": 1000,
     "weight_cache": true,
     "dram_label": "LPDDR5-128b",
-    "tok_s": 36.4,
+    "tok_s": 28.3,
     "area_mm2": 99.0,
     "power_w": 9.5
   },
@@ -103,7 +103,7 @@
     "freq_mhz": 1000,
     "weight_cache": false,
     "dram_label": "LPDDR5-64b",
-    "tok_s": 28.0,
+    "tok_s": 21.7,
     "area_mm2": 103.0,
     "power_w": 11.5
   },
@@ -115,7 +115,7 @@
     "freq_mhz": 1000,
     "weight_cache": true,
     "dram_label": "LPDDR5-64b",
-    "tok_s": 27.8,
+    "tok_s": 21.6,
     "area_mm2": 103.0,
     "power_w": 11.5
   },
@@ -127,7 +127,7 @@
     "freq_mhz": 1000,
     "weight_cache": false,
     "dram_label": "LPDDR5-128b",
-    "tok_s": 44.0,
+    "tok_s": 34.2,
     "area_mm2": 103.0,
     "power_w": 11.5
   },
@@ -139,7 +139,7 @@
     "freq_mhz": 1000,
     "weight_cache": true,
     "dram_label": "LPDDR5-128b",
-    "tok_s": 49.0,
+    "tok_s": 38.1,
     "area_mm2": 103.0,
     "power_w": 11.5
   },
@@ -151,7 +151,7 @@
     "freq_mhz": 1000,
     "weight_cache": false,
     "dram_label": "LPDDR5-64b",
-    "tok_s": 20.8,
+    "tok_s": 16.2,
     "area_mm2": 99.0,
     "power_w": 9.5
   },
@@ -163,7 +163,7 @@
     "freq_mhz": 1000,
     "weight_cache": true,
     "dram_label": "LPDDR5-64b",
-    "tok_s": 24.7,
+    "tok_s": 19.2,
     "area_mm2": 99.0,
     "power_w": 9.5
   },
@@ -175,7 +175,7 @@
     "freq_mhz": 1000,
     "weight_cache": false,
     "dram_label": "LPDDR5-128b",
-    "tok_s": 40.9,
+    "tok_s": 31.8,
     "area_mm2": 99.0,
     "power_w": 9.5
   },
@@ -187,7 +187,7 @@
     "freq_mhz": 1000,
     "weight_cache": true,
     "dram_label": "LPDDR5-128b",
-    "tok_s": 48.2,
+    "tok_s": 37.5,
     "area_mm2": 99.0,
     "power_w": 9.5
   },
@@ -199,7 +199,7 @@
     "freq_mhz": 1000,
     "weight_cache": false,
     "dram_label": "LPDDR5-64b",
-    "tok_s": 20.8,
+    "tok_s": 16.2,
     "area_mm2": 103.0,
     "power_w": 11.5
   },
@@ -211,7 +211,7 @@
     "freq_mhz": 1000,
     "weight_cache": true,
     "dram_label": "LPDDR5-64b",
-    "tok_s": 24.7,
+    "tok_s": 19.2,
     "area_mm2": 103.0,
     "power_w": 11.5
   },
@@ -223,7 +223,7 @@
     "freq_mhz": 1000,
     "weight_cache": false,
     "dram_label": "LPDDR5-128b",
-    "tok_s": 41.7,
+    "tok_s": 32.4,
     "area_mm2": 103.0,
     "power_w": 11.5
   },
@@ -235,7 +235,7 @@
     "freq_mhz": 1000,
     "weight_cache": true,
     "dram_label": "LPDDR5-128b",
-    "tok_s": 49.4,
+    "tok_s": 38.4,
     "area_mm2": 103.0,
     "power_w": 11.5
   },
@@ -247,7 +247,7 @@
     "freq_mhz": 1000,
     "weight_cache": false,
     "dram_label": "LPDDR5-64b",
-    "tok_s": 20.8,
+    "tok_s": 16.2,
     "area_mm2": 111.0,
     "power_w": 15.5
   },
@@ -259,7 +259,7 @@
     "freq_mhz": 1000,
     "weight_cache": true,
     "dram_label": "LPDDR5-64b",
-    "tok_s": 24.7,
+    "tok_s": 19.2,
     "area_mm2": 111.0,
     "power_w": 15.5
   },
@@ -271,7 +271,7 @@
     "freq_mhz": 1000,
     "weight_cache": false,
     "dram_label": "LPDDR5-128b",
-    "tok_s": 41.7,
+    "tok_s": 32.4,
     "area_mm2": 111.0,
     "power_w": 15.5
   },
@@ -283,7 +283,7 @@
     "freq_mhz": 1000,
     "weight_cache": true,
     "dram_label": "LPDDR5-128b",
-    "tok_s": 49.4,
+    "tok_s": 38.4,
     "area_mm2": 111.0,
     "power_w": 15.5
   },
@@ -295,7 +295,7 @@
     "freq_mhz": 1000,
     "weight_cache": false,
     "dram_label": "LPDDR5-64b",
-    "tok_s": 20.8,
+    "tok_s": 16.2,
     "area_mm2": 100.5,
     "power_w": 10.3
   },
@@ -307,7 +307,7 @@
     "freq_mhz": 1000,
     "weight_cache": true,
     "dram_label": "LPDDR5-64b",
-    "tok_s": 24.7,
+    "tok_s": 19.2,
     "area_mm2": 100.5,
     "power_w": 10.3
   },
@@ -319,7 +319,7 @@
     "freq_mhz": 1000,
     "weight_cache": false,
     "dram_label": "LPDDR5-128b",
-    "tok_s": 41.7,
+    "tok_s": 32.4,
     "area_mm2": 100.5,
     "power_w": 10.3
   },
@@ -331,7 +331,7 @@
     "freq_mhz": 1000,
     "weight_cache": true,
     "dram_label": "LPDDR5-128b",
-    "tok_s": 49.3,
+    "tok_s": 38.4,
     "area_mm2": 100.5,
     "power_w": 10.3
   },
@@ -343,7 +343,7 @@
     "freq_mhz": 1000,
     "weight_cache": false,
     "dram_label": "LPDDR5-64b",
-    "tok_s": 20.8,
+    "tok_s": 16.2,
     "area_mm2": 106.0,
     "power_w": 13.0
   },
@@ -355,7 +355,7 @@
     "freq_mhz": 1000,
     "weight_cache": true,
     "dram_label": "LPDDR5-64b",
-    "tok_s": 24.7,
+    "tok_s": 19.2,
     "area_mm2": 106.0,
     "power_w": 13.0
   },
@@ -367,7 +367,7 @@
     "freq_mhz": 1000,
     "weight_cache": false,
     "dram_label": "LPDDR5-128b",
-    "tok_s": 41.7,
+    "tok_s": 32.4,
     "area_mm2": 106.0,
     "power_w": 13.0
   },
@@ -379,7 +379,7 @@
     "freq_mhz": 1000,
     "weight_cache": true,
     "dram_label": "LPDDR5-128b",
-    "tok_s": 49.4,
+    "tok_s": 38.4,
     "area_mm2": 106.0,
     "power_w": 13.0
   },
@@ -391,7 +391,7 @@
     "freq_mhz": 1000,
     "weight_cache": false,
     "dram_label": "LPDDR5-64b",
-    "tok_s": 20.8,
+    "tok_s": 16.2,
     "area_mm2": 117.0,
     "power_w": 18.5
   },
@@ -403,7 +403,7 @@
     "freq_mhz": 1000,
     "weight_cache": true,
     "dram_label": "LPDDR5-64b",
-    "tok_s": 24.7,
+    "tok_s": 19.2,
     "area_mm2": 117.0,
     "power_w": 18.5
   },
@@ -415,7 +415,7 @@
     "freq_mhz": 1000,
     "weight_cache": false,
     "dram_label": "LPDDR5-128b",
-    "tok_s": 41.7,
+    "tok_s": 32.4,
     "area_mm2": 117.0,
     "power_w": 18.5
   },
@@ -427,7 +427,7 @@
     "freq_mhz": 1000,
     "weight_cache": true,
     "dram_label": "LPDDR5-128b",
-    "tok_s": 49.4,
+    "tok_s": 38.4,
     "area_mm2": 117.0,
     "power_w": 18.5
   }

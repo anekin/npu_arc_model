@@ -43,10 +43,11 @@ SIM_DIR = REPO_ROOT / "sim"
 class _FakePPA:
     """Minimal fake PPA for testing projection logic."""
 
-    def __init__(self, tok_s=100.0, area=50.0, power=10.0, label="block 64x128", spill=0.0, dw=0.0):
+    def __init__(self, tok_s=100.0, area=50.0, power=10.0, ttft_ms=0.0, label="block 64x128", spill=0.0, dw=0.0):
         self.tok_s = tok_s
         self.area_mm2 = area
         self.power_w = power
+        self.ttft_ms = ttft_ms
         self.efficiency_tok_per_watt = tok_s / max(power, 0.1)
         self.efficiency_tok_per_mm2 = tok_s / max(area, 0.1)
         self.config_label = label
@@ -275,6 +276,7 @@ class TestResultStandaloneFromPPA:
         assert result.metrics.tok_per_s == 100.0
         assert result.metrics.area_mm2 == 50.0
         assert result.metrics.power_w == 10.0
+        assert result.metrics.ttft_ms == 0.0
 
     def test_explicit_status_and_trust(self):
         cfg = _make_base_config()
@@ -303,12 +305,14 @@ class TestLegacyProjection:
         assert d["tok_s"] == 100.0
         assert d["area_mm2"] == 50.0
         assert d["power_w"] == 10.0
+        assert d["ttft_ms"] == 0.0
         assert "sram_spill_mb" not in d
 
     def test_legacy_result_dict_cv(self):
         ppa = _FakePPA(tok_s=100.0, area=50.0, power=10.0, label="bloc 64x128", spill=3.5, dw=0.42)
         d = legacy_result_dict_from_ppa(ppa, cv_mode=True, on_pareto=True)
         assert d["label"] == "bloc 64x128"
+        assert d["ttft_ms"] == 0.0
         assert d["sram_spill_mb"] == 3.5
         assert d["depthwise_util_pct"] == 0.42
         assert d["engine_type"] == "block"
@@ -317,7 +321,7 @@ class TestLegacyProjection:
     def test_project_v2_to_legacy_llm_preserves_fields(self):
         cfg = _make_base_config()
         dp_id = digest_sha256(cfg)
-        metrics = EngineMetrics(tok_per_s=100.0, area_mm2=50.0, power_w=10.0)
+        metrics = EngineMetrics(tok_per_s=100.0, area_mm2=50.0, power_w=10.0, ttft_ms=55.0)
         v2 = DesignSpaceResultV2(
             trust_level=RunTrustLevel.exploratory,
             summary=ResultSummary(generated=5, evaluated=5, complete=5),
@@ -335,6 +339,13 @@ class TestLegacyProjection:
         legacy, loss = project_v2_to_legacy_llm(v2, model_spec="qwen2.5-3b", batch_m=1, total_configs=5)
 
         assert legacy["model_spec"] == "qwen2.5-3b"
+        assert legacy["valid_results"] == 1
+        assert legacy["generated"] == 5
+        assert legacy["errors"] == 0
+        assert len(legacy["pareto_frontier"]) >= 0
+        assert isinstance(legacy["top_results"], list)
+        assert "design_point_id" in loss.dropped_fields
+        assert legacy["top_results"][0]["ttft_ms"] == 55.0
         assert legacy["batch_m"] == 1
         assert legacy["total_configs"] == 5
         assert legacy["valid_results"] == 1
@@ -416,11 +427,12 @@ class TestDSEV2Output:
         assert "input_digest" in data
         assert len(data["input_digest"]) == 64
 
-        # Every result has a stable design_point_id
         for r in data["results"]:
             assert len(r["design_point_id"]) == 64
             assert r["status"] in ("complete", "partial")
             assert r["metrics"] is not None
+            assert "ttft_ms" in r["metrics"]
+            assert r["metrics"]["ttft_ms"] >= 0
 
         # Summary consistency
         summary = data["summary"]

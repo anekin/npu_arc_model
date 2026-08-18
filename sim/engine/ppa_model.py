@@ -23,6 +23,7 @@ class PPA:
     tok_s: float
     area_mm2: float
     power_w: float
+    ttft_ms: float = 0.0
     efficiency_tok_per_watt: float = 0.0
     efficiency_tok_per_mm2: float = 0.0
     config_label: str = ""

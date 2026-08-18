@@ -75,8 +75,8 @@ def test_simulate_layer_default_matches_decode_and_baseline(models, sample_confi
     # Cross-check via evaluate_config (which uses the default decode path).
     area_model, power_model = models
     ppa = evaluate_config(sample_config, area_model, power_model)
-    # Reconstruct tok_s from default cycles to confirm consistency.
-    expected_tok_s = dse.tok_s_from_layer(default_cycles, dse._NUM_LAYERS, sample_config["mac_engine"]["frequency_mhz"])
+    spec = dse.get_spec(dse._DEFAULT_LLM_SPEC)
+    expected_tok_s = dse.tok_s_from_layer(default_cycles, spec.layers, sample_config["mac_engine"]["frequency_mhz"])
     assert math.isclose(ppa.tok_s, expected_tok_s, rel_tol=0, abs_tol=1e-9)
 
 

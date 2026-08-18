@@ -1,0 +1,32 @@
+{
+  "task": "T4",
+  "plan": "arc-prefill-ttft-dse",
+  "status": "pass",
+  "summary": "ttft_ms threaded through PPA, EngineMetrics, legacy projection, and evaluate_config",
+  "commands": [
+    "uv run pytest -q --ignore=sim/tests/test_dse_legacy_compat.py",
+    "uv run python sim/design_space_explorer.py --quick --output /tmp/t4.json",
+    "uv run python sim/design_space_explorer.py --quick --result-schema v2 --output /tmp/t4_v2.json"
+  ],
+  "checks": {
+    "pytest_passed": true,
+    "legacy_cli_ttft_ms_present": true,
+    "v2_metrics_ttft_ms_present": true,
+    "sample_legacy_ttft_ms": 20.7,
+    "sample_v2_ttft_ms": 47.72
+  },
+  "files_modified": [
+    "sim/engine/ppa_model.py",
+    "sim/contracts/result.py",
+    "sim/contracts/legacy_result.py",
+    "sim/design_space_explorer.py",
+    "sim/dse/runner.py",
+    "sim/tests/test_result_schema.py",
+    "sim/tests/test_prefill_ttft.py",
+    "sim/tests/test_fr7_backcompat.py",
+    "sim/tests/test_trace_batch_m.py",
+    "sim/tests/test_dse_strict.py",
+    "sim/tests/golden/legacy_cli_contract.json",
+    "sim/tests/golden/dse_default_quick_baseline.json"
+  ]
+}

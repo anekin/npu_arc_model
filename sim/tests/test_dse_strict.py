@@ -13,12 +13,12 @@ def _make_fail_once():
     """Return an evaluate_config wrapper that raises on the first call only."""
     calls = 0
 
-    def wrapper(cfg, area_model, power_model):
+    def wrapper(cfg, area_model, power_model, **kwargs):
         nonlocal calls
         calls += 1
         if calls == 1:
             raise RuntimeError("injected failure for test")
-        return _ORIG_EVALUATE(cfg, area_model, power_model)
+        return _ORIG_EVALUATE(cfg, area_model, power_model, **kwargs)
 
     return wrapper
 

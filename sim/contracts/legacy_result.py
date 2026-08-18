@@ -51,6 +51,7 @@ def legacy_result_dict_from_ppa(
         "tok_s": ppa.tok_s,
         "area_mm2": ppa.area_mm2,
         "power_w": ppa.power_w,
+        "ttft_ms": round(ppa.ttft_ms, 2),
     }
     if cv_mode:
         d["sram_spill_mb"] = ppa.sram_spill_mb
@@ -268,6 +269,7 @@ def _legacy_point(r: Any, pareto_ids: set[str]) -> dict[str, Any]:
         "tok_s": m.tok_per_s,
         "area_mm2": m.area_mm2,
         "power_w": m.power_w,
+        "ttft_ms": round(m.ttft_ms, 2),
     }
 
 
@@ -290,6 +292,7 @@ def _cv_legacy_point(r: Any, on_pareto: bool) -> dict[str, Any]:
         "tok_s": m.tok_per_s,
         "area_mm2": m.area_mm2,
         "power_w": m.power_w,
+        "ttft_ms": 0.0,
         "sram_spill_mb": m.sram_spill_mb or 0.0,
         "depthwise_util_pct": m.depthwise_util_pct or 0.0,
         "engine_type": engine_map.get(prefix, r.engine_type),

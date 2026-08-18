@@ -100,6 +100,7 @@ class EngineMetrics(BaseModel):
     tok_per_s: float = Field(..., description="Throughput in tokens/s (LLM) or FPS (CV)")
     area_mm2: float = Field(..., description="Die area in mm²")
     power_w: float = Field(..., description="Power consumption in watts")
+    ttft_ms: float = Field(default=0.0, description="Time-to-first-token for batch_m prompt tokens")
     efficiency_tok_per_watt: float = Field(default=0.0)
     efficiency_tok_per_mm2: float = Field(default=0.0)
 
@@ -260,6 +261,7 @@ def result_standalone_from_ppa(
         tok_per_s=ppa.tok_s,
         area_mm2=ppa.area_mm2,
         power_w=ppa.power_w,
+        ttft_ms=ppa.ttft_ms,
         efficiency_tok_per_watt=ppa.efficiency_tok_per_watt,
         efficiency_tok_per_mm2=ppa.efficiency_tok_per_mm2,
         sram_spill_mb=ppa.sram_spill_mb if ppa.sram_spill_mb else None,

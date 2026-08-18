@@ -86,8 +86,8 @@ def test_fr7_backcompat_detects_simulate_layer_regression(models, baseline):
 
     original_simulate_layer = dse.simulate_layer
 
-    def broken_simulate_layer(cfg, batch_m=None):
-        layer_cycles, weight_bytes = original_simulate_layer(cfg, batch_m)
+    def broken_simulate_layer(cfg, batch_m=None, **kwargs):
+        layer_cycles, weight_bytes = original_simulate_layer(cfg, batch_m, **kwargs)
         # A single extra cycle is not detectable for BW-bound quick configs,
         # so scale the compute latency to ensure the baseline catches a regression.
         return layer_cycles * 10, weight_bytes

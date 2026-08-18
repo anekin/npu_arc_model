@@ -29,6 +29,7 @@ _CV_ONNX_PATH: str = ""
 
 _NUM_LAYERS: int = 28
 _DEFAULT_LLM_SPEC: str = "qwen2.5-3b"
+_MODEL_ALIAS: str = _DEFAULT_LLM_SPEC
 _SEQ_KV: int = 2048  # KV cache sequence length for decode
 
 
@@ -305,9 +306,12 @@ def generate_configs(quick: bool = False) -> list[dict[str, Any]]:
     return configs
 
 
-def evaluate_config(cfg: dict[str, Any], area_model: AreaModel, power_model: PowerModel) -> PPA:
+def evaluate_config(
+    cfg: dict[str, Any], area_model: AreaModel, power_model: PowerModel, *, batch_m: int = 1
+) -> PPA:
     """Evaluate one configuration → PPA."""
     engine_type = cfg["mac_engine"]["type"]
+    freq = cfg["mac_engine"]["frequency_mhz"]
 
     if _CV_MODEL:
         from cv.cv_sim import simulate_cv
@@ -319,22 +323,26 @@ def evaluate_config(cfg: dict[str, Any], area_model: AreaModel, power_model: Pow
         power = power_model.estimate(area_model, cfg, engine_type)
         sram_spill = cv_result.get("sram_spill_mb", 0.0)
         dw_util = _depthwise_util_from_cv_result(cv_result)
+        ttft = 0.0
     else:
-        layer_cycles, _ = simulate_layer(cfg)
-        freq = cfg["mac_engine"]["frequency_mhz"]
-        fps = tok_s_from_layer(layer_cycles, _NUM_LAYERS, freq)
+        spec = get_spec(_MODEL_ALIAS)
+        kv_heads = spec.kv_heads
+        head_dim = spec.head_dim
+        layer_cycles, _ = simulate_layer(cfg, batch_m=1, kv_heads=kv_heads, head_dim=head_dim)
+        fps = tok_s_from_layer(layer_cycles, spec.layers, freq)
         area_result = area_model.estimate(cfg, engine_type)
         area = area_result["total_mm2"]
         power = power_model.estimate(area_model, cfg, engine_type)
         sram_spill = 0.0
         dw_util = 0.0
+        prefill = simulate_prefill(cfg, batch_m, _MODEL_ALIAS)
+        ttft = ttft_ms_from_prefill(prefill, spec.layers, freq)
 
     H = cfg["mac_engine"]["array_height"]
     W = cfg["mac_engine"]["array_width"]
     w_bits = cfg["mac_engine"]["weight_precision_bits"]
     wc = cfg["optimizations"]["weight_cache"]
     cfg["optimizations"]["dma_bw_multiplier"]
-    freq = cfg["mac_engine"]["frequency_mhz"]
 
     label = f"{engine_type[:4]} {H}×{W} INT{w_bits} {freq}MHz {'WC' if wc else ''} {cfg.get('_dram_label', '')}"
 
@@ -342,6 +350,7 @@ def evaluate_config(cfg: dict[str, Any], area_model: AreaModel, power_model: Pow
         tok_s=fps,
         area_mm2=area,
         power_w=power,
+        ttft_ms=ttft,
         config_label=label,
         sram_spill_mb=sram_spill,
         depthwise_util_pct=dw_util,
@@ -636,6 +645,7 @@ def _build_v2_output(
             tok_per_s=ppa.tok_s,
             area_mm2=ppa.area_mm2,
             power_w=ppa.power_w,
+            ttft_ms=ppa.ttft_ms,
             efficiency_tok_per_watt=ppa.efficiency_tok_per_watt,
             efficiency_tok_per_mm2=ppa.efficiency_tok_per_mm2,
             sram_spill_mb=ppa.sram_spill_mb if ppa.sram_spill_mb else None,
@@ -1021,8 +1031,9 @@ def main():
     model_spec = args.model_spec if args.model_spec is not None else "qwen2.5-3b"
     batch_m = args.batch_m if args.batch_m is not None else 1
 
-    global _CV_MODEL, _CV_TRACE, _CV_ONNX_PATH, _NUM_LAYERS
+    global _CV_MODEL, _CV_TRACE, _CV_ONNX_PATH, _NUM_LAYERS, _MODEL_ALIAS
     _CV_MODEL = args.cv_model or ""
+    _MODEL_ALIAS = model_spec
     if _CV_MODEL:
         if args.cv_model == "mobilenetv3-small":
             from cv.cv_trace import generate_mobilenetv3_trace
@@ -1077,7 +1088,7 @@ def main():
     for cfg in configs:
         evaluated += 1
         try:
-            ppa = evaluate_config(cfg, area_model, power_model)
+                ppa = evaluate_config(cfg, area_model, power_model, batch_m=batch_m)
         except Exception as exc:
             errors += 1
             engine_type = cfg.get("mac_engine", {}).get("type", "unknown")
@@ -1256,7 +1267,13 @@ def main():
         else:
 
             def _result_dict(p, on_pareto=False):
-                d = {"label": p.config_label, "tok_s": p.tok_s, "area_mm2": p.area_mm2, "power_w": p.power_w}
+                d = {
+                    "label": p.config_label,
+                    "tok_s": p.tok_s,
+                    "area_mm2": p.area_mm2,
+                    "power_w": p.power_w,
+                    "ttft_ms": round(p.ttft_ms, 2),
+                }
                 if _CV_MODEL:
                     d["sram_spill_mb"] = p.sram_spill_mb
                     d["depthwise_util_pct"] = p.depthwise_util_pct

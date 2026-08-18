@@ -5,7 +5,9 @@ from unittest.mock import patch
 
 import design_space_explorer as dse
 import pytest
+import yaml
 from dse.legacy_adapter import generate_configs
+from engine.ppa_model import AreaModel, PowerModel
 
 SIM_DIR = Path(__file__).resolve().parents[1]
 
@@ -76,3 +78,32 @@ def test_prefill_uses_spec_kv_geometry(sample_config):
     # Doubling batch_m should increase cycles for a compute-bound config.
     cycles2 = dse.simulate_prefill(sample_config, 8, model_alias=dse._DEFAULT_LLM_SPEC)
     assert cycles2 > cycles
+
+
+def test_evaluate_config_ttft_uses_spec_layers():
+    """TTFT must be computed with the model-spec layer count, not the hard-coded 28."""
+    with open(SIM_DIR / "config" / "design_space.yaml") as f:
+        base_cfg = yaml.safe_load(f)
+    area_model = AreaModel(base_cfg)
+    power_model = PowerModel(base_cfg)
+
+    cfg = next(
+        c
+        for c in generate_configs(quick=True)
+        if c["mac_engine"]["type"] == "block"
+        and c["mac_engine"]["array_height"] == 128
+        and c["mac_engine"]["array_width"] == 128
+    )
+
+    original_alias = dse._MODEL_ALIAS
+    dse._MODEL_ALIAS = "qwen2.5-3b"
+    try:
+        ppa = dse.evaluate_config(cfg, area_model, power_model, batch_m=128)
+    finally:
+        dse._MODEL_ALIAS = original_alias
+
+    spec = dse.get_spec("qwen2.5-3b")
+    prefill = dse.simulate_prefill(cfg, 128, "qwen2.5-3b")
+    expected = dse.ttft_ms_from_prefill(prefill, spec.layers, cfg["mac_engine"]["frequency_mhz"])
+    assert ppa.ttft_ms > 0
+    assert round(ppa.ttft_ms, 2) == round(expected, 2)

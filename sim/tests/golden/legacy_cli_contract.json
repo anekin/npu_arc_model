@@ -159,7 +159,8 @@
           "label": {"type": "string"},
           "tok_s": {"type": "float", "unit": "tokens per second"},
           "area_mm2": {"type": "float", "unit": "mm^2"},
-          "power_w": {"type": "float", "unit": "watts"}
+          "power_w": {"type": "float", "unit": "watts"},
+          "ttft_ms": {"type": "float", "unit": "milliseconds"}
         }
       },
       "top_results": {
@@ -168,7 +169,8 @@
           "label": {"type": "string"},
           "tok_s": {"type": "float", "unit": "tokens per second"},
           "area_mm2": {"type": "float", "unit": "mm^2"},
-          "power_w": {"type": "float", "unit": "watts"}
+          "power_w": {"type": "float", "unit": "watts"},
+          "ttft_ms": {"type": "float", "unit": "milliseconds"}
         }
       }
     }

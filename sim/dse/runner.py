@@ -291,6 +291,7 @@ class ScenarioDseRunner:
             tok_per_s=ppa.tok_s,
             area_mm2=ppa.area_mm2,
             power_w=ppa.power_w,
+            ttft_ms=ppa.ttft_ms,
             efficiency_tok_per_watt=ppa.efficiency_tok_per_watt,
             efficiency_tok_per_mm2=ppa.efficiency_tok_per_mm2,
             completed_throughput_hz=metrics.completed_throughput_hz,
