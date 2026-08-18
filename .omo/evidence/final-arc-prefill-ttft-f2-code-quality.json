@@ -1,0 +1,11 @@
+{
+  "verdict": "PASS",
+  "violations": [],
+  "utilization_clamps": [],
+  "legacy_unit_reads": [],
+  "diagnostic_skips": [],
+  "duplicate_registries": [],
+  "unregistered_constants": [],
+  "fail_open_paths": [],
+  "utilization_bound_violations": []
+}

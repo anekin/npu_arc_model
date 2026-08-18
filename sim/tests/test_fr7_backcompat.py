@@ -69,15 +69,15 @@ def test_fr7_backcompat_matches_baseline(models, baseline):
         cfg = config_map[key]
         ppa = evaluate_config(cfg, area_model, power_model)
 
-        assert math.isclose(
-            ppa.tok_s, row["tok_s"], rel_tol=0, abs_tol=1e-9
-        ), f"tok_s drift for {key}: {ppa.tok_s} != {row['tok_s']}"
-        assert math.isclose(
-            ppa.area_mm2, row["area_mm2"], rel_tol=0, abs_tol=1e-9
-        ), f"area drift for {key}: {ppa.area_mm2} != {row['area_mm2']}"
-        assert math.isclose(
-            ppa.power_w, row["power_w"], rel_tol=0, abs_tol=1e-9
-        ), f"power drift for {key}: {ppa.power_w} != {row['power_w']}"
+        assert math.isclose(ppa.tok_s, row["tok_s"], rel_tol=0, abs_tol=1e-9), (
+            f"tok_s drift for {key}: {ppa.tok_s} != {row['tok_s']}"
+        )
+        assert math.isclose(ppa.area_mm2, row["area_mm2"], rel_tol=0, abs_tol=1e-9), (
+            f"area drift for {key}: {ppa.area_mm2} != {row['area_mm2']}"
+        )
+        assert math.isclose(ppa.power_w, row["power_w"], rel_tol=0, abs_tol=1e-9), (
+            f"power drift for {key}: {ppa.power_w} != {row['power_w']}"
+        )
 
 
 def test_fr7_backcompat_detects_simulate_layer_regression(models, baseline):
@@ -116,8 +116,7 @@ def test_fr7_backcompat_detects_simulate_layer_regression(models, baseline):
 
         if drift_count == 0:
             pytest.fail(
-                "Mutation test did not detect simulate_layer regression: "
-                "no baseline row drifted after adding 1 cycle"
+                "Mutation test did not detect simulate_layer regression: no baseline row drifted after adding 1 cycle"
             )
     finally:
         dse.simulate_layer = original_simulate_layer

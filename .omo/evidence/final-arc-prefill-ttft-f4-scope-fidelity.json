@@ -1,0 +1,17 @@
+{
+  "verdict": "PASS",
+  "baseline_commit": "f22eb5694bba3d5c63ad35ea3dd20e46e64cde26",
+  "publication_manifest": "docs/publication-manifest.yaml",
+  "violations": [],
+  "forbidden_dependencies": [],
+  "historical_report_changes": [],
+  "ultraresearch_changes": [],
+  "unbound_current_claims": [],
+  "changed_paths": [],
+  "out_of_scope_paths": [],
+  "git_status": [
+    "?? .omo/evidence/final-arc-prefill-ttft-f1-plan-compliance.json",
+    "?? .omo/evidence/final-arc-prefill-ttft-f2-code-quality.txt"
+  ],
+  "plan": ".omo/plans/arc-prefill-ttft-dse.md"
+}

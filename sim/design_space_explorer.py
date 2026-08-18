@@ -307,9 +307,7 @@ def generate_configs(quick: bool = False) -> list[dict[str, Any]]:
     return configs
 
 
-def evaluate_config(
-    cfg: dict[str, Any], area_model: AreaModel, power_model: PowerModel, *, batch_m: int = 1
-) -> PPA:
+def evaluate_config(cfg: dict[str, Any], area_model: AreaModel, power_model: PowerModel, *, batch_m: int = 1) -> PPA:
     """Evaluate one configuration → PPA."""
     engine_type = cfg["mac_engine"]["type"]
     freq = cfg["mac_engine"]["frequency_mhz"]
@@ -995,7 +993,10 @@ def main():
         help="LLM model spec alias for DSE",
     )
     parser.add_argument(
-        "--batch-m", type=_positive_int, default=None, help="Prefill batch M (>=1). Drives prefill/TTFT metrics only; decode tok_s keeps batch_m=1 semantics"
+        "--batch-m",
+        type=_positive_int,
+        default=None,
+        help="Prefill batch M (>=1). Drives prefill/TTFT metrics only; decode tok_s keeps batch_m=1 semantics",
     )
     parser.add_argument(
         "--result-schema",
@@ -1098,7 +1099,7 @@ def main():
     for cfg in configs:
         evaluated += 1
         try:
-                ppa = evaluate_config(cfg, area_model, power_model, batch_m=batch_m)
+            ppa = evaluate_config(cfg, area_model, power_model, batch_m=batch_m)
         except Exception as exc:
             errors += 1
             engine_type = cfg.get("mac_engine", {}).get("type", "unknown")

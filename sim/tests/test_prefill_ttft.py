@@ -196,9 +196,7 @@ def test_ttft_bw_floor(models):
     ppa = dse.evaluate_config(cfg, area_model, power_model, batch_m=128)
 
     spec = dse.get_spec(dse._DEFAULT_LLM_SPEC)
-    weights_bytes_total = (
-        spec.layers * (spec.hidden * spec.intermediate * 3 + spec.intermediate * spec.hidden) * 0.5
-    )
+    weights_bytes_total = spec.layers * (spec.hidden * spec.intermediate * 3 + spec.intermediate * spec.hidden) * 0.5
     bandwidth_gbps = cfg["memory"]["bandwidth_gbps"]
     floor_ms = weights_bytes_total / (bandwidth_gbps * 1e9 / 8) * 1000
     margin = ppa.ttft_ms / floor_ms

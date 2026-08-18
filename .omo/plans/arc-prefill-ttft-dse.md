@@ -455,7 +455,7 @@ Critical path: `0 → 1 → 2 → 3 → 4 → 5 → 6 → (7∥8) → 9 → F1-F
 ## Final verification wave
 > Runs in parallel after ALL todos. ALL must APPROVE. Surface results and wait for the user's explicit okay before declaring complete.
 
-- [ ] F1. Plan compliance audit
+- [x] F1. Plan compliance audit
 
   预检查（D3）：先列齐预期证据文件（`.omo/evidence/task-0..9-arc-prefill-ttft-dse-*`、`final-arc-prefill-ttft-f1..f4-*`、`gate-1b-dse-ttft-targets.md`）并逐项 `ls` 确认存在后再跑 verifier。
 
@@ -470,7 +470,7 @@ Critical path: `0 → 1 → 2 → 3 → 4 → 5 → 6 → (7∥8) → 9 → F1-F
 
   **APPROVE iff** exit 0、Todos/F1-F4 schema 可解析、Todo 0-9 每项有匹配 commit/evidence、all blocking skipped/xfail=0。
 
-- [ ] F2. Code quality and model-integrity review
+- [x] F2. Code quality and model-integrity review
 
   ```bash
   uv run ruff format --check . > .omo/evidence/final-arc-prefill-ttft-f2-code-quality.txt 2>&1
@@ -483,7 +483,7 @@ Critical path: `0 → 1 → 2 → 3 → 4 → 5 → 6 → (7∥8) → 9 → F1-F
 
   **APPROVE iff** 全部命令 exit 0、blocking skip/xfail=0、verifier output `verdict=PASS`。
 
-- [ ] F3. Real CLI/scenario/replay QA
+- [x] F3. Real CLI/scenario/replay QA
 
   ```bash
   uv run python scripts/release_gate.py \
@@ -501,7 +501,7 @@ Critical path: `0 → 1 → 2 → 3 → 4 → 5 → 6 → (7∥8) → 9 → F1-F
 
   **APPROVE iff** release_gate exit 0、`legacy_failures=[]`、`workload_failures=[]`、`coverage.missing=[]`、`errors=0`、`experimental_gate=pass`；/tmp/f3-m128.json 生成成功且含 Block 64×64 `ttft_ms>0`；`--batch-m 0` 被拒绝。
 
-- [ ] F4. Scope and evidence fidelity
+- [x] F4. Scope and evidence fidelity
 
   ```bash
   uv run python scripts/verify_scope.py \

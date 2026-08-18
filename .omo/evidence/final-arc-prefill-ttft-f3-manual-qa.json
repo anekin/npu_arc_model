@@ -1,0 +1,999 @@
+{
+  "profile": "experimental",
+  "scenario": "lpddr5_3b",
+  "space": "ci-all-axes",
+  "verdict": "PASS",
+  "legacy_failures": [],
+  "workload_failures": [],
+  "coverage": {
+    "axis_coverage": {
+      "action_horizon": {
+        "axis": "action_horizon",
+        "evaluated": [
+          8,
+          10,
+          25,
+          50
+        ],
+        "excluded": [],
+        "exclusion_records": [],
+        "failed": [],
+        "filtered": [],
+        "generated": [
+          8,
+          10,
+          25,
+          50
+        ],
+        "missing": [],
+        "pruned": [],
+        "requested": [
+          8,
+          10,
+          25,
+          50
+        ],
+        "successful": [
+          8,
+          10,
+          25,
+          50
+        ]
+      },
+      "activation_precision_bits": {
+        "axis": "activation_precision_bits",
+        "evaluated": [
+          8,
+          16
+        ],
+        "excluded": [],
+        "exclusion_records": [],
+        "failed": [],
+        "filtered": [],
+        "generated": [
+          8,
+          16
+        ],
+        "missing": [],
+        "pruned": [],
+        "requested": [
+          8,
+          16
+        ],
+        "successful": [
+          8,
+          16
+        ]
+      },
+      "active_sequences": {
+        "axis": "active_sequences",
+        "evaluated": [
+          1,
+          2,
+          4,
+          8,
+          16
+        ],
+        "excluded": [],
+        "exclusion_records": [],
+        "failed": [],
+        "filtered": [],
+        "generated": [
+          1,
+          2,
+          4,
+          8,
+          16
+        ],
+        "missing": [],
+        "pruned": [],
+        "requested": [
+          1,
+          2,
+          4,
+          8,
+          16
+        ],
+        "successful": [
+          1,
+          2,
+          4,
+          8,
+          16
+        ]
+      },
+      "array_height": {
+        "axis": "array_height",
+        "evaluated": [
+          64,
+          128,
+          256
+        ],
+        "excluded": [],
+        "exclusion_records": [],
+        "failed": [],
+        "filtered": [],
+        "generated": [
+          64,
+          128,
+          256
+        ],
+        "missing": [],
+        "pruned": [],
+        "requested": [
+          64,
+          128,
+          256
+        ],
+        "successful": [
+          64,
+          128,
+          256
+        ]
+      },
+      "array_width": {
+        "axis": "array_width",
+        "evaluated": [
+          64,
+          128,
+          256,
+          384
+        ],
+        "excluded": [],
+        "exclusion_records": [],
+        "failed": [],
+        "filtered": [],
+        "generated": [
+          64,
+          128,
+          256,
+          384
+        ],
+        "missing": [],
+        "pruned": [],
+        "requested": [
+          64,
+          128,
+          256,
+          384
+        ],
+        "successful": [
+          64,
+          128,
+          256,
+          384
+        ]
+      },
+      "bandwidth_gbps": {
+        "axis": "bandwidth_gbps",
+        "evaluated": [
+          "51.2"
+        ],
+        "excluded": [
+          "25.6",
+          "68.0",
+          "102.4",
+          "204.8",
+          "410.0",
+          "460.0",
+          "500.0",
+          "819.2"
+        ],
+        "exclusion_records": [
+          {
+            "axis": "bandwidth_gbps",
+            "constraint_name": "scenario_bandwidth_match",
+            "reason": "scenario_bandwidth_match",
+            "value": "25.6"
+          },
+          {
+            "axis": "bandwidth_gbps",
+            "constraint_name": "scenario_bandwidth_match",
+            "reason": "scenario_bandwidth_match",
+            "value": "68.0"
+          },
+          {
+            "axis": "bandwidth_gbps",
+            "constraint_name": "scenario_bandwidth_match",
+            "reason": "scenario_bandwidth_match",
+            "value": "102.4"
+          },
+          {
+            "axis": "bandwidth_gbps",
+            "constraint_name": "scenario_bandwidth_match",
+            "reason": "scenario_bandwidth_match",
+            "value": "204.8"
+          },
+          {
+            "axis": "bandwidth_gbps",
+            "constraint_name": "scenario_bandwidth_match",
+            "reason": "scenario_bandwidth_match",
+            "value": "410.0"
+          },
+          {
+            "axis": "bandwidth_gbps",
+            "constraint_name": "scenario_bandwidth_match",
+            "reason": "scenario_bandwidth_match",
+            "value": "460.0"
+          },
+          {
+            "axis": "bandwidth_gbps",
+            "constraint_name": "scenario_bandwidth_match",
+            "reason": "scenario_bandwidth_match",
+            "value": "500.0"
+          },
+          {
+            "axis": "bandwidth_gbps",
+            "constraint_name": "scenario_bandwidth_match",
+            "reason": "scenario_bandwidth_match",
+            "value": "819.2"
+          }
+        ],
+        "failed": [],
+        "filtered": [],
+        "generated": [
+          "51.2"
+        ],
+        "missing": [],
+        "pruned": [],
+        "requested": [
+          "25.6",
+          "51.2",
+          "68.0",
+          "102.4",
+          "204.8",
+          "410.0",
+          "460.0",
+          "500.0",
+          "819.2"
+        ],
+        "successful": [
+          "51.2"
+        ]
+      },
+      "dram_width_bits": {
+        "axis": "dram_width_bits",
+        "evaluated": [
+          0,
+          64,
+          128,
+          256,
+          1024
+        ],
+        "excluded": [
+          0,
+          1024
+        ],
+        "exclusion_records": [
+          {
+            "axis": "dram_width_bits",
+            "constraint_name": "lpddr5_requires_dram_width",
+            "reason": "lpddr5_no_onchip",
+            "value": 0
+          },
+          {
+            "axis": "dram_width_bits",
+            "constraint_name": "lpddr5_requires_dram_width",
+            "reason": "lpddr5_no_onchip",
+            "value": 1024
+          }
+        ],
+        "failed": [],
+        "filtered": [],
+        "generated": [
+          0,
+          64,
+          128,
+          256,
+          1024
+        ],
+        "missing": [],
+        "pruned": [],
+        "requested": [
+          0,
+          64,
+          128,
+          256,
+          1024
+        ],
+        "successful": [
+          0,
+          64,
+          128,
+          256,
+          1024
+        ]
+      },
+      "engine": {
+        "axis": "engine",
+        "evaluated": [
+          "block",
+          "fsa",
+          "gmma",
+          "input_stationary",
+          "os_systolic",
+          "systolic",
+          "tensor_core",
+          "wmma"
+        ],
+        "excluded": [],
+        "exclusion_records": [],
+        "failed": [],
+        "filtered": [],
+        "generated": [
+          "block",
+          "fsa",
+          "gmma",
+          "input_stationary",
+          "os_systolic",
+          "systolic",
+          "tensor_core",
+          "wmma"
+        ],
+        "missing": [],
+        "pruned": [],
+        "requested": [
+          "block",
+          "fsa",
+          "gmma",
+          "input_stationary",
+          "os_systolic",
+          "systolic",
+          "tensor_core",
+          "wmma"
+        ],
+        "successful": [
+          "block",
+          "fsa",
+          "gmma",
+          "input_stationary",
+          "os_systolic",
+          "systolic",
+          "tensor_core",
+          "wmma"
+        ]
+      },
+      "flow_steps": {
+        "axis": "flow_steps",
+        "evaluated": [
+          4,
+          8,
+          10
+        ],
+        "excluded": [],
+        "exclusion_records": [],
+        "failed": [],
+        "filtered": [],
+        "generated": [
+          4,
+          8,
+          10
+        ],
+        "missing": [],
+        "pruned": [],
+        "requested": [
+          4,
+          8,
+          10
+        ],
+        "successful": [
+          4,
+          8,
+          10
+        ]
+      },
+      "frequency_mhz": {
+        "axis": "frequency_mhz",
+        "evaluated": [
+          200,
+          400,
+          800,
+          1000,
+          1200,
+          1600,
+          2000
+        ],
+        "excluded": [
+          200,
+          400,
+          600
+        ],
+        "exclusion_records": [
+          {
+            "axis": "frequency_mhz",
+            "constraint_name": "node_7_frequency_bound",
+            "reason": "node_7_frequency_bound",
+            "value": 200
+          },
+          {
+            "axis": "frequency_mhz",
+            "constraint_name": "node_7_frequency_bound",
+            "reason": "node_7_frequency_bound",
+            "value": 400
+          },
+          {
+            "axis": "frequency_mhz",
+            "constraint_name": "node_7_frequency_bound",
+            "reason": "node_7_frequency_bound",
+            "value": 600
+          }
+        ],
+        "failed": [],
+        "filtered": [],
+        "generated": [
+          200,
+          400,
+          800,
+          1000,
+          1200,
+          1600,
+          2000
+        ],
+        "missing": [],
+        "pruned": [],
+        "requested": [
+          200,
+          400,
+          600,
+          800,
+          1000,
+          1200,
+          1600,
+          2000
+        ],
+        "successful": [
+          200,
+          400,
+          800,
+          1000,
+          1200,
+          1600,
+          2000
+        ]
+      },
+      "image_count": {
+        "axis": "image_count",
+        "evaluated": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "excluded": [],
+        "exclusion_records": [],
+        "failed": [],
+        "filtered": [],
+        "generated": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "missing": [],
+        "pruned": [],
+        "requested": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "successful": [
+          1,
+          2,
+          3,
+          4
+        ]
+      },
+      "inflight_jobs": {
+        "axis": "inflight_jobs",
+        "evaluated": [
+          4,
+          8,
+          16
+        ],
+        "excluded": [],
+        "exclusion_records": [],
+        "failed": [],
+        "filtered": [],
+        "generated": [
+          4,
+          8,
+          16
+        ],
+        "missing": [],
+        "pruned": [],
+        "requested": [
+          4,
+          8,
+          16
+        ],
+        "successful": [
+          4,
+          8,
+          16
+        ]
+      },
+      "memory_type": {
+        "axis": "memory_type",
+        "evaluated": [
+          "hbm2e",
+          "hbm3",
+          "lpddr5",
+          "lpddr5x",
+          "on_chip_3d_dram"
+        ],
+        "excluded": [],
+        "exclusion_records": [],
+        "failed": [],
+        "filtered": [],
+        "generated": [
+          "hbm2e",
+          "hbm3",
+          "lpddr5",
+          "lpddr5x",
+          "on_chip_3d_dram"
+        ],
+        "missing": [],
+        "pruned": [],
+        "requested": [
+          "hbm2e",
+          "hbm3",
+          "lpddr5",
+          "lpddr5x",
+          "on_chip_3d_dram"
+        ],
+        "successful": [
+          "hbm2e",
+          "hbm3",
+          "lpddr5",
+          "lpddr5x",
+          "on_chip_3d_dram"
+        ]
+      },
+      "nonpreemptible_quantum_ms": {
+        "axis": "nonpreemptible_quantum_ms",
+        "evaluated": [
+          "0.0",
+          "1.0",
+          "5.0",
+          "10.0"
+        ],
+        "excluded": [],
+        "exclusion_records": [],
+        "failed": [],
+        "filtered": [],
+        "generated": [
+          "0.0",
+          "1.0",
+          "5.0",
+          "10.0"
+        ],
+        "missing": [],
+        "pruned": [],
+        "requested": [
+          "0.0",
+          "1.0",
+          "5.0",
+          "10.0"
+        ],
+        "successful": [
+          "0.0",
+          "1.0",
+          "5.0",
+          "10.0"
+        ]
+      },
+      "on_chip_bandwidth_gbps": {
+        "axis": "on_chip_bandwidth_gbps",
+        "evaluated": [
+          0,
+          100
+        ],
+        "excluded": [
+          100,
+          500,
+          1000
+        ],
+        "exclusion_records": [
+          {
+            "axis": "on_chip_bandwidth_gbps",
+            "constraint_name": "lpddr5_requires_dram_width",
+            "reason": "lpddr5_no_onchip",
+            "value": 100
+          },
+          {
+            "axis": "on_chip_bandwidth_gbps",
+            "constraint_name": "lpddr5_requires_dram_width",
+            "reason": "lpddr5_no_onchip",
+            "value": 500
+          },
+          {
+            "axis": "on_chip_bandwidth_gbps",
+            "constraint_name": "lpddr5_requires_dram_width",
+            "reason": "lpddr5_no_onchip",
+            "value": 1000
+          }
+        ],
+        "failed": [],
+        "filtered": [],
+        "generated": [
+          0,
+          100
+        ],
+        "missing": [],
+        "pruned": [],
+        "requested": [
+          0,
+          100,
+          500,
+          1000
+        ],
+        "successful": [
+          0,
+          100
+        ]
+      },
+      "on_chip_capacity_gb": {
+        "axis": "on_chip_capacity_gb",
+        "evaluated": [
+          0,
+          "0.1"
+        ],
+        "excluded": [
+          "0.1",
+          1,
+          5,
+          16
+        ],
+        "exclusion_records": [
+          {
+            "axis": "on_chip_capacity_gb",
+            "constraint_name": "lpddr5_requires_dram_width",
+            "reason": "lpddr5_no_onchip",
+            "value": "0.1"
+          },
+          {
+            "axis": "on_chip_capacity_gb",
+            "constraint_name": "lpddr5_requires_dram_width",
+            "reason": "lpddr5_no_onchip",
+            "value": 1
+          },
+          {
+            "axis": "on_chip_capacity_gb",
+            "constraint_name": "lpddr5_requires_dram_width",
+            "reason": "lpddr5_no_onchip",
+            "value": 5
+          },
+          {
+            "axis": "on_chip_capacity_gb",
+            "constraint_name": "lpddr5_requires_dram_width",
+            "reason": "lpddr5_no_onchip",
+            "value": 16
+          }
+        ],
+        "failed": [],
+        "filtered": [],
+        "generated": [
+          0,
+          "0.1"
+        ],
+        "missing": [],
+        "pruned": [],
+        "requested": [
+          0,
+          "0.1",
+          1,
+          5,
+          16
+        ],
+        "successful": [
+          0,
+          "0.1"
+        ]
+      },
+      "partition": {
+        "axis": "partition",
+        "evaluated": [
+          "dynamic",
+          "none",
+          "static"
+        ],
+        "excluded": [],
+        "exclusion_records": [],
+        "failed": [],
+        "filtered": [],
+        "generated": [
+          "dynamic",
+          "none",
+          "static"
+        ],
+        "missing": [],
+        "pruned": [],
+        "requested": [
+          "dynamic",
+          "none",
+          "static"
+        ],
+        "successful": [
+          "dynamic",
+          "none",
+          "static"
+        ]
+      },
+      "process_node": {
+        "axis": "process_node",
+        "evaluated": [
+          7,
+          12,
+          22,
+          28
+        ],
+        "excluded": [],
+        "exclusion_records": [],
+        "failed": [],
+        "filtered": [],
+        "generated": [
+          7,
+          12,
+          22,
+          28
+        ],
+        "missing": [],
+        "pruned": [],
+        "requested": [
+          7,
+          12,
+          22,
+          28
+        ],
+        "successful": [
+          7,
+          12,
+          22,
+          28
+        ]
+      },
+      "queue_policy": {
+        "axis": "queue_policy",
+        "evaluated": [
+          "fifo",
+          "mailbox_latest"
+        ],
+        "excluded": [],
+        "exclusion_records": [],
+        "failed": [],
+        "filtered": [],
+        "generated": [
+          "fifo",
+          "mailbox_latest"
+        ],
+        "missing": [],
+        "pruned": [],
+        "requested": [
+          "fifo",
+          "mailbox_latest"
+        ],
+        "successful": [
+          "fifo",
+          "mailbox_latest"
+        ]
+      },
+      "request_batch": {
+        "axis": "request_batch",
+        "evaluated": [
+          1,
+          2,
+          4,
+          8,
+          16
+        ],
+        "excluded": [],
+        "exclusion_records": [],
+        "failed": [],
+        "filtered": [],
+        "generated": [
+          1,
+          2,
+          4,
+          8,
+          16
+        ],
+        "missing": [],
+        "pruned": [],
+        "requested": [
+          1,
+          2,
+          4,
+          8,
+          16
+        ],
+        "successful": [
+          1,
+          2,
+          4,
+          8,
+          16
+        ]
+      },
+      "resident_models": {
+        "axis": "resident_models",
+        "evaluated": [
+          1,
+          4,
+          8
+        ],
+        "excluded": [],
+        "exclusion_records": [],
+        "failed": [],
+        "filtered": [],
+        "generated": [
+          1,
+          4,
+          8
+        ],
+        "missing": [],
+        "pruned": [],
+        "requested": [
+          1,
+          4,
+          8
+        ],
+        "successful": [
+          1,
+          4,
+          8
+        ]
+      },
+      "sram_l2_kb": {
+        "axis": "sram_l2_kb",
+        "evaluated": [
+          512,
+          1024,
+          2048,
+          4096,
+          8192
+        ],
+        "excluded": [],
+        "exclusion_records": [],
+        "failed": [],
+        "filtered": [],
+        "generated": [
+          512,
+          1024,
+          2048,
+          4096,
+          8192
+        ],
+        "missing": [],
+        "pruned": [],
+        "requested": [
+          512,
+          1024,
+          2048,
+          4096,
+          8192
+        ],
+        "successful": [
+          512,
+          1024,
+          2048,
+          4096,
+          8192
+        ]
+      },
+      "token_block": {
+        "axis": "token_block",
+        "evaluated": [
+          16,
+          32,
+          64,
+          128,
+          256,
+          512,
+          1024
+        ],
+        "excluded": [],
+        "exclusion_records": [],
+        "failed": [],
+        "filtered": [],
+        "generated": [
+          16,
+          32,
+          64,
+          128,
+          256,
+          512,
+          1024
+        ],
+        "missing": [],
+        "pruned": [],
+        "requested": [
+          16,
+          32,
+          64,
+          128,
+          256,
+          512,
+          1024
+        ],
+        "successful": [
+          16,
+          32,
+          64,
+          128,
+          256,
+          512,
+          1024
+        ]
+      },
+      "weight_cache": {
+        "axis": "weight_cache",
+        "evaluated": [
+          false,
+          true
+        ],
+        "excluded": [],
+        "exclusion_records": [],
+        "failed": [],
+        "filtered": [],
+        "generated": [
+          false,
+          true
+        ],
+        "missing": [],
+        "pruned": [],
+        "requested": [
+          false,
+          true
+        ],
+        "successful": [
+          false,
+          true
+        ]
+      },
+      "weight_precision_bits": {
+        "axis": "weight_precision_bits",
+        "evaluated": [
+          2,
+          4,
+          8
+        ],
+        "excluded": [],
+        "exclusion_records": [],
+        "failed": [],
+        "filtered": [],
+        "generated": [
+          2,
+          4,
+          8
+        ],
+        "missing": [],
+        "pruned": [],
+        "requested": [
+          2,
+          4,
+          8
+        ],
+        "successful": [
+          2,
+          4,
+          8
+        ]
+      }
+    },
+    "counts": {
+      "evaluated": 87,
+      "failed": 0,
+      "filtered": 0,
+      "generated": 87,
+      "pruned": 0,
+      "successful": 87
+    },
+    "missing_axes": {}
+  },
+  "errors": 0,
+  "replay_digest_match": true,
+  "experimental_gate": "pass",
+  "artifacts_dir": "/tmp/arc-release-0dgp9ygb/npu_arc_model/artifacts/releases/288a0a3264446432",
+  "run_id": "288a0a3264446432"
+}
