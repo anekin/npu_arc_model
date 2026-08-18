@@ -1,0 +1,23 @@
+{
+  "task": "T6",
+  "plan": "arc-prefill-ttft-dse",
+  "status": "pass",
+  "summary": "Prefill TTFT acceptance invariants: monotonic, BW floor, linearity, FR-4, CV zero, determinism",
+  "commands": [
+    "uv run pytest sim/tests/test_prefill_ttft.py -q"
+  ],
+  "checks": {
+    "test_prefill_ttft_count": 14,
+    "monotonic_in_m": true,
+    "bw_floor_margin": 25.46,
+    "linearity_2000_128": true,
+    "fr4_decode_unchanged": true,
+    "cv_ttft_zero": true,
+    "all_engines_prefill_finite": true,
+    "deterministic_v2_output": true,
+    "mutation_negative_evidence": ".omo/evidence/task-6-arc-prefill-ttft-dse-negative.txt"
+  },
+  "files_modified": [
+    "sim/tests/test_prefill_ttft.py"
+  ]
+}

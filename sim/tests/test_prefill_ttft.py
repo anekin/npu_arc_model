@@ -40,6 +40,27 @@ def sample_config():
     raise RuntimeError("no matching sample config")
 
 
+@pytest.fixture
+def models():
+    with open(SIM_DIR / "config" / "design_space.yaml") as f:
+        base_cfg = yaml.safe_load(f)
+    return AreaModel(base_cfg), PowerModel(base_cfg)
+
+
+def _block_64x64_config(wc=False):
+    for cfg in generate_configs(quick=True):
+        if (
+            cfg["mac_engine"]["type"] == "block"
+            and cfg["mac_engine"]["array_height"] == 64
+            and cfg["mac_engine"]["array_width"] == 64
+            and cfg["mac_engine"]["frequency_mhz"] == 1000
+            and cfg.get("_dram_label") == "LPDDR5-64b"
+            and cfg["optimizations"]["weight_cache"] is wc
+        ):
+            return cfg
+    raise RuntimeError("no block 64x64 config found")
+
+
 def test_ttft_ms_formula():
     # 1M cycles/layer * 36 layers @ 1000 MHz -> 36 ms
     assert dse.ttft_ms_from_prefill(1_000_000, 36, 1000) == 36.0
@@ -155,6 +176,77 @@ def test_ttft_ms_increases_with_batch_m(tmp_path):
     for r in m128["pareto_frontier"] + m128["top_results"]:
         assert r["ttft_ms"] > 0
         assert r["ttft_ms"] > m1_by_label[r["label"]]
+
+
+def test_ttft_monotonic_in_m(models):
+    """Block 64x64 wc=True LPDDR5-64b 1GHz: TTFT strictly increases with batch_m."""
+    area_model, power_model = models
+    cfg = _block_64x64_config(wc=True)
+    ttfts = []
+    for m in (32, 64, 128):
+        ppa = dse.evaluate_config(cfg, area_model, power_model, batch_m=m)
+        ttfts.append(ppa.ttft_ms)
+    assert ttfts[0] < ttfts[1] < ttfts[2], f"ttft_ms not monotonic: {ttfts}"
+
+
+def test_ttft_bw_floor(models):
+    """TTFT is above a simple weight-read bandwidth floor (wc=False, 10% tolerance)."""
+    area_model, power_model = models
+    cfg = _block_64x64_config(wc=False)
+    ppa = dse.evaluate_config(cfg, area_model, power_model, batch_m=128)
+
+    spec = dse.get_spec(dse._DEFAULT_LLM_SPEC)
+    weights_bytes_total = (
+        spec.layers * (spec.hidden * spec.intermediate * 3 + spec.intermediate * spec.hidden) * 0.5
+    )
+    bandwidth_gbps = cfg["memory"]["bandwidth_gbps"]
+    floor_ms = weights_bytes_total / (bandwidth_gbps * 1e9 / 8) * 1000
+    margin = ppa.ttft_ms / floor_ms
+    print(f"ttft_bw_floor margin = {margin:.2f} (ttft={ppa.ttft_ms:.2f}ms, floor={floor_ms:.2f}ms)")
+    assert ppa.ttft_ms >= 0.9 * floor_ms
+
+
+def test_ttft_linearity_2000_128(models):
+    """TTFT scales roughly linearly between M=128 and M=2000."""
+    area_model, power_model = models
+    cfg = _block_64x64_config(wc=True)
+    ttft_128 = dse.evaluate_config(cfg, area_model, power_model, batch_m=128).ttft_ms
+    ttft_2000 = dse.evaluate_config(cfg, area_model, power_model, batch_m=2000).ttft_ms
+    ratio = ttft_2000 / ttft_128
+    assert 14.0 <= ratio <= 17.5, f"ttft ratio {ratio} outside [14.0, 17.5]"
+
+
+def test_all_quick_engines_prefill_finite(models):
+    """Every quick engine configuration produces a finite positive TTFT at M=128."""
+    area_model, power_model = models
+    for cfg in generate_configs(quick=True):
+        ppa = dse.evaluate_config(cfg, area_model, power_model, batch_m=128)
+        assert ppa.ttft_ms > 0 and ppa.ttft_ms < float("inf")
+
+
+def test_cv_ttft_zero(models):
+    """CV mode evaluation produces ttft_ms == 0.0."""
+    area_model, power_model = models
+    cfg = next(iter(generate_configs(quick=True)))
+    original_cv = dse._CV_MODEL
+    dse._CV_MODEL = "mobilenetv3-small"
+    try:
+        with patch("cv.cv_sim.simulate_cv", return_value={"total_cycles": 1000, "sram_spill_mb": 0.0}):
+            ppa = dse.evaluate_config(cfg, area_model, power_model)
+    finally:
+        dse._CV_MODEL = original_cv
+    assert ppa.ttft_ms == 0.0
+
+
+def test_prefill_output_deterministic(tmp_path):
+    """Two identical CLI runs produce bit-identical v2 JSON outputs."""
+    out1 = tmp_path / "run1.json"
+    out2 = tmp_path / "run2.json"
+    result1 = _run_dse(["--batch-m", "128", "--result-schema", "v2", "--output", str(out1)])
+    assert result1.returncode == 0, result1.stderr
+    result2 = _run_dse(["--batch-m", "128", "--result-schema", "v2", "--output", str(out2)])
+    assert result2.returncode == 0, result2.stderr
+    assert out1.read_bytes() == out2.read_bytes()
 
 
 def test_evaluate_config_ttft_uses_spec_layers():

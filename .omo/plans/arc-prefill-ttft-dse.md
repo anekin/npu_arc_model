@@ -334,7 +334,7 @@ Critical path: `0 → 1 → 2 → 3 → 4 → 5 → 6 → (7∥8) → 9 → F1-F
 
   **Commit**: YES | `feat(dse): widen --batch-m to >=1, add (64,64) to quick dims` | `sim/design_space_explorer.py`, `sim/tests/golden/legacy_cli_contract.json`, `sim/tests/test_legacy_compatibility.py`, `sim/tests/test_dse_strict.py`, `sim/tests/test_prefill_ttft.py`
 
-- [ ] 6. 交叉验收不变量套件（AC-1, NFR-4 mutation）
+- [x] 6. 交叉验收不变量套件（AC-1, NFR-4 mutation）
 
   **What to do**:
    扩展 `sim/tests/test_prefill_ttft.py`（复用 T5 的 /tmp 跑法改为测试内构造）：

@@ -1,0 +1,9 @@
+Mutation: ttft_ms_from_prefill multiplied by 1.01
+returncode=1
+
+--- stdout ---
+
+--- stderr ---
+Traceback (most recent call last):
+  File "<string>", line 2, in <module>
+ModuleNotFoundError: No module named 'design_space_explorer'
