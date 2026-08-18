@@ -5,7 +5,7 @@
 > 性能数据 commit: `02683a9f49bc2df299d31f4af8c1446d99101fce`。
 > 本文基于修正后的 Arc Model DSE v2；引擎模型修复后所有 63 个回归测试通过。
 >
-> ⚠️ **信任声明**: 本指南中的数值与"推荐"结论均为当前模型校准下的估算。部分关键参数（`tensor_core_descriptor_overhead`、`block_sparsity_penalty` 等）仍为 T0/T1（WMMA/GMMA 周期与 PE 参数已于 2026-07-31 校准升级 T1），尚未达到 `decision-grade` 发布标准。详见 [`docs/model-trust-and-release.md`](docs/model-trust-and-release.md)。
+> ⚠️ **信任声明**: 本指南中的数值与"推荐"结论均为当前模型校准下的估算。`references/calibration/parameters.yaml` 中全部 32 个校准参数均已达到至少 T1 等级（真实 T0 参数已全部消除）：最后一个真实 T0 参数 `tensor_core_descriptor_overhead` 已升级为 T1（源引 ARM PL330 DMA PrimeCell 公开手册 DDID0424）；频率-节点绑定（`max_freq_{7,12,22,28}nm`）与 DRAM 效率（`dram_efficiency`、`dram_efficiency_random_bw`、`random_latency_penalty_cycles`）也已注册为 T1 条目并附公开来源。本指南尚未达到 `decision-grade` 发布标准：该标准要求全部排名参数具备 T3+ 权威证据。详见 [`docs/model-trust-and-release.md`](docs/model-trust-and-release.md)。
 
 ---
 
