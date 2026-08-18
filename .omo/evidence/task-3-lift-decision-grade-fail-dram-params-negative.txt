@@ -1,0 +1,1 @@
+PASS: negative test correctly fails when range_max altered

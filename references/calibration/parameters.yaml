@@ -382,6 +382,60 @@ parameters:
       preliminary 14.7 mm2 estimate has been adjusted to match the current
       configured baseline without changing engine formulas.
 
+  - calibration_id: dram_efficiency
+    value: 0.85
+    unit: ratio
+    source_uri: https://www.jedec.org/standards-documents/docs/jesd209-5b
+    source_hash: null
+    trust_level: T1
+    calibration_range: 0.80–0.90
+    range_min: 0.80
+    range_max: 0.90
+    status: assumption
+    description: >
+      Sequential-access DRAM bandwidth efficiency for weights and activations
+      (AccessType.SEQUENTIAL).  Derivation chain from JEDEC LPDDR5 (JESD209-5B)
+      per-bank refresh timing: tRFCpb=140ns / tREFI=3900ns -> per-bank refresh
+      overhead ~3.6%, retained efficiency ~0.964; further multiplied by
+      controller scheduling / command-bus / bank-conflict margin (5-10%) ->
+      conservative 0.85 sequential baseline.  Matches the sim/config/npu_config.yaml
+      default.
+
+  - calibration_id: dram_efficiency_random_bw
+    value: 0.50
+    unit: ratio
+    source_uri: https://arxiv.org/pdf/2012.03112.pdf
+    source_hash: null
+    trust_level: T1
+    calibration_range: 0.40–0.60
+    range_min: 0.40
+    range_max: 0.60
+    status: assumption
+    description: >
+      Random-access DRAM bandwidth efficiency for KV-cache reads
+      (AccessType.RANDOM).  Scattered token positions cause row-buffer
+      conflicts and poor burst utilization; public DRAM access-locality studies
+      (Mutlu et al., "A Modern Primer on Processing in Memory", arXiv:2012.03112)
+      place random-access page-hit rate around 50%, yielding ~0.50 effective
+      random bandwidth.  Matches the sim/config/npu_config.yaml default.
+
+  - calibration_id: random_latency_penalty_cycles
+    value: 40
+    unit: cycles
+    source_uri: https://www.jedec.org/standards-documents/docs/jesd209-5b
+    source_hash: null
+    trust_level: T1
+    calibration_range: 30–60 cycles
+    range_min: 30.0
+    range_max: 60.0
+    status: assumption
+    description: >
+      Extra fixed latency (cycles) added on each random KV-cache miss,
+      independent of bandwidth; not added on SRAM hit.  JEDEC LPDDR5
+      (JESD209-5B) tRC≈48ns at 1GHz -> ~48 cycles per activate+read;
+      40-cycle penalty is the configured proxy within the 30-60 cycle band.
+      Matches the sim/config/npu_config.yaml default.
+
   - calibration_id: power_density_12nm
     value: 0.5
     unit: W/mm2

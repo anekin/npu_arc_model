@@ -1,0 +1,29 @@
+{
+  "dram_efficiency": {
+    "calibration_value": 0.85,
+    "npu_config_value": 0.85,
+    "trust_level": "T1",
+    "range_min": 0.8,
+    "range_max": 0.9,
+    "source_uri": "https://www.jedec.org/standards-documents/docs/jesd209-5b",
+    "source_hash": null
+  },
+  "dram_efficiency_random_bw": {
+    "calibration_value": 0.5,
+    "npu_config_value": 0.5,
+    "trust_level": "T1",
+    "range_min": 0.4,
+    "range_max": 0.6,
+    "source_uri": "https://arxiv.org/pdf/2012.03112.pdf",
+    "source_hash": null
+  },
+  "random_latency_penalty_cycles": {
+    "calibration_value": 40,
+    "npu_config_value": 40,
+    "trust_level": "T1",
+    "range_min": 30.0,
+    "range_max": 60.0,
+    "source_uri": "https://www.jedec.org/standards-documents/docs/jesd209-5b",
+    "source_hash": null
+  }
+}
