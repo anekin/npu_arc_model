@@ -1,5 +1,8 @@
 """Prefill/TTFT modeling: simulate_prefill and ttft_ms_from_prefill."""
 
+import json
+import subprocess
+import sys
 from pathlib import Path
 from unittest.mock import patch
 
@@ -10,6 +13,18 @@ from dse.legacy_adapter import generate_configs
 from engine.ppa_model import AreaModel, PowerModel
 
 SIM_DIR = Path(__file__).resolve().parents[1]
+REPO_ROOT = SIM_DIR.parent
+
+
+def _run_dse(args, timeout=120):
+    cmd = [sys.executable, str(SIM_DIR / "design_space_explorer.py"), "--quick", *args]
+    env = {
+        "PYTHONPATH": str(SIM_DIR),
+        "PATH": str(Path(sys.executable).parent),
+        **dict(__import__("os").environ.items()),
+    }
+    result = subprocess.run(cmd, capture_output=True, text=True, env=env, cwd=str(REPO_ROOT), timeout=timeout)
+    return result
 
 
 @pytest.fixture
@@ -78,6 +93,68 @@ def test_prefill_uses_spec_kv_geometry(sample_config):
     # Doubling batch_m should increase cycles for a compute-bound config.
     cycles2 = dse.simulate_prefill(sample_config, 8, model_alias=dse._DEFAULT_LLM_SPEC)
     assert cycles2 > cycles
+
+
+def test_batch_m_zero_rejected():
+    result = _run_dse(["--batch-m", "0", "--output", "/dev/null"])
+    assert result.returncode != 0
+    assert "--batch-m must be >= 1" in result.stderr
+
+
+def test_batch_m_non_integer_rejected():
+    result = _run_dse(["--batch-m", "2.5", "--output", "/dev/null"])
+    assert result.returncode != 0
+    assert "invalid int value" in result.stderr
+
+
+def test_batch_m_3_accepted(tmp_path):
+    out = tmp_path / "m3.json"
+    result = _run_dse(["--batch-m", "3", "--output", str(out)])
+    assert result.returncode == 0, result.stderr
+    with open(out) as f:
+        data = json.load(f)
+    assert data["batch_m"] == 3
+
+
+def test_batch_m_128_same_tok_s_as_default(tmp_path):
+    default_out = tmp_path / "default.json"
+    batched_out = tmp_path / "m128.json"
+
+    result_default = _run_dse(["--output", str(default_out)])
+    assert result_default.returncode == 0, result_default.stderr
+    result_batched = _run_dse(["--batch-m", "128", "--output", str(batched_out)])
+    assert result_batched.returncode == 0, result_batched.stderr
+
+    with open(default_out) as f:
+        default = json.load(f)
+    with open(batched_out) as f:
+        batched = json.load(f)
+
+    assert batched["batch_m"] == 128
+    default_by_label = {r["label"]: r["tok_s"] for r in default["pareto_frontier"] + default["top_results"]}
+    for r in batched["pareto_frontier"] + batched["top_results"]:
+        assert r["label"] in default_by_label
+        assert r["tok_s"] == default_by_label[r["label"]]
+
+
+def test_ttft_ms_increases_with_batch_m(tmp_path):
+    m1_out = tmp_path / "m1.json"
+    m128_out = tmp_path / "m128.json"
+
+    result_m1 = _run_dse(["--batch-m", "1", "--output", str(m1_out)])
+    assert result_m1.returncode == 0, result_m1.stderr
+    result_m128 = _run_dse(["--batch-m", "128", "--output", str(m128_out)])
+    assert result_m128.returncode == 0, result_m128.stderr
+
+    with open(m1_out) as f:
+        m1 = json.load(f)
+    with open(m128_out) as f:
+        m128 = json.load(f)
+
+    m1_by_label = {r["label"]: r["ttft_ms"] for r in m1["pareto_frontier"] + m1["top_results"]}
+    for r in m128["pareto_frontier"] + m128["top_results"]:
+        assert r["ttft_ms"] > 0
+        assert r["ttft_ms"] > m1_by_label[r["label"]]
 
 
 def test_evaluate_config_ttft_uses_spec_layers():

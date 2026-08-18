@@ -297,7 +297,7 @@ Critical path: `0 → 1 → 2 → 3 → 4 → 5 → 6 → (7∥8) → 9 → F1-F
 
   **Commit**: YES | `feat(contracts): thread ttft_ms through PPA, v2 EngineMetrics and legacy projection` | `sim/engine/ppa_model.py`, `sim/contracts/result.py`, `sim/contracts/legacy_result.py`, `sim/design_space_explorer.py`, `sim/dse/runner.py`, `sim/tests/test_result_schema.py`, `sim/tests/golden/legacy_cli_contract.json`
 
-- [ ] 5. CLI --batch-m 放宽 + quick dims (64,64) + FR-4 decode 语义（FR-4, FR-6）
+- [x] 5. CLI --batch-m 放宽 + quick dims (64,64) + FR-4 decode 语义（FR-4, FR-6）
 
   **What to do**:
    1. `sim/design_space_explorer.py` L933-935：`parser.add_argument("--batch-m", type=int, default=None, help="Prefill batch M (>=1). Drives prefill/TTFT metrics only; decode tok_s keeps batch_m=1 semantics")`（删除 `choices=[1,2]`）。

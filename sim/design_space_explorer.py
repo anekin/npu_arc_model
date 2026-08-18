@@ -230,7 +230,7 @@ def generate_configs(quick: bool = False) -> list[dict[str, Any]]:
 
     # Array dimensions (constrained by area)
     if quick:
-        dims = [(128, 128), (128, 256), (256, 256)]
+        dims = [(64, 64), (128, 128), (128, 256), (256, 256)]
     else:
         dims = [(64, 64), (96, 96), (128, 128), (128, 192), (128, 256), (192, 256), (256, 256)]
 
@@ -964,6 +964,17 @@ def _run_replay(args) -> int:
     return 0
 
 
+def _positive_int(value: str) -> int:
+    """Argparse type for positive integers (>= 1)."""
+    try:
+        ivalue = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(f"invalid int value: {value!r}") from exc
+    if ivalue < 1:
+        raise argparse.ArgumentTypeError(f"--batch-m must be >= 1, got {ivalue}")
+    return ivalue
+
+
 def main():
     import argparse
 
@@ -985,7 +996,7 @@ def main():
         help="LLM model spec alias for DSE",
     )
     parser.add_argument(
-        "--batch-m", type=int, choices=[1, 2], default=None, help="Batch M dimension for attention ops (1 or 2)"
+        "--batch-m", type=_positive_int, default=None, help="Prefill batch M (>=1). Drives prefill/TTFT metrics only; decode tok_s keeps batch_m=1 semantics"
     )
     parser.add_argument(
         "--result-schema",

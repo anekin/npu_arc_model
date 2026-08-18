@@ -133,9 +133,9 @@
         "description": "LLM model spec alias for DSE"
       },
       "--batch-m": {
-        "type": "choice",
-        "choices": [1, 2],
-        "description": "Batch M dimension for attention ops (1 or 2)"
+        "type": "integer",
+        "minimum": 1,
+        "description": "Batch M dimension for attention ops (integer >= 1)"
       }
     }
   },

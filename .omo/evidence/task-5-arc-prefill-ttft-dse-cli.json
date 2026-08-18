@@ -1,0 +1,28 @@
+{
+  "task": "T5",
+  "plan": "arc-prefill-ttft-dse",
+  "status": "pass",
+  "summary": "--batch-m widened to any integer >=1; quick DSE now includes (64,64); decode tok_s remains M=1",
+  "commands": [
+    "uv run pytest -q --ignore=sim/tests/test_dse_legacy_compat.py",
+    "uv run python sim/design_space_explorer.py --batch-m 0 --quick --output /dev/null",
+    "uv run python sim/design_space_explorer.py --quick --batch-m 128 --output /tmp/t5.json"
+  ],
+  "checks": {
+    "pytest_passed": true,
+    "batch_m_zero_rejected": true,
+    "batch_m_non_integer_rejected": true,
+    "batch_m_3_accepted": true,
+    "batch_m_128_tok_s_matches_default": true,
+    "ttft_ms_increases_with_batch_m": true,
+    "quick_dims_include_64x64": true,
+    "baseline_rows": 48
+  },
+  "files_modified": [
+    "sim/design_space_explorer.py",
+    "sim/tests/golden/legacy_cli_contract.json",
+    "sim/tests/golden/dse_default_quick_baseline.json",
+    "sim/tests/test_prefill_ttft.py",
+    "sim/tests/test_dse_strict.py"
+  ]
+}
