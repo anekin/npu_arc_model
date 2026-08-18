@@ -4,8 +4,8 @@
 Supports two profiles:
   - experimental: allows T0/T1 parameters, requires complete coverage,
     valid hashes, and explicit exploratory tags.
-  - decision-grade: requires every ranking-driving parameter to be T2+ and
-    inside its calibration range; fails on any T0/T1 or extrapolated point.
+  - decision-grade: requires every ranking-driving parameter to be T3+ and
+    inside its calibration range; fails on any T1 or extrapolated point.
 
 When ``--clean-checkout`` is passed, the gate clones the repository to a
 temporary directory and runs the locked QA there.  Otherwise the current tree

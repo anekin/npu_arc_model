@@ -25,9 +25,9 @@ exploratory.
 
 | Level | Conditions |
 |-------|------------|
-| `authoritative` | Complete coverage, no failures, all ranking parameters T2+ and in range |
+| `authoritative` | Complete coverage, no failures, all ranking parameters T3+ and in range |
 | `calibrated_estimate` | Calibrated model but missing secondary coverage axes |
-| `exploratory` | Contains T0/T1 parameters or extrapolated values |
+| `exploratory` | Contains T1 parameters or extrapolated values |
 | `non_authoritative` | Partial run, failures, or coverage gaps on required axes |
 
 ## Release Profiles
@@ -48,21 +48,23 @@ uv run python scripts/release_gate.py --profile experimental
 
 ### `decision-grade`
 
-- Every Pareto-driving parameter must be T2+.
+- Every Pareto-driving parameter must be T3+.
 - Every design point must be inside its calibration range.
 - No extrapolated winner may enter the recommendation set.
 - Coverage must be complete and the worktree must be clean.
 - Generates a content-addressed release bundle under
   `artifacts/releases/<run-id>/`.
 
-Because the current calibration registry keeps several ranking drivers at T0/T1
-(e.g. `gmma_pipeline_scale`, `tensor_core_descriptor_overhead`),
-`decision-grade` is expected to fail until additional measured evidence is
-provided.  This is intentional and prevents uncalibrated rankings from being
-promoted as authoritative.
+Because the current calibration registry has no real T0 entries left (all 32
+parameters are at least T1) but still keeps several ranking drivers at T1
+(e.g. `gmma_pipeline_scale`, `max_freq_7nm/12nm/22nm/28nm`,
+`dram_efficiency`, `dram_efficiency_random_bw`,
+`random_latency_penalty_cycles`), `decision-grade` is expected to fail until
+T3 silicon-measured evidence is provided.  This is intentional and prevents
+uncalibrated rankings from being promoted as authoritative.
 
 ```bash
-# Expected to fail until T2+ evidence is added for T0/T1 parameters.
+# Expected to fail until T3+ evidence is available for remaining T1 parameters.
 uv run python scripts/release_gate.py --profile decision-grade
 ```
 
@@ -243,16 +245,16 @@ DRAM 访问效率不再使用单一固定值，而是区分两种访问模式：
 
 ## Decision-Grade State (Updated 2026-07-31)
 
-!!! decision-grade 状态仍为 **FAIL** — 无变化。原因：
+!!! decision-grade 状态仍为 **FAIL** — 所有真实 T0 参数已消除，但决策级要求全部排名参数达到 T3+。原因：
 
-- **WMMA/GMMA PE 比率与周期参数已升级 T1（不再是 FAIL 的原因）** — 2026-07-31 校准将 `gmma_pipeline_scale`、`tma_overlap`、`wmma_fragment_serialization_cycles`、`wmma_pe_ratio`、`gmma_pe_ratio`（及 `wmma_pe_area_7nm`/`gmma_pe_area_7nm`）全部从 T0 升级为 T1，来源为 NVIDIA H100/Hopper 白皮书、Volta Tuning Guide 与 H100 SM die-shot 分析。但 `tensor_core_descriptor_overhead` 仍是 T0（无公开来源的工程假设），因此 T0 参数并未全部消除。
-- **全引擎跨节点覆盖完成，但仍为探索性 — 多节点覆盖不完全** — 全 8 引擎 × 4 节点 × 2 场景排名矩阵（Todo 4, [`.omo/evidence/task-4-cross-node-all-engines-dse-matrix.md`](../.omo/evidence/task-4-cross-node-all-engines-dse-matrix.md)）揭示了 os_systolic 在跨所有节点和场景中均占绝对领先的新发现，GMMA 在高 BW 场景中作为第二名具有竞争力。但频率-节点绑定为探索性结论（频率约束来自架构推理，非硅测量），跨节点覆盖虽已扩展至全引擎但仍不完全（3D DRAM 等轴未进入搜索空间），结论不应用作决策级依据。
-- **DRAM 效率模式化参数未经硅校准** — `dram_efficiency_random_bw = 0.50` 和 `random_latency_penalty_cycles = 40` 均为架构推理值，尚待针对目标 LPDDR5 或 3D DRAM 控制器的微基准验证。
-- **SRAM bitcell 数据为 T2** — 这是本次改进中唯一达到 T2 以上的参数群；单一参数的提升不足以将整体决策等级提升至 `decision-grade`。
+- **`tensor_core_descriptor_overhead` 已从 T0 升级为 T1** — 来源为 ARM PL330 DMA PrimeCell（[DDID0424](https://developer.arm.com/documentation/ddi0424/)）：PL330 TRM 记载的 DMA 描述符 issue 开销范围（4–8 cycles）作为 Tensor Core 每 sub-tile 描述符设置的量级代理，5 cycles 取该范围的保守中点。校准注册表（`references/calibration/parameters.yaml`，32 条）至此已无真实 T0 条目；此前 WMMA/GMMA PE 比率与周期参数也已升级 T1（NVIDIA H100/Hopper 白皮书、Volta Tuning Guide 与 H100 SM die-shot 分析）。
+- **新增 4 条频率-节点绑定条目（T1）** — `max_freq_7nm`（2000 MHz, 800–2000）、`max_freq_12nm`（1200, 800–1200）、`max_freq_22nm`（800, 400–800）、`max_freq_28nm`（600, 200–600），来源为公开产品频率参考（如 NVIDIA A100、MediaTek Helio G90）与 TSMC 节点特征。跨节点覆盖因此从"探索性"提升为 T1，但仍非 T3 硅测量。
+- **新增 3 条 DRAM 效率条目（T1）** — `dram_efficiency`（0.85, 0.80–0.90）、`dram_efficiency_random_bw`（0.50, 0.40–0.60）、`random_latency_penalty_cycles`（40, 30–60），来源为 JEDEC LPDDR5（JESD209-5B）时序规格与公开 DRAM-locality 参考（Mutlu et al. PIM primer）。这些参数基于架构推理与公开规格，未经目标 DRAM 控制器的微基准或硅测量验证。
+- **SRAM bitcell 数据为 T2** — 这是当前唯一达到 T2 以上的参数群；单一参数群不足以将整体决策等级提升至 `decision-grade`。
 
 在以下条件满足前，`decision-grade` gate 将继续失败：
 
 ```bash
 uv run python scripts/release_gate.py --profile decision-grade
-# Expected: FAIL — T0/T1 parameters remain (2026-07-31; WMMA/GMMA 已升级 T1，但 tensor_core_descriptor_overhead 仍为 T0)
+# Expected: FAIL — decision-grade 要求全部排名参数 T3+；当前仍有 T1 参数（gmma_pipeline_scale、max_freq_*nm、dram_efficiency、dram_efficiency_random_bw、random_latency_penalty_cycles 等）待 T3 硅测量证据 (2026-07-31)
 ```
