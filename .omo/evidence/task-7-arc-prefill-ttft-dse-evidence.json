@@ -1,0 +1,23 @@
+{
+  "task": "T7",
+  "plan": "arc-prefill-ttft-dse",
+  "status": "pass",
+  "summary": "M=128 DSE evidence and Gate 1b ratio extraction for Block 64x64",
+  "commands": [
+    "uv run python sim/design_space_explorer.py --quick --batch-m 128 --result-schema v2 --output .omo/evidence/task-7-arc-prefill-ttft-dse-m128.json"
+  ],
+  "checks": {
+    "cli_exit_code": 0,
+    "errors": 0,
+    "block_64x64_wc_true_ttft_ms": 3211.0,
+    "block_64x64_wc_false_ttft_ms": 6457.39,
+    "func_model_reference_ms": 3911.05,
+    "gate_1b_ratio_wc_true": 1.218,
+    "gate_1b_ratio_pass": true,
+    "evidence_sha256": "b33d2e3175210421bac5b9462580e465ca8aae3e2e619b7e180f8cf2b7af6ddd"
+  },
+  "files_modified": [
+    ".omo/evidence/task-7-arc-prefill-ttft-dse-m128.json",
+    ".omo/evidence/task-7-arc-prefill-ttft-dse-m128-extract.txt"
+  ]
+}

@@ -1,0 +1,11 @@
+Gate 1b M=128 evidence extraction
+source: .omo/evidence/task-7-arc-prefill-ttft-dse-m128.json
+sha256: b33d2e3175210421bac5b9462580e465ca8aae3e2e619b7e180f8cf2b7af6ddd
+
+bloc 64×64 INT4 1000MHz  LPDDR5-64b: ttft_ms=6457.39  ratio=0.606
+bloc 64×64 INT4 1000MHz WC LPDDR5-64b: ttft_ms=3211.00  ratio=1.218
+
+Func Model reference = 3911.05 ms
+Gate 1b ratio (wc=True) = 1.218
+PASS: 0.5 <= 1.218 <= 2.0 -> True
+Reference ratio (wc=False) = 0.606

@@ -367,7 +367,7 @@ Critical path: `0 → 1 → 2 → 3 → 4 → 5 → 6 → (7∥8) → 9 → F1-F
 
   **Commit**: YES | `test(dse): prefill TTFT acceptance invariants (linearity, BW floor, FR-4, CV, mutation)` | `sim/tests/test_prefill_ttft.py`
 
-- [ ] 7. M=128 证据 + Gate 1b 目标抽取（NFR-1/2, AC-4）
+- [x] 7. M=128 证据 + Gate 1b 目标抽取（NFR-1/2, AC-4）
 
   **What to do**:
    1. `uv run python sim/design_space_explorer.py --quick --batch-m 128 --result-schema v2 --output .omo/evidence/task-7-arc-prefill-ttft-dse-m128.json`
