@@ -1,10 +1,10 @@
 # Decision-driving calibration parameters for the Arc Model.
 #
 # Each entry binds a calibration_id to a value, unit, provenance source,
-# trust level, calibration range, and status.  Parameters marked T0/T1 are
+# trust level, calibration range, and status.  Parameters marked T1 are
 # engineering assumptions or published proxies and may only drive exploratory
 # sensitivity.  Decision-grade ranking requires every Pareto-driving parameter
-# to be T2+ and the design point to stay inside the calibration domain.
+# to be T3+ and the design point to stay inside the calibration domain.
 #
 # Reference: .omo/plans/arc-model-scenario-driven-dse-development.md Todo 17.
 
@@ -248,16 +248,17 @@ parameters:
   - calibration_id: tensor_core_descriptor_overhead
     value: 5
     unit: cycles
-    source_uri: null
+    source_uri: https://developer.arm.com/documentation/ddi0424/
     source_hash: null
-    trust_level: T0
+    trust_level: T1
     calibration_range: 0–10 cycles
     range_min: 0.0
     range_max: 10.0
     status: assumption
     description: >
-      Per-sub-tile descriptor issue overhead for Tensor Core style engine.
-      Fragment model; uncalibrated.
+      DMA descriptor issue overhead range (4–8 cycles) from ARM PL330 DMA
+      PrimeCell; applied as order-of-magnitude proxy for Tensor Core per-sub-tile
+      descriptor setup. The 5-cycle value is a conservative mid-point.
 
   - calibration_id: wmma_pe_ratio
     value: 1.125

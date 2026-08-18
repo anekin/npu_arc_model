@@ -1,0 +1,9 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/prj/zhengs/caduceuscore/npu_arc_model
+configfile: pytest.ini (WARNING: ignoring pytest config in pyproject.toml!)
+collected 18 items
+
+sim/tests/test_calibration_evaluate.py ..................                [100%]
+
+============================= 18 passed in 17.83s ==============================

@@ -21,7 +21,26 @@ from calibration.evaluate import (
     result_digest,
 )
 from calibration.registry import CalibrationRegistry
+from calibration.schema import CalibrationEntry, CalibrationStatus
 from contracts.hardware import TrustLevel
+
+# Synthetic T0 calibration entry for trust-gate / runner tests.
+# After tensor_core_descriptor_overhead was upgraded to T1, no real T0
+# entries exist in parameters.yaml.  Tests that need a T0 parameter
+# inject this synthetic entry instead.
+SYNTHETIC_T0 = CalibrationEntry(
+    calibration_id="synthetic_t0_param",
+    value=1.0,
+    unit="ratio",
+    source_uri=None,
+    source_hash=None,
+    trust_level=TrustLevel.T0,
+    calibration_range="0.5–1.5",
+    range_min=0.5,
+    range_max=1.5,
+    status=CalibrationStatus.assumption,
+    description="Synthetic T0 entry for trust-gate testing.",
+)
 
 
 def _base_hw_config(engine_type: str = "block") -> dict:
@@ -139,22 +158,26 @@ def test_calibration_ids_for_onchip_memory():
     assert "dram_phy_area_12nm" not in ids
 
 
-def test_trust_gate_t2_required_with_t0_fails():
-    """Decision-grade (T2+) fails when a T0 parameter is present."""
-    registry = CalibrationRegistry.from_yaml()
-    gate = TrustGate(registry)
-    ids = {"tensor_core_descriptor_overhead", "block_systolic_pe_ratio"}
+def test_trust_gate_t2_required_with_synthetic_t0_fails():
+    """Decision-grade (T2+) fails when a synthetic T0 parameter is present."""
+    real_registry = CalibrationRegistry.from_yaml()
+    t1_entry = real_registry.get("block_systolic_pe_ratio")
+    synthetic_registry = CalibrationRegistry([SYNTHETIC_T0, t1_entry])
+    gate = TrustGate(synthetic_registry)
+    ids = {SYNTHETIC_T0.calibration_id, "block_systolic_pe_ratio"}
     ok, max_trust, violations = gate.check(ids, require_trust=TrustLevel.T2)
     assert not ok
     assert max_trust == TrustLevel.T0
-    assert any(v["calibration_id"] == "tensor_core_descriptor_overhead" for v in violations)
+    assert any(v["calibration_id"] == SYNTHETIC_T0.calibration_id for v in violations)
 
 
-def test_trust_gate_exploratory_allows_t0():
-    """Exploratory mode (default T0 requirement) succeeds with T0 parameters."""
-    registry = CalibrationRegistry.from_yaml()
-    gate = TrustGate(registry)
-    ids = {"tensor_core_descriptor_overhead", "block_systolic_pe_ratio"}
+def test_trust_gate_exploratory_allows_synthetic_t0():
+    """Exploratory mode (default T0 requirement) succeeds with synthetic T0 parameters."""
+    real_registry = CalibrationRegistry.from_yaml()
+    t1_entry = real_registry.get("block_systolic_pe_ratio")
+    synthetic_registry = CalibrationRegistry([SYNTHETIC_T0, t1_entry])
+    gate = TrustGate(synthetic_registry)
+    ids = {SYNTHETIC_T0.calibration_id, "block_systolic_pe_ratio"}
     ok, max_trust, violations = gate.check(ids)
     assert ok
     assert max_trust == TrustLevel.T0
@@ -227,8 +250,8 @@ def test_result_digest_stable_for_same_inputs():
     assert d1 == d2
 
 
-def test_runner_exploratory_marks_t0_points_exploratory():
-    """ScenarioDseRunner in exploratory mode marks T0-affected points exploratory."""
+def test_runner_exploratory_marks_t0_points_exploratory(monkeypatch):
+    """ScenarioDseRunner in exploratory mode marks synthetic-T0-affected points exploratory."""
     from dse.runner import DseRunConfig, ScenarioDseRunner
     from dse.space import load_design_space_from_yaml
     from scenarios.schema import (
@@ -237,6 +260,20 @@ def test_runner_exploratory_marks_t0_points_exploratory():
         QueuePolicy,
         Scenario,
         WorkloadClass,
+    )
+
+    # Inject synthetic T0 into the registry so tests don't depend on real T0 entries.
+    real_registry = CalibrationRegistry.from_yaml()
+    synthetic_registry = CalibrationRegistry(
+        [SYNTHETIC_T0, *real_registry.entries()],
+    )
+    monkeypatch.setattr(CalibrationRegistry, "from_yaml", lambda: synthetic_registry)
+
+    # Also monkeypatch calibration_ids_for_design_point so the synthetic T0 is consumed.
+    _original_ids = calibration_ids_for_design_point
+    monkeypatch.setattr(
+        "calibration.evaluate.calibration_ids_for_design_point",
+        lambda hw: _original_ids(hw) | {SYNTHETIC_T0.calibration_id},
     )
 
     scenario = Scenario(
@@ -269,13 +306,13 @@ def test_runner_exploratory_marks_t0_points_exploratory():
     config = DseRunConfig(scenario=scenario, design_space=design_space, trust_mode="exploratory")
     result_set, _manifest, _frontier = ScenarioDseRunner(config).run()
     # At least one complete point should be marked exploratory because the
-    # registry contains T0/T1 parameters consumed by every design point.
+    # synthetic T0 caps trust level below authoritative.
     exploratory = [r for r in result_set.results if r.trust_level.value == "exploratory"]
     assert exploratory, "expected at least one exploratory point in exploratory mode"
 
 
-def test_runner_decision_grade_fails_on_t0():
-    """ScenarioDseRunner in decision-grade mode raises ConfigError listing T0 IDs."""
+def test_runner_decision_grade_fails_on_t0(monkeypatch):
+    """ScenarioDseRunner in decision-grade mode raises ConfigError with synthetic T0 present."""
     from contracts.errors import ConfigError
     from dse.runner import DseRunConfig, ScenarioDseRunner
     from dse.space import load_design_space_from_yaml
@@ -285,6 +322,20 @@ def test_runner_decision_grade_fails_on_t0():
         QueuePolicy,
         Scenario,
         WorkloadClass,
+    )
+
+    # Inject synthetic T0 into the registry.
+    real_registry = CalibrationRegistry.from_yaml()
+    synthetic_registry = CalibrationRegistry(
+        [SYNTHETIC_T0, *real_registry.entries()],
+    )
+    monkeypatch.setattr(CalibrationRegistry, "from_yaml", lambda: synthetic_registry)
+
+    # Monkeypatch calibration_ids so the synthetic T0 is consumed.
+    _original_ids = calibration_ids_for_design_point
+    monkeypatch.setattr(
+        "calibration.evaluate.calibration_ids_for_design_point",
+        lambda hw: _original_ids(hw) | {SYNTHETIC_T0.calibration_id},
     )
 
     scenario = Scenario(
@@ -317,3 +368,13 @@ def test_runner_decision_grade_fails_on_t0():
     config = DseRunConfig(scenario=scenario, design_space=design_space, trust_mode="decision_grade")
     with pytest.raises(ConfigError, match="decision-grade trust gate failed"):
         ScenarioDseRunner(config).run()
+
+
+def test_tensor_core_overhead_trust():
+    """tensor_core_descriptor_overhead is T1 with non-empty source_uri and range [0, 10]."""
+    registry = CalibrationRegistry.from_yaml()
+    entry = registry.get("tensor_core_descriptor_overhead")
+    assert entry.trust_level == TrustLevel.T1, f"expected T1, got {entry.trust_level}"
+    assert entry.source_uri, f"source_uri is empty or None: {entry.source_uri!r}"
+    assert entry.range_min == 0.0
+    assert entry.range_max == 10.0
